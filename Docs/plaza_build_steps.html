@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>10110 TastesLike Plaza — Prototype Build Steps</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #f9f8f5;
+    color: #3d3d3a;
+    padding: 2rem 1.5rem;
+    line-height: 1.6;
+  }
+  h1 {
+    font-size: 20px;
+    font-weight: 500;
+    margin-bottom: 4px;
+  }
+  .subtitle {
+    font-size: 13px;
+    color: #73726c;
+    margin-bottom: 2rem;
+  }
+  .phase-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: #9c9a92;
+    margin: 1.5rem 0 0.75rem 64px;
+  }
+  .phase-label:first-of-type { margin-top: 0; }
+  .ms {
+    display: grid;
+    grid-template-columns: 48px 1fr;
+    gap: 0 14px;
+    margin-bottom: 10px;
+  }
+  .ms-n {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    font-weight: 500;
+    flex-shrink: 0;
+    margin-top: 4px;
+  }
+  .ms-c {
+    background: #ffffff;
+    border: 0.5px solid #d3d1c7;
+    border-radius: 12px;
+    padding: 12px 16px;
+  }
+  .ms-t {
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 4px;
+  }
+  .ms-d {
+    font-size: 12px;
+    color: #73726c;
+    line-height: 1.6;
+    margin-bottom: 8px;
+  }
+  .ms-k {
+    font-family: "SF Mono", "Fira Code", "Consolas", monospace;
+    font-size: 11px;
+    background: #f1efe8;
+    border-radius: 8px;
+    padding: 8px 10px;
+    color: #5f5e5a;
+    line-height: 1.7;
+    border: 0.5px solid #d3d1c7;
+    margin-bottom: 8px;
+    white-space: pre;
+    overflow-x: auto;
+  }
+  .tags { display: flex; gap: 6px; flex-wrap: wrap; }
+  .tag {
+    font-size: 11px;
+    padding: 2px 7px;
+    border-radius: 8px;
+    background: #f1efe8;
+    color: #73726c;
+    border: 0.5px solid #d3d1c7;
+  }
+  .phase-divider {
+    border: none;
+    border-top: 0.5px solid #d3d1c7;
+    margin: 1.5rem 0 0;
+  }
+  /* Phase 1 — blue */
+  .p1 { background: #E6F1FB; color: #0C447C; }
+  /* Phase 2 — teal */
+  .p2 { background: #E1F5EE; color: #085041; }
+  /* Milestone complete badge */
+  .badge-complete {
+    font-size: 11px;
+    padding: 2px 9px;
+    border-radius: 8px;
+    background: #EAF3DE;
+    color: #27500A;
+    border: 0.5px solid #C0DD97;
+  }
+</style>
+</head>
+<body>
+
+<h1>10110 TastesLike Plaza — Prototype Build Steps</h1>
+<p class="subtitle">Godot 4 · 8 milestones · Phase 1 (weeks 1–3) + Phase 2 (weeks 4–6)</p>
+
+<div class="phase-label" style="margin-top:0">Phase 1 — Godot prototype &nbsp;(weeks 1–3)</div>
+
+<div class="ms">
+  <div class="ms-n p1">1</div>
+  <div class="ms-c">
+    <div class="ms-t">Install Godot 4 + first-person template</div>
+    <div class="ms-d">Download Godot 4 (~80MB, free). Open the built-in "First Person Shooter" demo. Walk around. That is your movement system — done before writing a line of code.</div>
+    <div class="ms-k">CharacterBody3D   ← player body
+Camera3D          ← mounted at head height
+CollisionShape3D  ← prevents wall-clipping</div>
+    <div class="tags"><span class="tag">~1 hour</span><span class="tag">Zero code to start</span></div>
+  </div>
+</div>
+
+<div class="ms">
+  <div class="ms-n p1">2</div>
+  <div class="ms-c">
+    <div class="ms-t">Grey-box the office layout</div>
+    <div class="ms-d">Use Godot's CSG tools to rough out the lobby, corridors, and 3–4 rooms with plain grey boxes. No textures, no art yet. Validate that the space feels right to walk through before investing in visuals.</div>
+    <div class="ms-k">CSGBox3D           ← walls, floors, ceilings
+Area3D             ← doorway proximity triggers
+NavigationRegion3D ← NPC pathfinding mesh</div>
+    <div class="tags"><span class="tag">~4–6 hours</span><span class="tag">GDScript: minimal</span></div>
+  </div>
+</div>
+
+<div class="ms">
+  <div class="ms-n p1">3</div>
+  <div class="ms-c">
+    <div class="ms-t">Load employee directory as game data</div>
+    <div class="ms-d">Convert your .md agent files to JSON. Write a GDScript autoload that reads them at startup into a Dictionary. Each agent definition becomes a data object the NPC system draws from. This is the direct bridge between your existing directory and the game world.</div>
+    <div class="ms-k">func load_agents(path):
+    var f = FileAccess.open(path, FileAccess.READ)
+    return JSON.parse_string(f.get_as_text())
+# result: { "systems-architect": { role, color, dept } }</div>
+    <div class="tags"><span class="tag">~2 hours</span><span class="tag">JSON + GDScript</span></div>
+  </div>
+</div>
+
+<div class="ms">
+  <div class="ms-n p1">4</div>
+  <div class="ms-c">
+    <div class="ms-t">First NPC — proximity dialogue</div>
+    <div class="ms-d">Place Systems Architect in the server room. An Area3D around them fires a signal when the player enters. The HUD listens and shows a dialogue panel populated from that agent's JSON definition. This proves the core loop: walk up → interact → receive info.</div>
+    <div class="ms-k">func _on_proximity_entered(body):
+    if body.is_in_group("player"):
+        GameEvents.emit("npc_approached", agent_id)</div>
+    <div class="tags"><span class="tag">~3 hours</span><span class="tag">Godot signals</span></div>
+  </div>
+</div>
+
+<div class="ms">
+  <div class="ms-n p1">5</div>
+  <div class="ms-c">
+    <div class="ms-t">Assistant chat UI overlay</div>
+    <div class="ms-d">A CanvasLayer (always-on-top 2D layer) holds the chat panel. Player toggles it with a key. For now it returns scripted responses. In Phase 2 this routes to a real API call. This is the player's persistent nav guide throughout the whole experience.</div>
+    <div class="ms-k">CanvasLayer
+  Control          ← panel root
+    VBoxContainer  ← message history
+    LineEdit       ← input field
+    Button         ← send</div>
+    <div class="tags"><span class="tag">~4 hours</span><span class="tag">Godot CanvasLayer</span></div>
+  </div>
+</div>
+
+<div class="ms">
+  <div class="ms-n p1">6</div>
+  <div class="ms-c">
+    <div class="ms-t">Unlock gate system + building map</div>
+    <div class="ms-d">A GameState autoload singleton tracks completed tasks and unlocked floors. Completing a task fires an event; the relevant door unlocks; the HUD map updates. This is the tutorial gate mechanic — onboarding completion drives world expansion.</div>
+    <div class="ms-k">## game_state.gd  (autoload)
+var unlocked: Array = ["lobby"]
+func complete_task(id):
+    completed_tasks.append(id)
+    GameEvents.emit("task_done", id)</div>
+    <div class="tags"><span class="tag">~5 hours</span><span class="tag">Autoload singleton</span></div>
+  </div>
+</div>
+
+<hr class="phase-divider">
+<div class="phase-label">Phase 2 — I/O bridge &nbsp;(weeks 4–6)</div>
+
+<div class="ms">
+  <div class="ms-n p2">7</div>
+  <div class="ms-c">
+    <div class="ms-t">Python WebSocket bridge</div>
+    <div class="ms-d">A small Python process runs alongside the game. Godot sends task requests over WebSocket; the bridge spawns your agent CLI, captures stdout, and returns JSON. The game receives it on the event bus and shows it in the inbox. This is the entire integration layer.</div>
+    <div class="ms-k">## bridge.py
+async def handle(ws):
+    task = await ws.recv()
+    proc = subprocess.run(
+        ["claude", task], capture_output=True)
+    await ws.send(proc.stdout)
+
+## godot side
+ws.connect_to_url("ws://localhost:8765")</div>
+    <div class="tags"><span class="tag">~1 day</span><span class="tag">Python + WebSocket</span></div>
+  </div>
+</div>
+
+<div class="ms">
+  <div class="ms-n p2">8</div>
+  <div class="ms-c">
+    <div class="ms-t">First live agent output in-world</div>
+    <div class="ms-d">Player walks up to Systems Architect, asks a real question. The request routes through the bridge to the actual claude-code agent. The response appears in the dialogue panel and logs to the inbox. This is the moment the game becomes the tool. Everything after is polish and expansion.</div>
+    <div class="tags"><span class="badge-complete">Prototype complete</span><span class="tag">Phase 3 gate</span></div>
+  </div>
+</div>
+
+</body>
+</html>
