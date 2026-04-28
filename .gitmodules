@@ -1,3 +1,6 @@
 [submodule "claude-code-tresor"]
 	path = claude-code-tresor
 	url = ./claude-code-tresor
+[submodule "claude-skills"]
+	path = claude-skills
+	url = ./claude-skills
