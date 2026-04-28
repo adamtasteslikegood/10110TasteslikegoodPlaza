@@ -1,0 +1,25 @@
+{
+  "repo": "/home/adam/projects/10110TasteslikegoodPlaza",
+  "languages": [],
+  "package_managers": [],
+  "ci_targets": [
+    "github",
+    "gitlab"
+  ],
+  "test_commands": [],
+  "build_commands": [],
+  "lint_commands": [],
+  "signals": {
+    "package_json": false,
+    "pnpm_lock": false,
+    "yarn_lock": false,
+    "npm_lock": false,
+    "pyproject": false,
+    "requirements": false,
+    "go_mod": false,
+    "dockerfile": false,
+    "vercel": false,
+    "helm": false,
+    "k8s": false
+  }
+}
