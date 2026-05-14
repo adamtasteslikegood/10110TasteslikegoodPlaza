@@ -1,0 +1,14 @@
+# environment secrets
+.env
+
+# gemini-cli settings
+.gemini/
+
+# GitHub App credentials
+gha-creds-*.json
+
+# local OMG state
+.omg/state/
+
+# python cache
+__pycache__/

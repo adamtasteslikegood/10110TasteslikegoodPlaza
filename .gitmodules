@@ -1,0 +1,3 @@
+[submodule "claude-code-tresor"]
+	path = claude-code-tresor
+	url = ../claude-code-tresor.git
