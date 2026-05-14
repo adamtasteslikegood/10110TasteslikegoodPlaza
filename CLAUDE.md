@@ -130,9 +130,8 @@ Nine departments map to nine office floors (now "rooms" in 2.5D), each with a fi
 
 The intended flow is `feature/* | fix/* | hotfix/* → dev → main` with Conventional Commits and squash merges. What's actually in the remote right now:
 
-- `main` — current default; has the Atlassian scripts, CI, submodule, gemini workflows.
-- `dev` — **behind `main`**; missing CHANGELOG, LICENSE, `docs/designs/`, the gemini workflows, the submodule. Don't treat it as the integration branch yet.
-- `sync-main-to-dev` — identical to `main`; presumably the staging point for a future `dev` catch-up merge.
+- `main` — production line; has the Atlassian scripts, CI, submodule, gemini workflows.
+- `dev` — **integration branch**, caught up to `main` via PR #3. New work targets `dev`; `dev` → `main` on release.
 - `feature/TO-1-prototype-initialization` — long-lived feature branch with extensive `scripts/` and `scripts/scripts-bakup/` shell/Python tooling (Jira PM daemon, ahead-behind scripts, etc.).
 - Task-assigned working branches (e.g. `claude/...`) — develop here, commit, push, open a draft PR. The session-assigned branch is specified in the system prompt.
 

@@ -62,11 +62,16 @@ section at release time. PR references in parentheses.
   `git submodule update --init --recursive`. (PR #4)
 - `CLAUDE.md` — updated the `CHANGELOG.md` note in "Two doc trees" now that
   this file exists as a real project changelog. (PR #4)
+- `CLAUDE.md` — refreshed the **Branching** section: `dev` is now the
+  integration branch (caught up to `main` via PR #3) and the merged
+  `sync-main-to-dev` line was dropped. (PR #4)
 
 ### Removed
 - Stray `@googleworkspace/cli` `CHANGELOG.md` (accidental import) — removed
   during PR #3 review feedback. This file replaces it.
 - `.omg/state/learn-watch.json` — removed during PR #3 review.
+- `sync-main-to-dev` branch — deleted from the remote after PR #3 merged
+  it into `dev`. (PR #4 cleanup)
 
 ### Notes
 - `dev` was fast-forwarded to match `main` via PR #3 (`sync-main-to-dev` →
@@ -74,3 +79,18 @@ section at release time. PR references in parentheses.
   `Docs/BRANCHING_STRATEGY.md`.
 - No tagged releases yet. First tag will follow once the M1 → M4 → M8
   critical-path prototype is demonstrable in-engine.
+
+## Pull request history
+
+- **PR #4** — *docs: add CLAUDE.md guide for future Claude Code sessions* —
+  open against `dev`. Adds `CLAUDE.md`, this `CHANGELOG.md`, fixes
+  `.gitmodules` submodule URL, refreshes branching notes, and removes the
+  merged `sync-main-to-dev` branch.
+- **PR #3** — *chore: Sync latest progress (Docs & CI) from main to dev* —
+  merged 2026-05-14. Brought `dev` up to `main` (2.5D plan, gemini
+  workflows, CI, Atlassian scripts, submodule, LICENSE). 22 files,
+  +2246 lines.
+- **PR #2** — *Added README.md and other changes* — closed without merge
+  (superseded by PR #3 sync flow).
+- **PR #1** — *Added README.md* — merged 2026-04-24. Initial planning docs
+  and README on `dev`.
