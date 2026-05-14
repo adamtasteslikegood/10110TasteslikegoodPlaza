@@ -124,11 +124,11 @@ new_page = confluence_request("POST", "/wiki/api/v2/pages", payload)
 if new_page and "id" in new_page:
     links = new_page.get("_links", {})
     webui_path = links.get("webui")
-    base_url = links.get("base", url_base)
-    if base_url.startswith("/"):
-        base_url = urllib.parse.urljoin(url_base, base_url)
+    resolved_base_url = links.get("base", url_base)
+    if resolved_base_url.startswith("/"):
+        resolved_base_url = urllib.parse.urljoin(url_base, resolved_base_url)
     url = (
-        urllib.parse.urljoin(base_url, webui_path)
+        urllib.parse.urljoin(resolved_base_url, webui_path)
         if webui_path
         else f"{url_base}/wiki/pages/{new_page['id']}"
     )
