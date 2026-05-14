@@ -26,7 +26,7 @@ jobs:
           
       - name: Lint with Black
         run: |
-          black --check . || echo "Black formatting issues found (ignoring for now)"
+          black --check .
           
       - name: Lint with flake8
         run: |
