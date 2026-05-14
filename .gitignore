@@ -9,3 +9,6 @@ gha-creds-*.json
 
 # local OMG state
 .omg/state/
+
+# python cache
+__pycache__/
