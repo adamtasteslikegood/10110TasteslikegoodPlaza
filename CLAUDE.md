@@ -63,15 +63,29 @@ If a change risks one of these, flag it.
 
 ## The `claude-code-tresor` submodule
 
-`.gitmodules` registers `claude-code-tresor` with the relative URL `./claude-code-tresor` and pins commit `acfb923…`. **It is empty in fresh checkouts** — you have to initialize it before reading the upstream agent `.md` files:
+`.gitmodules` registers `claude-code-tresor` pointing at the maintainer's fork (`https://github.com/adamtasteslikegood/claude-code-tresor.git`), pinned to commit `acfb923…`. **It is empty in fresh checkouts** — initialize it before reading the upstream agent `.md` files:
 
 ```bash
 git submodule update --init --recursive
 ```
 
-Because the URL is relative (`./claude-code-tresor`), submodule init only works if the local clone has a sibling repo at that path or the relative URL has been pointed somewhere real. If init fails, don't guess at fixes — ask the user how their `claude-code-tresor` source is supposed to resolve.
+This is the source of truth for the agent definitions that need to become `data/agents.json` for M3. Don't duplicate that data into this repo's tree. Layout inside the submodule:
 
-The submodule is the source of truth for the 137+ agent definitions that need to become `data/agents.json` for M3. Don't duplicate that data into this repo's tree.
+- `subagents/` — 137+ specialized agent definitions organized by department (`engineering/`, `design/`, `marketing/`, `product/`, `leadership/`, `operations/`, `research/`, `ai-automation/`, `account-customer-success/`, `core/`), plus an `AGENT-INDEX.md`.
+- `agents/` — the 8 production-ready core agents (`systems-architect`, `config-safety-reviewer`, `root-cause-analyzer`, `security-auditor`, `test-engineer`, `performance-tuner`, `refactor-expert`, `docs-writer`).
+
+### Pulling upstream updates
+
+The submodule's `origin` is the maintainer's fork so PRs/issues/CI stay isolated. To pull updates from the parent project (`alirezarezvani/claude-code-tresor`), add it as `upstream` **inside the submodule** (this is per-clone — `.git/config` only, not propagated):
+
+```bash
+cd claude-code-tresor
+git remote add upstream https://github.com/alirezarezvani/claude-code-tresor.git
+git fetch upstream
+# merge or rebase upstream/main into your fork's main, then push to origin,
+# then back in the parent repo:
+cd .. && git add claude-code-tresor && git commit -m "build: bump claude-code-tresor submodule"
+```
 
 ## CI workflows
 
