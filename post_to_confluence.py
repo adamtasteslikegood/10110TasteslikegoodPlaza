@@ -1,33 +1,41 @@
-import os, json, urllib.request, urllib.parse, datetime, re
+import datetime
+import html
+import json
+import re
+import sys
+import urllib.parse
+import urllib.request
 
 env_vars = {}
-with open('./.env') as f:
+with open("./.env") as f:
     for line in f:
-        if line.strip() and not line.startswith('#'):
-            key, val = line.strip().split('=', 1)
+        if line.strip() and not line.startswith("#"):
+            key, val = line.strip().split("=", 1)
             env_vars[key] = val
 
-auth_token = env_vars['ATLASSIAN_API_TOKEN_BASE64_USEREMAIL']
+auth_token = env_vars["ATLASSIAN_API_TOKEN_BASE64_USEREMAIL"]
 url_base = f"https://{env_vars['ATLASSIAN_URL']}"
 parent_page_id = "15925249"
+
 
 def confluence_request(method, endpoint, payload=None):
     url = f"{url_base}{endpoint}"
     headers = {
         "Authorization": f"Basic {auth_token}",
         "Accept": "application/json",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
     }
-    data = json.dumps(payload).encode('utf-8') if payload else None
+    data = json.dumps(payload).encode("utf-8") if payload else None
     req = urllib.request.Request(url, data=data, headers=headers, method=method)
     try:
         with urllib.request.urlopen(req) as response:
-            return json.loads(response.read().decode('utf-8'))
+            return json.loads(response.read().decode("utf-8"))
     except Exception as e:
-        if hasattr(e, 'read'):
+        if hasattr(e, "read"):
             print(f"Error response: {e.read().decode('utf-8')}")
         print(f"Error calling {url}: {e}")
         return None
+
 
 page_data = confluence_request("GET", f"/wiki/api/v2/pages/{parent_page_id}")
 if not page_data:
@@ -35,31 +43,69 @@ if not page_data:
     page_data = confluence_request("GET", f"/wiki/api/v2/pages/{parent_page_id}")
     if not page_data:
         print("Failed to get both parent pages")
-        exit(1)
+        sys.exit(1)
 
-space_id = page_data['spaceId']
+space_id = page_data["spaceId"]
 
-with open('report.md') as f:
+with open("report.md") as f:
     md = f.read()
 
-html = md
-html = html.replace('## Status Report', '<h2>Status Report')
-html = re.sub(r'<h2>Status Report(.*)\n', r'<h2>Status Report\1</h2>', html)
-html = html.replace('### Completed Issues', '<h3>Completed Issues</h3>')
-html = html.replace('### In Progress', '<h3>In Progress</h3>')
-html = html.replace('### Blocked Issues', '<h3>Blocked Issues</h3>')
-html = html.replace('### To Do / Other Updates', '<h3>To Do / Other Updates</h3>')
-html = re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', html)
-html = re.sub(r'- \[([^\]]+)\]\(([^\)]+)\):\s*(.*)', r'<li><a href="\2">\1</a>: \3</li>', html)
 
-first_li = html.find('<li>')
-if first_li != -1:
-    html = html[:first_li] + '<ul>' + html[first_li:]
-last_li = html.rfind('</li>')
-if last_li != -1:
-    html = html[:last_li+5] + '</ul>' + html[last_li+5:]
+def render_inline_markdown(text):
+    rendered_parts = []
+    last_index = 0
+    for match in re.finditer(r"\*\*(.+?)\*\*", text):
+        rendered_parts.append(html.escape(text[last_index : match.start()]))
+        rendered_parts.append(f"<strong>{html.escape(match.group(1))}</strong>")
+        last_index = match.end()
+    rendered_parts.append(html.escape(text[last_index:]))
+    return "".join(rendered_parts)
 
-html = html.replace('\n\n', '<br/><br/>').replace('\n', ' ')
+
+rendered_lines = []
+in_list = False
+for line in md.splitlines():
+    if not line.strip():
+        if in_list:
+            rendered_lines.append("</ul>")
+            in_list = False
+        continue
+
+    if line.startswith("## "):
+        if in_list:
+            rendered_lines.append("</ul>")
+            in_list = False
+        rendered_lines.append(f"<h2>{render_inline_markdown(line[3:])}</h2>")
+        continue
+
+    if line.startswith("### "):
+        if in_list:
+            rendered_lines.append("</ul>")
+            in_list = False
+        rendered_lines.append(f"<h3>{render_inline_markdown(line[4:])}</h3>")
+        continue
+
+    match = re.match(r"- \[([^\]]+)\]\(([^)]+)\):\s*(.*)", line)
+    if match:
+        if not in_list:
+            rendered_lines.append("<ul>")
+            in_list = True
+        key, issue_url, detail = match.groups()
+        safe_url = html.escape(issue_url, quote=True)
+        rendered_lines.append(
+            f'<li><a href="{safe_url}">{render_inline_markdown(key)}</a>: {render_inline_markdown(detail)}</li>'
+        )
+        continue
+
+    if in_list:
+        rendered_lines.append("</ul>")
+        in_list = False
+    rendered_lines.append(f"<p>{render_inline_markdown(line)}</p>")
+
+if in_list:
+    rendered_lines.append("</ul>")
+
+html_output = "".join(rendered_lines)
 
 today = datetime.date.today().strftime("%B %d, %Y")
 now = datetime.datetime.now().strftime("%H:%M:%S")
@@ -70,16 +116,21 @@ payload = {
     "status": "current",
     "title": title,
     "parentId": parent_page_id,
-    "body": {
-        "representation": "storage",
-        "value": f"<div>{html}</div>"
-    }
+    "body": {"representation": "storage", "value": f"<div>{html_output}</div>"},
 }
 
 new_page = confluence_request("POST", "/wiki/api/v2/pages", payload)
-if new_page and 'id' in new_page:
-    page_id = new_page['id']
-    url = f"{url_base}/wiki/spaces/{space_id}/pages/{page_id}"
+if new_page and "id" in new_page:
+    links = new_page.get("_links", {})
+    webui_path = links.get("webui")
+    resolved_base_url = links.get("base", url_base)
+    if resolved_base_url.startswith("/"):
+        resolved_base_url = urllib.parse.urljoin(url_base, resolved_base_url)
+    url = (
+        urllib.parse.urljoin(resolved_base_url, webui_path)
+        if webui_path
+        else f"{url_base}/wiki/pages/{new_page['id']}"
+    )
     print(f"Successfully created Confluence page! Page URL: {url}")
 else:
     print("Failed to create page")
