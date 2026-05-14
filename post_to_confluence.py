@@ -52,14 +52,13 @@ with open("report.md") as f:
 
 
 def render_inline_markdown(text):
-    parts = text.split("**")
     rendered_parts = []
-    for idx, part in enumerate(parts):
-        escaped_part = html.escape(part)
-        if idx % 2 == 1:
-            rendered_parts.append(f"<strong>{escaped_part}</strong>")
-        else:
-            rendered_parts.append(escaped_part)
+    last_index = 0
+    for match in re.finditer(r"\*\*(.+?)\*\*", text):
+        rendered_parts.append(html.escape(text[last_index : match.start()]))
+        rendered_parts.append(f"<strong>{html.escape(match.group(1))}</strong>")
+        last_index = match.end()
+    rendered_parts.append(html.escape(text[last_index:]))
     return "".join(rendered_parts)
 
 
