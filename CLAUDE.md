@@ -114,7 +114,7 @@ These read `./.env` directly (no python-dotenv); they'll crash with a `KeyError`
 - `Docs/` (capital D) — the original 3D first-person planning set. Spine: `Docs/files/00_PROJECT_OVERVIEW.md` (concept) → `02_PROTOTYPE_ROADMAP.md` (milestones) → `03_PM_TASK_TRACKER.md` (checklist). `01_WEEK1_STORYBOARD.md` is the narrative/tutorial design; `04_QUICK_REFERENCE.md` is the one-page summary. `BRANCHING_STRATEGY.md` is inherited verbatim from upstream (see "Branching" below). `10110_TastesLikePlaza_DIRECTORY.md` taxonomizes the 137+ agent roles.
 - `docs/designs/` (lowercase d) — promoted `/plan-ceo-review` outputs. Currently just `2.5D-RPG-Prototype.md`. **This is the active design.**
 - `report.md` — generated output of `generate_report.py`; commit it only deliberately.
-- `CHANGELOG.md` — currently contains `@googleworkspace/cli`'s changelog, not this project's. Looks like an accidental import. Don't extend it; flag to the user before rewriting.
+- `CHANGELOG.md` — project changelog in [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format. Add entries under `## [Unreleased]` as work lands; promote to a versioned section at release time.
 
 ## Department / color scheme
 
