@@ -1,0 +1,12 @@
+{
+  "last_session_id": "1284f1ad-07fa-4a0f-85ec-cece02e182dc",
+  "last_event_key": "1284f1ad-07fa-4a0f-85ec-cece02e182dc:transcript:6310451129bab60c98f40a953eb130a8a46cb20933d1df4cee968cafab022ef1",
+  "last_prompted_session_id": "",
+  "last_reason": "short-session",
+  "last_prompted_at": "",
+  "last_user_message_count": 0,
+  "last_actionable_message_count": 0,
+  "deep_interview_lock_active": false,
+  "deep_interview_lock_source": "/home/adam/projects/10110TasteslikegoodPlaza/.omg/state/deep-interview.json",
+  "updated_at": "2026-04-28T07:45:21.177Z"
+}
