@@ -59,7 +59,7 @@ Both will crash with a `KeyError` if either `.env` var is missing — that's int
 Same checks CI runs:
 
 ```bash
-black --check .                                       # advisory
+black --check .                                       # must pass
 flake8 . --select=E9,F63,F7,F82                       # must pass
 flake8 . --exit-zero --max-complexity=10 --max-line-length=127   # advisory
 ```
@@ -75,6 +75,6 @@ flake8 . --exit-zero --max-complexity=10 --max-line-length=127   # advisory
 | Track current work | [`specs/task-tracker.md`](specs/task-tracker.md) |
 | Follow the contribution flow | [`CONTRIBUTING.md`](CONTRIBUTING.md) |
 
-The first real prototype task is **M1** — install Godot 4 and drop in the First-Person Shooter demo (which under the 2.5D pivot becomes a top-down `CharacterBody2D` setup instead). See [`specs/roadmap.md`](specs/roadmap.md) and [`docs/designs/2.5D-RPG-Prototype.md`](docs/designs/2.5D-RPG-Prototype.md).
+The first real prototype task is **M1** — initialize a Godot 4 project for the 2.5D top-down prototype and implement basic `CharacterBody2D` player movement. See [`specs/roadmap.md`](specs/roadmap.md) and [`docs/designs/2.5D-RPG-Prototype.md`](docs/designs/2.5D-RPG-Prototype.md).
 
 *Last updated: May 2026*

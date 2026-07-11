@@ -9,7 +9,7 @@ For work-in-flight (milestones, task tracking, branching policy) see [`../specs/
 | File | Purpose |
 |---|---|
 | [`designs/2.5D-RPG-Prototype.md`](designs/2.5D-RPG-Prototype.md) | **Active design.** Promoted CEO plan (2026-04-27) pivoting the prototype from 3D first-person to 2.5D top-down. |
-| [`storyboard-week1.md`](storyboard-week1.md) | Day 0 / Day 1 / Day 2 tutorial narrative beats. Dual-purpose: game story = real onboarding. |
+| [`storyboard-week1.md`](storyboard-week1.md) | Week 1 tutorial narrative beats from Day 0 through Days 4–5. Dual-purpose: game story = real onboarding. |
 | [`quick-reference.md`](quick-reference.md) | One-page summary: build order, autoload list, department table, key decisions. |
 | [`agent-directory.md`](agent-directory.md) | Taxonomy of the 137+ agent roles across nine departments. Source-of-truth for the department/color mapping (mirrored in the top-level `README.md`). |
 | [`assets/`](assets/) | `plaza_build_steps.html` and `plaza_godot_architecture.svg`. |

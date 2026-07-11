@@ -8,7 +8,7 @@ For design-and-reference docs (the *what* and *why*) see [`../docs/`](../docs/RE
 
 | File | Purpose |
 |---|---|
-| [`roadmap.md`](roadmap.md) | **The work plan.** M1 → M8 milestones with effort estimates, GDScript dependencies, and Jira ticket refs (project key `TO`). The critical path is **M1 → M4 → M8**. |
+| [`roadmap.md`](roadmap.md) | **The work plan.** M1 → M8 milestones with effort estimates and GDScript dependencies. The critical path is **M1 → M4 → M8**. |
 | [`task-tracker.md`](task-tracker.md) | Working checklist across all phases. `[ ]` todo, `[~]` in progress, `[x]` done. Mirrors Jira where possible. |
 | [`branching-strategy.md`](branching-strategy.md) | Branch protection rules, required status checks, CODEOWNERS gating. Intended policy — some referenced workflows don't exist yet. See [`../CONTRIBUTING.md`](../CONTRIBUTING.md) for the everyday flow. |
 

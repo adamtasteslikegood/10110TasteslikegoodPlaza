@@ -56,7 +56,7 @@ Allowed types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `buil
 
 Before you push, run locally what CI runs in [`.github/workflows/ci.yml`](.github/workflows/ci.yml):
 
-- `black --check .` — formatting (advisory; warnings don't fail the build, but please fix them).
+- `black --check .` — **must pass.** Formatting failures fail CI.
 - `flake8 . --select=E9,F63,F7,F82` — **must pass.** Syntax errors and undefined names are hard fails.
 - `flake8 . --exit-zero --max-complexity=10 --max-line-length=127` — advisory; aim to keep new code clean.
 
