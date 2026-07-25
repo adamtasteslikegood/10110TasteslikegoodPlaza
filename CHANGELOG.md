@@ -10,6 +10,33 @@ section at release time. PR references in parentheses.
 
 ## [Unreleased]
 
+### Changed
+- 2.5D-alignment sweep across the reader-facing docs so the promoted 2.5D
+  pivot (`docs/designs/2.5D-RPG-Prototype.md`) and the aligned spec
+  (`specs/aligned-spec-v0.2.5.md`) show up where they matter:
+  - `README.md` pitch, Concept intro, Layer 2 description, and the
+    engine-choice reason now lead with 2.5D top-down. `first-person`
+    references dropped from the top-level overview.
+  - `docs/quick-reference.md` pitch line rewritten to 2.5D-first with a
+    pointer to the promoted design and the aligned spec.
+  - `specs/roadmap.md` and `specs/task-tracker.md` gained a top-of-file
+    ⚠️ banner marking their 3D-specific node names as deprecated while
+    keeping the milestone structure / checklist authoritative.
+  - `Docs/files/README.md` (the migration-signpost stub added on `dev`
+    after PR #5) gained a "where the files actually live now" table so
+    the note's referent ("these files") points at real paths.
+  - `CLAUDE.md` "critical architectural reframe" and doc-layout sections
+    now name `specs/aligned-spec-v0.2.5.md` as the current source-of-
+    truth for spec details and enumerate the specific 3D-legacy caveats
+    per file.
+  - `specs/README.md` — reordered the table to lead with the aligned spec,
+    reworded roadmap/task-tracker entries with the 3D-deprecation caveat.
+- Renamed
+  `specs/TastesLike Plaza v0_2_5_ Aligned Specification Set for a 2_5D AI Agent Office World.md`
+  → `specs/aligned-spec-v0.2.5.md`. Spaces, underscores, and mixed casing
+  in the original filename made it hostile to CLI tooling, URLs, and
+  cross-references. Content is unchanged.
+
 ### Added
 - `CONTRIBUTING.md` — day-to-day contributor guide: branching flow,
   Conventional Commits, PR workflow, CI expectations, doc/spec split rules.

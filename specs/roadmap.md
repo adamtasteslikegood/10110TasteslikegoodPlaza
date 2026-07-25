@@ -1,8 +1,12 @@
 # 10110 TastesLike Plaza — Prototype Build Roadmap
 
+> ⚠️ **Superseded in part by [`aligned-spec-v0.2.5.md`](aligned-spec-v0.2.5.md).**
+> The **milestone structure** (M1 → M8, critical path M1 → M4 → M8) is still correct.
+> The **3D first-person specifics below** (CharacterBody3D, FPS demo, CSGBox3D, Area3D, NavigationRegion3D) are **deprecated**. The prototype is now 2.5D top-down per [`../docs/designs/2.5D-RPG-Prototype.md`](../docs/designs/2.5D-RPG-Prototype.md) (status `PROMOTED`, 2026-04-27). Read node names as their 2D equivalents (CharacterBody2D, TileMap, Area2D, NavigationRegion2D). 3D first-person is deferred to v2.0–3.0.
+
 > Engine: **Godot 4** (free, MIT license, ~80MB download)
 > Language: **GDScript** (reads like Python — approachable without game dev background)
-> Target: Working first-person 3D office world with NPC interaction and live agent output
+> Target: Working 2.5D top-down office world with NPC interaction and live agent output
 
 ---
 

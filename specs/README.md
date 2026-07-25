@@ -8,8 +8,9 @@ For design-and-reference docs (the *what* and *why*) see [`../docs/`](../docs/RE
 
 | File | Purpose |
 |---|---|
-| [`roadmap.md`](roadmap.md) | **The work plan.** M1 → M8 milestones with effort estimates and GDScript dependencies. The critical path is **M1 → M4 → M8**. |
-| [`task-tracker.md`](task-tracker.md) | Working checklist across all phases. `[ ]` todo, `[~]` in progress, `[x]` done. Mirrors Jira where possible. |
+| [`aligned-spec-v0.2.5.md`](aligned-spec-v0.2.5.md) | **Current source-of-truth for spec details.** META-SPEC, revised outlines for legacy Documents 00–04, UI-agnostic bridge architecture, department→floor taxonomy. Ratifies the 2.5D pivot and the synchronous-bridge decision. |
+| [`roadmap.md`](roadmap.md) | Work plan. M1 → M8 milestones. The **structure** (critical path **M1 → M4 → M8**) is still authoritative; the **3D-specific node names in milestone bodies are deprecated** — see the aligned spec and the promoted 2.5D design for current implementation details. |
+| [`task-tracker.md`](task-tracker.md) | Working checklist across all phases. `[ ]` todo, `[~]` in progress, `[x]` done. Same deprecation caveat as `roadmap.md` for 3D-specific task wording. |
 | [`branching-strategy.md`](branching-strategy.md) | Branch protection rules, required status checks, CODEOWNERS gating. Intended policy — some referenced workflows don't exist yet. See [`../CONTRIBUTING.md`](../CONTRIBUTING.md) for the everyday flow. |
 
 ## Critical path
