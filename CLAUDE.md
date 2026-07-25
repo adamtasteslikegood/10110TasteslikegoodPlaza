@@ -9,12 +9,12 @@ This repo sits **between planning and prototype**. There is no Godot project yet
 - A working CI pipeline (`.github/workflows/ci.yml`) that already lints Python on every push/PR.
 - Two Atlassian integration scripts (`generate_report.py`, `post_to_confluence.py`) wired to a Jira project keyed `TO` and a Confluence parent page.
 - The upstream agent directory wired in as a git submodule at `./claude-code-tresor` (relative URL, not initialized in fresh checkouts — see below).
-- Two parallel docs trees that say slightly different things: `Docs/` (capital D) is the original 3D-first-person planning set; `docs/designs/` (lowercase d) is the newer scope-reduction plan that supersedes it.
+- A consolidated documentation layout: `docs/` for design and reference, `specs/` for development-process files. Each folder has its own `README.md` describing what belongs there. The active design is `docs/designs/2.5D-RPG-Prototype.md`; the active work plan is `specs/roadmap.md`.
 - A bunch of `gemini-*` workflows and matching `.toml` command files driving an autonomous triage/review bot.
 
 Don't invent commands like "npm test" or "godot --headless" — Node and Godot infrastructure don't exist yet. What's actually runnable is described below.
 
-## Critical architectural reframe (read this before trusting `Docs/files/`)
+## Critical architectural reframe (read this before trusting the legacy reference docs)
 
 `docs/designs/2.5D-RPG-Prototype.md` has status `PROMOTED` and a `/plan-ceo-review` header dated 2026-04-27. It **pivots the prototype from 3D first-person to 2.5D top-down** (Pokemon / Stardew Valley style) under a "10x check" scope reduction. Accepted scope from that plan:
 
@@ -26,7 +26,7 @@ Don't invent commands like "npm test" or "godot --headless" — Node and Godot i
 
 Deferred: true WebSocket streaming, unique sprites per agent, 3D first-person.
 
-The older `Docs/files/00–04_*.md` set still describes the 3D first-person vision in detail. Treat it as historical context for the *concept* (4-layer architecture, autoloads, M1/M4/M8 milestones still apply directionally) but defer to the 2.5D plan for *implementation* decisions. If you edit either set, note the inconsistency rather than silently aligning them — that's a question for the user.
+The older reference docs (`docs/storyboard-week1.md`, `docs/quick-reference.md`, `specs/roadmap.md`, `specs/task-tracker.md`) still describe the 3D first-person vision in detail. Treat them as historical context for the *concept* (4-layer architecture, autoloads, M1/M4/M8 milestones still apply directionally) but defer to the 2.5D plan for *implementation* decisions. If you edit either set, note the inconsistency rather than silently aligning them — that's a question for the user.
 
 ## Architecture: the 4 layers
 
@@ -109,22 +109,44 @@ ATLASSIAN_URL=<host, no scheme>
 
 These read `./.env` directly (no python-dotenv); they'll crash with a `KeyError` if either var is missing. The lint job tolerates them as-is.
 
-## Two doc trees — what's where
+## Doc layout — what's where
 
-- `Docs/` (capital D) — the original 3D first-person planning set. Spine: `Docs/files/00_PROJECT_OVERVIEW.md` (concept) → `02_PROTOTYPE_ROADMAP.md` (milestones) → `03_PM_TASK_TRACKER.md` (checklist). `01_WEEK1_STORYBOARD.md` is the narrative/tutorial design; `04_QUICK_REFERENCE.md` is the one-page summary. `BRANCHING_STRATEGY.md` is inherited verbatim from upstream (see "Branching" below). `10110_TastesLikePlaza_DIRECTORY.md` taxonomizes the 137+ agent roles.
-- `docs/designs/` (lowercase d) — promoted `/plan-ceo-review` outputs. Currently just `2.5D-RPG-Prototype.md`. **This is the active design.**
-- `report.md` — generated output of `generate_report.py`; commit it only deliberately.
+Top level holds the entry-point docs every contributor (human or agent) is expected to read first:
+
+- `README.md` — project pitch, 4-layer architecture, department/color table, attribution. The canonical project overview.
+- `QUICKSTART.md` — clone, init the submodule, set up `.env`, run the Atlassian scripts, where to go from there.
+- `CONTRIBUTING.md` — branching flow, Conventional Commits, PR workflow. Points at `specs/branching-strategy.md` for the full policy.
 - `CHANGELOG.md` — project changelog in [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format. Add entries under `## [Unreleased]` as work lands; promote to a versioned section at release time.
+- `CLAUDE.md` — this file. Agent-facing repo guide.
+- `LICENSE` — MIT.
+
+`docs/` — design and reference (the *what* and *why*, slow-changing). See `docs/README.md` for the folder index.
+
+- `docs/designs/2.5D-RPG-Prototype.md` — **active design.** The 2.5D top-down pivot.
+- `docs/storyboard-week1.md` — Day 0 / Day 1 / Day 2 tutorial narrative beats.
+- `docs/quick-reference.md` — one-page summary: build order, autoloads, department table.
+- `docs/agent-directory.md` — taxonomy of the 137+ agent roles across nine departments.
+- `docs/assets/` — `plaza_build_steps.html`, `plaza_godot_architecture.svg`.
+
+`specs/` — development process (the *how* and *when*, action-oriented). See `specs/README.md` for the folder index.
+
+- `specs/roadmap.md` — M1 → M8 milestones with effort estimates and Jira ticket refs.
+- `specs/task-tracker.md` — working checklist across all phases.
+- `specs/branching-strategy.md` — branch protection, status checks, CODEOWNERS gating. Still says "ClaudeForge" and references workflows that don't exist here; treat as intended policy until those land.
+
+Other top-level artifacts:
+
+- `report.md` — generated output of `generate_report.py`; commit it only deliberately.
 
 ## Department / color scheme
 
-Nine departments map to nine office floors (now "rooms" in 2.5D), each with a fixed hex color. The mapping is canonical and appears in three places (`README.md`, `Docs/10110_TastesLikePlaza_DIRECTORY.md`, `Docs/files/00_PROJECT_OVERVIEW.md`). If you change a color or floor assignment, update all three to keep them in sync.
+Nine departments map to nine office floors (now "rooms" in 2.5D), each with a fixed hex color. The mapping is canonical and appears in two places (`README.md` and `docs/agent-directory.md`). If you change a color or floor assignment, update both to keep them in sync.
 
 ## Document conventions
 
-- Planning files in `Docs/files/` end with `*Last updated: <month> 2026*`. Update that line when editing them.
-- `Docs/10110_TastesLikePlaza_DIRECTORY.md` contains unresolved template artifacts (`{{rolels}}`, `{{charactors}}`, `{{roles}}`, etc.) left over from the upstream fork. Don't propagate them into new text; clean up the section you're editing.
-- Attribution: the project is an MIT-licensed adaptation of [alirezarezvani/claude-code-tresor](https://github.com/alirezarezvani/claude-code-tresor), via the [adamtasteslikegood/claude-code-tresor](https://github.com/adamtasteslikegood/claude-code-tresor) fork. Preserve the attribution block at the bottom of `README.md` and the directory doc.
+- Most reference and process docs (under `docs/` and `specs/`) end with `*Last updated: <month> 2026*`. Update that line when editing them.
+- `docs/agent-directory.md` contains unresolved template artifacts (`{{rolels}}`, `{{charactors}}`, `{{roles}}`, etc.) left over from the upstream fork. Don't propagate them into new text; clean up the section you're editing.
+- Attribution: the project is an MIT-licensed adaptation of [alirezarezvani/claude-code-tresor](https://github.com/alirezarezvani/claude-code-tresor), via the [adamtasteslikegood/claude-code-tresor](https://github.com/adamtasteslikegood/claude-code-tresor) fork. Preserve the attribution block at the bottom of `README.md` and `docs/agent-directory.md`.
 
 ## Branching
 
@@ -135,7 +157,7 @@ The intended flow is `feature/* | fix/* | hotfix/* → dev → main` with Conven
 - `feature/TO-1-prototype-initialization` — long-lived feature branch with extensive `scripts/` and `scripts/scripts-bakup/` shell/Python tooling (Jira PM daemon, ahead-behind scripts, etc.).
 - Task-assigned working branches (e.g. `claude/...`) — develop here, commit, push, open a draft PR. The session-assigned branch is specified in the system prompt.
 
-`Docs/BRANCHING_STRATEGY.md` describes branch protection rules, required status checks, and CODEOWNERS gating — but the doc still says "ClaudeForge" throughout and references workflows (`pr-into-dev.yml`, `dev-to-main.yml`, `release.yml`) that **don't exist in this repo**. Treat it as intended policy for once code lands, not active rules. The Conventional Commits format (`type(scope): subject`, lowercase, imperative, no trailing period) is worth following now.
+`specs/branching-strategy.md` describes branch protection rules, required status checks, and CODEOWNERS gating — but the doc still says "ClaudeForge" throughout and references workflows (`pr-into-dev.yml`, `dev-to-main.yml`, `release.yml`) that **don't exist in this repo**. Treat it as intended policy for once code lands, not active rules. The Conventional Commits format (`type(scope): subject`, lowercase, imperative, no trailing period) is worth following now — see `CONTRIBUTING.md` for the everyday flow.
 
 ## When you're asked to add Godot code
 
