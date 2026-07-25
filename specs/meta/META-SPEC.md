@@ -4,7 +4,7 @@ title: Meta-Spec — how the Plaza doc set governs itself
 tier: 0
 authority: constitution
 status: ACTIVE
-doc_set_version: 0.2.5
+doc_set_version: 0.2.6
 last_updated: 2026-07
 owner: adamtasteslikegood
 derives_from: []
@@ -182,4 +182,4 @@ These are hard gates, not preferences. A change that breaks one fails review.
    [`decision-register.md`](decision-register.md) and bump `doc_set_version`
    everywhere in the same commit.
 
-*Doc set version: 0.2.5 · Last updated: July 2026*
+*Doc set version: 0.2.6 · Last updated: July 2026*

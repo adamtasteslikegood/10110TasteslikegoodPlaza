@@ -53,10 +53,12 @@ Every planning doc assumes this model, regardless of 2D/3D:
 
 ```
 Layer 4 — Real agent execution    (EXISTS) claude-code, gemini-cli, MCP, SSH
-Layer 3 — I/O bridge               (TODO, Phase 2) Python WebSocket → spawns agent CLI, synchronous w/ timeout
-Layer 2 — Godot 4 engine           (TODO, Phase 1) — now 2.5D, per the promoted plan
-Layer 1 — Data + config            (EXISTS upstream as submodule) 137+ agent .md files → agents.json
+Layer 3 — UI-agnostic bridge       (TODO, Phase 2) Python WebSocket → spawns agent CLI, synchronous w/ timeout
+Layer 2 — Current frontend         (TODO, Phase 1) — today 2.5D Godot; one of several swappable frontends
+Layer 1 — Data + config            (EXISTS upstream as submodule) 133 agent .md files → agents.json
 ```
+
+Layer 2 is deliberately named for the **role, not the implementation** (`D-020`). A CLI harness, a web UI, or the eventual 3D world are peers of 2.5D Godot, not replacements for the layer. That is what makes `D-005` — the bridge has zero UI awareness — architecture rather than aspiration. **Swap test:** if replacing Godot with the CLI harness would require any bridge change, the boundary is broken and the change fails review.
 
 ## Architecture: the three Godot autoloads
 
@@ -98,8 +100,10 @@ cd .. && git add claude-code-tresor && git commit -m "build: bump claude-code-tr
 
 This submodule is the source of truth for the agent definitions that need to become `data/agents.json` for M3. Don't duplicate that data into this repo's tree. Layout inside the submodule:
 
-- `subagents/` — 137+ specialized agent definitions organized by department (`engineering/`, `design/`, `marketing/`, `product/`, `leadership/`, `operations/`, `research/`, `ai-automation/`, `account-customer-success/`, `core/`), plus an `AGENT-INDEX.md`.
-- `agents/` — the 8 production-ready core agents (`systems-architect`, `config-safety-reviewer`, `root-cause-analyzer`, `security-auditor`, `test-engineer`, `performance-tuner`, `refactor-expert`, `docs-writer`).
+- `subagents/` — 133 agent definitions nested `<dept>/<subcat>/<name>/agent.md` across ten categories (`engineering/`, `design/`, `marketing/`, `product/`, `leadership/`, `operations/`, `research/`, `ai-automation/`, `account-customer-success/`, `core/`), plus an `AGENT-INDEX.md`.
+- `agents/` — the same 8 core roles (`systems-architect`, `config-safety-reviewer`, `root-cause-analyzer`, `security-auditor`, `test-engineer`, `performance-tuner`, `refactor-expert`, `docs-writer`) in Claude Code's **runtime** format, not 8 additional roles.
+
+**141 files = 8 + 133, spanning 133 distinct roles.** Both numbers are right; say which you mean. The core eight appear in both trees in different formats, so keying `agents.json` by id makes them collide — see `docs/agent-directory.md` § Agent counts for the M3 hazard.
 
 ## CI workflows
 
@@ -145,7 +149,7 @@ Top level holds the entry-point docs every contributor (human or agent) is expec
 - `docs/designs/2.5D-RPG-Prototype.md` — **active design.** The 2.5D top-down pivot.
 - `docs/storyboard-week1.md` — Day 0 / Day 1 / Day 2 tutorial narrative beats.
 - `docs/quick-reference.md` — one-page summary: build order, autoloads, department table.
-- `docs/agent-directory.md` — taxonomy of the 137+ agent roles across nine departments.
+- `docs/agent-directory.md` — taxonomy of the 133 agent roles across nine departments plus Core. **Taxonomy authority (`D-017`)** — every other count in the repo derives from here.
 - `docs/assets/` — `plaza_build_steps.html`, `plaza_godot_architecture.svg`.
 
 `specs/` — development process (the *how* and *when*, action-oriented). See `specs/README.md` for the folder index.
@@ -198,6 +202,6 @@ bridge/
   bridge.py    # Phase 2 Python WebSocket server (ws://localhost:8765), synchronous-with-timeout per the 2.5D plan
 ```
 
-The first real code task is generating `data/agents.json` from the `claude-code-tresor` submodule's 137+ agent `.md` files, keyed by agent id, with at minimum `{name, role, dept, color, tools, description}`. M3 on the roadmap depends on this. Don't fabricate this JSON by hand — derive it from the submodule (init it first).
+The first real code task is generating `data/agents.json` from the `claude-code-tresor` submodule's 133 agent `.md` files (nested `subagents/<dept>/<subcat>/<name>/agent.md`), keyed by agent id, with at minimum `{name, role, dept, color, tools, description}`. M3 on the roadmap depends on this. Don't fabricate this JSON by hand — derive it from the submodule (init it first).
 
 Note that there is already a `scripts/` directory worth of bash/Python tooling on the `feature/TO-1-prototype-initialization` branch. Before adding new `scripts/` files on `main`, check whether something equivalent already exists on that branch.

@@ -4,7 +4,7 @@ title: Decision Register — every locked decision, with a citable id
 tier: 0
 authority: constitution
 status: ACTIVE
-doc_set_version: 0.2.5
+doc_set_version: 0.2.6
 last_updated: 2026-07
 owner: adamtasteslikegood
 derives_from: [META-SPEC]
@@ -47,9 +47,11 @@ sensible it reads — it is `PROPOSED` until ratified at the right tier.
 | `D-004` | 3D first-person world | Deferred to v2.0–3.0 | Scope discipline — the "10x check". Not cancelled; not pulled forward. | `DEFERRED` |
 | `D-006` | Bridge execution model | Synchronous, with timeout protection | True streaming is too brittle for a prototype bridge. Simplicity now; streaming deferred. | `LOCKED` |
 | `D-007` | Streaming feel | Typewriter effect over the full JSON response, **rendered entirely in the frontend** | Batch output feels dead; the typewriter buys the feel without the fragility. Being a frontend-only concern is what keeps `D-005` intact. | `LOCKED` |
-| `D-011` | Agent sprite | One generic sprite, tinted per department colour | Eliminates the art bottleneck immediately. Unique sprites for all 137 agents deferred. | `LOCKED` |
+| `D-011` | Agent sprite | One generic sprite, tinted per department colour | Eliminates the art bottleneck immediately. Unique sprites for all 133 roles deferred. | `LOCKED` |
 | `D-012` | Dialogue portrait | One generic silhouette | Same reasoning as `D-011`. | `LOCKED` |
 | `D-013` | Long-task UX | "Wait or delegate" — short tasks block, long tasks run in the background | Models real office dynamics, and it is the honest UI for a synchronous bridge with a timeout. | `LOCKED` |
+| `D-014` | Bridge formality | Conceptual boundary in prose; no versioned API contract until after M8 | Freezing a contract pre-M8 ossifies decisions before anything has been learned about what the messages need to carry. **Reversal threshold:** a multi-frontend need arriving before v2.0 — a web demo for fundraising, say — promotes the message shape to a versioned contract. Nothing else does. Ratified in v0.2.6. | `LOCKED` |
+| `D-020` | Layer 2 naming | "The current frontend, which happens to be 2.5D Godot" — not "the Godot engine" | `D-005` and the swap test are only meaningful if the frontend is structurally a slot. Naming Layer 2 after one implementation makes the rule read as aspiration. Carries the frontend-swap matrix. Ratified in v0.2.6. | `LOCKED` |
 
 ## Architecture and platform
 
@@ -64,9 +66,13 @@ sensible it reads — it is `PROPOSED` until ratified at the right tier.
 
 ## Not yet authorised
 
-| Id | Decision | Proposed choice | Why it is not locked | Status |
-|---|---|---|---|---|
-| `D-014` | Bridge formality | Conceptual boundary in prose; no versioned API contract until after M8 | Proposed only by `ALIGNED-SPEC-025`, a tier-4 research input, which is not entitled to originate implementation decisions (`META-SPEC` §2). The reasoning is sound — freezing a contract pre-M8 ossifies decisions before anything has been learned — but it needs ratifying into `DESIGN-25D` or a new promoted design to become binding. Tracked in [`spec-drivers-v0.2.5.md`](spec-drivers-v0.2.5.md) §4. | `PROPOSED` |
+Nothing currently. `D-014` and `D-020` were both proposed only by
+`ALIGNED-SPEC-025` (tier 4, not entitled to originate implementation decisions) and
+were ratified into `DESIGN-25D` in v0.2.6 — see its `## Ratified in v0.2.6` section.
+
+When something lands here again, it stays until an entitled document adopts it.
+Reasoning being sound is not the same as being authorised; that distinction is the
+point of the tier ladder.
 
 ---
 
@@ -81,4 +87,4 @@ sensible it reads — it is `PROPOSED` until ratified at the right tier.
    `SUPERSEDED` — do not delete it — and bump `doc_set_version` across the set.
 4. Add the `D-nnn` to the origin document's `decides:` frontmatter list.
 
-*Doc set version: 0.2.5 · Last updated: July 2026*
+*Doc set version: 0.2.6 · Last updated: July 2026*

@@ -4,7 +4,7 @@ title: Docs/files — relocation signpost
 tier: 4
 authority: historical
 status: HISTORICAL
-doc_set_version: 0.2.5
+doc_set_version: 0.2.6
 last_updated: 2026-07
 owner: adamtasteslikegood
 derives_from: []

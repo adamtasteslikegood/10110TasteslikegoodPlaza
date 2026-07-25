@@ -10,6 +10,50 @@ section at release time. PR references in parentheses.
 
 ## [Unreleased]
 
+### Doc set v0.2.6 — the four open conflicts closed
+
+Six of seven conflicts in the open-conflict register now read RESOLVED. Two new
+locked decisions (`D-014`, `D-020`) moved the doc set version per `META-SPEC` §8.4.
+
+- **Agent counts settled (§4.2).** Submodule initialised and counted:
+  **141 agent files = 8 core + 133 subagents, spanning 133 distinct roles.**
+  Verified identical at `acfb923` (the pin) and `bcfe30c` (`10110TLGP/main`).
+  Both figures are correct and measure different things — `agents/*.md` holds the
+  same eight roles as `subagents/core/` in Claude Code's runtime format rather than
+  the catalog format. The previous "137+" was wrong either way. Real per-department
+  numbers (engineering 54, leadership 14, marketing 11, ai-automation 9, product 9,
+  account-CS 8, core 8, design 7, research 7, operations 6) landed in
+  `docs/agent-directory.md` as the taxonomy authority (`D-017`); `README.md`,
+  `CLAUDE.md`, `docs/README.md`, and `specs/task-tracker.md` now derive from it.
+  Recorded the `agents.json` id collision as an M3 hazard rather than deciding it
+  early.
+- **`D-020` ratified (§4.3).** Layer 2 is "the current frontend, which happens to be
+  2.5D Godot", not "the Godot engine" — `D-005` and the swap test only mean
+  something if the frontend is structurally a slot. Ratified into
+  `docs/designs/2.5D-RPG-Prototype.md` under a `## Ratified in v0.2.6` heading that
+  leaves the dated 2026-04-27 CEO-plan record intact, carrying the frontend-swap
+  matrix. `README.md`, `CLAUDE.md`, and `docs/quick-reference.md` updated.
+- **`D-014` ratified (§4.4).** Bridge boundary stays conceptual until after M8;
+  flipped `PROPOSED` → `LOCKED` with its reversal threshold carried across verbatim.
+  The "Not yet authorised" table is now empty.
+- **`specs/branching-strategy.md` rewritten (§4.5).** Corrected the "ClaudeForge"
+  naming and the three upstream issue links; replaced invented required checks
+  (`quality-gates`, `validate-pr`, `production-build`) with the jobs that actually
+  run; added a status table separating enforced from intended; moved every
+  aspirational rule into one `## Intended, not yet active` section. `DRAFT` →
+  `ACTIVE`, since it now describes this repository.
+- **New open conflict (§4.7).** Nothing records whether the submodule pin tracks
+  `10110TLGP/dev` (where it sits) or `10110TLGP/main` (which is ahead), so "is the
+  pin stale?" has no answer. Counts are identical at both, so nothing here depends
+  on it.
+- **Validator:** links into an uninitialised submodule are now checked when the
+  submodule is present and reported as skipped when it is not, instead of failing
+  the build. CI checks out without submodules, so this is what makes the restored
+  `claude-code-tresor` links safe. Verified in both states.
+- Cleared the last `{{rolels}}` / `{{roles}}` / `{{charactor}}` upstream template
+  placeholders from `docs/agent-directory.md`, and restored real links to the six
+  reference docs (they live at `claude-code-tresor/docs/archive/`).
+
 ### Added
 - **A meta-spec layer at `specs/meta/`** — one authoritative answer to "which
   document wins", replacing three documents that each described themselves as the

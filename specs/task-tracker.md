@@ -4,8 +4,8 @@ title: 10110 TastesLike Plaza — PM Task Tracker
 tier: 3
 authority: derived
 status: ACTIVE
-doc_set_version: 0.2.5
-last_updated: 2026-04
+doc_set_version: 0.2.6
+last_updated: 2026-07
 owner: adamtasteslikegood
 derives_from: [ROADMAP]
 ---
@@ -40,7 +40,7 @@ derives_from: [ROADMAP]
 - [ ] Sound direction (ambient office sounds? music tone?)
 
 ### Data prep
-- [ ] Export all 137 agent .md files to a single `agents.json`
+- [ ] Export all 133 agent .md files to a single `agents.json`
 - [ ] Verify JSON structure matches planned schema (name, role, dept, color, description, tools)
 - [ ] Define scene/dialogue data format (separate JSON or GDScript Resources?)
 - [ ] Define player profile save format

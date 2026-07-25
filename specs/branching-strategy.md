@@ -3,16 +3,31 @@ doc_id: BRANCHING-STRATEGY
 title: 10110 TastesLike Plaza — Branching Strategy
 tier: 3
 authority: derived
-status: DRAFT
-doc_set_version: 0.2.5
-last_updated: 2026-04
+status: ACTIVE
+doc_set_version: 0.2.6
+last_updated: 2026-07
 owner: adamtasteslikegood
 derives_from: [META-SPEC]
 ---
 
 # Branching Strategy
 
-ClaudeForge uses a **Standard Branching Strategy** with protected branches and automated quality gates.
+10110 TastesLike Plaza uses a **standard branching strategy** with protected branches and automated quality gates.
+
+> **What is actually enforced today.** Read this first — most of this document
+> describes the target state, not the current one.
+>
+> | | Status |
+> |---|---|
+> | `feature/*` `fix/*` `hotfix/*` → `dev` → `main` | Convention, followed in practice |
+> | Conventional Commits, squash merges | Convention — see [`../CONTRIBUTING.md`](../CONTRIBUTING.md), the operative everyday guide |
+> | `ci.yml` — `Validate Specs`, `Lint Python Bridge`, `Export Godot 4 Prototype` | **Runs on every push/PR to `main` and `dev`** |
+> | CodeQL, GitGuardian, `gemini-*.yml` triage/review | **Run on PRs** |
+> | Branch protection rules, CODEOWNERS gating | Not configured yet — the settings below are instructions for configuring them |
+> | `pr-into-dev.yml`, `dev-to-main.yml`, `release.yml` | **Do not exist.** See §"Intended, not yet active" |
+>
+> Adopted wholesale from an upstream project and corrected in doc set v0.2.6; the
+> aspirational parts are now fenced rather than presented as active rules.
 
 ## Overview
 
@@ -44,7 +59,7 @@ feature/*, fix/*, hotfix/* → dev → main
 
 **Protection Rules:**
 - ✅ Require pull request before merging
-- ✅ Require status checks to pass: `quality-gates`, `production-build`
+- ✅ Require status checks to pass: `Validate Specs`, `Lint Python Bridge`, `Export Godot 4 Prototype`
 - ✅ Require linear history (squash merges only)
 - ✅ No force pushes
 - ✅ No deletions
@@ -52,11 +67,10 @@ feature/*, fix/*, hotfix/* → dev → main
 
 **Who can merge:**
 - Only `dev`, `release/*`, or `dependabot/*` branches
-- After passing dev-to-main.yml workflow
 
 **Triggers:**
-- dev-to-main.yml workflow on PR
-- release.yml workflow for GitHub releases
+- `ci.yml` on PR (`Validate Specs`, `Lint Python Bridge`, `Export Godot 4 Prototype`)
+- *Intended, not yet built:* `dev-to-main.yml`, `release.yml` — see §"Intended, not yet active"
 
 **Typical state:**
 - Always matches latest GitHub release
@@ -71,7 +85,7 @@ feature/*, fix/*, hotfix/* → dev → main
 
 **Protection Rules:**
 - ✅ Require pull request before merging
-- ✅ Require status checks to pass: `quality-gates`, `validate-pr`
+- ✅ Require status checks to pass: `Validate Specs`, `Lint Python Bridge`
 - ✅ Require linear history (squash merges only)
 - ✅ No force pushes
 - ✅ No deletions
@@ -85,7 +99,8 @@ feature/*, fix/*, hotfix/* → dev → main
 - Docs branches (`docs/*`)
 
 **Triggers:**
-- pr-into-dev.yml workflow on PR
+- `ci.yml` on PR
+- *Intended, not yet built:* `pr-into-dev.yml` — see §"Intended, not yet active"
 
 **Typical state:**
 - Contains completed features awaiting release
@@ -229,6 +244,12 @@ Same as feature branches, but:
 
 ## Workflow Diagrams
 
+> **These diagrams describe the *intended* pipeline.** The workflows they name
+> (`pr-into-dev.yml`, `dev-to-main.yml`, `release.yml`) **do not exist in this
+> repository.** What runs today is `ci.yml` plus the `gemini-*.yml` triage/review
+> suite. Read the diagrams as the target, not as a description of what happens
+> when you open a PR.
+
 ### Standard Feature Flow
 
 ```
@@ -337,10 +358,11 @@ Create hotfix release: v1.0.1
      - ✅ Require review from Code Owners
    - ✅ Require status checks to pass before merging
      - ✅ Require branches to be up to date
-     - Add required checks:
-       - `quality-gates`
-       - `production-build`
-       - `validate-release-pr`
+     - Add required checks (these are the jobs that actually run today):
+       - `Validate Specs`
+       - `Lint Python Bridge`
+       - `Export Godot 4 Prototype`
+       - `CodeQL`
    - ✅ Require conversation resolution before merging
    - ✅ Require linear history
    - ✅ Do not allow bypassing the above settings
@@ -357,9 +379,9 @@ Create hotfix release: v1.0.1
    - ✅ Require a pull request before merging
      - Require approvals: 0 (can be 1 if team)
    - ✅ Require status checks to pass before merging
-     - Add required checks:
-       - `quality-gates`
-       - `validate-pr`
+     - Add required checks (these are the jobs that actually run today):
+       - `Validate Specs`
+       - `Lint Python Bridge`
    - ✅ Require linear history
    - ✅ Do not allow bypassing the above settings
 4. Under "Rules applied to everyone including administrators":
@@ -371,7 +393,7 @@ Create hotfix release: v1.0.1
 
 ## Commit Message Guidelines
 
-ClaudeForge uses **Conventional Commits** format.
+This project uses **Conventional Commits** format.
 
 ### Format
 
@@ -492,7 +514,7 @@ PR titles MUST follow Conventional Commits format.
 - `feat: Add feature.` ❌ Period at end
 
 **Validation:**
-- pr-into-dev.yml workflow validates PR title format
+- *Intended:* `pr-into-dev.yml` would validate PR title format — not built yet; today this is convention, not enforcement
 - Fails if format is incorrect
 - Auto-comments with fix instructions
 
@@ -500,7 +522,7 @@ PR titles MUST follow Conventional Commits format.
 
 ## Merge Strategies
 
-ClaudeForge uses **Squash and Merge** exclusively.
+This project uses **squash and merge** exclusively.
 
 ### Why Squash?
 
@@ -583,7 +605,7 @@ git push --force-with-lease origin feature/my-feature
 
 ```bash
 # Add upstream remote (once)
-git remote add upstream https://github.com/alirezarezvani/ClaudeForge.git
+git remote add upstream https://github.com/adamtasteslikegood/10110TasteslikegoodPlaza.git
 
 # Update from upstream
 git fetch upstream
@@ -650,7 +672,7 @@ git push --force-with-lease origin feature/correct-name
 
 ### Scenario 3: Forgot to Update CHANGELOG.md
 
-**Problem:** dev-to-main warns CHANGELOG.md not updated
+**Problem:** the intended `dev-to-main` check would warn that CHANGELOG.md is not updated
 
 **Solution:**
 ```bash
@@ -739,12 +761,38 @@ git checkout -b feature/feature-b
 
 ---
 
+## Intended, not yet active
+
+Everything in this section is the target state. None of it is enforced today.
+Nothing here should be cited as a rule, and no PR should be blocked for failing it.
+
+| Workflow | Would do | Status |
+|---|---|---|
+| `pr-into-dev.yml` | Branch-name validation, PR-title validation, linked-issue check on PRs into `dev` | Not written |
+| `dev-to-main.yml` | Source-branch validation, CHANGELOG check, version consistency, production build on `dev` → `main` | Not written |
+| `release.yml` | Version-format validation, CHANGELOG extraction, GitHub release, tagging | Not written |
+
+Also not yet configured:
+
+- **Branch protection rules** on `main` and `dev`. The §"Branch Protection
+  Configuration" steps above are instructions for setting these up, not a
+  description of settings that exist.
+- **CODEOWNERS** gating. No `CODEOWNERS` file exists.
+- **Required linked issues.** Referenced throughout as a requirement; currently a
+  recommendation.
+
+Building these is deliberately deferred — there is no application code to gate yet.
+The rule that matters now is the one that *is* enforced: `Validate Specs` fails any
+PR that lets the governed document set drift.
+
+---
+
 ## Related Documentation
 
 - [CONTRIBUTING.md](../CONTRIBUTING.md) - How to contribute (the operative guide today)
 - [CHANGELOG.md](../CHANGELOG.md) - Version history
-- [`meta/spec-drivers-v0.2.5.md`](meta/spec-drivers-v0.2.5.md) §4.5 - why this
-  document is `status: DRAFT`: the workflows it requires do not exist in this repo yet
+- [`meta/META-SPEC.md`](meta/META-SPEC.md) - which document wins, and the rules for changing one
+- [`meta/spec-drivers-v0.2.5.md`](meta/spec-drivers-v0.2.5.md) §4.5 - the conflict record for this document
 
 There is no `GITHUB_WORKFLOWS.md`. The workflows that actually run are
 `.github/workflows/ci.yml` and the `gemini-*.yml` triage/review suite.
@@ -753,6 +801,6 @@ There is no `GITHUB_WORKFLOWS.md`. The workflows that actually run are
 
 ## Questions?
 
-**Issues:** Report at [GitHub Issues](https://github.com/alirezarezvani/ClaudeForge/issues)
+**Issues:** Report at [GitHub Issues](https://github.com/adamtasteslikegood/10110TasteslikegoodPlaza/issues)
 
-**Discussions:** Ask in [GitHub Discussions](https://github.com/alirezarezvani/ClaudeForge/discussions)
+**Discussions:** Ask in [GitHub Discussions](https://github.com/adamtasteslikegood/10110TasteslikegoodPlaza/discussions)

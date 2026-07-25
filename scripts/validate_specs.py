@@ -323,8 +323,37 @@ def check_version_agreement(documents: dict, registry: dict, problems: list) -> 
             )
 
 
-def check_links(documents: dict, problems: list) -> None:
-    """Relative markdown links in governed documents must resolve."""
+def uninitialised_submodules() -> list:
+    """Submodule paths registered in .gitmodules that have no content checked out.
+
+    CI checks out without submodules, so a link into one is unverifiable there.
+    Rather than banning such links or silently ignoring them, they are checked
+    whenever the submodule *is* initialised (locally, or in any job that opts
+    in) and skipped when it is not.
+    """
+    gitmodules = REPO_ROOT / ".gitmodules"
+    if not gitmodules.is_file():
+        return []
+    paths = re.findall(
+        r"^\s*path\s*=\s*(.+)$", gitmodules.read_text(encoding="utf-8"), re.MULTILINE
+    )
+    empty = []
+    for raw in paths:
+        candidate = REPO_ROOT / raw.strip()
+        if not candidate.is_dir() or not any(candidate.iterdir()):
+            empty.append(candidate.resolve())
+    return empty
+
+
+def check_links(documents: dict, problems: list) -> int:
+    """Relative markdown links in governed documents must resolve.
+
+    Returns the number of links skipped because they point into a submodule
+    that is not checked out, so the caller can say so rather than implying
+    full coverage.
+    """
+    skipped = 0
+    unavailable = uninitialised_submodules()
     for doc_id, info in sorted(documents.items()):
         path = info["path"]
         if path.suffix != ".md":
@@ -336,8 +365,14 @@ def check_links(documents: dict, problems: list) -> None:
             if not cleaned:
                 continue
             resolved = (path.parent / cleaned).resolve()
+            if any(
+                resolved == root or root in resolved.parents for root in unavailable
+            ):
+                skipped += 1
+                continue
             if not resolved.exists():
                 problems.append(Problem(path, f"broken link to {target!r}"))
+    return skipped
 
 
 def check_scene_ids(documents: dict, problems: list) -> None:
@@ -406,7 +441,7 @@ def main() -> int:
     check_references(documents, problems)
     check_single_concept_origin(documents, problems)
     check_version_agreement(documents, registry, problems)
-    check_links(documents, problems)
+    skipped_links = check_links(documents, problems)
     check_scene_ids(documents, problems)
     check_decisions(documents, problems)
 
@@ -420,10 +455,16 @@ def main() -> int:
         )
         return 1
 
-    print(
+    summary = (
         f"Spec validation passed: {len(documents)} governed document(s), "
         f"doc set v{registry.get('doc_set_version')}."
     )
+    if skipped_links:
+        summary += (
+            f"\n{skipped_links} link(s) into an uninitialised submodule were not "
+            "checked -- run `git submodule update --init --recursive` to verify them."
+        )
+    print(summary)
     return 0
 
 

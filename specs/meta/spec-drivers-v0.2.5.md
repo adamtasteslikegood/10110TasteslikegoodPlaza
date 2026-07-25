@@ -4,7 +4,7 @@ title: Spec Drivers v0.2.5 — what this doc-set version must produce
 tier: 0
 authority: constitution
 status: ACTIVE
-doc_set_version: 0.2.5
+doc_set_version: 0.2.6
 last_updated: 2026-07
 owner: adamtasteslikegood
 derives_from: [META-SPEC]
@@ -22,7 +22,29 @@ Version semantics: `0` = pre-prototype · `.2` = second aligned concept revision
 
 ---
 
-## 1. What v0.2.5 delivers
+> **Filename note.** This file still carries `v0.2.5` in its name while holding live
+> v0.2.6 content — the open-conflict register is the working copy, not a frozen
+> record. Splitting it (or renaming to an unversioned `spec-drivers.md`) is worth
+> doing at v0.3; renaming a `doc_id` one PR after shipping it costs more than it
+> saves.
+
+## 1a. Delivered in v0.2.5
+
+The meta layer itself — constitution, schema, registry, concept driver with
+`SB-01`–`SB-18`, decision register, and `scripts/validate_specs.py` in CI. The six
+rows below were the acceptance criteria and all passed.
+
+## 1b. Delivering in v0.2.6
+
+Closing every conflict v0.2.5 left open (§4): the real agent count landed in the
+taxonomy authority, `D-020` and `D-014` ratified into `DESIGN-25D`, and
+`branching-strategy.md` rewritten to describe this repository. Two new decisions
+means the set version moves — `META-SPEC` §8.4.
+
+**Done when:** §4.2–4.5 all read RESOLVED, no decision sits in "Not yet authorised"
+without a reason, and `Validate Specs` is green at `doc_set_version: 0.2.6`.
+
+## 1. What v0.2.5 delivered
 
 | # | Deliverable | Done when |
 |---|---|---|
@@ -64,20 +86,22 @@ reflected upward in the correct document at the correct tier; and
 
 ## 3. Stage plan
 
-Round 1 is this change. Later rounds are named so tasks can be filed against them
-now; none of them are started.
+Rounds 1 and 2 are done. Later rounds are named so tasks can be filed against them
+now; neither is started.
 
 | Stage | Scope | Advance when |
 |---|---|---|
-| **Round 1 — Govern** (this change) | Meta layer, schema, registry, validator, CI gate, conflict register | `Validate Specs` green; §1 all true |
-| **Round 2 — Data (M3)** | `agents.json` generator over the submodule, its schema, count validation against `D-017` | Generated file validates; counts reconcile §4.2 |
+| **Round 1 — Govern** ✅ v0.2.5 | Meta layer, schema, registry, validator, CI gate, conflict register | `Validate Specs` green; §1 all true |
+| **Round 1b — Reconcile** ✅ v0.2.6 | Close §4.2–4.5: real agent count, `D-020` and `D-014` ratified, branching policy corrected | Six of seven conflicts RESOLVED |
+| **Round 2 — Data (M3)** | `agents.json` generator over the submodule, its schema, count validation against `D-017` | Generated file validates; 133 entries, core-eight collision resolved per §4.2 |
 | **Round 3 — Frontend (M1, M4)** | Godot 4 project, the three autoloads, 2.5D navigation, proximity dialogue | Dialogue panel renders live from `AgentRegistry` for one department |
 | **Round 4 — Bridge (M5–M8)** | Synchronous WebSocket bridge, intent/result shape, wait-or-delegate, end-to-end | M8 demonstrable in-engine |
 
 ## 4. Open-conflict register
 
 Per [`META-SPEC.md`](META-SPEC.md) §4, conflicts are recorded rather than silently
-resolved. Two are closed here; four are open and need the human owner.
+resolved. **Six resolved, one open** as of v0.2.6. Resolved entries are kept, not
+deleted — the record of *how* a conflict was settled is what stops it reopening.
 
 ### 4.1 `ALIGNED-SPEC-025` §01.3 versus `STORYBOARD-W1` — **RESOLVED**
 
@@ -88,58 +112,82 @@ deferred RA/QM department into the tutorial. Storyboard wins on the concept axis
 [`concept-driver.md`](concept-driver.md) §4. `ALIGNED-SPEC-025` is now
 `authority: research`, `status: SUPERSEDED`.
 
-### 4.2 Agent counts disagree across four documents — **OPEN**
+### 4.2 Agent counts disagreed across four documents — **RESOLVED**
 
-| Source | Claim |
-|---|---|
-| [`../../README.md`](../../README.md) | "137+ real AI agent roles", Engineering "60+" |
-| [`../../CLAUDE.md`](../../CLAUDE.md) | "137+ agent `.md` files" |
-| [`../../docs/agent-directory.md`](../../docs/agent-directory.md) | "137+ agent roles across nine departments" |
-| `ALIGNED-SPEC-025` §4 / Doc B | 133 across ten categories under the v2.7.0 unified structure; Engineering 54 |
+The submodule was initialised and counted on 2026-07-25. **141 agent files = 8 core
++ 133 subagents, spanning 133 distinct roles.** Verified identical at `acfb923`
+(the current pin) and `bcfe30c` (`10110TLGP/main`, which carries the upstream
+merge), so the pin does not affect the figure.
 
-Not resolvable from this repo — the `claude-code-tresor` submodule is a gitlink and
-is empty in fresh checkouts. **Owner action:** initialise the submodule, count, and
-let the count land in `AGENT-DIRECTORY` (the taxonomy authority) with every other
-mention derived from it. Blocks Round 2. Until then, prose should say "130+" rather
-than pick a precise number it cannot support.
+Both numbers are correct and measure different things: `agents/*.md` (8) holds the
+same eight roles as `subagents/core/` in Claude Code's runtime format rather than
+the catalog format, so the files are distinct but the roles are not. The "137+"
+that appeared in `README.md`, `CLAUDE.md`, and `AGENT-DIRECTORY` was wrong on both
+counts.
 
-### 4.3 Layer 2 is described two different ways — **OPEN**
+Method, per-category figures, and the format comparison are in
+[`../../docs/agent-directory.md`](../../docs/agent-directory.md) § Agent counts —
+the taxonomy authority (`D-017`). Every other mention now derives from there.
+
+**Follow-on, not a conflict:** `data/agents.json` is keyed by agent id (`D-016`),
+so the core eight collide. Recorded as an M3 hazard with a recommendation (prefer
+the catalog format) but deliberately not locked — decide it when the generator
+exists and the data shape is visible.
+
+### 4.3 Layer 2 was described two different ways — **RESOLVED**
 
 `README.md`, `CLAUDE.md`, and `docs/quick-reference.md` all name Layer 2 "the Godot
 4 engine". `ALIGNED-SPEC-025` §00.4 deliberately reframes it as "**the current
 frontend, which happens to be 2.5D Godot**", to leave room for CLI, web, and future
 3D frontends without touching Layers 3–4.
 
-This is not cosmetic: the reframing is what makes `D-005` and the swap test read as
-architecture rather than aspiration. But the reframing originates in a tier-4
-research doc and so is not authorised. **Owner action:** ratify the "Layer 2 =
-current frontend" wording into `DESIGN-25D` or a new promoted design, then patch the
-three describing documents.
+This was not cosmetic: the reframing is what makes `D-005` and the swap test read
+as architecture rather than aspiration. Ratified into `DESIGN-25D` in v0.2.6 as
+**`D-020`**, carrying the frontend-swap matrix; `README.md`, `CLAUDE.md`, and
+`docs/quick-reference.md` now describe Layer 2 as the current frontend.
 
-### 4.4 `D-014` bridge formality is unauthorised — **OPEN**
+### 4.4 `D-014` bridge formality was unauthorised — **RESOLVED**
 
-"Conceptual boundary, no versioned API contract until post-M8" is proposed only by
-a tier-4 document. See [`decision-register.md`](decision-register.md) §"Not yet
-authorised". **Owner action:** ratify into a promoted design, or drop it. The
-threshold that would change the answer: a multi-frontend need arriving before v2.0
-— a web demo for fundraising, say — at which point the message shape should be
-promoted to a versioned contract, but not before.
+"Conceptual boundary, no versioned API contract until post-M8" was proposed only by
+a tier-4 document. Ratified into `DESIGN-25D` in v0.2.6 and flipped to `LOCKED`,
+carrying its reversal threshold: a multi-frontend need arriving before v2.0 — a web
+demo for fundraising, say — promotes the message shape to a versioned contract.
+Nothing else does.
 
-### 4.5 `branching-strategy.md` describes a repo that does not exist — **OPEN**
+### 4.5 `branching-strategy.md` described a repo that does not exist — **RESOLVED**
 
-[`../branching-strategy.md`](../branching-strategy.md) says "ClaudeForge" throughout
-and requires status checks from `pr-into-dev.yml`, `dev-to-main.yml`, and
-`release.yml` — none of which exist in `.github/workflows/`. It is marked
-`status: DRAFT` in the registry to reflect that it is intended policy, not active
-rules. **Owner action:** either write the workflows or rewrite the doc to describe
-the two jobs that actually run. Until then
-[`../../CONTRIBUTING.md`](../../CONTRIBUTING.md) is the operative guide.
+[`../branching-strategy.md`](../branching-strategy.md) said "ClaudeForge"
+throughout, linked to the upstream project's issue tracker, and required status
+checks from `pr-into-dev.yml`, `dev-to-main.yml`, and `release.yml` — none of which
+exist in `.github/workflows/`.
+
+Rewritten in v0.2.6 to describe this repository: naming and links corrected,
+required checks replaced with the jobs that actually run (`Validate Specs`,
+`Lint Python Bridge`, `Export Godot 4 Prototype`, CodeQL), a status table at the top
+separating enforced from intended, and every aspirational rule moved into a single
+`## Intended, not yet active` section. `status: DRAFT` → `ACTIVE`, since the
+document now accurately describes the repo it lives in.
+
+[`../../CONTRIBUTING.md`](../../CONTRIBUTING.md) remains the operative everyday
+guide.
 
 ### 4.6 `LICENSE` was Apache-2.0 while the docs said MIT — **RESOLVED**
 
 Resolved in favour of the documentation and the upstream attribution:
 [`../../LICENSE`](../../LICENSE) is now MIT, © 2026 Adam Schoen. Registered as
 `D-018`.
+
+### 4.7 Which submodule branch the project tracks — **OPEN**
+
+The gitlink is pinned to `acfb923`, the head of `10110TLGP/dev` — also the fork's
+default branch. `10110TLGP/main` is ahead at `bcfe30c` (2026-04-24, "Merge branch
+'alirezarezvani:main'"). Nothing in this repo records which branch the pin is meant
+to follow, so "is the pin stale?" currently has no answer.
+
+Counts are identical at both commits, so nothing in v0.2.6 depends on this.
+**Owner action:** decide whether the pin tracks `10110TLGP/dev` or
+`10110TLGP/main`, record it as a decision, and bump the gitlink if it should move.
+`CLAUDE.md` documents the bump procedure but not the target branch.
 
 ## 5. Exit criteria to v1.0.0
 
@@ -151,4 +199,4 @@ this version does not move it.
 Between here and there, each round closes with the same check: the register has no
 conflict that has been open longer than the round that discovered it.
 
-*Doc set version: 0.2.5 · Last updated: July 2026*
+*Doc set version: 0.2.6 · Last updated: July 2026*

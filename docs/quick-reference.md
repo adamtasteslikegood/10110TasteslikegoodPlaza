@@ -4,8 +4,8 @@ title: 10110 TastesLike Plaza — Quick Reference
 tier: 4
 authority: summary
 status: ACTIVE
-doc_set_version: 0.2.5
-last_updated: 2026-04
+doc_set_version: 0.2.6
+last_updated: 2026-07
 owner: adamtasteslikegood
 derives_from: [PROJECT-OVERVIEW, STORYBOARD-W1, ROADMAP]
 ---
@@ -41,10 +41,10 @@ After M8   → Polish, more floors, more NPCs, art pass
 ## The 4 layers
 
 ```
-Layer 4  Real agents      ← already exists (claude-code, MCP, CLI)
-Layer 3  I/O bridge       ← Phase 2  (Python WebSocket)
-Layer 2  Godot engine     ← Phase 1  (prototype target)
-Layer 1  Data + config    ← exists now (your .md files → JSON)
+Layer 4  Real agents        ← already exists (claude-code, MCP, CLI)
+Layer 3  UI-agnostic bridge ← Phase 2  (Python WebSocket) — never knows the UI exists
+Layer 2  Current frontend   ← Phase 1  (today: 2.5D Godot; CLI / web / 3D are peers)
+Layer 1  Data + config      ← exists now (133 roles from .md files → JSON)
 ```
 
 ---

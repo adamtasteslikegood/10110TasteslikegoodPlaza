@@ -4,8 +4,8 @@ title: 10110 TastesLike Plaza — Project Overview
 tier: 2
 authority: derived
 status: ACTIVE
-doc_set_version: 0.2.5
-last_updated: 2026-04
+doc_set_version: 0.2.6
+last_updated: 2026-07
 owner: adamtasteslikegood
 derives_from: [STORYBOARD-W1, DESIGN-25D]
 decides: [D-003, D-015, D-016, D-018]
@@ -19,7 +19,7 @@ decides: [D-003, D-015, D-016, D-018]
 
 ## Concept
 
-TastesLike Plaza is a navigable 2.5D top-down office environment built on top of an existing AI agent directory (claude-code-tresor / `10110_TastesLikePlaza`). The game world is not a game — it is an alternative GUI skin over 137+ real AI agent roles organized into 9 departments.
+TastesLike Plaza is a navigable 2.5D top-down office environment built on top of an existing AI agent directory (claude-code-tresor / `10110_TastesLikePlaza`). The game world is not a game — it is an alternative GUI skin over 133 real AI agent roles organized into 9 departments plus a Core team.
 
 **The player** is a co-founder/tech lead transitioning their startup from remote-first pizza-and-laptop sessions into a real office space. The office is new. The team is moving in. The player already knows most of these people — they've just never been in the same physical space.
 
@@ -42,19 +42,20 @@ Layer 4 — Real agent execution
   claude-code, gemini-cli, MCP servers, SSH, tty
   STATUS: Already exists. Not built by this project.
 
-Layer 3 — I/O bridge  [Phase 2]
+Layer 3 — UI-agnostic bridge  [Phase 2]
   WebSocket server / named pipe
-  Connects Godot game engine to CLI agent processes
-  stdin / stdout / stderr routing
+  Connects any frontend to CLI agent processes
+  Exchanges intents and results only — zero UI awareness
 
-Layer 2 — Godot 4 engine  [Phase 1 — prototype target]
+Layer 2 — Current frontend  [Phase 1 — prototype target]
+  Today: 2.5D Godot. CLI, web, and a future 3D world are peers, not replacements.
   World / map       → 2.5D top-down rooms and floors (TileMap)
   NPC system        → characters + agent roles
   Player + HUD      → CharacterBody2D top-down controller, UI overlays
   Event bus         → tasks, unlocks, chat notifications
 
 Layer 1 — Data + config  [Exists now]
-  Employee directory  → 137+ roles as JSON (from .md files)
+  Employee directory  → 133 roles as JSON (from .md files)
   Scene / story data  → dialogue, unlock gates, tutorial flow
   Player profile      → progress, preferences, config
 ```
@@ -67,16 +68,23 @@ Layer 1 — Data + config  [Exists now]
 
 | # | Dept | Color | Roles | Floor |
 |---|------|-------|-------|-------|
-| 1 | Engineering | Blue `#3B82F6` | 60+ | Floor 2 |
-| 2 | Design | Pink `#EC4899` | 10 | Floor 3 |
-| 3 | Marketing | Green `#10B981` | 15+ | Floor 3 |
-| 4 | Product | Purple `#8B5CF6` | 10+ | Floor 2 |
-| 5 | Leadership & Strategy | Gold `#F59E0B` | 15+ | Floor 4 (exec) |
-| 6 | Operations | Teal `#14B8A6` | 10+ | Floor 1 |
-| 7 | Research | Orange `#F97316` | 10+ | Floor 2 |
-| 8 | AI & Automation | Indigo `#6366F1` | 10+ | Basement / server |
-| 9 | Account & Customer Success | Cyan `#06B6D4` | 8+ | Floor 1 |
+| 1 | Engineering | Blue `#3B82F6` | 54 | Floor 2 |
+| 2 | Design | Pink `#EC4899` | 7 | Floor 3 |
+| 3 | Marketing | Green `#10B981` | 11 | Floor 3 |
+| 4 | Product | Purple `#8B5CF6` | 9 | Floor 2 |
+| 5 | Leadership & Strategy | Gold `#F59E0B` | 14 | Floor 4 (exec) |
+| 6 | Operations | Teal `#14B8A6` | 6 | Floor 1 |
+| 7 | Research | Orange `#F97316` | 7 | Floor 2 |
+| 8 | AI & Automation | Indigo `#6366F1` | 9 | Basement / server |
+| 9 | Account & Customer Success | Cyan `#06B6D4` | 8 | Floor 1 |
 | — | Core Agents | Star | 8 (production-ready) | Server room |
+| | | | **133 total** | |
+
+**141 agent files = 8 core + 133 subagents, spanning 133 distinct roles** — the
+core eight exist in both `agents/` (Claude Code runtime format) and
+`subagents/core/` (catalog format). Counts are from
+[`docs/agent-directory.md`](docs/agent-directory.md), the taxonomy authority
+(`D-017`).
 
 ---
 

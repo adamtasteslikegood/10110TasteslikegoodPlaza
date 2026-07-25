@@ -4,8 +4,8 @@ title: 10110 TastesLike Plaza — Agent Directory
 tier: 2
 authority: taxonomy
 status: ACTIVE
-doc_set_version: 0.2.5
-last_updated: 2026-04
+doc_set_version: 0.2.6
+last_updated: 2026-07
 owner: adamtasteslikegood
 derives_from: [PROJECT-OVERVIEW]
 decides: [D-017]
@@ -13,7 +13,7 @@ decides: [D-017]
 
 # 10110_TastesLikePlaza - 'Employee' Directory
 
-> **Organized collection of 137+ specialized roles for software development**
+> **Organized collection of 133 specialized roles for software development**
 >
 ---
 
@@ -31,7 +31,7 @@ decides: [D-017]
 
 ## Overview
 
-This directory contains a comprehensive, team-aligned organization of 137+ specialized'rolels' covering all aspects of software development, business operations, design, marketing, and more.
+This directory contains a comprehensive, team-aligned organization of 133 specialized roles covering all aspects of software development, business operations, design, marketing, and more.
 
 ### Key Features
 
@@ -40,7 +40,7 @@ This directory contains a comprehensive, team-aligned organization of 137+ speci
 - 📁 **Hierarchical Structure** - Easy navigation and discovery
 - 🔧 **Standardized Format** - Consistent YAML frontmatter
 - 🤝 **Skill Integration** - Coordination with autonomous skills
-- 📊 **137+{{roles}}s** - Comprehensive coverage
+- 📊 **133 roles** - Comprehensive coverage
 
 ---
 
@@ -50,7 +50,7 @@ This directory contains a comprehensive, team-aligned organization of 137+ speci
 subagents/
 ├── README.md                          # This file
 │
-├── 🔵 engineering/                    # Engineering Team (60+{{rolels}})
+├── 🔵 engineering/                    # Engineering Team (54 roles)
 │   ├── backend/
 │   ├── frontend/
 │   ├── mobile/
@@ -65,54 +65,54 @@ subagents/
 │   ├── debugging/
 │   └── documentation/
 │
-├── 🎨 design/                         # Design Team (10{{rolels}})
+├── 🎨 design/                         # Design Team (7 roles)
 │   ├── ui/
 │   ├── ux/
 │   ├── visual/
 │   └── brand/
 │
-├── 🌱 marketing/                      # Marketing Team (15+{{rolels}})
+├── 🌱 marketing/                      # Marketing Team (11 roles)
 │   ├── content/
 │   ├── social/
 │   ├── growth/
 │   └── seo/
 │
-├── 💜 product/                        # Product Team (10+{{rolels}})
+├── 💜 product/                        # Product Team (9 roles)
 │   ├── management/
 │   ├── requirements/
 │   ├── research/
 │   └── analytics/
 │
-├── 🏆 leadership/                     # Leadership & Strategy (15+{{rolels}})
+├── 🏆 leadership/                     # Leadership & Strategy (14 roles)
 │   ├── finance/
 │   ├── strategy/
 │   ├── risk/
 │   └── compliance/
 │
-├── 🌊 operations/                     # Operations Team (10+{{rolels}})
+├── 🌊 operations/                     # Operations Team (6 roles)
 │   ├── analytics/
 │   ├── infrastructure/
 │   ├── support/
 │   └── project-management/
 │
-├── 🔶 research/                       # Research Team (10+{{rolels}})
+├── 🔶 research/                       # Research Team (7 roles)
 │   ├── market/
 │   ├── user/
 │   └── data/
 │
-├── 🧠 ai-automation/                  # AI & Automation (10+{{rolels}})
+├── 🧠 ai-automation/                  # AI & Automation (9 roles)
 │   ├── ai-engineering/
 │   ├── ml-engineering/
 │   ├── automation/
 │   └── prompts/
 │
-├── 💙 account-customer-success/       # Account & CS (8+{{rolels}})
+├── 💙 account-customer-success/       # Account & CS (8 roles)
 │   ├── account-management/
 │   ├── customer-success/
 │   ├── support/
 │   └── sales/
 │
-└── ⭐ core/                           # Core{{roles}}s (8 production-ready)
+└── ⭐ core/                           # Core roles (8 production-ready)
     ├── systems-architect.md
     ├── config-safety-reviewer.md
     ├── root-cause-analyzer.md
@@ -127,7 +127,7 @@ subagents/
 
 ## Team Categories
 
-### 1. 🔵 Engineering (60+{{rolels}})
+### 1. 🔵 Engineering (54 roles)
 **Color**: Blue (#3B82F6)
 **Path**: `subagents/engineering/`
 
@@ -146,12 +146,13 @@ subagents/
 - Debugging (RCA, troubleshooting)
 - Documentation (technical writing, API docs)
 
-**Quick Start**: see `subagents/engineering/` in the `claude-code-tresor` submodule
-(run `git submodule update --init --recursive` first — it is empty in fresh checkouts).
+**Quick Start**: see [`subagents/engineering/`](../claude-code-tresor/subagents/engineering/README.md)
+in the `claude-code-tresor` submodule (run `git submodule update --init --recursive`
+first — it is empty in fresh checkouts).
 
 ---
 
-### 2. 🎨 Design (10{{rolels}})
+### 2. 🎨 Design (7 roles)
 **Color**: Magenta/Pink (#EC4899)
 **Path**: `subagents/design/`
 
@@ -161,11 +162,11 @@ subagents/
 - Visual Design (branding, visual storytelling)
 - Brand (brand guidelines, consistency)
 
-**Key{{roles}}s**: ui-designer, ux-researcher, brand-guardian, visual-storyteller, whimsy-injector
+**Key roles**: ui-designer, ux-researcher, brand-guardian, visual-storyteller, whimsy-injector
 
 ---
 
-### 3. 🌱 Marketing (15+{{rolels}})
+### 3. 🌱 Marketing (11 roles)
 **Color**: Green (#10B981)
 **Path**: `subagents/marketing/`
 
@@ -175,11 +176,11 @@ subagents/
 - Growth Marketing (growth hacking, viral marketing)
 - SEO & ASO (search optimization, app store optimization)
 
-**Key{{roles}}s**: content-creator, growth-hacker, instagram-curator, tiktok-strategist, reddit-community-builder
+**Key roles**: content-creator, growth-hacker, instagram-curator, tiktok-strategist, reddit-community-builder
 
 ---
 
-### 4. 💜 Product (10+{{rolels}})
+### 4. 💜 Product (9 roles)
 **Color**: Purple (#8B5CF6)
 **Path**: `subagents/product/`
 
@@ -189,11 +190,11 @@ subagents/
 - Product Research (trend analysis, user feedback)
 - Product Analytics (metrics, KPIs, dashboards)
 
-**Key{{roles}}s**: product-manager-orchestrator, sprint-prioritizer, prd-writer, feedback-synthesizer, trend-researcher
+**Key roles**: product-manager-orchestrator, sprint-prioritizer, prd-writer, feedback-synthesizer, trend-researcher
 
 ---
 
-### 5. 🏆 Leadership & Strategy (15+{{rolels}})
+### 5. 🏆 Leadership & Strategy (14 roles)
 **Color**: Gold (#F59E0B)
 **Path**: `subagents/leadership/`
 
@@ -203,11 +204,11 @@ subagents/
 - Risk Management (portfolio risk, hedging, assessment)
 - Compliance & Legal (regulatory compliance, legal docs)
 
-**Key{{roles}}s**: financial-analyst-fs, business-strategist-fs, risk-manager, compliance-officer-fs, legal-advisor
+**Key roles**: financial-analyst-fs, business-strategist-fs, risk-manager, compliance-officer-fs, legal-advisor
 
 ---
 
-### 6. 🌊 Operations (10+{{rolels}})
+### 6. 🌊 Operations (6 roles)
 **Color**: Teal (#14B8A6)
 **Path**: `subagents/operations/`
 
@@ -217,11 +218,11 @@ subagents/
 - Support Operations (customer support, tickets)
 - Project Management (delivery, tracking)
 
-**Key{{roles}}s**: analytics-reporter, infrastructure-maintainer, support-responder, studio-producer
+**Key roles**: analytics-reporter, infrastructure-maintainer, support-responder, studio-producer
 
 ---
 
-### 7. 🔶 Research (10+{{rolels}})
+### 7. 🔶 Research (7 roles)
 **Color**: Orange (#F97316)
 **Path**: `subagents/research/`
 
@@ -230,11 +231,11 @@ subagents/
 - User Research (experience analysis, user insights)
 - Data Research (deep research, web search)
 
-**Key{{roles}}s**: competitive-intelligence-mx, market-research-analyst, tam-market-sizing-mx, search-specialist
+**Key roles**: competitive-intelligence-mx, market-research-analyst, tam-market-sizing-mx, search-specialist
 
 ---
 
-### 8. 🧠 AI & Automation (10+{{rolels}})
+### 8. 🧠 AI & Automation (9 roles)
 **Color**: Indigo (#6366F1)
 **Path**: `subagents/ai-automation/`
 
@@ -244,11 +245,11 @@ subagents/
 - Automation (workflow automation, integration)
 - Prompt Engineering (prompt optimization, LLM tuning)
 
-**Key{{roles}}s**: ai-engineer, ml-engineer, mlops-engineer, ai-workflow-designer-aa, automation-architect-aa
+**Key roles**: ai-engineer, ml-engineer, mlops-engineer, ai-workflow-designer-aa, automation-architect-aa
 
 ---
 
-### 9. 💙 Account & Customer Success (8+{{rolels}})
+### 9. 💙 Account & Customer Success (8 roles)
 **Color**: Cyan (#06B6D4)
 **Path**: `subagents/account-customer-success/`
 
@@ -258,14 +259,14 @@ subagents/
 - Customer Support (support specialists)
 - Sales Engineering (technical sales, demos)
 
-**Key{{roles}}s**: account-executive-revenue-at, customer-success-manager, sales-engineer-gr
+**Key roles**: account-executive-revenue-at, customer-success-manager, sales-engineer-gr
 
 ---
 
-### 10. ⭐ Core{{roles}}s (8 production-ready)
+### 10. ⭐ Coreroles (8 production-ready)
 **Path**: `subagents/core/` or `/agents/`
 
-**Core Production{{roles}}s**:
+**Core Productionroles**:
 1. **systems-architect** - System design and architecture
 2. **config-safety-reviewer** - Configuration safety specialist
 3. **root-cause-analyzer** - Comprehensive RCA debugging
@@ -275,7 +276,7 @@ subagents/
 7. **refactor-expert** - Code refactoring specialist
 8. **docs-writer** - Technical documentation
 
-These are the most mature, production-ready{{rolels}} with comprehensive capabilities and skills integration.
+These are the most mature, production-ready roles with comprehensive capabilities and skills integration.
 
 ---
 
@@ -292,7 +293,7 @@ These are the most mature, production-ready{{rolels}} with comprehensive capabil
 | **Research** | Orange | `#F97316` | 🔶 | Market research, competitive intelligence |
 | **AI/Automation** | Indigo | `#6366F1` | 🧠 | AI/ML engineering, automation |
 | **Account/CS** | Cyan | `#06B6D4` | 💙 | Account management, customer success |
-| **Core** | Gold | `#FFD700` | ⭐ | Production-ready core{{rolels}} |
+| **Core** | Gold | `#FFD700` | ⭐ | Production-ready core roles |
 
 ### Color Usage
 
@@ -306,17 +307,17 @@ Colors are used in:
 
 ## Quick Start
 
-### 1. Find an{{roles}}
+### 1. Find anrole
 
 **By Category**:
 ```bash
-# List engineering{{rolels}}
+# List engineering roles
 ls subagents/engineering/
 
-# List backend{{rolels}}
+# List backend roles
 ls subagents/engineering/backend/
 
-# List all{{rolels}}
+# List all roles
 find subagents -name "*.md" -type f
 ```
 
@@ -326,7 +327,7 @@ find subagents -name "*.md" -type f
 - Need market research? → `subagents/research/market/`
 - Need testing? → `subagents/engineering/testing/`
 
-### 2. Initialize a{{charactor}} by assigning $role_from_step_1
+### 2. Initialize a character by assigning $role_from_step_1
 
 ```bash
 # Use @ symbol with agent name
@@ -384,23 +385,70 @@ $charactor invoke agent-skills automatically for quick checks before deep analys
 
 ### Category READMEs
 
-Each category has a comprehensive README inside the `claude-code-tresor` submodule,
-under `subagents/<category>/`:
+Each category has a README inside the `claude-code-tresor` submodule, under
+`subagents/<category>/`. Counts are the authoritative ones from §"Agent counts"
+below.
 
-- `subagents/engineering/` — engineering roles
-- `subagents/design/` — design roles
-- `subagents/marketing/` — marketing roles
-- `subagents/product/` — product roles
-- `subagents/leadership/` — leadership roles
-- `subagents/operations/` — operations roles
+| Category | Count | README |
+|---|---|---|
+| Engineering | 54 | [`subagents/engineering/`](../claude-code-tresor/subagents/engineering/README.md) |
+| Leadership & Strategy | 14 | [`subagents/leadership/`](../claude-code-tresor/subagents/leadership/README.md) |
+| Marketing | 11 | [`subagents/marketing/`](../claude-code-tresor/subagents/marketing/README.md) |
+| AI & Automation | 9 | [`subagents/ai-automation/`](../claude-code-tresor/subagents/ai-automation/README.md) |
+| Product | 9 | [`subagents/product/`](../claude-code-tresor/subagents/product/README.md) |
+| Account & Customer Success | 8 | [`subagents/account-customer-success/`](../claude-code-tresor/subagents/account-customer-success/README.md) |
+| Core | 8 | [`subagents/core/`](../claude-code-tresor/subagents/core/) — no README upstream |
+| Design | 7 | [`subagents/design/`](../claude-code-tresor/subagents/design/README.md) |
+| Research | 7 | [`subagents/research/`](../claude-code-tresor/subagents/research/README.md) |
+| Operations | 6 | [`subagents/operations/`](../claude-code-tresor/subagents/operations/README.md) |
 
-Per-category counts are deliberately not repeated here — sources disagree, and the
-count is tracked as an open conflict in
-[`../specs/meta/spec-drivers-v0.2.5.md`](../specs/meta/spec-drivers-v0.2.5.md) §4.2
-until the submodule can be initialised and counted.
-- Research README - 10+ research{{rolels}}
-- AI & Automation README - 10+ AI/automation{{rolels}}
-- Account & CS README - 8+ account/CS{{rolels}}
+Those links resolve only once the submodule is initialised
+(`git submodule update --init --recursive`); the spec validator checks them when it
+is and reports them as skipped when it is not.
+
+### Agent counts
+
+> **141 agent files = 8 core + 133 subagents**, spanning **133 distinct roles**.
+
+Counted 2026-07-25, verified identical at submodule commit `acfb923` (the current
+pin, head of `10110TLGP/dev`) and at `bcfe30c` (head of `10110TLGP/main`, which
+carries the upstream merge).
+
+| Tree | Files | What it is |
+|---|---|---|
+| `subagents/<category>/…/agent.md` | 133 | The catalog. Ten categories; the office taxonomy derives from these. |
+| `agents/*.md` | 8 | The production-ready core, in Claude Code's **runtime** agent format. |
+| **Total files** | **141** | |
+| **Distinct roles** | **133** | The core eight appear in both trees. |
+
+**Both numbers are correct — they measure different things.** Quote 141 when you
+mean files on disk; quote 133 when you mean roles, NPCs, or rows in
+`data/agents.json`. Say which you mean.
+
+Three things that make a naïve count wrong:
+
+- Agents nest **three levels down** — `subagents/<category>/<subcategory>/<agent-name>/agent.md`.
+  A `maxdepth 1` count returns zero. Use `find subagents -name 'agent.md' | wc -l`.
+- `agents/` and `subagents/core/` hold the **same eight roles** — byte-identical
+  `name:` and `description:` for `systems-architect`, `config-safety-reviewer`,
+  `root-cause-analyzer`, `security-auditor`, `test-engineer`, `performance-tuner`,
+  `refactor-expert`, `docs-writer` — in two different formats. `agents/*.md` uses
+  `model: inherit`, `category: engineering`, `color: blue`; the catalog copies use
+  `category: "core"`, `team: "core"`, `color: "#FFD700"`, `model: claude-opus-4`,
+  plus `enabled:` and `capabilities:`. They also differ in length (`security-auditor`
+  is 712 lines under `agents/`, 809 under `subagents/core/`). Same role, different
+  artifact — which is why 141 and 133 are both true.
+- `subagents/core/` has **no README** upstream, unlike the other nine categories.
+
+**M3 hazard.** `data/agents.json` is keyed by agent id (`D-016`), so those eight
+collide and the generator must choose a winning format. Recommendation, not yet
+locked: prefer the catalog copies, since they carry `team`, `capabilities`, and the
+`#FFD700` Core tint the office world needs — one uniform shape, one parser, 133
+entries. Decide it for real when the generator is written.
+
+This supersedes the "137+" figure that appeared in `README.md`, `CLAUDE.md`, and
+earlier revisions of this file. Per `D-017` this document is the taxonomy
+authority — every other mention of a count derives from here.
 
 ---
 
@@ -409,12 +457,12 @@ until the submodule can be initialised and counted.
 ### Full Installation
 
 ```bash
-# Install all{{rolels}} (recommended)
+# Install all roles (recommended)
 ./scripts/install.sh
 
 # This installs:
 # - 8 core agents (to ~/.claude/agents/)
-# - 137+ specialized agents (to .claude/agents/)
+# - 133 specialized agents (to .claude/agents/)
 # - Skills (8 autonomous helpers)
 # - Commands (4 workflow orchestrators)
 ```
@@ -427,7 +475,7 @@ until the submodule can be initialised and counted.
 ./scripts/install.sh --category design
 ./scripts/install.sh --category marketing
 
-# Install core agents for core {{rolels}} only
+# Install core agents for core  roles only
 ./scripts/install.sh --core
 
 # Install skills only
@@ -456,7 +504,7 @@ until the submodule can be initialised and counted.
 
 **Each potential $role maps to a defined agent of the same name**
 
-which is the default 'engine' for the $role assigned too {{charactors}} too fill the 'employee directory
+which is the default 'engine' for the $role assigned too character too fill the 'employee directory
 at the start of the game, until user customizes the properties of each 'employee' or takes manual control.
 **User $charactor can 'drive' any 'employee' in the $directory 
 
@@ -498,7 +546,7 @@ subcategory: backend
 
 ## Standards Integration
 
-All Agent "{{rolels}}" follow standards from `/standards/` folder:
+All Agent " roles" follow standards from `/standards/` folder:
 
 - **Code Quality** - ESLint, Prettier, best practices
 - **Git Workflows** - Conventional commits, branch strategies
@@ -572,12 +620,17 @@ These standards act as Standard Operating Procedures (SOPs) for consistent quali
 These live in the `claude-code-tresor` submodule, not in this repo. Initialise it
 (`git submodule update --init --recursive`) and read them there:
 
-- `AGENT-INDEX.md` — the complete agent list
-- `AGENT-CATEGORIZATION.md` — categorization strategy
-- `AGENT-DEPENDENCIES.md` — inter-agent relationships and workflows
-- `DUPLICATE-ANALYSIS.md` — conflict resolution
-- `SUB-AGENT-STRUCTURE.md` — agent format specification
-- `ANTHROPIC-REFERENCE.md` — official Anthropic documentation
+- [`subagents/AGENT-INDEX.md`](../claude-code-tresor/subagents/AGENT-INDEX.md) — the complete agent list
+- [`docs/archive/AGENT-CATEGORIZATION.md`](../claude-code-tresor/docs/archive/AGENT-CATEGORIZATION.md) — categorization strategy
+- [`docs/archive/AGENT-DEPENDENCIES.md`](../claude-code-tresor/docs/archive/AGENT-DEPENDENCIES.md) — inter-agent relationships and workflows
+- [`docs/archive/DUPLICATE-ANALYSIS.md`](../claude-code-tresor/docs/archive/DUPLICATE-ANALYSIS.md) — conflict resolution
+- [`docs/archive/SUB-AGENT-STRUCTURE.md`](../claude-code-tresor/docs/archive/SUB-AGENT-STRUCTURE.md) — agent format specification
+- [`docs/archive/ANTHROPIC-REFERENCE.md`](../claude-code-tresor/docs/archive/ANTHROPIC-REFERENCE.md) — official Anthropic documentation
+- [`docs/archive/AGENT-INVENTORY.md`](../claude-code-tresor/docs/archive/AGENT-INVENTORY.md) — historical inventory
+
+Note the `archive/` path on most of these: upstream has retired them into an
+archive folder, so treat their contents as historical. `AGENT-INDEX.md` is the live
+one.
 
 Per `D-016`, the submodule is the canonical agent layer: `data/agents.json` is
 generated from it and this data is never duplicated into this repo's tree.
