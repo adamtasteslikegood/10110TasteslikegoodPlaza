@@ -1,3 +1,15 @@
+---
+doc_id: QUICK-REFERENCE
+title: 10110 TastesLike Plaza — Quick Reference
+tier: 4
+authority: summary
+status: ACTIVE
+doc_set_version: 0.2.5
+last_updated: 2026-04
+owner: adamtasteslikegood
+derives_from: [PROJECT-OVERVIEW, STORYBOARD-W1, ROADMAP]
+---
+
 # 10110 TastesLike Plaza — Quick Reference
 
 > One page. Keep this open while working.

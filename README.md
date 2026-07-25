@@ -1,3 +1,16 @@
+---
+doc_id: PROJECT-OVERVIEW
+title: 10110 TastesLike Plaza — Project Overview
+tier: 2
+authority: derived
+status: ACTIVE
+doc_set_version: 0.2.5
+last_updated: 2026-04
+owner: adamtasteslikegood
+derives_from: [STORYBOARD-W1, DESIGN-25D]
+decides: [D-003, D-015, D-016, D-018]
+---
+
 # 10110 TastesLike Plaza — Project Overview
 
 > **One-line pitch:** A 2.5D top-down office world (Pokémon / Stardew Valley register) that is a graphical interface for a real AI agent workspace — the tutorial *is* the onboarding, and the characters *are* the agents.

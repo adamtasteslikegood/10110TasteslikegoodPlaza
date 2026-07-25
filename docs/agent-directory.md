@@ -1,3 +1,16 @@
+---
+doc_id: AGENT-DIRECTORY
+title: 10110 TastesLike Plaza — Agent Directory
+tier: 2
+authority: taxonomy
+status: ACTIVE
+doc_set_version: 0.2.5
+last_updated: 2026-04
+owner: adamtasteslikegood
+derives_from: [PROJECT-OVERVIEW]
+decides: [D-017]
+---
+
 # 10110_TastesLikePlaza - 'Employee' Directory
 
 > **Organized collection of 137+ specialized roles for software development**
@@ -133,7 +146,8 @@ subagents/
 - Debugging (RCA, troubleshooting)
 - Documentation (technical writing, API docs)
 
-**Quick Start**: See [Engineering README](engineering/README.md)
+**Quick Start**: see `subagents/engineering/` in the `claude-code-tresor` submodule
+(run `git submodule update --init --recursive` first — it is empty in fresh checkouts).
 
 ---
 
@@ -370,13 +384,20 @@ $charactor invoke agent-skills automatically for quick checks before deep analys
 
 ### Category READMEs
 
-Each category has a comprehensive README:
-- [Engineering README](engineering/README.md) - 60+ engineering{{rolels}}
-- Design README - 10 design{{rolels}}
-- Marketing README - 15+ marketing{{rolels}}
-- Product README - 10+ product{{rolels}}
-- Leadership README - 15+ leadership{{rolels}}
-- Operations README - 10+ operations{{rolels}}
+Each category has a comprehensive README inside the `claude-code-tresor` submodule,
+under `subagents/<category>/`:
+
+- `subagents/engineering/` — engineering roles
+- `subagents/design/` — design roles
+- `subagents/marketing/` — marketing roles
+- `subagents/product/` — product roles
+- `subagents/leadership/` — leadership roles
+- `subagents/operations/` — operations roles
+
+Per-category counts are deliberately not repeated here — sources disagree, and the
+count is tracked as an open conflict in
+[`../specs/meta/spec-drivers-v0.2.5.md`](../specs/meta/spec-drivers-v0.2.5.md) §4.2
+until the submodule can be initialised and counted.
 - Research README - 10+ research{{rolels}}
 - AI & Automation README - 10+ AI/automation{{rolels}}
 - Account & CS README - 8+ account/CS{{rolels}}
@@ -548,20 +569,26 @@ These standards act as Standard Operating Procedures (SOPs) for consistent quali
 
 ## Related Documentation - Sub-Agents that Drive the 'Charcators'/'employees' and perform tasks  
 
-- [Agent Inventory](../docs/AGENT-INVENTORY.md) - Complete list of all 137{{rolels}}
-- [Agent Categorization](../docs/AGENT-CATEGORIZATION.md) - Categorization strategy
-- [Agent Dependencies](../docs/AGENT-DEPENDENCIES.md) -{{charators}} relationships and workflows
-- [Duplicate Analysis](../docs/DUPLICATE-ANALYSIS.md) - Conflict resolution
-- [Sub-Agent Structure](../docs/SUB-AGENT-STRUCTURE.md) - Agent format specification
-- [Anthropic Reference](../docs/ANTHROPIC-REFERENCE.md) - Official Anthropic documentation
+These live in the `claude-code-tresor` submodule, not in this repo. Initialise it
+(`git submodule update --init --recursive`) and read them there:
+
+- `AGENT-INDEX.md` — the complete agent list
+- `AGENT-CATEGORIZATION.md` — categorization strategy
+- `AGENT-DEPENDENCIES.md` — inter-agent relationships and workflows
+- `DUPLICATE-ANALYSIS.md` — conflict resolution
+- `SUB-AGENT-STRUCTURE.md` — agent format specification
+- `ANTHROPIC-REFERENCE.md` — official Anthropic documentation
+
+Per `D-016`, the submodule is the canonical agent layer: `data/agents.json` is
+generated from it and this data is never duplicated into this repo's tree.
 
 ---
 
 ## Contributing
 
 See [CONTRIBUTING.md](../CONTRIBUTING.md) for guidelines on:
-- Adding new{{rolels}}
-- Updating existing{{rolels}}
+- Adding new roles
+- Updating existing roles
 - Category organization
 - Testing and validation
 
@@ -569,7 +596,7 @@ See [CONTRIBUTING.md](../CONTRIBUTING.md) for guidelines on:
 
 ## Support
 
-- **Documentation**: [Complete Documentation](../documentation/)
+- **Documentation**: [`docs/`](README.md) for design and reference, [`specs/`](../specs/README.md) for process
 
 ---
 ---

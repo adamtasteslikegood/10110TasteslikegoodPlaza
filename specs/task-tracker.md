@@ -1,3 +1,15 @@
+---
+doc_id: TASK-TRACKER
+title: 10110 TastesLike Plaza — PM Task Tracker
+tier: 3
+authority: derived
+status: ACTIVE
+doc_set_version: 0.2.5
+last_updated: 2026-04
+owner: adamtasteslikegood
+derives_from: [ROADMAP]
+---
+
 # 10110 TastesLike Plaza — PM Task Tracker
 
 > ⚠️ **Superseded in part by [`aligned-spec-v0.2.5.md`](aligned-spec-v0.2.5.md).**

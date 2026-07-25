@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/adamtasteslikegood/10110TasteslikegoodPlaza/specs/meta/spec-frontmatter.schema.json",
+  "title": "Plaza governed-document frontmatter",
+  "description": "The technical contract every governed document in the 10110 TastesLike Plaza doc set carries in its YAML frontmatter. Authority is declared here, in machine-readable form, so 'which document wins' is a lookup rather than an argument. Governed by specs/meta/META-SPEC.md; enforced by scripts/validate_specs.py.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "doc_id",
+    "title",
+    "tier",
+    "authority",
+    "status",
+    "doc_set_version",
+    "last_updated"
+  ],
+  "properties": {
+    "doc_id": {
+      "type": "string",
+      "description": "Stable identifier. Never changes when the file moves; cross-references cite this, not the path.",
+      "pattern": "^[A-Z][A-Z0-9-]{2,39}$"
+    },
+    "title": {
+      "type": "string",
+      "description": "Human-readable name. Should match the document's H1.",
+      "minLength": 3
+    },
+    "tier": {
+      "type": "integer",
+      "description": "Position in the hierarchy. Lower wins. 0 = meta layer (governs the doc set itself), 1 = concept source of truth, 2 = implementation + canonical reference, 3 = derived plans, 4 = derived summaries and non-authoritative inputs.",
+      "minimum": 0,
+      "maximum": 4
+    },
+    "authority": {
+      "type": "string",
+      "description": "What this document is allowed to decide. See META-SPEC section 2.",
+      "enum": [
+        "constitution",
+        "concept",
+        "implementation",
+        "taxonomy",
+        "derived",
+        "summary",
+        "research",
+        "historical"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": ["ACTIVE", "DRAFT", "SUPERSEDED", "HISTORICAL"]
+    },
+    "doc_set_version": {
+      "type": "string",
+      "description": "Semantic version of the doc SET this file is aligned to. The set carries one version; individual files do not version independently.",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "last_updated": {
+      "type": "string",
+      "description": "Month the file was last substantively edited, as YYYY-MM.",
+      "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$"
+    },
+    "owner": {
+      "type": "string",
+      "description": "GitHub handle accountable for the document's content.",
+      "minLength": 1
+    },
+    "derives_from": {
+      "type": "array",
+      "description": "doc_ids this document derives decisions from. A document may never contradict anything it derives from.",
+      "items": { "type": "string", "pattern": "^[A-Z][A-Z0-9-]{2,39}$" }
+    },
+    "supersedes": {
+      "type": "array",
+      "description": "doc_ids this document replaces as an authority.",
+      "items": { "type": "string", "pattern": "^[A-Z][A-Z0-9-]{2,39}$" }
+    },
+    "decides": {
+      "type": "array",
+      "description": "Decision IDs (D-nnn) this document is the origin of. Only tier 0-2 documents may claim these. Registered in specs/meta/decision-register.md.",
+      "items": { "type": "string", "pattern": "^D-[0-9]{3}$" }
+    }
+  }
+}

@@ -1,3 +1,15 @@
+---
+doc_id: ROADMAP
+title: 10110 TastesLike Plaza — Prototype Build Roadmap
+tier: 3
+authority: derived
+status: ACTIVE
+doc_set_version: 0.2.5
+last_updated: 2026-04
+owner: adamtasteslikegood
+derives_from: [PROJECT-OVERVIEW, DESIGN-25D, SPEC-DRIVERS-025]
+---
+
 # 10110 TastesLike Plaza — Prototype Build Roadmap
 
 > ⚠️ **Superseded in part by [`aligned-spec-v0.2.5.md`](aligned-spec-v0.2.5.md).**

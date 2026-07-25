@@ -1,0 +1,84 @@
+---
+doc_id: DECISION-REGISTER
+title: Decision Register — every locked decision, with a citable id
+tier: 0
+authority: constitution
+status: ACTIVE
+doc_set_version: 0.2.5
+last_updated: 2026-07
+owner: adamtasteslikegood
+derives_from: [META-SPEC]
+supersedes: []
+---
+
+# Decision Register
+
+> **One line:** when [`META-SPEC.md`](META-SPEC.md) §5.2 says "cite the authorising
+> document," this is what you cite.
+
+Every locked decision gets a stable `D-nnn`. Ids are never reused and never
+renumbered. Before this file existed, the same decisions lived in three places at
+once — `README.md` "Key Design Decisions", `ALIGNED-SPEC-025` §00.5, and the scope
+table in `DESIGN-25D` — with no way to tell which copy was current.
+
+**Origin** names the `doc_id` that was *entitled* to make the call, per the tier
+ladder. A decision whose only origin is a tier-4 document is not locked, however
+sensible it reads — it is `PROPOSED` until ratified at the right tier.
+
+**Status:** `LOCKED` · `PROPOSED` (needs ratification) · `DEFERRED` · `SUPERSEDED`.
+
+---
+
+## Concept — origin `STORYBOARD-W1` (tier 1)
+
+| Id | Decision | Choice | Rationale | Status |
+|---|---|---|---|---|
+| `D-002` | Player framing | Co-founder / tech lead, dead centre of the spectrum | Empowering but guided. Not a solo founder in an empty office, not a new hire catching up. They have keys and walk in before anyone else. | `LOCKED` |
+| `D-008` | Tutorial and onboarding | The same thing | Bootstrapping the fictional startup *is* real agent setup. This is the product thesis; if it stops being true the project is a game. | `LOCKED` |
+| `D-009` | Unlock mechanic | Completed tasks gate rooms and floors | Onboarding completion equals world expansion. Unlocks are earned, never handed over. | `LOCKED` |
+| `D-010` | In-world assistant | Scripted navigation guide — **not** an agent NPC | Always-on companion, distinct from the agent characters. Blurring the two breaks the "characters are the agents" premise. | `LOCKED` |
+| `D-019` | Week 1 scene spine | The 14 numbered scenes plus four Days 4–5 beats, indexed `SB-01`–`SB-18` | Reconciled against the `ALIGNED-SPEC-025` §01.3 reconstruction, which was invented. See [`concept-driver.md`](concept-driver.md) §4. | `LOCKED` |
+
+## Implementation — origin `DESIGN-25D` (tier 2, promoted 2026-04-27)
+
+| Id | Decision | Choice | Rationale | Status |
+|---|---|---|---|---|
+| `D-001` | Rendering | 2.5D top-down (Godot 2D), Pokémon / Stardew Valley register | The UI *organisation* is the value, not fidelity. Removes the art, navmesh, and physics bottlenecks in one move. | `LOCKED` |
+| `D-004` | 3D first-person world | Deferred to v2.0–3.0 | Scope discipline — the "10x check". Not cancelled; not pulled forward. | `DEFERRED` |
+| `D-006` | Bridge execution model | Synchronous, with timeout protection | True streaming is too brittle for a prototype bridge. Simplicity now; streaming deferred. | `LOCKED` |
+| `D-007` | Streaming feel | Typewriter effect over the full JSON response, **rendered entirely in the frontend** | Batch output feels dead; the typewriter buys the feel without the fragility. Being a frontend-only concern is what keeps `D-005` intact. | `LOCKED` |
+| `D-011` | Agent sprite | One generic sprite, tinted per department colour | Eliminates the art bottleneck immediately. Unique sprites for all 137 agents deferred. | `LOCKED` |
+| `D-012` | Dialogue portrait | One generic silhouette | Same reasoning as `D-011`. | `LOCKED` |
+| `D-013` | Long-task UX | "Wait or delegate" — short tasks block, long tasks run in the background | Models real office dynamics, and it is the honest UI for a synchronous bridge with a timeout. | `LOCKED` |
+
+## Architecture and platform
+
+| Id | Decision | Choice | Rationale | Origin | Status |
+|---|---|---|---|---|---|
+| `D-003` | Game engine | Godot 4 | Free, MIT, GDScript reads like Python, strong 2D/TileMap support. Chosen over Three.js and Unity. | `PROJECT-OVERVIEW` | `LOCKED` |
+| `D-005` | Bridge UI-awareness | Zero. The bridge never knows the UI exists | Enables a CLI, a web UI, or a future 3D frontend to swap in with no bridge change. Enforced by the swap test as a hard review gate. | `META-SPEC` §5.1 | `LOCKED` |
+| `D-015` | Bridge transport | Python WebSocket server, local, `ws://localhost:8765` | Local process, no deployment needed for the prototype. | `PROJECT-OVERVIEW` | `LOCKED` |
+| `D-016` | Agent data layer | `data/agents.json` generated from the `claude-code-tresor` submodule; never hand-edited | The submodule is the canonical agent layer. Hand-editing forks the truth. Minimum fields: `{name, role, dept, colour, tools, description}`. | `PROJECT-OVERVIEW` | `LOCKED` |
+| `D-017` | Department taxonomy | Nine departments plus Core, each with a fixed floor/zone and hex tint | The office layout derives from the taxonomy; the taxonomy derives from the submodule. | `AGENT-DIRECTORY` | `LOCKED` |
+| `D-018` | Licence | MIT, © 2026 Adam Schoen | Matches the attribution the project already carries and the upstream `claude-code-tresor` licensing. Resolves the Apache-2.0 `LICENSE` file versus MIT documentation conflict in favour of the documentation. | `PROJECT-OVERVIEW` | `LOCKED` |
+
+## Not yet authorised
+
+| Id | Decision | Proposed choice | Why it is not locked | Status |
+|---|---|---|---|---|
+| `D-014` | Bridge formality | Conceptual boundary in prose; no versioned API contract until after M8 | Proposed only by `ALIGNED-SPEC-025`, a tier-4 research input, which is not entitled to originate implementation decisions (`META-SPEC` §2). The reasoning is sound — freezing a contract pre-M8 ossifies decisions before anything has been learned — but it needs ratifying into `DESIGN-25D` or a new promoted design to become binding. Tracked in [`spec-drivers-v0.2.5.md`](spec-drivers-v0.2.5.md) §4. | `PROPOSED` |
+
+---
+
+## Adding a decision
+
+1. Make it at the entitled tier — concept in `STORYBOARD-W1`, implementation in a
+   promoted design, taxonomy in `AGENT-DIRECTORY`.
+2. Add a row here with the next free `D-nnn`, the origin `doc_id`, and the
+   rationale. The rationale is not optional: without it, the next agent "fixes" the
+   constraint instead of respecting it.
+3. If the decision changes something already `LOCKED`, mark the old row
+   `SUPERSEDED` — do not delete it — and bump `doc_set_version` across the set.
+4. Add the `D-nnn` to the origin document's `decides:` frontmatter list.
+
+*Doc set version: 0.2.5 · Last updated: July 2026*

@@ -7,6 +7,22 @@ on:
     branches: [ main, dev ]
 
 jobs:
+  validate-specs:
+    name: Validate Specs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # Standard library only - no pip install step by design. See
+      # specs/meta/META-SPEC.md for the rules this enforces.
+      - name: Validate governed document set
+        run: python3 scripts/validate_specs.py
+
   python-lint:
     name: Lint Python Bridge
     runs-on: ubuntu-latest

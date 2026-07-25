@@ -10,7 +10,73 @@ section at release time. PR references in parentheses.
 
 ## [Unreleased]
 
+### Added
+- **A meta-spec layer at `specs/meta/`** — one authoritative answer to "which
+  document wins", replacing three documents that each described themselves as the
+  thing to align to.
+  - `META-SPEC.md` — the constitution. A five-tier ladder (0 meta · 1 concept ·
+    2 implementation and reference · 3 derived plans · 4 summaries and inputs), an
+    `authority` vocabulary, the conflict protocol ("never silently reconcile"), and
+    the binding rules for agents.
+  - `concept-driver.md` — names `docs/storyboard-week1.md` the sole origin of
+    concept decisions, defines the dual-layer scene contract, and indexes all 18
+    beats as `SB-01`–`SB-18`.
+  - `decision-register.md` — every locked decision as a citable `D-nnn` with a
+    named origin document, deduplicated from the three places they previously lived
+    in parallel.
+  - `spec-drivers-v0.2.5.md` — v0.2.5 deliverables, the
+    `D-nnn → SB-nn → M1–M8 → TO-nnn` traceability chain, the round plan, and the
+    open-conflict register.
+  - `spec-frontmatter.schema.json` and `doc-registry.json` — the machine-readable
+    contract and index. Authority is now a lookup, not an argument.
+- **`scripts/validate_specs.py` and a `Validate Specs` CI job.** Standard library
+  only — no new CI dependencies. Reads its rules from the published schema and
+  registry so the gate cannot drift from the contract. Fails the build on missing
+  or malformed frontmatter, unregistered documents, authority that disagrees with
+  the registry, downward `derives_from`, more or fewer than one concept origin,
+  `doc_set_version` skew, broken relative links, unknown `D-nnn` claims, and scene
+  ids with no matching scene.
+- YAML frontmatter (`doc_id`, `tier`, `authority`, `status`, `doc_set_version`,
+  `last_updated`, `derives_from`, `decides`) on all 17 governed documents.
+- Stable `SB-nn` ids on every storyboard scene heading, so milestones, tasks, and
+  Jira issues can cite a beat instead of paraphrasing it.
+
+### Fixed
+- **`specs/aligned-spec-v0.2.5.md` §01.3 contradicted the storyboard.** It invented
+  a 14-scene spine — openly labelled a "proposed reconstruction" written when the
+  real file could not be retrieved — that omits Day 0 entirely, relocates the
+  assistant's introduction, drops the player-configuration and coding-lesson beats,
+  and invents an RA/QM department scene out of explicitly deferred scope. Until now
+  that document was named the source of truth by `CLAUDE.md`, `specs/README.md`, and
+  `Docs/files/README.md`. Reconciled in favour of the storyboard; the side-by-side
+  is in `specs/meta/concept-driver.md` §4.
+- Removed 64 lines of pasted chat-sidebar text — a project file list, recent
+  conversation titles, and a verbatim memory dump — from the top of
+  `specs/aligned-spec-v0.2.5.md`, above the document's real H1.
+- Eleven broken relative links, caught by the new gate on its first run: nine in
+  `docs/agent-directory.md` pointing at upstream-fork paths that live in the
+  `claude-code-tresor` submodule or nowhere, and two in
+  `specs/branching-strategy.md` (`./CONTRIBUTING.md` is at the repo root;
+  `GITHUB_WORKFLOWS.md` does not exist). Cleaned the `{{rolels}}` / `{{charators}}`
+  template placeholders in the sections touched.
+
 ### Changed
+- `LICENSE` replaced with MIT (© 2026 Adam Schoen), resolving the long-standing
+  conflict with the Apache-2.0 boilerplate the file previously carried. `README.md`
+  and `CLAUDE.md` already said MIT, as does the upstream attribution. Registered as
+  `D-018`.
+- `specs/aligned-spec-v0.2.5.md` demoted from "current source-of-truth for spec
+  details" to a tier-4 research input (`authority: research`,
+  `status: SUPERSEDED`), with a banner pointing at the meta layer. Retained for its
+  findings, the Document A bridge architecture, and the Document B taxonomy.
+- `CLAUDE.md`, `specs/README.md`, `docs/README.md`, and `Docs/files/README.md`
+  repointed at `specs/meta/META-SPEC.md` as the entry point. In `CLAUDE.md` the
+  stale source-of-truth prose was replaced rather than added to, per the file's own
+  instruction-budget rule.
+- `specs/branching-strategy.md` marked `status: DRAFT` in the registry — it
+  describes workflows this repo does not have. Tracked as an open conflict.
+
+### Changed (previously)
 - 2.5D-alignment sweep across the reader-facing docs so the promoted 2.5D
   pivot (`docs/designs/2.5D-RPG-Prototype.md`) and the aligned spec
   (`specs/aligned-spec-v0.2.5.md`) show up where they matter:

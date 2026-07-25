@@ -1,3 +1,15 @@
+---
+doc_id: BRANCHING-STRATEGY
+title: 10110 TastesLike Plaza — Branching Strategy
+tier: 3
+authority: derived
+status: DRAFT
+doc_set_version: 0.2.5
+last_updated: 2026-04
+owner: adamtasteslikegood
+derives_from: [META-SPEC]
+---
+
 # Branching Strategy
 
 ClaudeForge uses a **Standard Branching Strategy** with protected branches and automated quality gates.
@@ -729,9 +741,13 @@ git checkout -b feature/feature-b
 
 ## Related Documentation
 
-- [GITHUB_WORKFLOWS.md](./GITHUB_WORKFLOWS.md) - Workflow details and automation
-- [CONTRIBUTING.md](./CONTRIBUTING.md) - How to contribute
+- [CONTRIBUTING.md](../CONTRIBUTING.md) - How to contribute (the operative guide today)
 - [CHANGELOG.md](../CHANGELOG.md) - Version history
+- [`meta/spec-drivers-v0.2.5.md`](meta/spec-drivers-v0.2.5.md) §4.5 - why this
+  document is `status: DRAFT`: the workflows it requires do not exist in this repo yet
+
+There is no `GITHUB_WORKFLOWS.md`. The workflows that actually run are
+`.github/workflows/ci.yml` and the `gemini-*.yml` triage/review suite.
 
 ---
 
