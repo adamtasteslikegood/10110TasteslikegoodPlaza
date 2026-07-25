@@ -10,6 +10,14 @@ section at release time. PR references in parentheses.
 
 ## [Unreleased]
 
+### Fixed
+- `specs/aligned-spec-v0.2.5.md` — stripped ~50 lines of ChatGPT UI cruft
+  from the top of the file (sidebar nav, "Memory / Only you" block,
+  attachment listings) that had been carried in with the original paste.
+  File now opens directly with the intended `# 10110 TastesLike Plaza —
+  Aligned Specification Set v0.2.5` H1. Content of the spec itself is
+  unchanged.
+
 ### Changed
 - 2.5D-alignment sweep across the reader-facing docs so the promoted 2.5D
   pivot (`docs/designs/2.5D-RPG-Prototype.md`) and the aligned spec
