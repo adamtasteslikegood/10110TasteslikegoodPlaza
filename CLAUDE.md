@@ -26,7 +26,13 @@ Don't invent commands like "npm test" or "godot --headless" — Node and Godot i
 
 Deferred: true WebSocket streaming, unique sprites per agent, 3D first-person.
 
-The older reference docs (`docs/storyboard-week1.md`, `docs/quick-reference.md`, `specs/roadmap.md`, `specs/task-tracker.md`) still describe the 3D first-person vision in detail. Treat them as historical context for the *concept* (4-layer architecture, autoloads, M1/M4/M8 milestones still apply directionally) but defer to the 2.5D plan for *implementation* decisions. If you edit either set, note the inconsistency rather than silently aligning them — that's a question for the user.
+The **current source-of-truth for spec details** is `specs/aligned-spec-v0.2.5.md` (added on `dev` after PR #5). It ratifies the 2.5D pivot, encodes the UI-agnostic bridge rule as a hard architectural gate ("swap test"), and points at `docs/storyboard-week1.md` as the canonical narrative source. When the aligned spec disagrees with any older doc, the aligned spec wins.
+
+The older reference docs still contain 3D first-person specifics:
+- `specs/roadmap.md`, `specs/task-tracker.md` — 3D-specific node names (CharacterBody3D, FPS demo, CSGBox3D, Area3D, NavigationRegion3D) are deprecated. Treat as 2D equivalents (CharacterBody2D, TileMap, Area2D, NavigationRegion2D). Milestone structure (M1/M4/M8) still stands.
+- `docs/quick-reference.md` — pitch line updated; the rest still directionally correct.
+- `docs/storyboard-week1.md` — the storyboard/concept is **still authoritative** per the aligned spec; only occasional visual descriptions (e.g. a "3D flyover" beat) are stylistic legacy.
+- `README.md` pitch has been rewritten to 2.5D-first.
 
 ## Architecture: the 4 layers
 
@@ -130,8 +136,9 @@ Top level holds the entry-point docs every contributor (human or agent) is expec
 
 `specs/` — development process (the *how* and *when*, action-oriented). See `specs/README.md` for the folder index.
 
-- `specs/roadmap.md` — M1 → M8 milestones with effort estimates and Jira ticket refs.
-- `specs/task-tracker.md` — working checklist across all phases.
+- `specs/aligned-spec-v0.2.5.md` — **current source-of-truth for spec details.** META-SPEC, revised outlines for legacy Documents 00–04, UI-agnostic bridge architecture, department→floor taxonomy.
+- `specs/roadmap.md` — M1 → M8 milestone structure (still authoritative); 3D-specific node names inside milestone bodies are deprecated.
+- `specs/task-tracker.md` — working checklist across all phases; same 3D-deprecation caveat as `roadmap.md`.
 - `specs/branching-strategy.md` — branch protection, status checks, CODEOWNERS gating. Still says "ClaudeForge" and references workflows that don't exist here; treat as intended policy until those land.
 
 Other top-level artifacts:

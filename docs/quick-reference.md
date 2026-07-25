@@ -6,8 +6,10 @@
 
 ## What this project is
 
-A first-person 3D office world that is a real GUI for a real AI agent workspace.
+A 2.5D top-down office world (Pokémon / Stardew Valley register) that is a real GUI for a real AI agent workspace.
 The game = the tool. The tutorial = the onboarding. The characters = the agents.
+
+The concept originally described a first-person 3D world; that was scoped down to 2.5D in `docs/designs/2.5D-RPG-Prototype.md` (status `PROMOTED`, 2026-04-27) and ratified by `specs/aligned-spec-v0.2.5.md`. 3D first-person is deferred to v2.0–3.0.
 
 ---
 

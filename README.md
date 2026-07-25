@@ -1,12 +1,12 @@
 # 10110 TastesLike Plaza — Project Overview
 
-> **One-line pitch:** A first-person 3D office world that is a graphical interface for a real AI agent workspace — the tutorial *is* the onboarding, and the characters *are* the agents.
+> **One-line pitch:** A 2.5D top-down office world (Pokémon / Stardew Valley register) that is a graphical interface for a real AI agent workspace — the tutorial *is* the onboarding, and the characters *are* the agents.
 
 ---
 
 ## Concept
 
-TastesLike Plaza is a navigable 3D office environment built on top of an existing AI agent directory (claude-code-tresor / `10110_TastesLikePlaza`). The game world is not a game — it is an alternative GUI skin over 137+ real AI agent roles organized into 9 departments.
+TastesLike Plaza is a navigable 2.5D top-down office environment built on top of an existing AI agent directory (claude-code-tresor / `10110_TastesLikePlaza`). The game world is not a game — it is an alternative GUI skin over 137+ real AI agent roles organized into 9 departments.
 
 **The player** is a co-founder/tech lead transitioning their startup from remote-first pizza-and-laptop sessions into a real office space. The office is new. The team is moving in. The player already knows most of these people — they've just never been in the same physical space.
 
@@ -35,9 +35,9 @@ Layer 3 — I/O bridge  [Phase 2]
   stdin / stdout / stderr routing
 
 Layer 2 — Godot 4 engine  [Phase 1 — prototype target]
-  World / map       → rooms, floors, navigation
+  World / map       → 2.5D top-down rooms and floors (TileMap)
   NPC system        → characters + agent roles
-  Player + HUD      → first-person controller, UI overlays
+  Player + HUD      → CharacterBody2D top-down controller, UI overlays
   Event bus         → tasks, unlocks, chat notifications
 
 Layer 1 — Data + config  [Exists now]
@@ -84,7 +84,7 @@ Layer 1 — Data + config  [Exists now]
 |----------|--------|--------|
 | Tutorial = onboarding? | Yes — same thing | The fictional startup bootstrap IS real agent setup |
 | Player framing | Co-founder, mid-spectrum | Empowering but guided; not overwhelming |
-| Game engine | Godot 4 | Free, MIT, first-person built-in, GDScript ≈ Python |
+| Game engine | Godot 4 | Free, MIT, strong 2D/TileMap support, GDScript ≈ Python |
 | I/O method (Phase 2) | WebSocket bridge (Python) | Local process, no deployment needed for prototype |
 | Unlock mechanic | Completed tasks gate floors | Onboarding completion = world expansion |
 | In-world assistant | Scripted nav guide (not agent) | Separate from NPCs; always-on companion |

@@ -1,5 +1,9 @@
 # 10110 TastesLike Plaza — PM Task Tracker
 
+> ⚠️ **Superseded in part by [`aligned-spec-v0.2.5.md`](aligned-spec-v0.2.5.md).**
+> The **checklist structure and unchecked-milestone breakdown** are still useful for tracking.
+> The **3D-specific task wording** (Area3D, CharacterBody3D, NavigationRegion3D, FPS demo) is **deprecated**. The prototype is 2.5D top-down; treat those nodes as their 2D equivalents.
+
 > Use this as your working checklist. Copy to Notion, Linear, GitHub Issues, or wherever you track work.
 > Status: [ ] todo  [~] in progress  [x] done
 

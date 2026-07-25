@@ -4,3 +4,17 @@
 
 These files are legacy first run planning.. Story board and the concept still mostly unchanged. Tast tracker and 3-d references are
 deprociated for a 2.5-D UI and UI agnostic agent bridge layer.
+
+---
+
+**Where the files actually live now** (they were relocated in PR #5; this directory was left with only this note as a signpost):
+
+| Original path | New path |
+|---|---|
+| `Docs/files/00_PROJECT_OVERVIEW.md` | folded into the top-level [`README.md`](../../README.md) |
+| `Docs/files/01_WEEK1_STORYBOARD.md` | [`docs/storyboard-week1.md`](../../docs/storyboard-week1.md) — **still authoritative for narrative/concept** |
+| `Docs/files/02_PROTOTYPE_ROADMAP.md` | [`specs/roadmap.md`](../../specs/roadmap.md) — **deprecated for 3D specifics** |
+| `Docs/files/03_PM_TASK_TRACKER.md` | [`specs/task-tracker.md`](../../specs/task-tracker.md) — **deprecated for 3D specifics** |
+| `Docs/files/04_QUICK_REFERENCE.md` | [`docs/quick-reference.md`](../../docs/quick-reference.md) |
+
+The current source-of-truth for spec details is [`specs/aligned-spec-v0.2.5.md`](../../specs/aligned-spec-v0.2.5.md).
