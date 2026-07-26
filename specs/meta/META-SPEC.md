@@ -107,7 +107,10 @@ exist, the decision is made at the correct tier first, registered in
    the same change, and say so in the commit body.
 2. If they are the same tier, or the axis is ambiguous, **stop.** Record it in the
    open-conflict register in [`spec-drivers-v0.2.5.md`](spec-drivers-v0.2.5.md)
-   with both sides stated fairly, and raise it with the human owner.
+   with both sides stated fairly, and raise it with the human owner. For a conflict
+   that needs discussion or will outlive the current round, open a GitHub issue and
+   link it from the register entry — the register stays the index, the issue is
+   where it gets settled.
 3. An agent may never pick a side unilaterally, and may never edit one document to
    match another as a drive-by.
 

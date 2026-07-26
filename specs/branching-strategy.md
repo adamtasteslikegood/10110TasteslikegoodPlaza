@@ -27,11 +27,13 @@ Most branching docs describe an aspiration. This section is the honest split.
 |---|---|
 | `feature/*` `fix/*` `hotfix/*` → `dev` → `main` | Convention, followed in practice |
 | Conventional Commits | Convention |
-| Merge commits (squash merging is disabled in settings) | **Enforced by repository settings** |
+| Merge commits, not squash (`D-023`) | **Enforced by repository settings** — squash and rebase merging are disabled. Verified 2026-07-26; §4 has the re-check command |
 | `ci.yml` — `Validate Specs`, `Lint Python Bridge`, `Export Godot 4 Prototype` | **Runs on every push and PR to `main` and `dev`** |
 | CodeQL (`Analyze (python)`, `Analyze (actions)`), GitGuardian | **Runs on PRs** |
 | `gemini-*.yml` triage / review / plan-execute | **Runs on PRs, issues, `@gemini-cli` mentions, and a schedule** |
-| Branch protection rules | **Not configured.** §5 is the setup, not a description |
+| Branch protection on `dev` | **Active** — ruleset `18798438`: PR required, deletion and force-push blocked, code scanning gates merge. See §5 |
+| Branch protection on `main` | **Not configured.** §5 "Still to apply" |
+| Required status checks by name | **Not configured** — `dev`'s ruleset gates `code_scanning` but does not require `Validate Specs` or `Lint Python Bridge` by name |
 | CODEOWNERS gating | **No `CODEOWNERS` file exists** |
 | Required linked issue | Convention at best |
 
@@ -90,23 +92,88 @@ are not duplicated here. The policy points:
   `type(scope): subject`. Types: `feat` `fix` `docs` `style` `refactor` `perf`
   `test` `build` `ci` `chore` `revert`.
 - **PR titles follow the same format**, under 70 characters.
-- **Merge commits.** Squash merging is **disabled** in repository settings, and every
-  merge on `dev` to date is a merge commit (`Merge pull request #N from …`). The PR
-  is still the unit of review; its commits land individually and the merge commit
-  records the boundary.
-  *This corrected an inherited claim.* The upstream original said "squash and merge
-  exclusively, no merge commits" — the repository setting disproves it. If you want
-  squash instead, enable it in Settings → General → Pull Requests first, then change
-  this line; don't change this line and hope the setting follows.
+- **Merge commits — chosen, not defaulted into** (`D-023`). Squash **and rebase**
+  merging are disabled in repository settings, so the merge button offers only the
+  one that matches the policy. Every merge on `dev` is a merge commit
+  (`Merge pull request #N from …`). The PR remains the unit of *review*; its commits
+  land individually and the merge commit records the boundary.
+
+  **This is live, mutable state — verify, don't inherit.** It was already wrong once:
+  the setting changed between the `405` that proved it on 2026-07-26 and a review the
+  same day that found all three merge buttons enabled. Last verified **2026-07-26**
+  (`allow_merge_commit=true`, `allow_squash_merge=false`, `allow_rebase_merge=false`):
+
+  ```bash
+  gh api repos/adamtasteslikegood/10110TasteslikegoodPlaza \
+    --jq '{merge: .allow_merge_commit, squash: .allow_squash_merge, rebase: .allow_rebase_merge}'
+  ```
+
+  If that output ever disagrees with this section, **fix the setting**, not the
+  sentence — the policy is `D-023`, and the setting exists to enforce it.
+
+  **Why, so nobody "fixes" this back.** The squash-only rule was inherited from
+  `alirezarezvani/claude-code-tresor` along with the rest of this document — it was
+  never a decision anyone made for this project. Squash merging has caused the owner
+  real problems on other repositories, so merge commits are the deliberate choice
+  here. Do not switch to squash because a linter, a bot, or a style guide suggests
+  it; that reasoning is what put the wrong rule here in the first place.
+
+  Practical consequences worth knowing rather than rediscovering:
+  - Multi-commit PRs keep their history, so a well-structured commit series survives
+    review and stays bisectable.
+  - `dev` is **not** linear, and must not be required to be — see the note in §5.
+  - Reverting a merged PR means `git revert -m 1 <merge-sha>`, not a plain revert.
 - **Delete the branch after merge.**
 - **A merged PR is finished.** Follow-up work starts a fresh branch off the latest
   `dev` — never stack new commits on already-merged history.
 
-## 5. Branch protection — the setup to apply
+## 5. Branch protection
 
-Not yet configured. These are instructions, not a description of current settings.
+### What is active on `dev`
 
-**`main`** — Settings → Branches → Add rule, pattern `main`:
+`dev` **is** protected — by a **repository ruleset**, not a classic branch-protection
+rule. Ruleset `dev` (id `18798438`, `enforcement: active`) targets `~DEFAULT_BRANCH`,
+which resolves to `dev`. Verified 2026-07-26:
+
+| Rule | Effect |
+|---|---|
+| `pull_request` | PR required to merge. `required_approving_review_count: 0`, `dismiss_stale_reviews_on_push: false`, `required_review_thread_resolution: false` |
+| `deletion` | `dev` cannot be deleted |
+| `non_fast_forward` | Force pushes blocked |
+| `code_scanning` | CodeQL results gate the merge |
+| `copilot_code_review` | Automatic Copilot review on PRs |
+
+**`non_fast_forward` is not `required_linear_history`.** They are different rules and
+only the latter conflicts with `D-023`. The warning below still holds and is not
+currently violated.
+
+> ### The trap that hid this
+>
+> `GET /repos/{owner}/{repo}/branches/dev/protection` returns **`404 Branch not
+> protected`** for a branch protected by a ruleset. The 404 means "no *classic*
+> protection", not "no protection". Rulesets live on a separate API surface:
+>
+> ```bash
+> gh api repos/adamtasteslikegood/10110TasteslikegoodPlaza/rulesets
+> gh api repos/adamtasteslikegood/10110TasteslikegoodPlaza/rules/branches/dev
+> ```
+>
+> This document asserted "not yet configured" on the strength of that 404. Check both
+> surfaces before concluding a branch is unprotected.
+
+### Still to apply
+
+Genuinely not configured — these remain instructions, not description.
+
+**Required status checks on `dev`.** The ruleset gates on `code_scanning` but does not
+require the CI jobs by name. Add to the ruleset's `required_status_checks`:
+`Validate Specs`, `Lint Python Bridge`.
+
+**CODEOWNERS gating.** No `CODEOWNERS` file exists; nothing enforces reviewer
+assignment.
+
+**`main` has no ruleset or protection at all.** Settings → Rules → New ruleset,
+targeting `main`:
 
 - Require a pull request before merging; require approvals: 1; dismiss stale reviews
 - Require status checks to pass, branches up to date. Required checks:
@@ -115,15 +182,14 @@ Not yet configured. These are instructions, not a description of current setting
 - Require conversation resolution
 - Restrict deletions; block force pushes; no bypass, including administrators
 
-> **Do not enable "Require linear history"** while squash merging is disabled — the
-> two are incompatible, and turning it on would block every merge. It belongs with a
-> squash-only workflow, not this one.
+> **Do not enable "Require linear history".** It is incompatible with merge commits
+> (`D-023`) and would block every merge. It belongs to a squash-only workflow, which
+> this project has deliberately not adopted. The upstream original told you to enable
+> it — that instruction was never valid here.
 
-**`dev`** — same, pattern `dev`, with:
-
-- Require approvals: 0 (raise to 1 if a second contributor joins)
-- Required checks: `Validate Specs`, `Lint Python Bridge`
-- Restrict deletions; block force pushes (again, **not** linear history)
+`dev`'s ruleset already covers deletion, force pushes, PR-required, and code
+scanning — the only gap there is required status checks by name, above. Keep
+approvals at 0 until a second contributor joins.
 
 Use the exact job names above — GitHub matches required checks by name, and the
 invented names this document previously carried (`quality-gates`, `validate-pr`,
@@ -198,6 +264,42 @@ to the upstream issue tracker, and required four CI workflows that have never
 existed here. Rewritten in doc set v0.2.6 to describe **this** repository. Where
 this document and the upstream original differ, this one is simply correct — there
 is nothing to reconcile.
+
+**Inherited rules are the failure mode to watch for in this file.** Two survived the
+first rewrite and had to be caught separately:
+
+| Inherited rule | How it was caught | Outcome |
+|---|---|---|
+| Required checks named `quality-gates`, `validate-pr`, `production-build`, `validate-release-pr` | Read against `.github/workflows/` — none exist | Replaced with the real job names. GitHub matches required checks by name, so the inherited list would have silently matched nothing |
+| "Squash and merge exclusively… no merge commits" | The merge API returned `405 Squash merges are not allowed on this repository` | Reversed to merge commits and registered as `D-023`, with the rationale recorded so it is not re-inherited |
+| "Branch protection: not yet configured" | `/branches/dev/protection` → `404 Branch not protected` was read as "unprotected". `dev` is protected by ruleset `18798438` | §5 rewritten to describe the active ruleset. **The 404 means no *classic* protection, not no protection** — rulesets are a separate API surface |
+
+Both were plausible-sounding rules that were simply false here. When editing this
+file, check a claim against the repository before keeping it — inheritance is not
+evidence.
+
+**Second failure mode: a claim that was true when checked, and then wasn't.** The
+`405` above was real evidence on 2026-07-26 — and within hours a review found all
+three merge buttons enabled again, because repository settings had changed underneath
+the sentence. Verified-once is not verified.
+
+**Third failure mode: the right question asked of the wrong endpoint.** The branch
+protection claim was checked — against `/branches/dev/protection`, which returns a
+404 for ruleset-based protection. A confident negative from an API that cannot see
+the thing you are asking about is worse than no check at all, because it *feels* like
+evidence. Both the original claim and the first review pass made this exact mistake.
+When a check returns "nothing configured," confirm the endpoint can see the kind of
+configuration you are looking for.
+
+So any claim in this document about **live, mutable state** — merge settings, branch
+protection, which checks are required — carries a verification date and the command
+to re-run. Two things follow:
+
+1. When the command disagrees with the doc, ask which one is *supposed* to be right.
+   Here the answer was the doc: the setting was changed to match `D-023`, not the
+   sentence weakened to match the setting.
+2. Prefer claims that a script could check. `Validate Specs` catches doc-to-doc drift;
+   nothing yet catches doc-to-GitHub-settings drift, which is why these carry dates.
 
 ---
 
