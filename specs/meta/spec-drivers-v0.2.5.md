@@ -115,9 +115,10 @@ deferred RA/QM department into the tutorial. Storyboard wins on the concept axis
 ### 4.2 Agent counts disagreed across four documents — **RESOLVED**
 
 The submodule was initialised and counted on 2026-07-25. **141 agent files = 8 core
-+ 133 subagents, spanning 133 distinct roles.** Verified identical at `acfb923`
-(the current pin) and `bcfe30c` (`10110TLGP/main`, which carries the upstream
-merge), so the pin does not affect the figure.
++ 133 subagents, spanning 133 distinct roles.** Verified identical at `acfb923`,
+at `bcfe30c` (`10110TLGP/main`), and — after the pin moved on 2026-07-26 — at
+**`b7ec149`**, the current pin. The bump was docs-only: `subagents/` and `agents/`
+are byte-identical across `acfb923` and `b7ec149`.
 
 Both numbers are correct and measure different things: `agents/*.md` (8) holds the
 same eight roles as `subagents/core/` in Claude Code's runtime format rather than
@@ -185,15 +186,21 @@ Resolved in favour of the documentation and the upstream attribution:
 
 ### 4.7 Which submodule branch the project tracks — **OPEN**
 
-The gitlink is pinned to `acfb923`, the head of `10110TLGP/dev` — also the fork's
-default branch. `10110TLGP/main` is ahead at `bcfe30c` (2026-04-24, "Merge branch
-'alirezarezvani:main'"). Nothing in this repo records which branch the pin is meant
-to follow, so "is the pin stale?" currently has no answer.
+**Narrowed on 2026-07-26.** The pin was bumped `acfb923` → `b7ec149`, the new head
+of `10110TLGP/dev` after upstream was merged into it. That settles the practical
+half: **the pin tracks `10110TLGP/dev`**, which is also the fork's default branch
+(`origin/HEAD` points at it). `CLAUDE.md` now names the commit and the branch.
 
-Counts are identical at both commits, so nothing in v0.2.6 depends on this.
-**Owner action:** decide whether the pin tracks `10110TLGP/dev` or
-`10110TLGP/main`, record it as a decision, and bump the gitlink if it should move.
-`CLAUDE.md` documents the bump procedure but not the target branch.
+What remains open is `10110TLGP/main`. It sits at `bcfe30c` and is **still not an
+ancestor of the pin** — it carries its own earlier merge from upstream, so the two
+branches have diverged rather than one trailing the other. Nothing records what
+that branch is *for*.
+
+**Owner action:** say whether `10110TLGP/main` is a live release line for the fork
+(in which case it needs reconciling with `10110TLGP/dev`) or is abandoned (in which
+case delete it, so nobody pins to it by mistake). Counts are identical on both, so
+nothing in the doc set depends on the answer — this is about not leaving a
+divergent branch with an unexplained purpose.
 
 ## 5. Exit criteria to v1.0.0
 

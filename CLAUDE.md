@@ -84,7 +84,7 @@ If a change risks one of these, flag it.
 
 ## The `claude-code-tresor` submodule
 
-`.gitmodules` registers `claude-code-tresor` pointing at `https://github.com/adamtasteslikegood/claude-code-tresor.git`, pinned to commit `acfb923…`. **It is empty in fresh checkouts** — initialize it before reading the agent `.md` files:
+`.gitmodules` registers `claude-code-tresor` pointing at `https://github.com/adamtasteslikegood/claude-code-tresor.git`, pinned to commit `b7ec149…` (head of the fork's `10110TLGP/dev`, which is its default branch). **It is empty in fresh checkouts** — initialize it before reading the agent `.md` files:
 
 ```bash
 git submodule update --init --recursive

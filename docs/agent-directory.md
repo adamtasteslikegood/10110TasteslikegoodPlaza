@@ -410,9 +410,14 @@ is and reports them as skipped when it is not.
 
 > **141 agent files = 8 core + 133 subagents**, spanning **133 distinct roles**.
 
-Counted 2026-07-25, verified identical at submodule commit `acfb923` (the current
-pin, head of `10110TLGP/dev`) and at `bcfe30c` (head of `10110TLGP/main`, which
-carries the upstream merge).
+Counted 2026-07-25 at `acfb923` and re-verified 2026-07-26 at **`b7ec149`** — the
+current pin, head of `10110TLGP/dev` — and at `bcfe30c` (`10110TLGP/main`). All
+three give the same figures.
+
+The `b7ec149` bump merged upstream into the fork; `git diff acfb923 b7ec149` touches
+only `GETTING-STARTED.md`, and `subagents/` and `agents/` are byte-identical across
+the two pins. **Re-check these numbers whenever the pin moves, but a pin bump does
+not automatically invalidate them** — verify against the trees, not the commit id.
 
 | Tree | Files | What it is |
 |---|---|---|

@@ -17,7 +17,8 @@ locked decisions (`D-014`, `D-020`) moved the doc set version per `META-SPEC` §
 
 - **Agent counts settled (§4.2).** Submodule initialised and counted:
   **141 agent files = 8 core + 133 subagents, spanning 133 distinct roles.**
-  Verified identical at `acfb923` (the pin) and `bcfe30c` (`10110TLGP/main`).
+  Verified identical at `acfb923`, `bcfe30c` (`10110TLGP/main`), and `b7ec149`
+  (the pin after the 2026-07-26 bump).
   Both figures are correct and measure different things — `agents/*.md` holds the
   same eight roles as `subagents/core/` in Claude Code's runtime format rather than
   the catalog format. The previous "137+" was wrong either way. Real per-department
@@ -50,10 +51,11 @@ locked decisions (`D-014`, `D-020`) moved the doc set version per `META-SPEC` §
 - `CONTRIBUTING.md` updated to match: `Validate Specs` added to the CI expectations,
   stale counts corrected, and the branching-strategy pointer reworded now that the
   policy doc no longer claims CODEOWNERS gating exists.
-- **New open conflict (§4.7).** Nothing records whether the submodule pin tracks
-  `10110TLGP/dev` (where it sits) or `10110TLGP/main` (which is ahead), so "is the
-  pin stale?" has no answer. Counts are identical at both, so nothing here depends
-  on it.
+- **New conflict, since narrowed (§4.7).** Nothing recorded whether the submodule
+  pin tracks `10110TLGP/dev` or `10110TLGP/main`. The `acfb923` → `b7ec149` bump
+  settled the practical half — the pin tracks `10110TLGP/dev`, the fork's default
+  branch — and `CLAUDE.md` now names both. Still open: `10110TLGP/main` remains
+  divergent (not an ancestor of the pin) with no recorded purpose.
 - **Validator:** links into an uninitialised submodule are now checked when the
   submodule is present and reported as skipped when it is not, instead of failing
   the build. CI checks out without submodules, so this is what makes the restored
