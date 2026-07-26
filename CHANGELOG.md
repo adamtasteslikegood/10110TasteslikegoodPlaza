@@ -10,6 +10,18 @@ section at release time. PR references in parentheses.
 
 ## [Unreleased]
 
+### Corrected
+
+- **`branching-strategy.md` claimed "squash and merge exclusively".** Squash merging
+  is disabled in repository settings, and every merge on `dev` is a merge commit
+  (`Merge pull request #N from …`) — the claim was inherited from the upstream
+  original and survived the rewrite. Found by attempting the merge, which the API
+  rejected with `405 Squash merges are not allowed on this repository`. §4 now says
+  merge commits; the header, the enforcement table, the release flow, and
+  `CONTRIBUTING.md` §Pull requests all corrected to match. §5 no longer tells you to
+  enable "Require linear history", which is incompatible with merge commits and
+  would have blocked every merge if applied as written.
+
 ### Security
 
 - **`.github/workflows/ci.yml` now declares `permissions: contents: read`.** It was

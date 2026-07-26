@@ -13,7 +13,7 @@ derives_from: [META-SPEC]
 # Branching Strategy
 
 > **One line:** `feature/*` `fix/*` `hotfix/*` → `dev` → `main`, Conventional
-> Commits, squash merges.
+> Commits, merge commits.
 >
 > This is the **policy** doc — what the rules are and what enforces them.
 > [`../CONTRIBUTING.md`](../CONTRIBUTING.md) is the **everyday** guide (how to
@@ -26,7 +26,8 @@ Most branching docs describe an aspiration. This section is the honest split.
 | | Status |
 |---|---|
 | `feature/*` `fix/*` `hotfix/*` → `dev` → `main` | Convention, followed in practice |
-| Conventional Commits, squash merges | Convention |
+| Conventional Commits | Convention |
+| Merge commits (squash merging is disabled in settings) | **Enforced by repository settings** |
 | `ci.yml` — `Validate Specs`, `Lint Python Bridge`, `Export Godot 4 Prototype` | **Runs on every push and PR to `main` and `dev`** |
 | CodeQL (`Analyze (python)`, `Analyze (actions)`), GitGuardian | **Runs on PRs** |
 | `gemini-*.yml` triage / review / plan-execute | **Runs on PRs, issues, `@gemini-cli` mentions, and a schedule** |
@@ -89,8 +90,14 @@ are not duplicated here. The policy points:
   `type(scope): subject`. Types: `feat` `fix` `docs` `style` `refactor` `perf`
   `test` `build` `ci` `chore` `revert`.
 - **PR titles follow the same format**, under 70 characters.
-- **Squash and merge exclusively.** Keeps `dev` history linear and makes the PR the
-  unit of history. No merge commits, no rebase-and-merge.
+- **Merge commits.** Squash merging is **disabled** in repository settings, and every
+  merge on `dev` to date is a merge commit (`Merge pull request #N from …`). The PR
+  is still the unit of review; its commits land individually and the merge commit
+  records the boundary.
+  *This corrected an inherited claim.* The upstream original said "squash and merge
+  exclusively, no merge commits" — the repository setting disproves it. If you want
+  squash instead, enable it in Settings → General → Pull Requests first, then change
+  this line; don't change this line and hope the setting follows.
 - **Delete the branch after merge.**
 - **A merged PR is finished.** Follow-up work starts a fresh branch off the latest
   `dev` — never stack new commits on already-merged history.
@@ -105,14 +112,18 @@ Not yet configured. These are instructions, not a description of current setting
 - Require status checks to pass, branches up to date. Required checks:
   `Validate Specs`, `Lint Python Bridge`, `Export Godot 4 Prototype`,
   `Analyze (python)`, `Analyze (actions)`
-- Require conversation resolution; require linear history
+- Require conversation resolution
 - Restrict deletions; block force pushes; no bypass, including administrators
+
+> **Do not enable "Require linear history"** while squash merging is disabled — the
+> two are incompatible, and turning it on would block every merge. It belongs with a
+> squash-only workflow, not this one.
 
 **`dev`** — same, pattern `dev`, with:
 
 - Require approvals: 0 (raise to 1 if a second contributor joins)
 - Required checks: `Validate Specs`, `Lint Python Bridge`
-- Require linear history; restrict deletions; block force pushes
+- Restrict deletions; block force pushes (again, **not** linear history)
 
 Use the exact job names above — GitHub matches required checks by name, and the
 invented names this document previously carried (`quality-gates`, `validate-pr`,
@@ -157,7 +168,7 @@ Not automated, and not yet exercised — there are no tags.
 
 1. `dev` is ready: features merged, `CHANGELOG.md` `[Unreleased]` promoted to a
    version section, `doc_set_version` consistent across the governed set.
-2. PR `dev` → `main`. Squash merge.
+2. PR `dev` → `main`. Merge commit, per §4.
 3. Tag `main` and write GitHub release notes from the CHANGELOG section.
 
 First tag is cut when **M8 is demonstrable in-engine** — the exit criterion in

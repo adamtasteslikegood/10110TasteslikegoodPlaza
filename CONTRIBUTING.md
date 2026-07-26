@@ -50,7 +50,7 @@ Allowed types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `buil
    - **Test plan** — checklist of what you verified.
    - Link to the Jira ticket if applicable.
 4. Wait for CI (`Validate Specs`, `Lint Python Bridge`, and the Godot export stub) and any reviewer feedback.
-5. **Squash merge** to keep `dev` history linear.
+5. **Merge commit** — squash merging is disabled on this repo. See [`specs/branching-strategy.md`](specs/branching-strategy.md) §4.
 
 ## CI expectations
 
