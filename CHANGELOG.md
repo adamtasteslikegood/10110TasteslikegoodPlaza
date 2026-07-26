@@ -39,6 +39,9 @@ section at release time. PR references in parentheses.
   exists in the register, never that the declaring document is entitled to decide.
   Recorded rather than fixed — the seven decisions are all substantively correct and
   evidenced; what is wrong is the bookkeeping about who was entitled to make them.
+  Tracked as issue #11 with three options; `META-SPEC` §4.2 now says to open an issue
+  for conflicts that need discussion, keeping the register as the index and the issue
+  as where it gets settled.
 
 ### Corrected
 

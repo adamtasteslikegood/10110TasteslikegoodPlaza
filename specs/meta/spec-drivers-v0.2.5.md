@@ -210,6 +210,8 @@ merge is content-free and cannot conflict. Nothing needs reconciling before then
 
 ### 4.8 `PROJECT-OVERVIEW` originates decisions its authority forbids — **OPEN**
 
+**Tracked as [issue #11](https://github.com/adamtasteslikegood/10110TasteslikegoodPlaza/issues/11)**, which carries the three options in full. This entry is the summary; the issue is where the discussion and the resolution live.
+
 Found while registering `D-023`. `README.md` declares `authority: derived`, and
 [`META-SPEC.md`](META-SPEC.md) §2 says `derived` may decide "nothing new — sequences
 and applies decisions made above it." But the register names `PROJECT-OVERVIEW` as
