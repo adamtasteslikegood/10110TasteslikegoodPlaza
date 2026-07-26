@@ -10,6 +10,36 @@ section at release time. PR references in parentheses.
 
 ## [Unreleased]
 
+### Changed — merge strategy is now a recorded decision (`D-023`)
+
+- **Merge commits are the deliberate policy, not a settings accident.** The previous
+  pass corrected the doc descriptively ("the setting disproves the claim"), which
+  left squash reading as the aspiration and merge commits as a fallback. It is the
+  other way round: the squash-only rule was inherited from
+  `alirezarezvani/claude-code-tresor` and was never chosen for this project, and
+  squash merging has caused the owner real problems on other repositories. `D-023`
+  records the choice with its rationale so it is not "fixed" back by a linter, a
+  bot, or the next person reading a style guide.
+- Documented the consequences rather than leaving them to be rediscovered: `dev` is
+  not linear and must not be required to be, multi-commit PRs keep their history so
+  a structured series is worth writing, and reverting a merged PR needs
+  `git revert -m 1 <merge-sha>`.
+- Added an "inherited rules are the failure mode" table to
+  `specs/branching-strategy.md` §9, recording both rules that survived the rewrite
+  and how each was caught — the invented required-check names (read against
+  `.github/workflows/`) and the squash claim (a `405` from the merge API).
+
+### Open
+
+- **New conflict (§4.8): `PROJECT-OVERVIEW` originates decisions its authority
+  forbids.** `README.md` declares `authority: derived`, which `META-SPEC` §2 says may
+  decide nothing — yet it is now the named origin of seven decisions (`D-003`,
+  `D-015`, `D-016`, `D-018`, `D-021`, `D-022`, `D-023`). Surfaced while registering
+  `D-023`. The validator misses it: it checks that every `D-nnn` in a `decides:` list
+  exists in the register, never that the declaring document is entitled to decide.
+  Recorded rather than fixed — the seven decisions are all substantively correct and
+  evidenced; what is wrong is the bookkeeping about who was entitled to make them.
+
 ### Corrected
 
 - **`branching-strategy.md` claimed "squash and merge exclusively".** Squash merging

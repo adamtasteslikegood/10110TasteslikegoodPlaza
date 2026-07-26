@@ -100,7 +100,7 @@ now; neither is started.
 ## 4. Open-conflict register
 
 Per [`META-SPEC.md`](META-SPEC.md) §4, conflicts are recorded rather than silently
-resolved. **All seven resolved** as of v0.2.6. Resolved entries are kept, not
+resolved. **Seven resolved, one open (§4.8)** as of v0.2.6. Resolved entries are kept, not
 deleted — the record of *how* a conflict was settled is what stops it reopening.
 
 ### 4.1 `ALIGNED-SPEC-025` §01.3 versus `STORYBOARD-W1` — **RESOLVED**
@@ -207,6 +207,38 @@ merged the same upstream state by a different route (`bcfe30c` a direct merge,
 
 That matters for the first release: `dev` → `main` will not fast-forward, but the
 merge is content-free and cannot conflict. Nothing needs reconciling before then.
+
+### 4.8 `PROJECT-OVERVIEW` originates decisions its authority forbids — **OPEN**
+
+Found while registering `D-023`. `README.md` declares `authority: derived`, and
+[`META-SPEC.md`](META-SPEC.md) §2 says `derived` may decide "nothing new — sequences
+and applies decisions made above it." But the register names `PROJECT-OVERVIEW` as
+the origin of **seven** decisions: `D-003` (engine), `D-015` (bridge transport),
+`D-016` (agent data layer), `D-018` (licence), `D-021` (submodule tracking branch),
+`D-022` (fork's release branch), `D-023` (merge strategy).
+
+So the layer contradicts itself, and the validator does not catch it — it checks
+that every `D-nnn` in a `decides:` list exists in the register, but never that the
+declaring document's `authority` permits deciding at all.
+
+Neither side is obviously right, which is why this is recorded rather than fixed:
+
+- Those seven are real decisions that needed *somewhere* to live, and none of them
+  is concept (tier 1) or a promoted design (tier 2 `implementation`). They are
+  project- and process-level: engine, transport, licence, branch policy.
+- `README.md` genuinely is a reconciliation document. Giving it origination
+  authority weakens the tier ladder's central claim.
+
+**Owner action:** pick one — (a) add a `platform` or `process` authority for
+project-level decisions and move these seven to a document that holds it, (b) split
+them out into a tier-2 design doc, or (c) accept `PROJECT-OVERVIEW` as a legitimate
+origin and soften `derived` in `META-SPEC` §2. Whichever is chosen, the validator
+should then gain a check that a document may only `decide` what its `authority`
+allows — the gap that let this through.
+
+Nothing is blocked by this: every one of the seven decisions is substantively
+correct and independently evidenced. What is wrong is the bookkeeping about who was
+entitled to make them.
 
 ## 5. Exit criteria to v1.0.0
 

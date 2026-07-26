@@ -27,7 +27,7 @@ Most branching docs describe an aspiration. This section is the honest split.
 |---|---|
 | `feature/*` `fix/*` `hotfix/*` → `dev` → `main` | Convention, followed in practice |
 | Conventional Commits | Convention |
-| Merge commits (squash merging is disabled in settings) | **Enforced by repository settings** |
+| Merge commits, not squash (`D-023`) | **Enforced by repository settings** — squash merging is disabled |
 | `ci.yml` — `Validate Specs`, `Lint Python Bridge`, `Export Godot 4 Prototype` | **Runs on every push and PR to `main` and `dev`** |
 | CodeQL (`Analyze (python)`, `Analyze (actions)`), GitGuardian | **Runs on PRs** |
 | `gemini-*.yml` triage / review / plan-execute | **Runs on PRs, issues, `@gemini-cli` mentions, and a schedule** |
@@ -90,14 +90,23 @@ are not duplicated here. The policy points:
   `type(scope): subject`. Types: `feat` `fix` `docs` `style` `refactor` `perf`
   `test` `build` `ci` `chore` `revert`.
 - **PR titles follow the same format**, under 70 characters.
-- **Merge commits.** Squash merging is **disabled** in repository settings, and every
-  merge on `dev` to date is a merge commit (`Merge pull request #N from …`). The PR
-  is still the unit of review; its commits land individually and the merge commit
-  records the boundary.
-  *This corrected an inherited claim.* The upstream original said "squash and merge
-  exclusively, no merge commits" — the repository setting disproves it. If you want
-  squash instead, enable it in Settings → General → Pull Requests first, then change
-  this line; don't change this line and hope the setting follows.
+- **Merge commits — chosen, not defaulted into** (`D-023`). Squash merging is
+  disabled in repository settings, and every merge on `dev` is a merge commit
+  (`Merge pull request #N from …`). The PR remains the unit of *review*; its commits
+  land individually and the merge commit records the boundary.
+
+  **Why, so nobody "fixes" this back.** The squash-only rule was inherited from
+  `alirezarezvani/claude-code-tresor` along with the rest of this document — it was
+  never a decision anyone made for this project. Squash merging has caused the owner
+  real problems on other repositories, so merge commits are the deliberate choice
+  here. Do not switch to squash because a linter, a bot, or a style guide suggests
+  it; that reasoning is what put the wrong rule here in the first place.
+
+  Practical consequences worth knowing rather than rediscovering:
+  - Multi-commit PRs keep their history, so a well-structured commit series survives
+    review and stays bisectable.
+  - `dev` is **not** linear, and must not be required to be — see the note in §5.
+  - Reverting a merged PR means `git revert -m 1 <merge-sha>`, not a plain revert.
 - **Delete the branch after merge.**
 - **A merged PR is finished.** Follow-up work starts a fresh branch off the latest
   `dev` — never stack new commits on already-merged history.
@@ -115,9 +124,10 @@ Not yet configured. These are instructions, not a description of current setting
 - Require conversation resolution
 - Restrict deletions; block force pushes; no bypass, including administrators
 
-> **Do not enable "Require linear history"** while squash merging is disabled — the
-> two are incompatible, and turning it on would block every merge. It belongs with a
-> squash-only workflow, not this one.
+> **Do not enable "Require linear history".** It is incompatible with merge commits
+> (`D-023`) and would block every merge. It belongs to a squash-only workflow, which
+> this project has deliberately not adopted. The upstream original told you to enable
+> it — that instruction was never valid here.
 
 **`dev`** — same, pattern `dev`, with:
 
@@ -198,6 +208,18 @@ to the upstream issue tracker, and required four CI workflows that have never
 existed here. Rewritten in doc set v0.2.6 to describe **this** repository. Where
 this document and the upstream original differ, this one is simply correct — there
 is nothing to reconcile.
+
+**Inherited rules are the failure mode to watch for in this file.** Two survived the
+first rewrite and had to be caught separately:
+
+| Inherited rule | How it was caught | Outcome |
+|---|---|---|
+| Required checks named `quality-gates`, `validate-pr`, `production-build`, `validate-release-pr` | Read against `.github/workflows/` — none exist | Replaced with the real job names. GitHub matches required checks by name, so the inherited list would have silently matched nothing |
+| "Squash and merge exclusively… no merge commits" | The merge API returned `405 Squash merges are not allowed on this repository` | Reversed to merge commits and registered as `D-023`, with the rationale recorded so it is not re-inherited |
+
+Both were plausible-sounding rules that were simply false here. When editing this
+file, check a claim against the repository before keeping it — inheritance is not
+evidence.
 
 ---
 
