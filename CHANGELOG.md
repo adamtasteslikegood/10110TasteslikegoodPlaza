@@ -43,6 +43,24 @@ section at release time. PR references in parentheses.
   for conflicts that need discussion, keeping the register as the index and the issue
   as where it gets settled.
 
+### Corrected — `dev` was never unprotected
+
+- **`branching-strategy.md` §5 said "not yet configured". `dev` is protected by an
+  active ruleset** (`18798438`, targeting `~DEFAULT_BRANCH`) carrying `pull_request`,
+  `deletion`, `non_fast_forward`, `code_scanning` and `copilot_code_review`. §5 now
+  describes what is active and keeps only the genuine gaps as instructions —
+  required status checks by name on `dev`, `main`'s ruleset, and CODEOWNERS.
+- **Root cause worth more than the fix:** the claim *was* checked — against
+  `GET /branches/{branch}/protection`, which returns `404 Branch not protected` for
+  ruleset-based protection. Rulesets are a separate API surface (`/rulesets`,
+  `/rules/branches/{branch}`). A confident negative from an endpoint that cannot see
+  the thing being asked about is worse than no check, because it feels like evidence.
+  Recorded as the third failure mode in §9, alongside inherited-and-false and
+  true-then-stale.
+- `non_fast_forward` (active) is **not** `required_linear_history` (must stay off).
+  Different rules; only the latter conflicts with `D-023`. The §5 warning stands and
+  is not currently violated.
+
 ### Corrected
 
 - **`branching-strategy.md` claimed "squash and merge exclusively".** Squash merging

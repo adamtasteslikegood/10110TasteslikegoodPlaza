@@ -31,7 +31,9 @@ Most branching docs describe an aspiration. This section is the honest split.
 | `ci.yml` — `Validate Specs`, `Lint Python Bridge`, `Export Godot 4 Prototype` | **Runs on every push and PR to `main` and `dev`** |
 | CodeQL (`Analyze (python)`, `Analyze (actions)`), GitGuardian | **Runs on PRs** |
 | `gemini-*.yml` triage / review / plan-execute | **Runs on PRs, issues, `@gemini-cli` mentions, and a schedule** |
-| Branch protection rules | **Not configured.** §5 is the setup, not a description |
+| Branch protection on `dev` | **Active** — ruleset `18798438`: PR required, deletion and force-push blocked, code scanning gates merge. See §5 |
+| Branch protection on `main` | **Not configured.** §5 "Still to apply" |
+| Required status checks by name | **Not configured** — `dev`'s ruleset gates `code_scanning` but does not require `Validate Specs` or `Lint Python Bridge` by name |
 | CODEOWNERS gating | **No `CODEOWNERS` file exists** |
 | Required linked issue | Convention at best |
 
@@ -125,11 +127,53 @@ are not duplicated here. The policy points:
 - **A merged PR is finished.** Follow-up work starts a fresh branch off the latest
   `dev` — never stack new commits on already-merged history.
 
-## 5. Branch protection — the setup to apply
+## 5. Branch protection
 
-Not yet configured. These are instructions, not a description of current settings.
+### What is active on `dev`
 
-**`main`** — Settings → Branches → Add rule, pattern `main`:
+`dev` **is** protected — by a **repository ruleset**, not a classic branch-protection
+rule. Ruleset `dev` (id `18798438`, `enforcement: active`) targets `~DEFAULT_BRANCH`,
+which resolves to `dev`. Verified 2026-07-26:
+
+| Rule | Effect |
+|---|---|
+| `pull_request` | PR required to merge. `required_approving_review_count: 0`, `dismiss_stale_reviews_on_push: false`, `required_review_thread_resolution: false` |
+| `deletion` | `dev` cannot be deleted |
+| `non_fast_forward` | Force pushes blocked |
+| `code_scanning` | CodeQL results gate the merge |
+| `copilot_code_review` | Automatic Copilot review on PRs |
+
+**`non_fast_forward` is not `required_linear_history`.** They are different rules and
+only the latter conflicts with `D-023`. The warning below still holds and is not
+currently violated.
+
+> ### The trap that hid this
+>
+> `GET /repos/{owner}/{repo}/branches/dev/protection` returns **`404 Branch not
+> protected`** for a branch protected by a ruleset. The 404 means "no *classic*
+> protection", not "no protection". Rulesets live on a separate API surface:
+>
+> ```bash
+> gh api repos/adamtasteslikegood/10110TasteslikegoodPlaza/rulesets
+> gh api repos/adamtasteslikegood/10110TasteslikegoodPlaza/rules/branches/dev
+> ```
+>
+> This document asserted "not yet configured" on the strength of that 404. Check both
+> surfaces before concluding a branch is unprotected.
+
+### Still to apply
+
+Genuinely not configured — these remain instructions, not description.
+
+**Required status checks on `dev`.** The ruleset gates on `code_scanning` but does not
+require the CI jobs by name. Add to the ruleset's `required_status_checks`:
+`Validate Specs`, `Lint Python Bridge`.
+
+**CODEOWNERS gating.** No `CODEOWNERS` file exists; nothing enforces reviewer
+assignment.
+
+**`main` has no ruleset or protection at all.** Settings → Rules → New ruleset,
+targeting `main`:
 
 - Require a pull request before merging; require approvals: 1; dismiss stale reviews
 - Require status checks to pass, branches up to date. Required checks:
@@ -143,11 +187,9 @@ Not yet configured. These are instructions, not a description of current setting
 > this project has deliberately not adopted. The upstream original told you to enable
 > it — that instruction was never valid here.
 
-**`dev`** — same, pattern `dev`, with:
-
-- Require approvals: 0 (raise to 1 if a second contributor joins)
-- Required checks: `Validate Specs`, `Lint Python Bridge`
-- Restrict deletions; block force pushes (again, **not** linear history)
+`dev`'s ruleset already covers deletion, force pushes, PR-required, and code
+scanning — the only gap there is required status checks by name, above. Keep
+approvals at 0 until a second contributor joins.
 
 Use the exact job names above — GitHub matches required checks by name, and the
 invented names this document previously carried (`quality-gates`, `validate-pr`,
@@ -230,6 +272,7 @@ first rewrite and had to be caught separately:
 |---|---|---|
 | Required checks named `quality-gates`, `validate-pr`, `production-build`, `validate-release-pr` | Read against `.github/workflows/` — none exist | Replaced with the real job names. GitHub matches required checks by name, so the inherited list would have silently matched nothing |
 | "Squash and merge exclusively… no merge commits" | The merge API returned `405 Squash merges are not allowed on this repository` | Reversed to merge commits and registered as `D-023`, with the rationale recorded so it is not re-inherited |
+| "Branch protection: not yet configured" | `/branches/dev/protection` → `404 Branch not protected` was read as "unprotected". `dev` is protected by ruleset `18798438` | §5 rewritten to describe the active ruleset. **The 404 means no *classic* protection, not no protection** — rulesets are a separate API surface |
 
 Both were plausible-sounding rules that were simply false here. When editing this
 file, check a claim against the repository before keeping it — inheritance is not
@@ -239,6 +282,14 @@ evidence.
 `405` above was real evidence on 2026-07-26 — and within hours a review found all
 three merge buttons enabled again, because repository settings had changed underneath
 the sentence. Verified-once is not verified.
+
+**Third failure mode: the right question asked of the wrong endpoint.** The branch
+protection claim was checked — against `/branches/dev/protection`, which returns a
+404 for ruleset-based protection. A confident negative from an API that cannot see
+the thing you are asking about is worse than no check at all, because it *feels* like
+evidence. Both the original claim and the first review pass made this exact mistake.
+When a check returns "nothing configured," confirm the endpoint can see the kind of
+configuration you are looking for.
 
 So any claim in this document about **live, mutable state** — merge settings, branch
 protection, which checks are required — carries a verification date and the command
