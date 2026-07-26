@@ -57,6 +57,24 @@
 #   3. Create two labels:  `claude-review`  (request / re-request a review)
 #                          `claude-review-fix`  (opt in to mechanical fixes)
 #
+# THIS WORKFLOW CANNOT REVIEW CHANGES TO ITSELF. claude-code-action validates
+# that the workflow file is byte-identical to the copy on the default branch and
+# skips otherwise:
+#
+#   "Workflow validation failed. The workflow file must exist and have identical
+#    content to the version on the repository's default branch."
+#
+# That is a supply-chain control, not a bug — without it a PR could edit this
+# file to exfiltrate CLAUDE_CODE_OAUTH_TOKEN and have CI run the edit. The job
+# still reports success (advisory, continue-on-error), so READ THE STEP LOG, not
+# the check mark, when verifying a change here.
+#
+# Consequences:
+#   * The PR that introduced this file could not exercise it. First real run is
+#     the first PR opened AFTER it lands on `dev`.
+#   * Every future PR that edits this file will skip the review of itself. To
+#     test a change, merge it to `dev`, then open a throwaway PR.
+#
 # ON SHA PINNING: this repo does NOT require it. `sha_pinning_required: false`,
 # `allowed_actions: all`, and ci.yml uses plain tags (actions/checkout@v4). The
 # SHA-pinned `uses:` lines in the gemini-*.yml workflows came from upstream
