@@ -100,7 +100,7 @@ now; neither is started.
 ## 4. Open-conflict register
 
 Per [`META-SPEC.md`](META-SPEC.md) §4, conflicts are recorded rather than silently
-resolved. **Six resolved, one open** as of v0.2.6. Resolved entries are kept, not
+resolved. **All seven resolved** as of v0.2.6. Resolved entries are kept, not
 deleted — the record of *how* a conflict was settled is what stops it reopening.
 
 ### 4.1 `ALIGNED-SPEC-025` §01.3 versus `STORYBOARD-W1` — **RESOLVED**
@@ -184,7 +184,7 @@ Resolved in favour of the documentation and the upstream attribution:
 [`../../LICENSE`](../../LICENSE) is now MIT, © 2026 Adam Schoen. Registered as
 `D-018`.
 
-### 4.7 Which submodule branch the project tracks — **OPEN**
+### 4.7 Which submodule branch the project tracks — **RESOLVED**
 
 **Half closed on 2026-07-26.** The pin was bumped `acfb923` → `b7ec149`, the new
 head of `10110TLGP/dev` after upstream was merged into it, and the owner confirmed
@@ -192,16 +192,21 @@ that branch is the fork's default — as does `origin/HEAD`. Registered as **`D-
 in [`decision-register.md`](decision-register.md): **the gitlink tracks
 `10110TLGP/dev`**. `CLAUDE.md` names both the commit and the branch.
 
-What remains open is `10110TLGP/main`. It sits at `bcfe30c` and is **still not an
-ancestor of the pin** — it carries its own earlier merge from upstream, so the two
-branches have diverged rather than one trailing the other. Nothing records what
-that branch is *for*.
+**Closed on 2026-07-26.** The owner confirmed `10110TLGP/main` is **reserved as the
+fork's release branch** — dormant until the fork has a `release.yml` and tagged
+GitHub releases, at which point it follows the same model as this repo: cut
+`dev` → `main`, tag, back-sync `main` → `dev`. It is not abandoned and not a pin
+target. Registered as **`D-022`**.
 
-**Owner action:** say whether `10110TLGP/main` is a live release line for the fork
-(in which case it needs reconciling with `10110TLGP/dev`) or is abandoned (in which
-case delete it, so nobody pins to it by mistake). Counts are identical on both, so
-nothing in the doc set depends on the answer — this is about not leaving a
-divergent branch with an unexplained purpose.
+**One correction to the earlier entry.** This register previously described the two
+branches as "diverged, needs reconciling". That overstated it. They diverge in
+*history* only — one commit each side of merge-base `4b68050`, because each branch
+merged the same upstream state by a different route (`bcfe30c` a direct merge,
+`b7ec149` a PR merge). **Their trees are byte-identical**: both resolve to tree
+`b7aee19`, and `git diff origin/10110TLGP/main origin/10110TLGP/dev` is empty.
+
+That matters for the first release: `dev` → `main` will not fast-forward, but the
+merge is content-free and cannot conflict. Nothing needs reconciling before then.
 
 ## 5. Exit criteria to v1.0.0
 

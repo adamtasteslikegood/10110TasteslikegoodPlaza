@@ -132,8 +132,24 @@ git commit -m "chore: bump claude-code-tresor submodule"
 ```
 
 Never edit submodule contents from the parent repo and commit the dirty gitlink.
-Which branch the pin should track is an open question — see
-[`meta/spec-drivers-v0.2.5.md`](meta/spec-drivers-v0.2.5.md) §4.7.
+
+### The fork's own branch model
+
+`adamtasteslikegood/claude-code-tresor` mirrors this repo: `dev` integrates, `main`
+releases.
+
+| Fork branch | Role |
+|---|---|
+| `10110TLGP/dev` | Default branch, and **what the pin tracks** (`D-021`). Bumps fast-forward to its head. |
+| `10110TLGP/main` | **Reserved release branch** (`D-022`). Dormant until the fork has a `release.yml` and tagged releases. Not a pin target — don't bump to it, and don't prune it as stale. |
+| `dev`, `main` | The pre-fork upstream branches. Not used by this project. |
+
+The two `10110TLGP/*` branches currently diverge in **history only** — one commit
+each side of merge-base `4b68050`, because each merged the same upstream state by a
+different route. Their trees are byte-identical (`b7aee19`), so the first
+`dev` → `main` release merge will not fast-forward but cannot conflict.
+
+Closed in [`meta/spec-drivers-v0.2.5.md`](meta/spec-drivers-v0.2.5.md) §4.7.
 
 ## 7. Release flow
 

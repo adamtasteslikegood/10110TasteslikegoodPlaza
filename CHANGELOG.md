@@ -61,11 +61,20 @@ locked decisions (`D-014`, `D-020`) moved the doc set version per `META-SPEC` §
 - `CONTRIBUTING.md` updated to match: `Validate Specs` added to the CI expectations,
   stale counts corrected, and the branching-strategy pointer reworded now that the
   policy doc no longer claims CODEOWNERS gating exists.
-- **New conflict, since narrowed (§4.7).** Nothing recorded whether the submodule
-  pin tracks `10110TLGP/dev` or `10110TLGP/main`. The `acfb923` → `b7ec149` bump
-  settled the practical half — the pin tracks `10110TLGP/dev`, the fork's default
-  branch — and `CLAUDE.md` now names both. Still open: `10110TLGP/main` remains
-  divergent (not an ancestor of the pin) with no recorded purpose.
+- **New conflict, opened and closed (§4.7).** Nothing recorded whether the submodule
+  pin tracks `10110TLGP/dev` or `10110TLGP/main`. Both halves are now settled and
+  registered: the pin tracks `10110TLGP/dev`, the fork's default branch (`D-021`),
+  and `10110TLGP/main` is **reserved as the fork's release branch** (`D-022`) —
+  dormant until the fork has a `release.yml` and tagged releases, then cut
+  `dev` → `main`, tag, back-sync. Not abandoned, not a pin target; recorded so
+  nobody prunes it as stale or bumps to it by mistake. The fork's branch model is
+  now documented in `specs/branching-strategy.md` §6 where a bump would surface it.
+  **Correction:** an earlier draft called the two branches "diverged, needs
+  reconciling." They diverge in *history* only — one commit each side of merge-base
+  `4b68050`, each having merged the same upstream state by a different route. The
+  trees are byte-identical (`b7aee19`), so the first `dev` → `main` merge won't
+  fast-forward but cannot conflict.
+- **All seven conflicts in the register now read RESOLVED.**
 - **Validator:** links into an uninitialised submodule are now checked when the
   submodule is present and reported as skipped when it is not, instead of failing
   the build. CI checks out without submodules, so this is what makes the restored
