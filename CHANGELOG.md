@@ -36,12 +36,20 @@ locked decisions (`D-014`, `D-020`) moved the doc set version per `META-SPEC` §
 - **`D-014` ratified (§4.4).** Bridge boundary stays conceptual until after M8;
   flipped `PROPOSED` → `LOCKED` with its reversal threshold carried across verbatim.
   The "Not yet authorised" table is now empty.
-- **`specs/branching-strategy.md` rewritten (§4.5).** Corrected the "ClaudeForge"
-  naming and the three upstream issue links; replaced invented required checks
-  (`quality-gates`, `validate-pr`, `production-build`) with the jobs that actually
-  run; added a status table separating enforced from intended; moved every
-  aspirational rule into one `## Intended, not yet active` section. `DRAFT` →
-  `ACTIVE`, since it now describes this repository.
+- **`specs/branching-strategy.md` rewritten (§4.5), 806 lines → 181.** The document
+  was inherited from the upstream fork and described a different project. Rather
+  than correct it in place, it was rewritten against this repo: the real branch list
+  (including the long-lived `feature/TO-1-prototype-initialization` and its
+  `scripts/` tree), `dev` as the default branch, the CI jobs that actually run,
+  the real submodule-bump procedure, and an honest "no tags cut yet" release
+  section. Invented required checks (`quality-gates`, `validate-pr`,
+  `production-build`, `validate-release-pr`) replaced with the correct job names —
+  GitHub matches required checks by name, so the old list would have matched
+  nothing. Branch-protection settings are labelled as a setup to apply, not as
+  current state. `DRAFT` → `ACTIVE`.
+- `CONTRIBUTING.md` updated to match: `Validate Specs` added to the CI expectations,
+  stale counts corrected, and the branching-strategy pointer reworded now that the
+  policy doc no longer claims CODEOWNERS gating exists.
 - **New open conflict (§4.7).** Nothing records whether the submodule pin tracks
   `10110TLGP/dev` (where it sits) or `10110TLGP/main` (which is ahead), so "is the
   pin stale?" has no answer. Counts are identical at both, so nothing here depends

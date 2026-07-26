@@ -161,12 +161,18 @@ throughout, linked to the upstream project's issue tracker, and required status
 checks from `pr-into-dev.yml`, `dev-to-main.yml`, and `release.yml` — none of which
 exist in `.github/workflows/`.
 
-Rewritten in v0.2.6 to describe this repository: naming and links corrected,
-required checks replaced with the jobs that actually run (`Validate Specs`,
-`Lint Python Bridge`, `Export Godot 4 Prototype`, CodeQL), a status table at the top
-separating enforced from intended, and every aspirational rule moved into a single
-`## Intended, not yet active` section. `status: DRAFT` → `ACTIVE`, since the
-document now accurately describes the repo it lives in.
+Rewritten in v0.2.6, **806 lines → 181**. The owner confirmed the document was
+copied from the upstream fork intending to modify it, and that accuracy about this
+repository matters more than anything the inherited text says — so the upstream
+content was dropped rather than preserved and fenced.
+
+What it says now is checked against the repo: the real branch list (including the
+long-lived `feature/TO-1-prototype-initialization` and its `scripts/` tree), `dev`
+as the default branch, the actual CI jobs, the real submodule-bump procedure, and
+an honest "no tags cut yet" release section. The branch-protection settings are
+labelled as a setup to apply, not as current state, and carry the correct job names.
+`status: DRAFT` → `ACTIVE`. A §9 provenance note records where the document came
+from so the question does not get re-litigated.
 
 [`../../CONTRIBUTING.md`](../../CONTRIBUTING.md) remains the operative everyday
 guide.
