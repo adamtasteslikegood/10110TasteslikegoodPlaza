@@ -10,7 +10,158 @@ section at release time. PR references in parentheses.
 
 ## [Unreleased]
 
+### Corrected
+
+- **`branching-strategy.md` claimed "squash and merge exclusively".** Squash merging
+  is disabled in repository settings, and every merge on `dev` is a merge commit
+  (`Merge pull request #N from …`) — the claim was inherited from the upstream
+  original and survived the rewrite. Found by attempting the merge, which the API
+  rejected with `405 Squash merges are not allowed on this repository`. §4 now says
+  merge commits; the header, the enforcement table, the release flow, and
+  `CONTRIBUTING.md` §Pull requests all corrected to match. §5 no longer tells you to
+  enable "Require linear history", which is incompatible with merge commits and
+  would have blocked every merge if applied as written.
+
+### Security
+
+- **`.github/workflows/ci.yml` now declares `permissions: contents: read`.** It was
+  the only workflow with no permissions at any level, so `GITHUB_TOKEN` inherited
+  the repository default — CodeQL's `actions/missing-workflow-permissions`, one
+  alert per job. Every job in the file only reads the repo (checkout, set up
+  Python, run a validator or linter), so `contents: read` is the correct least
+  privilege. The `gemini-*.yml` workflows already declare permissions per job and
+  were never affected.
+
+### Doc set v0.2.6 — the four open conflicts closed
+
+Six of seven conflicts in the open-conflict register now read RESOLVED. Two new
+locked decisions (`D-014`, `D-020`) moved the doc set version per `META-SPEC` §8.4.
+
+- **Agent counts settled (§4.2).** Submodule initialised and counted:
+  **141 agent files = 8 core + 133 subagents, spanning 133 distinct roles.**
+  Verified identical at `acfb923`, `bcfe30c` (`10110TLGP/main`), and `b7ec149`
+  (the pin after the 2026-07-26 bump).
+  Both figures are correct and measure different things — `agents/*.md` holds the
+  same eight roles as `subagents/core/` in Claude Code's runtime format rather than
+  the catalog format. The previous "137+" was wrong either way. Real per-department
+  numbers (engineering 54, leadership 14, marketing 11, ai-automation 9, product 9,
+  account-CS 8, core 8, design 7, research 7, operations 6) landed in
+  `docs/agent-directory.md` as the taxonomy authority (`D-017`); `README.md`,
+  `CLAUDE.md`, `docs/README.md`, and `specs/task-tracker.md` now derive from it.
+  Recorded the `agents.json` id collision as an M3 hazard rather than deciding it
+  early.
+- **`D-020` ratified (§4.3).** Layer 2 is "the current frontend, which happens to be
+  2.5D Godot", not "the Godot engine" — `D-005` and the swap test only mean
+  something if the frontend is structurally a slot. Ratified into
+  `docs/designs/2.5D-RPG-Prototype.md` under a `## Ratified in v0.2.6` heading that
+  leaves the dated 2026-04-27 CEO-plan record intact, carrying the frontend-swap
+  matrix. `README.md`, `CLAUDE.md`, and `docs/quick-reference.md` updated.
+- **`D-014` ratified (§4.4).** Bridge boundary stays conceptual until after M8;
+  flipped `PROPOSED` → `LOCKED` with its reversal threshold carried across verbatim.
+  The "Not yet authorised" table is now empty.
+- **`specs/branching-strategy.md` rewritten (§4.5), 806 lines → 181.** The document
+  was inherited from the upstream fork and described a different project. Rather
+  than correct it in place, it was rewritten against this repo: the real branch list
+  (including the long-lived `feature/TO-1-prototype-initialization` and its
+  `scripts/` tree), `dev` as the default branch, the CI jobs that actually run,
+  the real submodule-bump procedure, and an honest "no tags cut yet" release
+  section. Invented required checks (`quality-gates`, `validate-pr`,
+  `production-build`, `validate-release-pr`) replaced with the correct job names —
+  GitHub matches required checks by name, so the old list would have matched
+  nothing. Branch-protection settings are labelled as a setup to apply, not as
+  current state. `DRAFT` → `ACTIVE`.
+- `CONTRIBUTING.md` updated to match: `Validate Specs` added to the CI expectations,
+  stale counts corrected, and the branching-strategy pointer reworded now that the
+  policy doc no longer claims CODEOWNERS gating exists.
+- **New conflict, opened and closed (§4.7).** Nothing recorded whether the submodule
+  pin tracks `10110TLGP/dev` or `10110TLGP/main`. Both halves are now settled and
+  registered: the pin tracks `10110TLGP/dev`, the fork's default branch (`D-021`),
+  and `10110TLGP/main` is **reserved as the fork's release branch** (`D-022`) —
+  dormant until the fork has a `release.yml` and tagged releases, then cut
+  `dev` → `main`, tag, back-sync. Not abandoned, not a pin target; recorded so
+  nobody prunes it as stale or bumps to it by mistake. The fork's branch model is
+  now documented in `specs/branching-strategy.md` §6 where a bump would surface it.
+  **Correction:** an earlier draft called the two branches "diverged, needs
+  reconciling." They diverge in *history* only — one commit each side of merge-base
+  `4b68050`, each having merged the same upstream state by a different route. The
+  trees are byte-identical (`b7aee19`), so the first `dev` → `main` merge won't
+  fast-forward but cannot conflict.
+- **All seven conflicts in the register now read RESOLVED.**
+- **Validator:** links into an uninitialised submodule are now checked when the
+  submodule is present and reported as skipped when it is not, instead of failing
+  the build. CI checks out without submodules, so this is what makes the restored
+  `claude-code-tresor` links safe. Verified in both states.
+- Cleared the last `{{rolels}}` / `{{roles}}` / `{{charactor}}` upstream template
+  placeholders from `docs/agent-directory.md`, and restored real links to the six
+  reference docs (they live at `claude-code-tresor/docs/archive/`).
+
+### Added
+- **A meta-spec layer at `specs/meta/`** — one authoritative answer to "which
+  document wins", replacing three documents that each described themselves as the
+  thing to align to.
+  - `META-SPEC.md` — the constitution. A five-tier ladder (0 meta · 1 concept ·
+    2 implementation and reference · 3 derived plans · 4 summaries and inputs), an
+    `authority` vocabulary, the conflict protocol ("never silently reconcile"), and
+    the binding rules for agents.
+  - `concept-driver.md` — names `docs/storyboard-week1.md` the sole origin of
+    concept decisions, defines the dual-layer scene contract, and indexes all 18
+    beats as `SB-01`–`SB-18`.
+  - `decision-register.md` — every locked decision as a citable `D-nnn` with a
+    named origin document, deduplicated from the three places they previously lived
+    in parallel.
+  - `spec-drivers-v0.2.5.md` — v0.2.5 deliverables, the
+    `D-nnn → SB-nn → M1–M8 → TO-nnn` traceability chain, the round plan, and the
+    open-conflict register.
+  - `spec-frontmatter.schema.json` and `doc-registry.json` — the machine-readable
+    contract and index. Authority is now a lookup, not an argument.
+- **`scripts/validate_specs.py` and a `Validate Specs` CI job.** Standard library
+  only — no new CI dependencies. Reads its rules from the published schema and
+  registry so the gate cannot drift from the contract. Fails the build on missing
+  or malformed frontmatter, unregistered documents, authority that disagrees with
+  the registry, downward `derives_from`, more or fewer than one concept origin,
+  `doc_set_version` skew, broken relative links, unknown `D-nnn` claims, and scene
+  ids with no matching scene.
+- YAML frontmatter (`doc_id`, `tier`, `authority`, `status`, `doc_set_version`,
+  `last_updated`, `derives_from`, `decides`) on all 17 governed documents.
+- Stable `SB-nn` ids on every storyboard scene heading, so milestones, tasks, and
+  Jira issues can cite a beat instead of paraphrasing it.
+
+### Fixed
+- **`specs/aligned-spec-v0.2.5.md` §01.3 contradicted the storyboard.** It invented
+  a 14-scene spine — openly labelled a "proposed reconstruction" written when the
+  real file could not be retrieved — that omits Day 0 entirely, relocates the
+  assistant's introduction, drops the player-configuration and coding-lesson beats,
+  and invents an RA/QM department scene out of explicitly deferred scope. Until now
+  that document was named the source of truth by `CLAUDE.md`, `specs/README.md`, and
+  `Docs/files/README.md`. Reconciled in favour of the storyboard; the side-by-side
+  is in `specs/meta/concept-driver.md` §4.
+- Removed 64 lines of pasted chat-sidebar text — a project file list, recent
+  conversation titles, and a verbatim memory dump — from the top of
+  `specs/aligned-spec-v0.2.5.md`, above the document's real H1.
+- Eleven broken relative links, caught by the new gate on its first run: nine in
+  `docs/agent-directory.md` pointing at upstream-fork paths that live in the
+  `claude-code-tresor` submodule or nowhere, and two in
+  `specs/branching-strategy.md` (`./CONTRIBUTING.md` is at the repo root;
+  `GITHUB_WORKFLOWS.md` does not exist). Cleaned the `{{rolels}}` / `{{charators}}`
+  template placeholders in the sections touched.
+
 ### Changed
+- `LICENSE` replaced with MIT (© 2026 Adam Schoen), resolving the long-standing
+  conflict with the Apache-2.0 boilerplate the file previously carried. `README.md`
+  and `CLAUDE.md` already said MIT, as does the upstream attribution. Registered as
+  `D-018`.
+- `specs/aligned-spec-v0.2.5.md` demoted from "current source-of-truth for spec
+  details" to a tier-4 research input (`authority: research`,
+  `status: SUPERSEDED`), with a banner pointing at the meta layer. Retained for its
+  findings, the Document A bridge architecture, and the Document B taxonomy.
+- `CLAUDE.md`, `specs/README.md`, `docs/README.md`, and `Docs/files/README.md`
+  repointed at `specs/meta/META-SPEC.md` as the entry point. In `CLAUDE.md` the
+  stale source-of-truth prose was replaced rather than added to, per the file's own
+  instruction-budget rule.
+- `specs/branching-strategy.md` marked `status: DRAFT` in the registry — it
+  describes workflows this repo does not have. Tracked as an open conflict.
+
+### Changed (previously)
 - 2.5D-alignment sweep across the reader-facing docs so the promoted 2.5D
   pivot (`docs/designs/2.5D-RPG-Prototype.md`) and the aligned spec
   (`specs/aligned-spec-v0.2.5.md`) show up where they matter:

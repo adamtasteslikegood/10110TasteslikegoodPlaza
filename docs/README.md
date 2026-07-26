@@ -1,17 +1,34 @@
+---
+doc_id: DOCS-INDEX
+title: docs/ — design and reference index
+tier: 4
+authority: summary
+status: ACTIVE
+doc_set_version: 0.2.6
+last_updated: 2026-07
+owner: adamtasteslikegood
+derives_from: [META-SPEC]
+---
+
 # docs/
 
 Design and reference material for **10110 TastesLikegood Plaza** — the *what* and *why* of the project. Files here change slowly and describe what we're building, not how the work is sequenced.
 
 For work-in-flight (milestones, task tracking, branching policy) see [`../specs/`](../specs/README.md).
 
+**Which document wins?** [`../specs/meta/META-SPEC.md`](../specs/meta/META-SPEC.md)
+answers that. Everything in this folder declares a tier and an authority in its
+frontmatter; `docs/storyboard-week1.md` is the sole origin of concept decisions and
+`docs/designs/` is authoritative for how to build.
+
 ## What's here
 
 | File | Purpose |
 |---|---|
 | [`designs/2.5D-RPG-Prototype.md`](designs/2.5D-RPG-Prototype.md) | **Active design.** Promoted CEO plan (2026-04-27) pivoting the prototype from 3D first-person to 2.5D top-down. |
-| [`storyboard-week1.md`](storyboard-week1.md) | Week 1 tutorial narrative beats from Day 0 through Days 4–5. Dual-purpose: game story = real onboarding. |
+| [`storyboard-week1.md`](storyboard-week1.md) | **The concept source of truth.** Week 1 tutorial narrative beats, Day 0 through Days 4–5, dual-purpose: game story = real onboarding. Scenes are citable as `SB-01`–`SB-18`; the contract and index live in [`../specs/meta/concept-driver.md`](../specs/meta/concept-driver.md). Edits are concept changes and need human sign-off. |
 | [`quick-reference.md`](quick-reference.md) | One-page summary: build order, autoload list, department table, key decisions. |
-| [`agent-directory.md`](agent-directory.md) | Taxonomy of the 137+ agent roles across nine departments. Source-of-truth for the department/color mapping (mirrored in the top-level `README.md`). |
+| [`agent-directory.md`](agent-directory.md) | Taxonomy of the 133 agent roles across nine departments plus Core. Source-of-truth for the department/color mapping (mirrored in the top-level `README.md`). |
 | [`assets/`](assets/) | `plaza_build_steps.html` and `plaza_godot_architecture.svg`. |
 
 ## When to add a file here

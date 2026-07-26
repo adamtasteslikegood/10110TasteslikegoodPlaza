@@ -26,12 +26,25 @@ Don't invent commands like "npm test" or "godot --headless" — Node and Godot i
 
 Deferred: true WebSocket streaming, unique sprites per agent, 3D first-person.
 
-The **current source-of-truth for spec details** is `specs/aligned-spec-v0.2.5.md` (added on `dev` after PR #5). It ratifies the 2.5D pivot, encodes the UI-agnostic bridge rule as a hard architectural gate ("swap test"), and points at `docs/storyboard-week1.md` as the canonical narrative source. When the aligned spec disagrees with any older doc, the aligned spec wins.
+## Which document wins — read `specs/meta/` first
+
+`specs/meta/` is the layer above the specs and answers this authoritatively. Don't re-derive it from prose here:
+
+- `specs/meta/META-SPEC.md` — the constitution. Tier ladder, the `authority` vocabulary, the conflict protocol, and the binding rules for agents (bridge UI-agnosticism, cite-the-source-doc, don't-invent-infrastructure).
+- `specs/meta/concept-driver.md` — `docs/storyboard-week1.md` is the **sole origin** of concept and narrative decisions. Scenes are citable as `SB-01`–`SB-18`.
+- `specs/meta/decision-register.md` — every locked decision as `D-nnn`. Cite these.
+- `specs/meta/spec-drivers-v0.2.5.md` — what v0.2.5 delivers, the traceability chain, and the **open-conflict register**. Check §4 before assuming a contradiction is yours to fix.
+
+Short version: tier 0 `specs/meta/` governs · tier 1 `docs/storyboard-week1.md` owns concept · tier 2 `docs/designs/*` owns implementation and `README.md` reconciles both · tier 3 `specs/roadmap.md` + `specs/task-tracker.md` sequence · tier 4 summaries and research are authoritative over nothing. **Lower tier wins.** Never silently reconcile two disagreeing docs — record it in the open-conflict register and raise it.
+
+Every governed doc declares `doc_id`/`tier`/`authority`/`status` in YAML frontmatter, validated against `specs/meta/spec-frontmatter.schema.json` and indexed in `specs/meta/doc-registry.json`. Run `python3 scripts/validate_specs.py` (stdlib only) before pushing; it runs in CI as `Validate Specs`.
+
+`specs/aligned-spec-v0.2.5.md` is **no longer the source of truth** — it is a tier-4 research input (`status: SUPERSEDED`). Its normative content was promoted into `specs/meta/`; its §01.3 fabricated a 14-scene spine that contradicts the real storyboard. Cite it for findings and rationale, not as law.
 
 The older reference docs still contain 3D first-person specifics:
 - `specs/roadmap.md`, `specs/task-tracker.md` — 3D-specific node names (CharacterBody3D, FPS demo, CSGBox3D, Area3D, NavigationRegion3D) are deprecated. Treat as 2D equivalents (CharacterBody2D, TileMap, Area2D, NavigationRegion2D). Milestone structure (M1/M4/M8) still stands.
 - `docs/quick-reference.md` — pitch line updated; the rest still directionally correct.
-- `docs/storyboard-week1.md` — the storyboard/concept is **still authoritative** per the aligned spec; only occasional visual descriptions (e.g. a "3D flyover" beat) are stylistic legacy.
+- `docs/storyboard-week1.md` — the storyboard/concept is **authoritative** (tier 1, `authority: concept`); only occasional visual descriptions (e.g. a "3D flyover" beat) are stylistic legacy. Adding structure is fine; changing a beat is a concept change needing human sign-off.
 - `README.md` pitch has been rewritten to 2.5D-first.
 
 ## Architecture: the 4 layers
@@ -40,10 +53,12 @@ Every planning doc assumes this model, regardless of 2D/3D:
 
 ```
 Layer 4 — Real agent execution    (EXISTS) claude-code, gemini-cli, MCP, SSH
-Layer 3 — I/O bridge               (TODO, Phase 2) Python WebSocket → spawns agent CLI, synchronous w/ timeout
-Layer 2 — Godot 4 engine           (TODO, Phase 1) — now 2.5D, per the promoted plan
-Layer 1 — Data + config            (EXISTS upstream as submodule) 137+ agent .md files → agents.json
+Layer 3 — UI-agnostic bridge       (TODO, Phase 2) Python WebSocket → spawns agent CLI, synchronous w/ timeout
+Layer 2 — Current frontend         (TODO, Phase 1) — today 2.5D Godot; one of several swappable frontends
+Layer 1 — Data + config            (EXISTS upstream as submodule) 133 agent .md files → agents.json
 ```
+
+Layer 2 is deliberately named for the **role, not the implementation** (`D-020`). A CLI harness, a web UI, or the eventual 3D world are peers of 2.5D Godot, not replacements for the layer. That is what makes `D-005` — the bridge has zero UI awareness — architecture rather than aspiration. **Swap test:** if replacing Godot with the CLI harness would require any bridge change, the boundary is broken and the change fails review.
 
 ## Architecture: the three Godot autoloads
 
@@ -69,7 +84,7 @@ If a change risks one of these, flag it.
 
 ## The `claude-code-tresor` submodule
 
-`.gitmodules` registers `claude-code-tresor` pointing at `https://github.com/adamtasteslikegood/claude-code-tresor.git`, pinned to commit `acfb923…`. **It is empty in fresh checkouts** — initialize it before reading the agent `.md` files:
+`.gitmodules` registers `claude-code-tresor` pointing at `https://github.com/adamtasteslikegood/claude-code-tresor.git`, pinned to commit `b7ec149…` (head of the fork's `10110TLGP/dev`, which is its default branch). **It is empty in fresh checkouts** — initialize it before reading the agent `.md` files:
 
 ```bash
 git submodule update --init --recursive
@@ -85,13 +100,18 @@ cd .. && git add claude-code-tresor && git commit -m "build: bump claude-code-tr
 
 This submodule is the source of truth for the agent definitions that need to become `data/agents.json` for M3. Don't duplicate that data into this repo's tree. Layout inside the submodule:
 
-- `subagents/` — 137+ specialized agent definitions organized by department (`engineering/`, `design/`, `marketing/`, `product/`, `leadership/`, `operations/`, `research/`, `ai-automation/`, `account-customer-success/`, `core/`), plus an `AGENT-INDEX.md`.
-- `agents/` — the 8 production-ready core agents (`systems-architect`, `config-safety-reviewer`, `root-cause-analyzer`, `security-auditor`, `test-engineer`, `performance-tuner`, `refactor-expert`, `docs-writer`).
+- `subagents/` — 133 agent definitions nested `<dept>/<subcat>/<name>/agent.md` across ten categories (`engineering/`, `design/`, `marketing/`, `product/`, `leadership/`, `operations/`, `research/`, `ai-automation/`, `account-customer-success/`, `core/`), plus an `AGENT-INDEX.md`.
+- `agents/` — the same 8 core roles (`systems-architect`, `config-safety-reviewer`, `root-cause-analyzer`, `security-auditor`, `test-engineer`, `performance-tuner`, `refactor-expert`, `docs-writer`) in Claude Code's **runtime** format, not 8 additional roles.
+
+**141 files = 8 + 133, spanning 133 distinct roles.** Both numbers are right; say which you mean. The core eight appear in both trees in different formats, so keying `agents.json` by id makes them collide — see `docs/agent-directory.md` § Agent counts for the M3 hazard.
 
 ## CI workflows
 
-`.github/workflows/ci.yml` runs on push/PR to `main` and `dev`. Two jobs:
+`.github/workflows/ci.yml` runs on push/PR to `main` and `dev`. Three jobs:
 
+The workflow declares `permissions: contents: read` at the top level — every job only reads the repo, and without it `GITHUB_TOKEN` inherits the repository default (CodeQL flags this as `actions/missing-workflow-permissions`, one alert per job). A job that later needs more should declare its own block rather than widening the top-level one. The `gemini-*.yml` workflows declare permissions per job instead.
+
+- **`Validate Specs`** — runs `python3 scripts/validate_specs.py`. Stdlib only, no `pip install` step by design. Hard-fails when a governed doc is missing frontmatter, is unregistered in `specs/meta/doc-registry.json`, declares an authority the registry doesn't grant, links to a file that doesn't exist, disagrees about `doc_set_version`, or indexes a scene id the storyboard doesn't carry.
 - **`Lint Python Bridge`** — installs `flake8 black websockets`, then:
   - `black --check .` (warnings only — failures are echoed but don't fail the build)
   - `flake8 . --select=E9,F63,F7,F82` (hard fail on syntax errors / undefined names)
@@ -131,12 +151,13 @@ Top level holds the entry-point docs every contributor (human or agent) is expec
 - `docs/designs/2.5D-RPG-Prototype.md` — **active design.** The 2.5D top-down pivot.
 - `docs/storyboard-week1.md` — Day 0 / Day 1 / Day 2 tutorial narrative beats.
 - `docs/quick-reference.md` — one-page summary: build order, autoloads, department table.
-- `docs/agent-directory.md` — taxonomy of the 137+ agent roles across nine departments.
+- `docs/agent-directory.md` — taxonomy of the 133 agent roles across nine departments plus Core. **Taxonomy authority (`D-017`)** — every other count in the repo derives from here.
 - `docs/assets/` — `plaza_build_steps.html`, `plaza_godot_architecture.svg`.
 
 `specs/` — development process (the *how* and *when*, action-oriented). See `specs/README.md` for the folder index.
 
-- `specs/aligned-spec-v0.2.5.md` — **current source-of-truth for spec details.** META-SPEC, revised outlines for legacy Documents 00–04, UI-agnostic bridge architecture, department→floor taxonomy.
+- `specs/meta/` — **start here.** The constitution, the frontmatter schema, the doc registry, the concept driver, the decision register, and the v0.2.5 driver doc. See the section above.
+- `specs/aligned-spec-v0.2.5.md` — tier-4 research input, `SUPERSEDED`. Retained for its findings, the Document A bridge architecture, and the Document B taxonomy.
 - `specs/roadmap.md` — M1 → M8 milestone structure (still authoritative); 3D-specific node names inside milestone bodies are deprecated.
 - `specs/task-tracker.md` — working checklist across all phases; same 3D-deprecation caveat as `roadmap.md`.
 - `specs/branching-strategy.md` — branch protection, status checks, CODEOWNERS gating. Still says "ClaudeForge" and references workflows that don't exist here; treat as intended policy until those land.
@@ -183,6 +204,6 @@ bridge/
   bridge.py    # Phase 2 Python WebSocket server (ws://localhost:8765), synchronous-with-timeout per the 2.5D plan
 ```
 
-The first real code task is generating `data/agents.json` from the `claude-code-tresor` submodule's 137+ agent `.md` files, keyed by agent id, with at minimum `{name, role, dept, color, tools, description}`. M3 on the roadmap depends on this. Don't fabricate this JSON by hand — derive it from the submodule (init it first).
+The first real code task is generating `data/agents.json` from the `claude-code-tresor` submodule's 133 agent `.md` files (nested `subagents/<dept>/<subcat>/<name>/agent.md`), keyed by agent id, with at minimum `{name, role, dept, color, tools, description}`. M3 on the roadmap depends on this. Don't fabricate this JSON by hand — derive it from the submodule (init it first).
 
 Note that there is already a `scripts/` directory worth of bash/Python tooling on the `feature/TO-1-prototype-initialization` branch. Before adding new `scripts/` files on `main`, check whether something equivalent already exists on that branch.

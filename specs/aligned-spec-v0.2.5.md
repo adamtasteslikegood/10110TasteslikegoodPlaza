@@ -1,68 +1,38 @@
-
-/
-10110-TastesLikegood plaza
-10110-TastesLikegood plaza
-
-
-
-
-
-
-
-
-Pinned
-Hide
-Plan videogame storyboards
-Apr 18
-Recents
-2.5D UI and agent bridge layer project update
-Jul 13
-Blender installation on Arch Linux
-Jul 10
-3D design tools for 10110-tlgp concept
-Apr 23
-Zipping files and folders on Arch Linux
-Apr 9
-Instructions
-https://github.com/adamtasteslikegood/10110TasteslikegoodPlaza.git
-
-Memory
-Only you
-Purpose & context Adam is a solo founder and tech lead building 10110 TastesLike Plaza (TLGP) — a 2.5D office world built as a graphical interface layer over a real AI agent workspace. The core concept: the game world is not a game but an alternative GUI for interacting with 130+ AI agent roles organized across departments, with each NPC character being a personified agent. The tutorial is the onboarding — bootstrapping the fictional startup directly configures real agent capabilities. The project lives at github.com/adamtasteslikegood/10110TasteslikegoodPlaza on the dev branch. Key decisions locked in: Prototype is definitively 2.5D Godot (top-down, Pokémon/Stardew Valley register); 3D first-person explicitly deferred to v2.0–3.0 Agent bridge layer must be strictly UI-agnostic — zero UI awareness — so CLI, web UI, or future 3D frontend can swap in with no bridge changes The 01WEEK1STORYBOARD.md (14 dual-purpose scenes) is the declared source of truth for narrative and concept decisions; all other documents align to it. Adam also maintains a separate Angular/vegan cookbook web project (tasteslikegoodtheangularsvegancookbook) hosted at github.com/adamtasteslikegood/tasteslikegood.com.git. Current state A complete aligned v0.2.5 specification set was produced, including: META-SPEC (document hierarchy and binding rules for AI agents), revised outlines for Documents 00–04, a UI-agnostic bridge architecture (Document A) with "swap test" as the hard review gate, and a department-to-floor taxonomy (Document B) mapping 10 submodule departments to office floors with color tints The adamtasteslikegood/claude-code-tresor submodule (agents across 10 departments, color-coding system) and the alirezarezvani/claude-skills library (v2.11.1, 355 skills across 18 domains) are both in scope Jira/Confluence spaces were being configured in parallel (space TLGP / project TO); spec output was formatted for direct lift into those tools Known open issues: verbatim 14-scene Storyboard body was not fully retrievable (§01.3 is a proposed reconstruction needing reconciliation); Apache-2.0 vs. MIT license inconsistency exists in the repo On the horizon Reconciling the Week 1 Storyboard reconstruction against the original source Resolving the repo license inconsistency Completing Jira/Confluence space configuration and importing spec artifacts Engaging a collaborator with 3D software skills (Maya identified as strongest fit; .glb/GLTF 2.0 export required for Godot compatibility) for eventual v2.0+ 3D assets Extension rooms planned for future departments: Finance, RA/QM Compliance, Commercial, Productivity Key learnings & principles "Spirit not sprint" — Adam's stated working principle; pace is concept-driven, not deadline-driven The storyboard-first, spec-driven approach (with the Week 1 Storyboard as canonical source of truth) prevents spec drift across documents The UI-agnostic bridge constraint is a hard architectural gate, not a preference — enforced via "swap test" review gstack's "thin harness, fat skills" pattern (Garry Tan / YC) informs the agent architecture philosophy The ~200-line instruction budget is a practitioner heuristic, not a hard measured limit Approach & patterns Spec-first, pre-code — full specification alignment before implementation begins Builds iteratively with scaffolding in place before details are finalized; open questions are explicitly documented rather than assumed away Content organized for reuse in external PM tools (Confluence, Jira, GitHub) Works at the intersection of game design narrative and real technical architecture simultaneously (dual-layer scene mapping) Communication style: informal, high-energy, concept-driven, deliberate humor — appreciates Claude matching that register while staying technically precise Tools & resources Engine: Godot 4 (GDScript + Python WebSocket bridge) OS/environment: Arch Linux (EndeavourOS), KDE Plasma, command-line comfortable PM/docs: Jira (space TLGP / project TO), Confluence, GitHub (dev branch workflow) Agent infrastructure: claude-code-tresor submodule, claude-skills library v2.11.1, gstack (Claude Code harness) 3D pipeline (future): Maya preferred for character/environment work; .glb/GLTF 2.0 for Godot import
-
-Last updated Jul 13
-
-Context
-2% of project capacity used
-
-TastesLike Plaza v0_2_5_ Aligned Specification Set for a 2_5D AI Agent Office World.md
-401 lines
-
-md
-
-
-
-plaza_godot_architecture copy.svg
-127 lines
-
-text
-
-
-
-plaza_build_steps.html
-227 lines
-
-html
-
-
-TastesLike Plaza v0_2_5_ Aligned Specification Set for a 2_5D AI Agent Office World.pdf
-pdf
-
-
-TastesLike Plaza v0_2_5_ Aligned Specification Set for a 2_5D AI Agent Office World.md
-
+---
+doc_id: ALIGNED-SPEC-025
+title: Aligned Specification Set v0.2.5 (research input)
+tier: 4
+authority: research
+status: SUPERSEDED
+doc_set_version: 0.2.6
+last_updated: 2026-07
+owner: adamtasteslikegood
+derives_from: []
+---
 
 # 10110 TastesLike Plaza — Aligned Specification Set v0.2.5
+
+> ## ⚠️ This document is a research input, not the source of truth
+>
+> Its normative content was promoted into the meta layer and now lives there:
+> the document hierarchy and binding agent rules in
+> [`meta/META-SPEC.md`](meta/META-SPEC.md), the locked decisions in
+> [`meta/decision-register.md`](meta/decision-register.md), the concept contract
+> and scene index in [`meta/concept-driver.md`](meta/concept-driver.md).
+>
+> **§01.3 is superseded.** Its 14-scene spine was a reconstruction written when
+> the real storyboard could not be retrieved, and it does not match
+> [`../docs/storyboard-week1.md`](../docs/storyboard-week1.md) — it omits Day 0
+> entirely, moves the assistant's introduction, drops the player-configuration
+> and coding-lesson beats, and invents an RA/QM department scene from deferred
+> scope. The side-by-side reconciliation is in
+> [`meta/concept-driver.md`](meta/concept-driver.md) §4.
+>
+> Everything else here — the findings, the ecosystem survey, the Document A
+> bridge architecture, the Document B taxonomy, and the caveats — is retained as
+> rationale worth citing. Cite it as research (`ALIGNED-SPEC-025`); do not quote
+> it as law.
+
  
 ## TL;DR
  

@@ -1,3 +1,15 @@
+---
+doc_id: SPECS-INDEX
+title: specs/ — development process index
+tier: 4
+authority: summary
+status: ACTIVE
+doc_set_version: 0.2.6
+last_updated: 2026-05
+owner: adamtasteslikegood
+derives_from: [META-SPEC]
+---
+
 # specs/
 
 Development-process specifications for **10110 TastesLikegood Plaza** — the *how* and *when*. Files here describe what is being worked on, in what order, against which milestone, and under which rules.
@@ -8,8 +20,9 @@ For design-and-reference docs (the *what* and *why*) see [`../docs/`](../docs/RE
 
 | File | Purpose |
 |---|---|
-| [`aligned-spec-v0.2.5.md`](aligned-spec-v0.2.5.md) | **Current source-of-truth for spec details.** META-SPEC, revised outlines for legacy Documents 00–04, UI-agnostic bridge architecture, department→floor taxonomy. Ratifies the 2.5D pivot and the synchronous-bridge decision. |
-| [`roadmap.md`](roadmap.md) | Work plan. M1 → M8 milestones. The **structure** (critical path **M1 → M4 → M8**) is still authoritative; the **3D-specific node names in milestone bodies are deprecated** — see the aligned spec and the promoted 2.5D design for current implementation details. |
+| [`meta/`](meta/README.md) | **Start here.** The layer above the specs: which document wins, who may decide what, every locked decision, and the CI gate that enforces it. |
+| [`aligned-spec-v0.2.5.md`](aligned-spec-v0.2.5.md) | Research input, `status: SUPERSEDED`. Its normative content was promoted into [`meta/`](meta/README.md); its §01.3 scene spine was a reconstruction that contradicts the real storyboard. Retained for findings, the Document A bridge architecture, the Document B taxonomy, and rationale worth citing. |
+| [`roadmap.md`](roadmap.md) | Work plan. M1 → M8 milestones. The **structure** (critical path **M1 → M4 → M8**) is still authoritative; the **3D-specific node names in milestone bodies are deprecated** — see the promoted 2.5D design for current implementation details. |
 | [`task-tracker.md`](task-tracker.md) | Working checklist across all phases. `[ ]` todo, `[~]` in progress, `[x]` done. Same deprecation caveat as `roadmap.md` for 3D-specific task wording. |
 | [`branching-strategy.md`](branching-strategy.md) | Branch protection rules, required status checks, CODEOWNERS gating. Intended policy — some referenced workflows don't exist yet. See [`../CONTRIBUTING.md`](../CONTRIBUTING.md) for the everyday flow. |
 
@@ -22,6 +35,14 @@ The proof-of-concept hinges on three milestones — if a change risks any of the
 - **M8** — Player question → WebSocket bridge → real `claude @agent-name` invocation → response rendered with a typewriter effect.
 
 Everything else is deferrable. Details in [`roadmap.md`](roadmap.md).
+
+## Before you add or edit anything here
+
+Read [`meta/META-SPEC.md`](meta/META-SPEC.md). Every document in this folder
+declares a tier and an authority in its frontmatter, and
+`python3 scripts/validate_specs.py` (the `Validate Specs` CI job) fails the build
+if a document is unregistered, mis-declared, or links to a file that does not
+exist. `META-SPEC.md` §8 is the four-step checklist.
 
 ## When to add a file here
 
