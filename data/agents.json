@@ -747,7 +747,7 @@
     "dept": "marketing",
     "description": "Educational content specialist for step-by-step tutorials, onboarding guides, and concept explanations. Use proactively for transforming complex concepts into progressive learning experiences.",
     "id_note": "Renamed locally from 'tutorial-engineer', which collides with another department's agent upstream. See scripts/generate_agents_json.py.",
-    "name": "Tutorial Engineer",
+    "name": "Educational Content Writer",
     "role": "Content",
     "source": "claude-code-tresor/subagents/marketing/content/tutorial-engineer/agent.md",
     "subcategory": "content",
@@ -2034,12 +2034,12 @@
       "Task"
     ]
   },
-  "support-ticket-handler": {
+  "support-ticket-responder": {
     "color": "#14B8A6",
     "dept": "operations",
     "description": "Handle support tickets, FAQ responses, and customer emails with troubleshooting guides, canned responses, and help documentation focused on quick resolution and customer satisfaction.",
     "id_note": "Renamed locally from 'customer-support', which collides with another department's agent upstream. See scripts/generate_agents_json.py.",
-    "name": "Customer Support",
+    "name": "Support Ticket Responder",
     "role": "Support",
     "source": "claude-code-tresor/subagents/operations/support/customer-support/agent.md",
     "subcategory": "support",

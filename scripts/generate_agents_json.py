@@ -93,7 +93,7 @@ RENAMES = {
     # Handles tickets, FAQs and canned responses. The account-customer-success
     # agent that keeps the bare `customer-support` slug does something
     # different -- it analyses resolution patterns and escalation risk.
-    "operations/support/customer-support": "support-ticket-handler",
+    "operations/support/customer-support": "support-ticket-responder",
     # Self-described "Educational content specialist"; every capability is
     # pedagogy. Sits in marketing/content/ beside content-creator,
     # content-marketer and content-writer, so the name matches its siblings.
@@ -257,6 +257,12 @@ def build_registry() -> dict:
                 "department's agent upstream. See scripts/generate_agents_json.py."
             )
             agent_id = RENAMES[key]
+            # The display name derives from the id, so it has to be recomputed
+            # after a rename -- otherwise the NPC keeps the upstream label and
+            # the office shows two characters with the same name above
+            # different sprites, which is the confusion the rename exists to
+            # remove.
+            entry["name"] = display_name(agent_id)
 
         if agent_id in agents:
             # Every known collision is handled by EXCLUDED or RENAMES above, so
