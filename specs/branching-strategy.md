@@ -27,7 +27,7 @@ Most branching docs describe an aspiration. This section is the honest split.
 |---|---|
 | `feature/*` `fix/*` `hotfix/*` → `dev` → `main` | Convention, followed in practice |
 | Conventional Commits | Convention |
-| Merge commits, not squash (`D-023`) | **Enforced by repository settings** — squash merging is disabled |
+| Merge commits, not squash (`D-023`) | **Enforced by repository settings** — squash and rebase merging are disabled. Verified 2026-07-26; §4 has the re-check command |
 | `ci.yml` — `Validate Specs`, `Lint Python Bridge`, `Export Godot 4 Prototype` | **Runs on every push and PR to `main` and `dev`** |
 | CodeQL (`Analyze (python)`, `Analyze (actions)`), GitGuardian | **Runs on PRs** |
 | `gemini-*.yml` triage / review / plan-execute | **Runs on PRs, issues, `@gemini-cli` mentions, and a schedule** |
@@ -90,10 +90,24 @@ are not duplicated here. The policy points:
   `type(scope): subject`. Types: `feat` `fix` `docs` `style` `refactor` `perf`
   `test` `build` `ci` `chore` `revert`.
 - **PR titles follow the same format**, under 70 characters.
-- **Merge commits — chosen, not defaulted into** (`D-023`). Squash merging is
-  disabled in repository settings, and every merge on `dev` is a merge commit
+- **Merge commits — chosen, not defaulted into** (`D-023`). Squash **and rebase**
+  merging are disabled in repository settings, so the merge button offers only the
+  one that matches the policy. Every merge on `dev` is a merge commit
   (`Merge pull request #N from …`). The PR remains the unit of *review*; its commits
   land individually and the merge commit records the boundary.
+
+  **This is live, mutable state — verify, don't inherit.** It was already wrong once:
+  the setting changed between the `405` that proved it on 2026-07-26 and a review the
+  same day that found all three merge buttons enabled. Last verified **2026-07-26**
+  (`allow_merge_commit=true`, `allow_squash_merge=false`, `allow_rebase_merge=false`):
+
+  ```bash
+  gh api repos/adamtasteslikegood/10110TasteslikegoodPlaza \
+    --jq '{merge: .allow_merge_commit, squash: .allow_squash_merge, rebase: .allow_rebase_merge}'
+  ```
+
+  If that output ever disagrees with this section, **fix the setting**, not the
+  sentence — the policy is `D-023`, and the setting exists to enforce it.
 
   **Why, so nobody "fixes" this back.** The squash-only rule was inherited from
   `alirezarezvani/claude-code-tresor` along with the rest of this document — it was
@@ -220,6 +234,21 @@ first rewrite and had to be caught separately:
 Both were plausible-sounding rules that were simply false here. When editing this
 file, check a claim against the repository before keeping it — inheritance is not
 evidence.
+
+**Second failure mode: a claim that was true when checked, and then wasn't.** The
+`405` above was real evidence on 2026-07-26 — and within hours a review found all
+three merge buttons enabled again, because repository settings had changed underneath
+the sentence. Verified-once is not verified.
+
+So any claim in this document about **live, mutable state** — merge settings, branch
+protection, which checks are required — carries a verification date and the command
+to re-run. Two things follow:
+
+1. When the command disagrees with the doc, ask which one is *supposed* to be right.
+   Here the answer was the doc: the setting was changed to match `D-023`, not the
+   sentence weakened to match the setting.
+2. Prefer claims that a script could check. `Validate Specs` catches doc-to-doc drift;
+   nothing yet catches doc-to-GitHub-settings drift, which is why these carry dates.
 
 ---
 

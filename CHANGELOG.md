@@ -39,7 +39,7 @@ section at release time. PR references in parentheses.
   exists in the register, never that the declaring document is entitled to decide.
   Recorded rather than fixed — the seven decisions are all substantively correct and
   evidenced; what is wrong is the bookkeeping about who was entitled to make them.
-  Tracked as issue #11 with three options; `META-SPEC` §4.2 now says to open an issue
+  Tracked as issue #11 with three options; `META-SPEC` §4 step 2 now says to open an issue
   for conflicts that need discussion, keeping the register as the index and the issue
   as where it gets settled.
 
@@ -119,7 +119,7 @@ locked decisions (`D-014`, `D-020`) moved the doc set version per `META-SPEC` §
   `4b68050`, each having merged the same upstream state by a different route. The
   trees are byte-identical (`b7aee19`), so the first `dev` → `main` merge won't
   fast-forward but cannot conflict.
-- **All seven conflicts in the register now read RESOLVED.**
+- **Seven of eight conflicts resolved.** §4.8 is open, tracked as issue #11.
 - **Validator:** links into an uninitialised submodule are now checked when the
   submodule is present and reported as skipped when it is not, instead of failing
   the build. CI checks out without submodules, so this is what makes the restored

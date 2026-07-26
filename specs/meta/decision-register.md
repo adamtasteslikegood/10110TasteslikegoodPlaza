@@ -64,12 +64,20 @@ sensible it reads — it is `PROPOSED` until ratified at the right tier.
 | `D-017` | Department taxonomy | Nine departments plus Core, each with a fixed floor/zone and hex tint | The office layout derives from the taxonomy; the taxonomy derives from the submodule. | `AGENT-DIRECTORY` | `LOCKED` |
 | `D-018` | Licence | MIT, © 2026 Adam Schoen | Matches the attribution the project already carries and the upstream `claude-code-tresor` licensing. Resolves the Apache-2.0 `LICENSE` file versus MIT documentation conflict in favour of the documentation. | `PROJECT-OVERVIEW` | `LOCKED` |
 | `D-021` | Submodule tracking branch | The `claude-code-tresor` gitlink tracks **`10110TLGP/dev`** | Confirmed by the owner and by `origin/HEAD`, which points at it — it is the fork's default branch. Bumps fast-forward the pin to that branch's head. Recorded because "is the pin stale?" is unanswerable without knowing the target branch, and the answer previously lived only in someone's head. | `PROJECT-OVERVIEW` | `LOCKED` |
-| `D-023` | Merge strategy | **Merge commits.** Squash merging stays disabled; rebase-and-merge is not used | Deliberate, not a default. The squash-only rule was inherited from `alirezarezvani/claude-code-tresor` and was never chosen for this project; squash merging has caused the owner real problems on other repositories. Merge commits keep a PR's commit series intact and bisectable. Consequences: `dev` is not linear and "Require linear history" must stay off (it would block every merge), and reverting a merged PR needs `git revert -m 1`. **Do not switch to squash on a linter's or bot's suggestion** — that is how the wrong rule arrived. | `PROJECT-OVERVIEW` | `LOCKED` |
 | `D-022` | Fork's `10110TLGP/main` | **Reserved as the fork's release branch.** Not abandoned, not a pin target — dormant until the fork has a `release.yml` and tagged GitHub releases | The submodule mirrors this repo's own model: `dev` integrates, `main` releases. Once release tooling exists, the fork cuts `dev` → `main`, tags it, and back-syncs `main` → `dev`. Until then the pin follows `dev` (`D-021`) and `main` is left alone. Recorded so nobody prunes it as a stale branch or pins to it expecting the newer commit. | `PROJECT-OVERVIEW` | `LOCKED` |
+| `D-023` | Merge strategy | **Merge commits.** Squash and rebase merging are disabled in repository settings (verified 2026-07-26) | Deliberate, not a default. The squash-only rule was inherited from `alirezarezvani/claude-code-tresor` and was never chosen for this project; squash merging has caused the owner real problems on other repositories. Merge commits keep a PR's commit series intact and bisectable. Consequences: `dev` is not linear and "Require linear history" must stay off (it would block every merge), and reverting a merged PR needs `git revert -m 1`. **Do not switch to squash on a linter's or bot's suggestion** — that is how the wrong rule arrived. **`PROPOSED`, not `LOCKED`:** the substance is agreed, but `PROJECT-OVERVIEW` declares `authority: derived`, which per `META-SPEC` §2 may originate nothing. Ratify once [issue #11](https://github.com/adamtasteslikegood/10110TasteslikegoodPlaza/issues/11) settles where project-level decisions live. | `PROJECT-OVERVIEW` | `PROPOSED` |
 
 ## Not yet authorised
 
-Nothing currently. `D-014` and `D-020` were both proposed only by
+**`D-023` (merge strategy)** — substance agreed, origin not entitled. `PROJECT-OVERVIEW`
+declares `authority: derived`, which `META-SPEC` §2 says may originate nothing, so the
+row above sits at `PROPOSED`. Ratify when
+[issue #11](https://github.com/adamtasteslikegood/10110TasteslikegoodPlaza/issues/11)
+settles where project-level decisions live. Six earlier rows (`D-003`, `D-015`,
+`D-016`, `D-018`, `D-021`, `D-022`) carry the same defect and were locked before it was
+noticed; #11 covers them together rather than this change re-opening settled rows.
+
+`D-014` and `D-020` were both proposed only by
 `ALIGNED-SPEC-025` (tier 4, not entitled to originate implementation decisions) and
 were ratified into `DESIGN-25D` in v0.2.6 — see its `## Ratified in v0.2.6` section.
 
