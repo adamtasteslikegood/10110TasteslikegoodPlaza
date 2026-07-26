@@ -559,27 +559,6 @@
       "Task"
     ]
   },
-  "customer-support-operations": {
-    "color": "#14B8A6",
-    "dept": "operations",
-    "description": "Handle support tickets, FAQ responses, and customer emails with troubleshooting guides, canned responses, and help documentation focused on quick resolution and customer satisfaction.",
-    "id_note": "Department-suffixed: the bare slug collides with another department's agent of the same name upstream.",
-    "name": "Customer Support",
-    "role": "Support",
-    "source": "claude-code-tresor/subagents/operations/support/customer-support/agent.md",
-    "subcategory": "support",
-    "tools": [
-      "Read",
-      "Write",
-      "Edit",
-      "Grep",
-      "Glob",
-      "Bash",
-      "WebSearch",
-      "WebFetch",
-      "Task"
-    ]
-  },
   "data-engineer": {
     "color": "#3B82F6",
     "dept": "engineering",
@@ -762,6 +741,26 @@
       "Bash",
       "Task"
     ]
+  },
+  "educational-content-writer": {
+    "color": "#10B981",
+    "dept": "marketing",
+    "description": "Educational content specialist for step-by-step tutorials, onboarding guides, and concept explanations. Use proactively for transforming complex concepts into progressive learning experiences.",
+    "id_note": "Renamed locally from 'tutorial-engineer', which collides with another department's agent upstream. See scripts/generate_agents_json.py.",
+    "name": "Tutorial Engineer",
+    "role": "Content",
+    "source": "claude-code-tresor/subagents/marketing/content/tutorial-engineer/agent.md",
+    "subcategory": "content",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "WebSearch",
+      "WebFetch"
+    ],
+    "upstream_name": "tutorial-engineer"
   },
   "elixir-pro": {
     "color": "#3B82F6",
@@ -1029,27 +1028,6 @@
       "Grep",
       "Glob",
       "Bash",
-      "Task"
-    ]
-  },
-  "infrastructure-maintainer-operations": {
-    "color": "#14B8A6",
-    "dept": "operations",
-    "description": "Monitor system health, optimize performance, manage scaling, and ensure infrastructure reliability with capacity planning, cost optimization, disaster recovery, and comprehensive observability for app operations.",
-    "id_note": "Department-suffixed: the bare slug collides with another department's agent of the same name upstream.",
-    "name": "Infrastructure Maintainer",
-    "role": "Infrastructure",
-    "source": "claude-code-tresor/subagents/operations/infrastructure/infrastructure-maintainer/agent.md",
-    "subcategory": "infrastructure",
-    "tools": [
-      "Read",
-      "Write",
-      "Edit",
-      "Grep",
-      "Glob",
-      "Bash",
-      "WebSearch",
-      "WebFetch",
       "Task"
     ]
   },
@@ -2056,6 +2034,28 @@
       "Task"
     ]
   },
+  "support-ticket-handler": {
+    "color": "#14B8A6",
+    "dept": "operations",
+    "description": "Handle support tickets, FAQ responses, and customer emails with troubleshooting guides, canned responses, and help documentation focused on quick resolution and customer satisfaction.",
+    "id_note": "Renamed locally from 'customer-support', which collides with another department's agent upstream. See scripts/generate_agents_json.py.",
+    "name": "Customer Support",
+    "role": "Support",
+    "source": "claude-code-tresor/subagents/operations/support/customer-support/agent.md",
+    "subcategory": "support",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "WebSearch",
+      "WebFetch",
+      "Task"
+    ],
+    "upstream_name": "customer-support"
+  },
   "systems-architect": {
     "color": "#FFD700",
     "dept": "core",
@@ -2238,25 +2238,6 @@
       "Glob",
       "Bash",
       "Task"
-    ]
-  },
-  "tutorial-engineer-marketing": {
-    "color": "#10B981",
-    "dept": "marketing",
-    "description": "Educational content specialist for step-by-step tutorials, onboarding guides, and concept explanations. Use proactively for transforming complex concepts into progressive learning experiences.",
-    "id_note": "Department-suffixed: the bare slug collides with another department's agent of the same name upstream.",
-    "name": "Tutorial Engineer",
-    "role": "Content",
-    "source": "claude-code-tresor/subagents/marketing/content/tutorial-engineer/agent.md",
-    "subcategory": "content",
-    "tools": [
-      "Read",
-      "Write",
-      "Edit",
-      "Grep",
-      "Glob",
-      "WebSearch",
-      "WebFetch"
     ]
   },
   "twitter-engager": {

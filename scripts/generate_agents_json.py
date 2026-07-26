@@ -63,7 +63,47 @@ DEPARTMENT_COLOURS = {
     "research": "#F97316",
 }
 
-EXPECTED_TOTAL = 133
+# --------------------------------------------------------------------------
+# Local curation of upstream id collisions
+# --------------------------------------------------------------------------
+# Upstream ships 133 files carrying only 130 distinct `name` slugs. Three roles
+# exist in two departments each -- an artefact of the v2.7.0 consolidation that
+# their own DUPLICATE-ANALYSIS.md (v2.5.0) predates and does not cover.
+#
+# Keyed by source path rather than by slug, so if upstream moves or renames a
+# file the entry stops matching and the build fails, instead of the override
+# silently landing on the wrong agent.
+#
+# This is still generation, not hand-editing: the curation is code, reviewed in
+# the diff, and `data/agents.json` remains a pure function of the submodule
+# plus these tables. `D-016` holds.
+
+EXCLUDED = {
+    # Near-identical to engineering/devops/infrastructure-maintainer: same
+    # scope (health, performance, scaling, reliability), adding only capacity
+    # planning and disaster recovery. The clearest case of the three that this
+    # is one role filed twice rather than two roles sharing a name. Dropped so
+    # the office has one infrastructure NPC, not two doing the same job.
+    "operations/infrastructure/infrastructure-maintainer": (
+        "duplicate of engineering/devops/infrastructure-maintainer"
+    ),
+}
+
+RENAMES = {
+    # Handles tickets, FAQs and canned responses. The account-customer-success
+    # agent that keeps the bare `customer-support` slug does something
+    # different -- it analyses resolution patterns and escalation risk.
+    "operations/support/customer-support": "support-ticket-handler",
+    # Self-described "Educational content specialist"; every capability is
+    # pedagogy. Sits in marketing/content/ beside content-creator,
+    # content-marketer and content-writer, so the name matches its siblings.
+    # The engineering agent keeping `tutorial-engineer` builds tutorials from
+    # code, which is a different job.
+    "marketing/content/tutorial-engineer": "educational-content-writer",
+}
+
+# 133 upstream files, minus the one excluded above.
+EXPECTED_TOTAL = 133 - len(EXCLUDED)
 
 
 def parse_frontmatter(path: Path) -> dict:
@@ -194,34 +234,50 @@ def build_registry() -> dict:
 
     agents: dict = {}
     problems: list = []
+    seen_keys: set = set()
+
     for path in sorted(SUBAGENTS.rglob("agent.md")):
+        key = path.parent.relative_to(SUBAGENTS).as_posix()
+
+        if key in EXCLUDED:
+            seen_keys.add(key)
+            continue
+
         try:
             agent_id, entry = build_entry(path)
         except ValueError as exc:
             problems.append(str(exc))
             continue
-        if agent_id in agents:
-            # Upstream ships 133 files carrying 130 distinct `name` slugs:
-            # customer-support, infrastructure-maintainer and tutorial-engineer
-            # each exist in two departments, with different bodies and different
-            # tints. Almost certainly an unnoticed artefact of the v2.7.0
-            # consolidation -- their own DUPLICATE-ANALYSIS.md is v2.5.0 and
-            # does not cover these.
-            #
-            # Suffix the later one by department rather than dropping it, so no
-            # definition is lost and 130 ids stay untouched. Iteration is over a
-            # sorted path list, so which one keeps the bare slug is stable.
-            agent_id = f"{agent_id}-{entry['dept']}"
+
+        if key in RENAMES:
+            seen_keys.add(key)
+            entry["upstream_name"] = agent_id
             entry["id_note"] = (
-                "Department-suffixed: the bare slug collides with another "
-                "department's agent of the same name upstream."
+                f"Renamed locally from '{agent_id}', which collides with another "
+                "department's agent upstream. See scripts/generate_agents_json.py."
             )
-            if agent_id in agents:
-                problems.append(
-                    f"{path}: id '{agent_id}' still collides after suffixing"
-                )
-                continue
+            agent_id = RENAMES[key]
+
+        if agent_id in agents:
+            # Every known collision is handled by EXCLUDED or RENAMES above, so
+            # reaching here means upstream introduced a new one. Fail loudly
+            # rather than auto-suffixing: a new duplicate is a judgement call
+            # about what the two agents actually do, and that belongs to a
+            # human reading both descriptions, not to a naming rule.
+            problems.append(
+                f"{path}: id '{agent_id}' collides with "
+                f"{agents[agent_id]['source']}. Upstream added a new duplicate "
+                "-- read both and add an EXCLUDED or RENAMES entry."
+            )
+            continue
         agents[agent_id] = entry
+
+    stale = sorted((set(EXCLUDED) | set(RENAMES)) - seen_keys)
+    for key in stale:
+        problems.append(
+            f"curation entry '{key}' matched no file -- upstream moved or "
+            "removed it. Re-check the collision and update the table."
+        )
 
     if problems:
         print(f"Agent data FAILED -- {len(problems)} problem(s):\n")
