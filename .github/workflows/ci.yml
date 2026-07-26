@@ -6,6 +6,21 @@ on:
   pull_request:
     branches: [ main, dev ]
 
+# Least privilege for the whole workflow. Every job here only reads the
+# repository: checkout, set up Python, run a validator or a linter. Nothing
+# writes to the repo, posts a comment, or mints a token, so no job needs more
+# than `contents: read`.
+#
+# Without this, GITHUB_TOKEN inherits the repository default, which may be
+# read/write. CodeQL flags that as actions/missing-workflow-permissions - one
+# alert per job. The gemini-*.yml workflows already declare permissions at the
+# job level; this file was the only one with none at any level.
+#
+# A job that later needs more (publishing a release, commenting on a PR) should
+# declare its own `permissions:` block rather than widening this one.
+permissions:
+  contents: read
+
 jobs:
   validate-specs:
     name: Validate Specs

@@ -186,10 +186,11 @@ Resolved in favour of the documentation and the upstream attribution:
 
 ### 4.7 Which submodule branch the project tracks — **OPEN**
 
-**Narrowed on 2026-07-26.** The pin was bumped `acfb923` → `b7ec149`, the new head
-of `10110TLGP/dev` after upstream was merged into it. That settles the practical
-half: **the pin tracks `10110TLGP/dev`**, which is also the fork's default branch
-(`origin/HEAD` points at it). `CLAUDE.md` now names the commit and the branch.
+**Half closed on 2026-07-26.** The pin was bumped `acfb923` → `b7ec149`, the new
+head of `10110TLGP/dev` after upstream was merged into it, and the owner confirmed
+that branch is the fork's default — as does `origin/HEAD`. Registered as **`D-021`**
+in [`decision-register.md`](decision-register.md): **the gitlink tracks
+`10110TLGP/dev`**. `CLAUDE.md` names both the commit and the branch.
 
 What remains open is `10110TLGP/main`. It sits at `bcfe30c` and is **still not an
 ancestor of the pin** — it carries its own earlier merge from upstream, so the two

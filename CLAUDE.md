@@ -109,6 +109,8 @@ This submodule is the source of truth for the agent definitions that need to bec
 
 `.github/workflows/ci.yml` runs on push/PR to `main` and `dev`. Three jobs:
 
+The workflow declares `permissions: contents: read` at the top level — every job only reads the repo, and without it `GITHUB_TOKEN` inherits the repository default (CodeQL flags this as `actions/missing-workflow-permissions`, one alert per job). A job that later needs more should declare its own block rather than widening the top-level one. The `gemini-*.yml` workflows declare permissions per job instead.
+
 - **`Validate Specs`** — runs `python3 scripts/validate_specs.py`. Stdlib only, no `pip install` step by design. Hard-fails when a governed doc is missing frontmatter, is unregistered in `specs/meta/doc-registry.json`, declares an authority the registry doesn't grant, links to a file that doesn't exist, disagrees about `doc_set_version`, or indexes a scene id the storyboard doesn't carry.
 - **`Lint Python Bridge`** — installs `flake8 black websockets`, then:
   - `black --check .` (warnings only — failures are echoed but don't fail the build)

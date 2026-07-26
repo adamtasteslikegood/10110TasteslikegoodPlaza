@@ -10,6 +10,16 @@ section at release time. PR references in parentheses.
 
 ## [Unreleased]
 
+### Security
+
+- **`.github/workflows/ci.yml` now declares `permissions: contents: read`.** It was
+  the only workflow with no permissions at any level, so `GITHUB_TOKEN` inherited
+  the repository default — CodeQL's `actions/missing-workflow-permissions`, one
+  alert per job. Every job in the file only reads the repo (checkout, set up
+  Python, run a validator or linter), so `contents: read` is the correct least
+  privilege. The `gemini-*.yml` workflows already declare permissions per job and
+  were never affected.
+
 ### Doc set v0.2.6 — the four open conflicts closed
 
 Six of seven conflicts in the open-conflict register now read RESOLVED. Two new
