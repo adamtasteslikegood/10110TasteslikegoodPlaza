@@ -265,7 +265,7 @@ existed here. Rewritten in doc set v0.2.6 to describe **this** repository. Where
 this document and the upstream original differ, this one is simply correct — there
 is nothing to reconcile.
 
-**Inherited rules are the failure mode to watch for in this file.** Two survived the
+**Inherited rules are the failure mode to watch for in this file.** Three survived the
 first rewrite and had to be caught separately:
 
 | Inherited rule | How it was caught | Outcome |
@@ -274,7 +274,7 @@ first rewrite and had to be caught separately:
 | "Squash and merge exclusively… no merge commits" | The merge API returned `405 Squash merges are not allowed on this repository` | Reversed to merge commits and registered as `D-023`, with the rationale recorded so it is not re-inherited |
 | "Branch protection: not yet configured" | `/branches/dev/protection` → `404 Branch not protected` was read as "unprotected". `dev` is protected by ruleset `18798438` | §5 rewritten to describe the active ruleset. **The 404 means no *classic* protection, not no protection** — rulesets are a separate API surface |
 
-Both were plausible-sounding rules that were simply false here. When editing this
+All three were plausible-sounding rules that were simply false here. When editing this
 file, check a claim against the repository before keeping it — inheritance is not
 evidence.
 
@@ -290,6 +290,18 @@ the thing you are asking about is worse than no check at all, because it *feels*
 evidence. Both the original claim and the first review pass made this exact mistake.
 When a check returns "nothing configured," confirm the endpoint can see the kind of
 configuration you are looking for.
+
+**Fourth failure mode: a flag that reads correctly and does not exist.**
+`.github/workflows/claude-review.yml` passed `--comment` (and `--fix`) through
+`claude_args`, which is forwarded verbatim to the Claude Code CLI. Those are
+`claude-code-action` *inputs*, not CLI options, so every run of the independent
+review died with `unknown option '--comment'` before reviewing anything. Because the
+job is advisory and `continue-on-error`, the workflow stayed green and the red check
+read as noise — the review had never run at all. Verified against `claude --help`:
+`--allowed-tools` / `--disallowed-tools` exist; `--comment` and `--fix` match nothing.
+Same shape as the rows above — a name that sounds right, never checked against the
+tool that receives it. **When a workflow forwards arguments to a binary, check them
+against that binary's `--help`, not against the action's documentation.**
 
 So any claim in this document about **live, mutable state** — merge settings, branch
 protection, which checks are required — carries a verification date and the command
