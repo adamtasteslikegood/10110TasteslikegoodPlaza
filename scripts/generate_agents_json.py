@@ -93,7 +93,7 @@ RENAMES = {
     # Handles tickets, FAQs and canned responses. The account-customer-success
     # agent that keeps the bare `customer-support` slug does something
     # different -- it analyses resolution patterns and escalation risk.
-    "operations/support/customer-support": "support-ticket-responder",
+    "operations/support/customer-support": "support-ticket-handler",
     # Self-described "Educational content specialist"; every capability is
     # pedagogy. Sits in marketing/content/ beside content-creator,
     # content-marketer and content-writer, so the name matches its siblings.

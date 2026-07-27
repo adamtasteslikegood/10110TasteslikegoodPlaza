@@ -2034,12 +2034,12 @@
       "Task"
     ]
   },
-  "support-ticket-responder": {
+  "support-ticket-handler": {
     "color": "#14B8A6",
     "dept": "operations",
     "description": "Handle support tickets, FAQ responses, and customer emails with troubleshooting guides, canned responses, and help documentation focused on quick resolution and customer satisfaction.",
     "id_note": "Renamed locally from 'customer-support', which collides with another department's agent upstream. See scripts/generate_agents_json.py.",
-    "name": "Support Ticket Responder",
+    "name": "Support Ticket Handler",
     "role": "Support",
     "source": "claude-code-tresor/subagents/operations/support/customer-support/agent.md",
     "subcategory": "support",
