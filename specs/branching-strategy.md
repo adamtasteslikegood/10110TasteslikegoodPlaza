@@ -303,6 +303,23 @@ Same shape as the rows above — a name that sounds right, never checked against
 tool that receives it. **When a workflow forwards arguments to a binary, check them
 against that binary's `--help`, not against the action's documentation.**
 
+**Fifth failure mode: a second copy of repository state, in the one file that is
+expensive to correct.** The same `claude-review.yml` carried its own description of
+the repo — *"a governed document set, not an application — there is no Godot project
+and no Node"* — and handed it to every reviewer as fact. It was accurate when
+written and false the moment M1 landed. Ordinary staleness, except for the trap
+underneath it: `claude-code-action` refuses to run when the workflow differs from the
+copy on the default branch, so **any PR that corrects this file cannot be reviewed by
+the reviewer it configures**, and the check still reports a fast green (observed on
+#17 run 3 and #19). The copy most likely to rot was also the copy most costly to fix,
+and the failure was silent in both directions.
+
+Fixed by deleting the copy rather than refreshing it: the prompt now states review
+*method* and points at `CLAUDE.md` for repository *state*, with `CLAUDE.md` named as
+the winner if they ever disagree. **Configuration should reference the source of
+truth, not restate it** — a rule the doc set already applies to itself, which took
+five rounds to notice applied to CI as well.
+
 So any claim in this document about **live, mutable state** — merge settings, branch
 protection, which checks are required — carries a verification date and the command
 to re-run. Two things follow:
