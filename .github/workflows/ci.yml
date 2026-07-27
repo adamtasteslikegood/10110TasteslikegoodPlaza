@@ -106,6 +106,16 @@ jobs:
     # needs to consume it.
     env:
       GODOT_VERSION: 4.7.1
+      # sha512 of Godot_v4.7.1-stable_linux.x86_64.zip, from the release's
+      # SHA512-SUMS.txt. Pinned here rather than fetched at run time on purpose:
+      # a sums file pulled from the same origin as the binary would be swapped by
+      # anyone able to swap the binary. A hash committed to git is reviewable, and
+      # changing it shows up in a diff.
+      #
+      # To bump: update GODOT_VERSION, then
+      #   curl -fsSL https://github.com/godotengine/godot/releases/download/<ver>-stable/SHA512-SUMS.txt \
+      #     | grep linux.x86_64.zip
+      GODOT_SHA512: 4ccdab7a48eeccbe8819a2fc1f6262f8d72065d98601bcb3743fcbd7ebd39f373758a788ee3293a05ec5b2c48538266c437404312e372225cd2df273945a2de9
     steps:
       - uses: actions/checkout@v4
 
@@ -116,6 +126,7 @@ jobs:
           # previous stub's comment pointed at, no longer serves Godot at all.
           url="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
           curl -fsSL -o godot.zip "$url"
+          echo "${GODOT_SHA512}  godot.zip" | sha512sum -c -
           unzip -q godot.zip
           mv "Godot_v${GODOT_VERSION}-stable_linux.x86_64" /usr/local/bin/godot
           chmod +x /usr/local/bin/godot
