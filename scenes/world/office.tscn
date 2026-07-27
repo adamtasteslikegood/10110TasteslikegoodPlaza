@@ -1,0 +1,15 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scenes/world/office.gd" id="1_office"]
+[ext_resource type="PackedScene" path="res://scenes/npc/agent_npc.tscn" id="2_npc"]
+
+[node name="Office" type="Node2D"]
+script = ExtResource("1_office")
+
+[node name="SystemsArchitect" parent="." instance=ExtResource("2_npc")]
+position = Vector2(900, 180)
+agent_id = "systems-architect"
+
+[node name="SecurityAuditor" parent="." instance=ExtResource("2_npc")]
+position = Vector2(1060, 340)
+agent_id = "security-auditor"

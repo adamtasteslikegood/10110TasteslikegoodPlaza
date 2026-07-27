@@ -95,18 +95,34 @@ jobs:
   godot-build:
     name: Export Godot 4 Prototype
     runs-on: ubuntu-latest
+    # Imports the project and runs the headless smoke test. This job used to echo
+    # "Godot project not initialized yet" and go green, which is indistinguishable
+    # from a passing build -- the same false-green shape as the review workflow in
+    # PR #17. It now fails when a scene, a script or the agent data is broken.
+    #
+    # No export templates are downloaded: the ~80MB editor build is enough to
+    # import and run headless, where a web export would pull ~1GB per run to
+    # produce an artifact nothing consumes yet. Wire the export when something
+    # needs to consume it.
+    env:
+      GODOT_VERSION: 4.7.1
     steps:
       - uses: actions/checkout@v4
 
-      # Placeholder: Real Godot export will be configured here once the project file (project.godot) is added.
-      # You can use 'firebelley/godot-export' or similar actions.
-      - name: Godot Web Export (Stub)
+      - name: Install Godot ${{ env.GODOT_VERSION }}
         run: |
-          echo "Godot project not initialized yet. Skipping actual export."
-          # Once initialized, use something like:
-          # uses: firebelley/godot-export@v5.2.1
-          # with:
-          #   godot_executable_download_url: https://downloads.tuxfamily.org/godotengine/4.2.1/Godot_v4.2.1-stable_linux.x86_64.zip
-          #   godot_export_templates_download_url: https://downloads.tuxfamily.org/godotengine/4.2.1/Godot_v4.2.1-stable_export_templates.tpz
-          #   relative_project_path: ./
-          #   archive_output: true
+          set -euo pipefail
+          # godotengine/godot GitHub releases -- downloads.tuxfamily.org, which the
+          # previous stub's comment pointed at, no longer serves Godot at all.
+          url="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          curl -fsSL -o godot.zip "$url"
+          unzip -q godot.zip
+          mv "Godot_v${GODOT_VERSION}-stable_linux.x86_64" /usr/local/bin/godot
+          chmod +x /usr/local/bin/godot
+          godot --version
+
+      - name: Import project
+        run: godot --headless --import
+
+      - name: Headless smoke test
+        run: godot --headless tests/smoke_test.tscn

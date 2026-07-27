@@ -10,6 +10,53 @@ section at release time. PR references in parentheses.
 
 ## [Unreleased]
 
+### Added — Round 3: the office is walkable (M1 + M4, doc set v0.2.8)
+
+- **`project.godot` and a running prototype.** `godot .` opens a lobby, a corridor
+  and a server room; arrows or WASD move the player; walls collide. 2.5D top-down
+  per `D-001`. Godot 4.7.1.
+- **The three autoloads exist for real** — `AgentRegistry` (loads the generated 132
+  agents, and fails loudly rather than coming up empty, which would look like a
+  content problem instead of a broken build), `GameEvents` (signal names taken
+  verbatim from the roadmap so M5–M8 wire into the same bus), `GameState`.
+- **M4's exit criterion is met and was checked on screen.** Walk up to the Systems
+  Architect (`SB-05`) or the Security Auditor (`SB-06`) and the dialogue panel fills
+  in from `AgentRegistry` — name, role, Core gold `#FFD700`, description revealed
+  with the typewriter effect. Walk away and it dismisses.
+- **The typewriter (`D-007`) is exercised a milestone early.** There is no bridge
+  yet, so the payload is the agent's own description. That means the reveal
+  mechanism is watchable and debugged before M8 depends on it, rather than written
+  blind on the day the bridge lands.
+- **NPC scenes store an `agent_id` and nothing else.** Every name, colour and
+  description is read from `AgentRegistry` at runtime. Typing an agent fact into a
+  `.tscn` would fork the truth away from the generated directory, which is what
+  `D-016` exists to prevent.
+- **Agent bodies are primitives, not art** (`D-011`) — a `Polygon2D` tinted by the
+  department colour. No binary assets, so every visual change stays reviewable in a
+  diff.
+
+### Changed — the Godot CI job now checks something
+
+- **`Export Godot 4 Prototype` stops echoing a string.** It installs Godot 4.7.1
+  from the `godotengine/godot` GitHub release, imports the project, and runs
+  `tests/smoke_test.tscn`. Verified to fail: hiding `data/agents.json` produces exit
+  1 and four named failures. Previously the job printed "Godot project not
+  initialized yet" and went green — indistinguishable from a passing build, the same
+  false-green shape as the review workflow in #17.
+- The URL in the old stub's comment pointed at `downloads.tuxfamily.org`, which no
+  longer serves Godot. It would have failed the moment anyone uncommented it.
+- No export templates are downloaded. A web export would pull ~1GB per run to
+  produce an artifact nothing consumes yet.
+- **`D-025` registered** — scene scripts live beside their `.tscn`; `scripts/` stays
+  Python-only, because CI invokes those files by path. Recorded rather than applied
+  silently, since it contradicts a layout `CLAUDE.md` states in writing.
+- **`CLAUDE.md` corrected.** "There is no Godot project yet" and "don't invent
+  `godot --headless`" were both true when written and are now false.
+- The dialogue subtitle no longer reads "Core · core". All eight Core agents have an
+  empty `subcategory`, so the generator's documented fallback makes `role` equal
+  `dept`. Fixed in presentation, not by teaching the generator to invent a
+  subcategory upstream does not have.
+
 ### Changed — doc set v0.2.7: the eight decisions get an entitled home (#11)
 
 - **`docs/designs/platform-decisions.md` created** (`PLATFORM-DECISIONS`, tier 2,

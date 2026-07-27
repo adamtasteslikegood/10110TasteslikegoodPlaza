@@ -4,7 +4,7 @@ title: Spec Drivers v0.2.5 — what this doc-set version must produce
 tier: 0
 authority: constitution
 status: ACTIVE
-doc_set_version: 0.2.7
+doc_set_version: 0.2.8
 last_updated: 2026-07
 owner: adamtasteslikegood
 derives_from: [META-SPEC]
@@ -23,7 +23,7 @@ Version semantics: `0` = pre-prototype · `.2` = second aligned concept revision
 ---
 
 > **Filename note.** This file still carries `v0.2.5` in its name while holding live
-> v0.2.7 content — the open-conflict register is the working copy, not a frozen
+> v0.2.8 content — the open-conflict register is the working copy, not a frozen
 > record. Splitting it (or renaming to an unversioned `spec-drivers.md`) is worth
 > doing at v0.3; renaming a `doc_id` one PR after shipping it costs more than it
 > saves.
@@ -57,6 +57,20 @@ Two decisions changed status, so the set version moves — `META-SPEC` §8.4.
 **Done when:** "Not yet authorised" is empty, §4.8 reads RESOLVED, the new check
 demonstrably fails on the unfixed tree, and `Validate Specs` is green at
 `doc_set_version: 0.2.7`.
+
+## 1d. Delivering in v0.2.8
+
+Round 3 — the first round that produces something you can look at. `project.godot`,
+the three autoloads, a lobby-and-server-room greybox, and a dialogue panel that
+fills in from `AgentRegistry` when the player walks up to a Core agent (M1, M4).
+`D-025` registers the one layout deviation from `CLAUDE.md`.
+
+Also: the `Export Godot 4 Prototype` CI job stops echoing a string and starts
+importing the project and running a headless smoke test that fails on a broken
+scene, a broken script, or drifted agent data.
+
+**Done when:** `godot --headless tests/smoke_test.tscn` exits 0, the walk-up renders
+on screen, and `Validate Specs` is green at `doc_set_version: 0.2.8`.
 
 ## 1. What v0.2.5 delivered
 
@@ -109,13 +123,13 @@ now; neither is started.
 | **Round 1b — Reconcile** ✅ v0.2.6 | Close §4.2–4.5: real agent count, `D-020` and `D-014` ratified, branching policy corrected | Six of seven conflicts RESOLVED |
 | **Round 2 — Data (M3)** ✅ | `agents.json` generator over the submodule, colour cross-check against `D-017`, curation of upstream id collisions | 132 entries; `Validate Agent Data` green in CI |
 | **Round 2b — Re-govern** ✅ v0.2.7 | Close §4.8: `PLATFORM-DECISIONS` created, eight origins moved, authority-to-originate check added to the validator | "Not yet authorised" empty; new check proven to fail on the unfixed tree |
-| **Round 3 — Frontend (M1, M4)** | Godot 4 project, the three autoloads, 2.5D navigation, proximity dialogue | Dialogue panel renders live from `AgentRegistry` for one department |
+| **Round 3 — Frontend (M1, M4)** ✅ v0.2.8 | Godot 4 project, the three autoloads, 2.5D navigation, proximity dialogue | Dialogue panel renders live from `AgentRegistry` for one department — Core, verified on screen and by `tests/smoke_test.tscn` |
 | **Round 4 — Bridge (M5–M8)** | Synchronous WebSocket bridge, intent/result shape, wait-or-delegate, end-to-end | M8 demonstrable in-engine |
 
 ## 4. Open-conflict register
 
 Per [`META-SPEC.md`](META-SPEC.md) §4, conflicts are recorded rather than silently
-resolved. **Eight resolved, one open (§4.9)** as of v0.2.7. Resolved entries are kept, not
+resolved. **Eight resolved, one open (§4.9)** as of v0.2.8. Resolved entries are kept, not
 deleted — the record of *how* a conflict was settled is what stops it reopening.
 
 ### 4.1 `ALIGNED-SPEC-025` §01.3 versus `STORYBOARD-W1` — **RESOLVED**
@@ -309,4 +323,4 @@ this version does not move it.
 Between here and there, each round closes with the same check: the register has no
 conflict that has been open longer than the round that discovered it.
 
-*Doc set version: 0.2.7 · Last updated: July 2026*
+*Doc set version: 0.2.8 · Last updated: July 2026*

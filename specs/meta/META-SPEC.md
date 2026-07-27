@@ -4,7 +4,7 @@ title: Meta-Spec — how the Plaza doc set governs itself
 tier: 0
 authority: constitution
 status: ACTIVE
-doc_set_version: 0.2.7
+doc_set_version: 0.2.8
 last_updated: 2026-07
 owner: adamtasteslikegood
 derives_from: []
@@ -179,7 +179,7 @@ These are hard gates, not preferences. A change that breaks one fails review.
 
 ## 7. Versioning
 
-- The doc **set** carries one semantic version. This release is **0.2.7**. Files do
+- The doc **set** carries one semantic version. This release is **0.2.8**. Files do
   not version independently; each declares `doc_set_version` and the validator
   requires them all to agree.
 - `1.0.0` is cut when M8 is demonstrable in-engine.
@@ -199,4 +199,4 @@ These are hard gates, not preferences. A change that breaks one fails review.
    [`decision-register.md`](decision-register.md) and bump `doc_set_version`
    everywhere in the same commit.
 
-*Doc set version: 0.2.7 · Last updated: July 2026*
+*Doc set version: 0.2.8 · Last updated: July 2026*

@@ -1,0 +1,69 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scenes/hud/dialogue_panel.gd" id="1_hud"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
+bg_color = Color(0.09, 0.09, 0.11, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.32, 0.32, 0.38, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[node name="DialoguePanel" type="CanvasLayer"]
+script = ExtResource("1_hud")
+
+[node name="Panel" type="Panel" parent="."]
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 24.0
+offset_top = -208.0
+offset_right = -24.0
+offset_bottom = -24.0
+grow_horizontal = 2
+grow_vertical = 0
+
+[node name="Margin" type="MarginContainer" parent="Panel"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 16
+
+[node name="Rows" type="VBoxContainer" parent="Panel/Margin"]
+theme_override_constants/separation = 12
+
+[node name="Header" type="HBoxContainer" parent="Panel/Margin/Rows"]
+theme_override_constants/separation = 16
+
+[node name="Portrait" type="ColorRect" parent="Panel/Margin/Rows/Header"]
+custom_minimum_size = Vector2(64, 64)
+color = Color(1, 1, 1, 1)
+
+[node name="Titles" type="VBoxContainer" parent="Panel/Margin/Rows/Header"]
+theme_override_constants/separation = 4
+
+[node name="NameLabel" type="Label" parent="Panel/Margin/Rows/Header/Titles"]
+theme_override_font_sizes/font_size = 22
+text = "Agent Name"
+
+[node name="RoleLabel" type="Label" parent="Panel/Margin/Rows/Header/Titles"]
+theme_override_colors/font_color = Color(0.68, 0.68, 0.74, 1)
+theme_override_font_sizes/font_size = 14
+text = "Role · Department"
+
+[node name="BodyLabel" type="Label" parent="Panel/Margin/Rows"]
+size_flags_vertical = 3
+autowrap_mode = 3
+text = ""

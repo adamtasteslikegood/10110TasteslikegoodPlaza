@@ -4,7 +4,7 @@ title: Decision Register — every locked decision, with a citable id
 tier: 0
 authority: constitution
 status: ACTIVE
-doc_set_version: 0.2.7
+doc_set_version: 0.2.8
 last_updated: 2026-07
 owner: adamtasteslikegood
 derives_from: [META-SPEC]
@@ -52,6 +52,7 @@ sensible it reads — it is `PROPOSED` until ratified at the right tier.
 | `D-013` | Long-task UX | "Wait or delegate" — short tasks block, long tasks run in the background | Models real office dynamics, and it is the honest UI for a synchronous bridge with a timeout. | `LOCKED` |
 | `D-014` | Bridge formality | Conceptual boundary in prose; no versioned API contract until after M8 | Freezing a contract pre-M8 ossifies decisions before anything has been learned about what the messages need to carry. **Reversal threshold:** a multi-frontend need arriving before v2.0 — a web demo for fundraising, say — promotes the message shape to a versioned contract. Nothing else does. Ratified in v0.2.6. | `LOCKED` |
 | `D-020` | Layer 2 naming | "The current frontend, which happens to be 2.5D Godot" — not "the Godot engine" | `D-005` and the swap test are only meaningful if the frontend is structurally a slot. Naming Layer 2 after one implementation makes the rule read as aspiration. Carries the frontend-swap matrix. Ratified in v0.2.6. | `LOCKED` |
+| `D-025` | GDScript file layout | Scene scripts live beside their `.tscn` under `scenes/`; the three autoloads stay in `autoload/` | `CLAUDE.md` originally put GDScript in `scripts/`, written before that directory filled with the Python tooling CI invokes by path (`validate_specs.py`, `generate_agents_json.py`). Mixing two languages and two runtimes there hides which files CI depends on. Script-beside-scene is also ordinary Godot practice. Recorded rather than silently applied because it contradicts a written layout, and an undocumented deviation is what a later agent "corrects" back. Registered in v0.2.8. | `LOCKED` |
 
 ## Architecture and platform
 
@@ -112,4 +113,4 @@ point of the tier ladder.
    `SUPERSEDED` — do not delete it — and bump `doc_set_version` across the set.
 4. Add the `D-nnn` to the origin document's `decides:` frontmatter list.
 
-*Doc set version: 0.2.7 · Last updated: July 2026*
+*Doc set version: 0.2.8 · Last updated: July 2026*

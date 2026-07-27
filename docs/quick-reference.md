@@ -4,7 +4,7 @@ title: 10110 TastesLike Plaza — Quick Reference
 tier: 4
 authority: summary
 status: ACTIVE
-doc_set_version: 0.2.7
+doc_set_version: 0.2.8
 last_updated: 2026-07
 owner: adamtasteslikegood
 derives_from: [PROJECT-OVERVIEW, STORYBOARD-W1, ROADMAP]
