@@ -21,8 +21,9 @@ section at release time. PR references in parentheses.
   `agents/` as a backward-compat shim — 8 symlinks plus 8 pre-v2.7.0 flat files
   that were never deleted and still carry `category: engineering` / `color: blue`
   for the core eight. Those stale copies matter more than they look: the core eight
-  are the most-referenced agents in the orchestration commands
-  (`security-auditor` in 11, `systems-architect` 10, `test-engineer` 9).
+  are the most-referenced agents in the orchestration commands — of the 24 command
+  files under `commands/` (39 `.md` in total, 15 of them READMEs), `security-auditor`
+  is named in 10, `systems-architect` 9, `test-engineer` 8.
 - **The real collision only the generator could find.** 133 files carry just **130
   distinct slugs**. `infrastructure-maintainer` is one role filed twice (operations
   copy removed); `customer-support` and `tutorial-engineer` are genuinely different
