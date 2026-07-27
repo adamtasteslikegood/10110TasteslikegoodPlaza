@@ -93,7 +93,7 @@ now; neither is started.
 |---|---|---|
 | **Round 1 — Govern** ✅ v0.2.5 | Meta layer, schema, registry, validator, CI gate, conflict register | `Validate Specs` green; §1 all true |
 | **Round 1b — Reconcile** ✅ v0.2.6 | Close §4.2–4.5: real agent count, `D-020` and `D-014` ratified, branching policy corrected | Six of seven conflicts RESOLVED |
-| **Round 2 — Data (M3)** | `agents.json` generator over the submodule, its schema, count validation against `D-017` | Generated file validates; 133 entries, core-eight collision resolved per §4.2 |
+| **Round 2 — Data (M3)** ✅ | `agents.json` generator over the submodule, colour cross-check against `D-017`, curation of upstream id collisions | 132 entries; `Validate Agent Data` green in CI |
 | **Round 3 — Frontend (M1, M4)** | Godot 4 project, the three autoloads, 2.5D navigation, proximity dialogue | Dialogue panel renders live from `AgentRegistry` for one department |
 | **Round 4 — Bridge (M5–M8)** | Synchronous WebSocket bridge, intent/result shape, wait-or-delegate, end-to-end | M8 demonstrable in-engine |
 
@@ -130,10 +130,12 @@ Method, per-category figures, and the format comparison are in
 [`../../docs/agent-directory.md`](../../docs/agent-directory.md) § Agent counts —
 the taxonomy authority (`D-017`). Every other mention now derives from there.
 
-**Follow-on, not a conflict:** `data/agents.json` is keyed by agent id (`D-016`),
-so the core eight collide. Recorded as an M3 hazard with a recommendation (prefer
-the catalog format) but deliberately not locked — decide it when the generator
-exists and the data shape is visible.
+**Follow-on, resolved in M3:** the core-eight "collision" was not one — upstream
+v2.7.0 made `subagents/` PRIMARY and `agents/` a backward-compat shim, so the
+generator reads `subagents/` only. The real collision was three cross-department
+duplicate slugs that only the generator surfaced: 133 files, 130 distinct ids. One
+removed as a genuine duplicate, two renamed. `data/agents.json` holds 132 entries.
+Registered as `D-024`.
 
 ### 4.3 Layer 2 was described two different ways — **RESOLVED**
 

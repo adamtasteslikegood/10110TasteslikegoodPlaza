@@ -4,8 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository state
 
-This repo sits **between planning and prototype**. There is no Godot project yet and no `agents.json`, but there is:
+This repo sits **between planning and prototype**. There is no Godot project yet, but the data layer now exists:
 
+- `data/agents.json` — **132 agents**, generated from the submodule by `scripts/generate_agents_json.py` (`D-024`). Never hand-edit it; regenerate. M3 is done.
 - A working CI pipeline (`.github/workflows/ci.yml`) that already lints Python on every push/PR.
 - Two Atlassian integration scripts (`generate_report.py`, `post_to_confluence.py`) wired to a Jira project keyed `TO` and a Confluence parent page.
 - The upstream agent directory wired in as a git submodule at `./claude-code-tresor` (relative URL, not initialized in fresh checkouts — see below).
@@ -103,14 +104,15 @@ This submodule is the source of truth for the agent definitions that need to bec
 - `subagents/` — 133 agent definitions nested `<dept>/<subcat>/<name>/agent.md` across ten categories (`engineering/`, `design/`, `marketing/`, `product/`, `leadership/`, `operations/`, `research/`, `ai-automation/`, `account-customer-success/`, `core/`), plus an `AGENT-INDEX.md`.
 - `agents/` — the same 8 core roles (`systems-architect`, `config-safety-reviewer`, `root-cause-analyzer`, `security-auditor`, `test-engineer`, `performance-tuner`, `refactor-expert`, `docs-writer`) in Claude Code's **runtime** format, not 8 additional roles.
 
-**141 files = 8 + 133, spanning 133 distinct roles.** Both numbers are right; say which you mean. The core eight appear in both trees in different formats, so keying `agents.json` by id makes them collide — see `docs/agent-directory.md` § Agent counts for the M3 hazard.
+**141 files = 8 + 133, spanning 133 distinct roles.** Both numbers are right; say which you mean. Upstream v2.7.0 made `subagents/` PRIMARY and left `agents/` as a backward-compat shim (symlinks plus stale pre-v2.7.0 flat files), so the generator reads `subagents/` only. Separately, those 133 files carry just **130 distinct slugs** — three cross-department collisions, curated in `scripts/generate_agents_json.py`, leaving **132 entries** in `data/agents.json`. See `docs/agent-directory.md` § Agent counts.
 
 ## CI workflows
 
-`.github/workflows/ci.yml` runs on push/PR to `main` and `dev`. Three jobs:
+`.github/workflows/ci.yml` runs on push/PR to `main` and `dev`. Four jobs:
 
 The workflow declares `permissions: contents: read` at the top level — every job only reads the repo, and without it `GITHUB_TOKEN` inherits the repository default (CodeQL flags this as `actions/missing-workflow-permissions`, one alert per job). A job that later needs more should declare its own block rather than widening the top-level one. The `gemini-*.yml` workflows declare permissions per job instead.
 
+- **`Validate Agent Data`** — runs `python3 scripts/generate_agents_json.py --check`. Needs the submodule (`submodules: recursive`) and `pyyaml`. Fails if `data/agents.json` has drifted from the submodule.
 - **`Validate Specs`** — runs `python3 scripts/validate_specs.py`. Stdlib only, no `pip install` step by design. Hard-fails when a governed doc is missing frontmatter, is unregistered in `specs/meta/doc-registry.json`, declares an authority the registry doesn't grant, links to a file that doesn't exist, disagrees about `doc_set_version`, or indexes a scene id the storyboard doesn't carry.
 - **`Lint Python Bridge`** — installs `flake8 black websockets`, then:
   - `black --check .` (warnings only — failures are echoed but don't fail the build)

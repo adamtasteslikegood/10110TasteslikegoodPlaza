@@ -8,7 +8,7 @@ doc_set_version: 0.2.6
 last_updated: 2026-07
 owner: adamtasteslikegood
 derives_from: [STORYBOARD-W1, DESIGN-25D]
-decides: [D-003, D-015, D-016, D-018, D-021, D-022, D-023]
+decides: [D-003, D-015, D-016, D-018, D-021, D-022, D-023, D-024]
 ---
 
 # 10110 TastesLike Plaza — Project Overview
@@ -73,18 +73,25 @@ Layer 1 — Data + config  [Exists now]
 | 3 | Marketing | Green `#10B981` | 11 | Floor 3 |
 | 4 | Product | Purple `#8B5CF6` | 9 | Floor 2 |
 | 5 | Leadership & Strategy | Gold `#F59E0B` | 14 | Floor 4 (exec) |
-| 6 | Operations | Teal `#14B8A6` | 6 | Floor 1 |
+| 6 | Operations | Teal `#14B8A6` | 5 | Floor 1 |
 | 7 | Research | Orange `#F97316` | 7 | Floor 2 |
 | 8 | AI & Automation | Indigo `#6366F1` | 9 | Basement / server |
 | 9 | Account & Customer Success | Cyan `#06B6D4` | 8 | Floor 1 |
 | — | Core Agents | Star | 8 (production-ready) | Server room |
-| | | | **133 total** | |
+| | | | **132 total** | |
 
-**141 agent files = 8 core + 133 subagents, spanning 133 distinct roles** — the
-core eight exist in both `agents/` (Claude Code runtime format) and
-`subagents/core/` (catalog format). Counts are from
-[`docs/agent-directory.md`](docs/agent-directory.md), the taxonomy authority
-(`D-017`).
+These are the counts in **`data/agents.json`** — what the office actually renders,
+generated from the submodule (`D-024`) and verified in CI.
+
+Upstream ships **133 agent files** under `subagents/`, carrying only **130 distinct
+name slugs**: three roles appear in two departments each. One (`infrastructure-maintainer`)
+is a genuine duplicate and is dropped; the other two are different jobs sharing a name
+and are renamed. Hence 132. There are a further 8 files under `agents/`, a
+backward-compatible shim upstream left behind at v2.7.0 — symlinks plus stale copies,
+not additional roles.
+
+Full method, per-department figures, and the curation table are in
+[`docs/agent-directory.md`](docs/agent-directory.md), the taxonomy authority (`D-017`).
 
 ---
 

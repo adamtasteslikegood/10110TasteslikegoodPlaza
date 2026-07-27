@@ -445,11 +445,36 @@ Three things that make a naïve count wrong:
   artifact — which is why 141 and 133 are both true.
 - `subagents/core/` has **no README** upstream, unlike the other nine categories.
 
-**M3 hazard.** `data/agents.json` is keyed by agent id (`D-016`), so those eight
-collide and the generator must choose a winning format. Recommendation, not yet
-locked: prefer the catalog copies, since they carry `team`, `capabilities`, and the
-`#FFD700` Core tint the office world needs — one uniform shape, one parser, 133
-entries. Decide it for real when the generator is written.
+**The core eight were never a real ambiguity — upstream already decided.** An
+earlier revision recorded them as an open "M3 hazard" requiring a choice of format.
+Reading upstream's v2.7.0 release notes settled it: `subagents/` is **PRIMARY**, and
+`agents/` is a backward-compatible shim. `agents/<name>/agent.md` are symlinks into
+`subagents/core/` (8/8 verified resolving); the flat `agents/<name>.md` are
+pre-v2.7.0 leftovers that were never deleted and have since diverged. The generator
+reads `subagents/` only (`D-024`).
+
+**The real collision was elsewhere, and only the generator found it.** The 133 files
+carry just **130 distinct `name` slugs** — three roles exist in two departments each,
+with different bodies and different tints. Upstream's own `DUPLICATE-ANALYSIS.md` is
+v2.5.0, predates the consolidation, and does not cover them.
+
+| Upstream slug | Kept | Curated | Outcome |
+|---|---|---|---|
+| `customer-support` | account-customer-success — analyses resolution patterns, escalation risk | operations — handles tickets, FAQs, canned responses | renamed `support-ticket-handler` |
+| `infrastructure-maintainer` | engineering/devops | operations/infrastructure — same scope plus capacity planning | **removed**; one role filed twice |
+| `tutorial-engineer` | engineering — builds tutorials from code | marketing — self-described "Educational content specialist" | renamed `educational-content-writer` |
+
+`data/agents.json` therefore holds **132 entries**: 133 upstream files minus the one
+removal. It is upstream *plus a reviewed curation table*, not a pure mirror — the
+tables live in `scripts/generate_agents_json.py`, keyed by source path so an upstream
+move fails the build rather than silently mis-applying.
+
+**Before renaming or removing an agent, grep `commands/`.** The 19 orchestration
+commands reference agents by id; 24 of 132 are referenced by at least one. None of
+the four ids touched above appears in any command, which is why this curation was
+safe. The most-referenced agents are the core eight (`security-auditor` in 11
+commands, `systems-architect` 10, `test-engineer` 9, `performance-tuner` 8) — a
+second reason the catalog copies are the ones to keep.
 
 This supersedes the "137+" figure that appeared in `README.md`, `CLAUDE.md`, and
 earlier revisions of this file. Per `D-017` this document is the taxonomy

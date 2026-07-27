@@ -10,6 +10,49 @@ section at release time. PR references in parentheses.
 
 ## [Unreleased]
 
+### Added — M3: the agent data layer (`D-024`)
+
+- **`data/agents.json` — 132 agents**, generated from the submodule by
+  `scripts/generate_agents_json.py`, with a `Validate Agent Data` CI job that
+  regenerates and fails on drift. That job is what makes `D-016` ("generated,
+  never hand-edited") a gate rather than a rule.
+- **Reads `subagents/` only.** The core-eight "collision" recorded earlier as an
+  open M3 hazard was never one: upstream v2.7.0 made `subagents/` PRIMARY and left
+  `agents/` as a backward-compat shim — 8 symlinks plus 8 pre-v2.7.0 flat files
+  that were never deleted and still carry `category: engineering` / `color: blue`
+  for the core eight. Those stale copies matter more than they look: the core eight
+  are the most-referenced agents in the orchestration commands
+  (`security-auditor` in 11, `systems-architect` 10, `test-engineer` 9).
+- **The real collision only the generator could find.** 133 files carry just **130
+  distinct slugs**. `infrastructure-maintainer` is one role filed twice (operations
+  copy removed); `customer-support` and `tutorial-engineer` are genuinely different
+  jobs sharing a name (renamed `support-ticket-handler` and
+  `educational-content-writer`). Upstream's own `DUPLICATE-ANALYSIS.md` is v2.5.0
+  and predates the consolidation that caused them.
+- **83 of 133 agents declare `tools` as a bare comma string**, which YAML reads as
+  `str`, not `list`. Passed through unchanged that would have handed GDScript a
+  string where it expects an array for most of the directory — an M4 bug caught at
+  M3. All three upstream syntaxes are normalised to `list[str]`.
+- Department colours are cross-checked against the `D-017` taxonomy, so a drifting
+  upstream colour fails the build instead of silently retinting a department. All
+  132 currently agree.
+- `role` is derived from the taxonomy, not from prose. An earlier pass truncated the
+  description on punctuation and produced labels like "UI design specialist for
+  creating beautiful"; topical relevance has to win over mechanical trimming.
+
+### Fixed
+
+- Curation tables are keyed by **source path**, not slug, so an upstream move fails
+  the build rather than silently applying an override to the wrong agent. A *new*
+  collision is a hard error, never an auto-suffix — deciding "one role or two"
+  means reading both descriptions.
+- Renamed agents were keeping their upstream display names, so two NPCs would have
+  shown the same label above different sprites. Display name is now recomputed from
+  the final id; all 132 are unique.
+- Corrected the stale "M3 hazard" framing in `docs/agent-directory.md`, `CLAUDE.md`
+  and `spec-drivers` §4.2, and the README department table (Operations 6 → 5, total
+  133 → 132).
+
 ### Changed — merge strategy is now a recorded decision (`D-023`)
 
 - **Merge commits are the deliberate policy, not a settings accident.** The previous
