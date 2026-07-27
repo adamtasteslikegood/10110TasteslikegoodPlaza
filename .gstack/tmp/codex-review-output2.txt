@@ -1,0 +1,12 @@
+The Godot CI install can fail before tests run, and the new smoke test misses scene-tree runtime failures it is intended to catch. The active meta-spec also still contains binding stale guidance that contradicts the new project state.
+
+Full review comments:
+
+- [P1] Install Godot with write permissions — /home/allisone/Projects/10110TasteslikegoodPlaza/.github/workflows/ci.yml:131-131
+  On GitHub-hosted Ubuntu runners, the `runner` user cannot normally write directly to `/usr/local/bin`, so this `mv` can fail with permission denied before the import or smoke test ever runs. Use `sudo mv`/`sudo install`, or install under `$RUNNER_TEMP` and add it to `PATH`.
+
+- [P2] Enter the main scene during the smoke test — /home/allisone/Projects/10110TasteslikegoodPlaza/tests/smoke_test.gd:95-95
+  This only instantiates `main.tscn`; it never adds it to the scene tree, so `_ready()` code in `Office`, `HUD`, and NPC scripts does not run. A common break such as a renamed `$Panel/...` path in the dialogue panel or a runtime error while building office walls can still pass CI even though `godot .` fails when the scene actually enters the tree.
+
+- [P2] Update the binding infrastructure rule — /home/allisone/Projects/10110TasteslikegoodPlaza/specs/meta/META-SPEC.md:182-182
+  When publishing this as doc set `0.2.8`, the binding rule at `specs/meta/META-SPEC.md:149` still says there is no Godot project, no `agents.json`, and no `godot --headless`. That now directly contradicts this PR’s project, data layer, and CI changes, so future agents following the constitution will be told to reject real commands that are now required.

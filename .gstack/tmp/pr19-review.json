@@ -1,0 +1,19 @@
+{
+  "commit_id": "b828d100c607fca377cbea361e3f24d3a168ea3d",
+  "event": "COMMENT",
+  "body": "## Codex review (via `/codex review`)\n\nIndependent second-opinion review of this diff (51 files, ~1100 lines) against `dev`. Gate: **FAIL** — 1 critical finding.\n\n**Codex could not statically evaluate the smoke test end-to-end**: it attempted to execute `godot` in its sandbox (no display/GPU) and it crashed (SIGSEGV) before falling back to a pure static read; results below are from the static pass.\n\n### Additional finding not anchored inline (location correction)\n\n- **[P2] Stale binding rule contradicts this PR** — `specs/meta/META-SPEC.md:149` (outside this diff's changed hunks, so GitHub will not let me anchor a line comment there). Rule 4 under \"binding rules for agents\" still reads *\"There is no Godot project, no `agents.json`, no `npm test`, no `godot --headless`.\"* This PR makes all of those exist and run. Codex originally cited line 182 for this, but that line is only the `0.2.7 → 0.2.8` version-bump — the actual stale text is at line 149 and was not touched by this PR. Since `META-SPEC.md` is tier-0 (per `CLAUDE.md`, \"lower tier wins\"), this stale rule outranks the corrected `CLAUDE.md` prose elsewhere in this same PR and should be fixed in the same change or logged in the open-conflict register.\n\n---\n\n**Recommendation:** Fix the CI install-permission bug (`ci.yml:131`) before merging because it will fail the `godot-build` job on every run once this lands on `dev`, which defeats the entire point of this PR (making the CI job real instead of vacuous); the smoke-test scene-tree gap and the stale META-SPEC rule are both real but lower-blast-radius and can land as fast follow-ups without blocking this PR.",
+  "comments": [
+    {
+      "path": ".github/workflows/ci.yml",
+      "line": 131,
+      "side": "RIGHT",
+      "body": "**[P1] Install Godot with write permissions**\n\nOn GitHub-hosted `ubuntu-latest` runners, the `runner` user cannot write directly to `/usr/local/bin` (root-owned). This `mv` will fail with permission denied before the import or smoke test ever runs, so the newly-real `godot-build` job fails on every CI run. Use `sudo mv`/`sudo install`, or install under `$RUNNER_TEMP` and add it to `PATH`.\n\n— found by Codex (`/codex review`)"
+    },
+    {
+      "path": "tests/smoke_test.gd",
+      "line": 95,
+      "side": "RIGHT",
+      "body": "**[P2] Smoke test never enters the scene tree**\n\n`_check_scene_tree()` only calls `main.instantiate()`; it never adds the instance to the tree (e.g. via `get_tree().root.add_child()`), so `_ready()` in `Office`, `HUD`, and the NPC scripts never runs. A break that only manifests at `_ready()` time — a renamed `$Panel/...` node path in the dialogue panel, or a runtime error while building office walls — can still pass this smoke test even though `godot .` itself would fail.\n\n— found by Codex (`/codex review`)"
+    }
+  ]
+}

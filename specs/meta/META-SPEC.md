@@ -146,9 +146,15 @@ These are hard gates, not preferences. A change that breaks one fails review.
 3. **The Storyboard is protected.** Edits to `STORYBOARD-W1` are concept changes
    and need explicit human sign-off. Adding structure — stable ids, contract
    fields — is an alignment edit and is allowed; changing a beat is not.
-4. **Don't invent infrastructure.** There is no Godot project, no `agents.json`, no
-   `npm test`, no `godot --headless`. State what is runnable today. What *is*
-   runnable is in [`CLAUDE.md`](../../CLAUDE.md).
+4. **Don't invent infrastructure — and don't hard-code the inventory here.** State
+   what is runnable today, and check before asserting something does *not* exist.
+   [`CLAUDE.md`](../../CLAUDE.md) is the answer; this rule points at it rather than
+   listing it, because the list it used to carry ("there is no Godot project, no
+   `agents.json`, no `npm test`, no `godot --headless`") stayed in place through
+   `agents.json` shipping in v0.2.7 and the Godot project in v0.2.8, contradicting
+   the repo from tier 0 — where it outranked the corrected prose below it. A
+   constitution that names today's file inventory dates faster than anything it
+   governs.
 5. **Respect the critical path.** M1 → M4 → M8. If a change puts one at risk, say
    so explicitly and prominently. See [`../roadmap.md`](../roadmap.md).
 6. **2.5D is the ceiling for v0.x and v1.x.** Any 3D proposal is filed as Future,
