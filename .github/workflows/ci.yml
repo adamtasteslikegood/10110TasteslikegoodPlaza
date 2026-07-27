@@ -38,6 +38,32 @@ jobs:
       - name: Validate governed document set
         run: python3 scripts/validate_specs.py
 
+  validate-agent-data:
+    name: Validate Agent Data
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The generator reads claude-code-tresor/subagents; without the
+          # submodule there is nothing to check against.
+          submodules: recursive
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # PyYAML, unlike the stdlib-only Validate Specs job. This parses upstream
+      # frontmatter (block sequences, nested examples, three tools syntaxes),
+      # not our own controlled subset - see the module docstring.
+      - name: Install PyYAML
+        run: python -m pip install --upgrade pip pyyaml
+
+      # D-016: agents.json is generated, never hand-edited. This fails if the
+      # committed file has drifted from the submodule.
+      - name: Verify data/agents.json matches the submodule
+        run: python3 scripts/generate_agents_json.py --check
+
   python-lint:
     name: Lint Python Bridge
     runs-on: ubuntu-latest

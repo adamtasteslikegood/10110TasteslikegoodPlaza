@@ -1,6 +1,6 @@
 {
   "$comment": "The index of the 10110 TastesLike Plaza doc set. This file answers 'which document wins' in machine-readable form. Governed by specs/meta/META-SPEC.md; enforced by scripts/validate_specs.py. Every markdown file under docs/, specs/, Docs/, and the root README.md must appear in exactly one of `documents` or `exempt`.",
-  "doc_set_version": "0.2.6",
+  "doc_set_version": "0.2.7",
   "documents": [
     {
       "doc_id": "META-SPEC",
@@ -59,12 +59,20 @@
       "note": "Promoted /plan-ceo-review output, 2026-04-27. Authoritative for HOW to build. The 2.5D pivot lives here."
     },
     {
+      "doc_id": "PLATFORM-DECISIONS",
+      "path": "docs/designs/platform-decisions.md",
+      "tier": 2,
+      "authority": "implementation",
+      "status": "ACTIVE",
+      "note": "Authoritative for platform and repository decisions that outlive the current frontend: engine, bridge transport, agent data layer, licence, submodule and merge policy. Created in v0.2.7 to give the eight decisions PROJECT-OVERVIEW was wrongly named as originating an entitled home (issue #11, conflict 4.8)."
+    },
+    {
       "doc_id": "PROJECT-OVERVIEW",
       "path": "README.md",
       "tier": 2,
       "authority": "derived",
       "status": "ACTIVE",
-      "note": "Canonical public statement of what and why. Reconciles the concept and implementation axes; originates neither."
+      "note": "Canonical public statement of what and why. Reconciles the concept and implementation axes; originates neither. Its `decides` list was removed in v0.2.7 -- see PLATFORM-DECISIONS."
     },
     {
       "doc_id": "AGENT-DIRECTORY",

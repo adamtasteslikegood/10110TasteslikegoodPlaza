@@ -1,0 +1,2439 @@
+{
+  "account-executive": {
+    "color": "#06B6D4",
+    "dept": "account-customer-success",
+    "description": "Use this agent when you need strategic account management focused on revenue growth, retention analysis, and competitive positioning. Elite Account Executive with deep expertise in revenue performance while building lasting client relationships that maximize lifetime value.",
+    "name": "Account Executive",
+    "role": "Account Management",
+    "source": "claude-code-tresor/subagents/account-customer-success/account-management/account-executive/agent.md",
+    "subcategory": "account-management",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "WebSearch",
+      "WebFetch",
+      "Task"
+    ]
+  },
+  "ai-engineer": {
+    "color": "#6366F1",
+    "dept": "ai-automation",
+    "description": "Build LLM applications, RAG systems, and prompt pipelines. Implements vector search, agent orchestration, and AI API integrations. Use for LLM features, chatbots, or AI-powered applications.",
+    "name": "AI Engineer",
+    "role": "AI Engineering",
+    "source": "claude-code-tresor/subagents/ai-automation/ai-engineering/ai-engineer/agent.md",
+    "subcategory": "ai-engineering",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "WebSearch",
+      "WebFetch",
+      "Task"
+    ]
+  },
+  "ai-workflow-designer": {
+    "color": "#6366F1",
+    "dept": "ai-automation",
+    "description": "Use this agent when you need AI-powered workflow design, intelligent automation, human-AI collaboration frameworks, and end-to-end AI system orchestration. Specializes in designing sophisticated AI-powered workflows that seamlessly integrate artificial intelligence with human decision-making to optimize business processes.",
+    "name": "AI Workflow Designer",
+    "role": "AI Engineering",
+    "source": "claude-code-tresor/subagents/ai-automation/ai-engineering/ai-workflow-designer/agent.md",
+    "subcategory": "ai-engineering",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "WebSearch",
+      "WebFetch",
+      "Task"
+    ]
+  },
+  "analytics-reporter": {
+    "color": "#14B8A6",
+    "dept": "operations",
+    "description": "Transform raw metrics into strategic insights with analytics implementation, statistical analysis, visualization, user behavior intelligence, A/B testing, and predictive analytics for app development and growth optimization.",
+    "name": "Analytics Reporter",
+    "role": "Analytics",
+    "source": "claude-code-tresor/subagents/operations/analytics/analytics-reporter/agent.md",
+    "subcategory": "analytics",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "WebSearch",
+      "WebFetch",
+      "Task"
+    ]
+  },
+  "api-documenter": {
+    "color": "#3B82F6",
+    "dept": "engineering",
+    "description": "Create OpenAPI/Swagger specs, generate SDKs, and write developer documentation. Handles versioning, examples, and interactive docs. Use PROACTIVELY for API documentation or client library generation.",
+    "name": "API Documenter",
+    "role": "Backend",
+    "source": "claude-code-tresor/subagents/engineering/backend/api-documenter/agent.md",
+    "subcategory": "backend",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "Task"
+    ]
+  },
+  "api-tester": {
+    "color": "#3B82F6",
+    "dept": "engineering",
+    "description": "Use this agent for comprehensive API testing including performance testing, load testing, and contract testing. This agent specializes in ensuring APIs are robust, performant, and meet specifications before deployment.",
+    "name": "API Tester",
+    "role": "Testing",
+    "source": "claude-code-tresor/subagents/engineering/testing/api-tester/agent.md",
+    "subcategory": "testing",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "Task"
+    ]
+  },
+  "app-store-optimizer": {
+    "color": "#10B981",
+    "dept": "marketing",
+    "description": "App store optimization specialist for ASO, keyword research, and conversion optimization. Use for app store listings, metadata optimization, and organic visibility.",
+    "name": "App Store Optimizer",
+    "role": "SEO",
+    "source": "claude-code-tresor/subagents/marketing/seo/app-store-optimizer/agent.md",
+    "subcategory": "seo",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "WebSearch",
+      "WebFetch"
+    ]
+  },
+  "architect-review": {
+    "color": "#3B82F6",
+    "dept": "engineering",
+    "description": "Reviews code changes for architectural consistency and patterns. Use PROACTIVELY after any structural changes, new services, or API modifications. Ensures SOLID principles, proper layering, and maintainability.",
+    "name": "Architect Review",
+    "role": "Architecture",
+    "source": "claude-code-tresor/subagents/engineering/architecture/architect-review/agent.md",
+    "subcategory": "architecture",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "Task"
+    ]
+  },
+  "automation-architect": {
+    "color": "#6366F1",
+    "dept": "ai-automation",
+    "description": "Use this agent when you need enterprise automation strategy, intelligent automation architecture, and comprehensive automation ecosystem development. Specializes in creating comprehensive automation strategies that transform business operations while ensuring governance, scalability, and ROI optimization.",
+    "name": "Automation Architect",
+    "role": "Automation",
+    "source": "claude-code-tresor/subagents/ai-automation/automation/automation-architect/agent.md",
+    "subcategory": "automation",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "WebSearch",
+      "WebFetch",
+      "Task"
+    ]
+  },
+  "backend-architect": {
+    "color": "#3B82F6",
+    "dept": "engineering",
+    "description": "Design RESTful APIs, microservice boundaries, and database schemas. Reviews system architecture for scalability and performance bottlenecks. Use PROACTIVELY when creating new backend services or APIs.",
+    "name": "Backend Architect",
+    "role": "Backend",
+    "source": "claude-code-tresor/subagents/engineering/backend/backend-architect/agent.md",
+    "subcategory": "backend",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "Task"
+    ]
+  },
+  "backend-reliability-engineer": {
+    "color": "#3B82F6",
+    "dept": "engineering",
+    "description": "Use this agent when you need to design, implement, or review server-side systems, APIs, databases, or distributed architectures. This includes tasks like creating RESTful or GraphQL APIs, designing database schemas, implementing authentication systems, optimizing query performance, setting up message queues, or architecting microservices. The agent excels at ensuring reliability, security, and scalability in backend systems.",
+    "name": "Backend Reliability Engineer",
+    "role": "Backend",
+    "source": "claude-code-tresor/subagents/engineering/backend/backend-reliability-engineer/agent.md",
+    "subcategory": "backend",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "Task"
+    ]
+  },
+  "brand-guardian": {
+    "color": "#EC4899",
+    "dept": "design",
+    "description": "Brand identity specialist for establishing guidelines, ensuring consistency, managing assets, and evolving brand identity. Use for brand standards and visual cohesion.",
+    "name": "Brand Guardian",
+    "role": "Brand",
+    "source": "claude-code-tresor/subagents/design/brand/brand-guardian/agent.md",
+    "subcategory": "brand",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "WebSearch",
+      "WebFetch"
+    ]
+  },
+  "business-analyst": {
+    "color": "#F59E0B",
+    "dept": "leadership",
+    "description": "Analyze metrics, create reports, and track KPIs with dashboards, revenue models, growth projections, cohort analysis, and actionable insights for data-driven business decisions.",
+    "name": "Business Analyst",
+    "role": "Strategy",
+    "source": "claude-code-tresor/subagents/leadership/strategy/business-analyst/agent.md",
+    "subcategory": "strategy",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "WebSearch",
+      "WebFetch",
+      "Task"
+    ]
+  },
+  "business-model-analyzer": {
+    "color": "#F97316",
+    "dept": "research",
+    "description": "Research monetization strategies, analyze business models, evaluate pricing approaches, and understand revenue streams with unit economics assessment, pricing psychology, and sustainable growth frameworks.",
+    "name": "Business Model Analyzer",
+    "role": "Market",
+    "source": "claude-code-tresor/subagents/research/market/business-model-analyzer/agent.md",
+    "subcategory": "market",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "WebSearch",
+      "WebFetch",
+      "Task"
+    ]
+  },
+  "business-strategist": {
+    "color": "#F59E0B",
+    "dept": "leadership",
+    "description": "Strategic planning, competitive positioning, market entry strategies, and long-term business roadmap development with comprehensive market analysis, business model innovation, and strategic execution frameworks.",
+    "name": "Business Strategist",
+    "role": "Strategy",
+    "source": "claude-code-tresor/subagents/leadership/strategy/business-strategist/agent.md",
+    "subcategory": "strategy",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "WebSearch",
+      "WebFetch",
+      "Task"
+    ]
+  },
+  "c-pro": {
+    "color": "#3B82F6",
+    "dept": "engineering",
+    "description": "Write efficient C code with proper memory management, pointer arithmetic, and system calls. Handles embedded systems, kernel modules, and performance-critical code. Use PROACTIVELY for C optimization, memory issues, or system programming.",
+    "name": "C Pro",
+    "role": "Languages",
+    "source": "claude-code-tresor/subagents/engineering/languages/c-pro/agent.md",
+    "subcategory": "languages",
+    "tools": [
+      "Read",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash"
+    ]
+  },
+  "cloud-architect": {
+    "color": "#3B82F6",
+    "dept": "engineering",
+    "description": "Design AWS/Azure/GCP infrastructure, implement Terraform IaC, and optimize cloud costs. Handles auto-scaling, multi-region deployments, and serverless architectures. Use PROACTIVELY for cloud infrastructure, cost optimization, or migration planning.",
+    "name": "Cloud Architect",
+    "role": "DevOps",
+    "source": "claude-code-tresor/subagents/engineering/devops/cloud-architect/agent.md",
+    "subcategory": "devops",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "Task"
+    ]
+  },
+  "code-analyzer-debugger": {
+    "color": "#3B82F6",
+    "dept": "engineering",
+    "description": "Use this agent when you need to investigate bugs, analyze code issues, debug problems, or perform root cause analysis. This includes scenarios where you need to trace execution paths, analyze error messages, investigate performance bottlenecks, debug integration failures, or systematically troubleshoot any code-related issues.",
+    "name": "Code Analyzer Debugger",
+    "role": "Debugging",
+    "source": "claude-code-tresor/subagents/engineering/debugging/code-analyzer-debugger/agent.md",
+    "subcategory": "debugging",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "Task"
+    ]
+  },
+  "competitive-intelligence": {
+    "color": "#F97316",
+    "dept": "research",
+    "description": "Comprehensive competitive analysis and market positioning insights with competitor mapping, feature comparison matrices, pricing intelligence, gap analysis, and strategic differentiation recommendations.",
+    "name": "Competitive Intelligence",
+    "role": "Market",
+    "source": "claude-code-tresor/subagents/research/market/competitive-intelligence/agent.md",
+    "subcategory": "market",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "WebSearch",
+      "WebFetch",
+      "Task"
+    ]
+  },
+  "compliance-officer": {
+    "color": "#F59E0B",
+    "dept": "leadership",
+    "description": "Regulatory compliance analysis, policy development, audit preparation, and compliance monitoring frameworks with GDPR, SOX, PCI DSS, ISO 27001, and cross-border regulatory expertise.",
+    "name": "Compliance Officer",
+    "role": "Compliance",
+    "source": "claude-code-tresor/subagents/leadership/compliance/compliance-officer/agent.md",
+    "subcategory": "compliance",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "WebSearch",
+      "WebFetch",
+      "Task"
+    ]
+  },
+  "config-safety-reviewer": {
+    "color": "#FFD700",
+    "dept": "core",
+    "description": "Configuration safety specialist focusing on production reliability, magic numbers, pool sizes, timeouts, and connection limits. Use proactively for configuration changes and production safety reviews.",
+    "name": "Config Safety Reviewer",
+    "role": "Core",
+    "source": "claude-code-tresor/subagents/core/config-safety-reviewer/agent.md",
+    "subcategory": "",
+    "tools": [
+      "Read",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "Task",
+      "Skill"
+    ]
+  },
+  "content-creator": {
+    "color": "#10B981",
+    "dept": "marketing",
+    "description": "Cross-platform content specialist for blog posts, video scripts, and social media. Use for multi-format content development and repurposing.",
+    "name": "Content Creator",
+    "role": "Content",
+    "source": "claude-code-tresor/subagents/marketing/content/content-creator/agent.md",
+    "subcategory": "content",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "WebSearch",
+      "WebFetch"
+    ]
+  },
+  "content-marketer": {
+    "color": "#10B981",
+    "dept": "marketing",
+    "description": "Marketing content specialist for blog posts, social media, email newsletters, and SEO optimization. Use proactively for marketing content creation.",
+    "name": "Content Marketer",
+    "role": "Content",
+    "source": "claude-code-tresor/subagents/marketing/content/content-marketer/agent.md",
+    "subcategory": "content",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "WebSearch",
+      "WebFetch"
+    ]
+  },
+  "content-writer": {
+    "color": "#10B981",
+    "dept": "marketing",
+    "description": "Direct response copywriter for accessible content that explains complex topics to general audiences. Use for blog posts, marketing copy, and educational content.",
+    "name": "Content Writer",
+    "role": "Content",
+    "source": "claude-code-tresor/subagents/marketing/content/content-writer/agent.md",
+    "subcategory": "content",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "WebSearch",
+      "WebFetch"
+    ]
+  },
+  "cost-optimizer": {
+    "color": "#F59E0B",
+    "dept": "leadership",
+    "description": "Comprehensive cost analysis, budget optimization, vendor management, and operational efficiency improvement with zero-based budgeting, activity-based costing, and systematic cost reduction strategies while maintaining quality.",
+    "name": "Cost Optimizer",
+    "role": "Finance",
+    "source": "claude-code-tresor/subagents/leadership/finance/cost-optimizer/agent.md",
+    "subcategory": "finance",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "WebSearch",
+      "WebFetch",
+      "Task"
+    ]
+  },
+  "cpp-pro": {
+    "color": "#3B82F6",
+    "dept": "engineering",
+    "description": "Write idiomatic C++ code with modern features, RAII, smart pointers, and STL algorithms. Handles templates, move semantics, and performance optimization. Use PROACTIVELY for C++ refactoring, memory safety, or complex C++ patterns.",
+    "name": "Cpp Pro",
+    "role": "Languages",
+    "source": "claude-code-tresor/subagents/engineering/languages/cpp-pro/agent.md",
+    "subcategory": "languages",
+    "tools": [
+      "Read",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash"
+    ]
+  },
+  "csharp-pro": {
+    "color": "#3B82F6",
+    "dept": "engineering",
+    "description": "Write modern C# code with advanced features like records, pattern matching, and async/await. Optimizes .NET applications, implements enterprise patterns, and ensures comprehensive testing. Use PROACTIVELY for C# refactoring, performance optimization, or complex .NET solutions.",
+    "name": "Csharp Pro",
+    "role": "Languages",
+    "source": "claude-code-tresor/subagents/engineering/languages/csharp-pro/agent.md",
+    "subcategory": "languages",
+    "tools": [
+      "Read",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash"
+    ]
+  },
+  "customer-acquisition": {
+    "color": "#10B981",
+    "dept": "marketing",
+    "description": "Customer acquisition specialist for CAC optimization, funnel analysis, and multi-channel strategies. Use for acquisition optimization and conversion improvement.",
+    "name": "Customer Acquisition",
+    "role": "Growth",
+    "source": "claude-code-tresor/subagents/marketing/growth/customer-acquisition/agent.md",
+    "subcategory": "growth",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "WebSearch",
+      "WebFetch"
+    ]
+  },
+  "customer-success-manager": {
+    "color": "#06B6D4",
+    "dept": "account-customer-success",
+    "description": "Use this agent when you need to analyze customer adoption patterns, assess value realization, plan for renewals, or develop customer success strategies. Expert Customer Success Manager with deep expertise in customer adoption, value realization, and renewal optimization.",
+    "name": "Customer Success Manager",
+    "role": "Customer Success",
+    "source": "claude-code-tresor/subagents/account-customer-success/customer-success/customer-success-manager/agent.md",
+    "subcategory": "customer-success",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "WebSearch",
+      "WebFetch",
+      "Task"
+    ]
+  },
+  "customer-support": {
+    "color": "#06B6D4",
+    "dept": "account-customer-success",
+    "description": "Use this agent when you need to analyze customer support issues, track resolution patterns, identify escalation risks, or coordinate with product teams on systemic problems. Expert Customer Support Analyst with deep expertise in issue resolution, pattern analysis, and customer sentiment management.",
+    "name": "Customer Support",
+    "role": "Support",
+    "source": "claude-code-tresor/subagents/account-customer-success/support/customer-support/agent.md",
+    "subcategory": "support",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "WebSearch",
+      "WebFetch",
+      "Task"
+    ]
+  },
+  "data-engineer": {
+    "color": "#3B82F6",
+    "dept": "engineering",
+    "description": "Build ETL pipelines, data warehouses, and streaming architectures. Implements Spark jobs, Airflow DAGs, and Kafka streams. Use PROACTIVELY for data pipeline design or analytics infrastructure.",
+    "name": "Data Engineer",
+    "role": "Data",
+    "source": "claude-code-tresor/subagents/engineering/data/data-engineer/agent.md",
+    "subcategory": "data",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "Task"
+    ]
+  },
+  "data-scientist": {
+    "color": "#3B82F6",
+    "dept": "engineering",
+    "description": "Data analysis expert for SQL queries, BigQuery operations, and data insights. Use proactively for data analysis tasks and queries.",
+    "name": "Data Scientist",
+    "role": "Data",
+    "source": "claude-code-tresor/subagents/engineering/data/data-scientist/agent.md",
+    "subcategory": "data",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "Task"
+    ]
+  },
+  "database-admin": {
+    "color": "#3B82F6",
+    "dept": "engineering",
+    "description": "Manage database operations, backups, replication, and monitoring. Handles user permissions, maintenance tasks, and disaster recovery. Use PROACTIVELY for database setup, operational issues, or recovery procedures.",
+    "name": "Database Admin",
+    "role": "Backend",
+    "source": "claude-code-tresor/subagents/engineering/backend/database-admin/agent.md",
+    "subcategory": "backend",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "Task"
+    ]
+  },
+  "database-optimizer": {
+    "color": "#3B82F6",
+    "dept": "engineering",
+    "description": "Optimize SQL queries, design efficient indexes, and handle database migrations. Solves N+1 problems, slow queries, and implements caching. Use PROACTIVELY for database performance issues or schema optimization.",
+    "name": "Database Optimizer",
+    "role": "Backend",
+    "source": "claude-code-tresor/subagents/engineering/backend/database-optimizer/agent.md",
+    "subcategory": "backend",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "Task"
+    ]
+  },
+  "deep-research-specialist": {
+    "color": "#F97316",
+    "dept": "research",
+    "description": "Conduct systematic, comprehensive investigations on complex topics requiring multi-source validation and evidence synthesis with structured methodology, source evaluation, and coherent narrative creation.",
+    "name": "Deep Research Specialist",
+    "role": "Data",
+    "source": "claude-code-tresor/subagents/research/data/deep-research-specialist/agent.md",
+    "subcategory": "data",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "WebSearch",
+      "WebFetch",
+      "Task"
+    ]
+  },
+  "deployment-engineer": {
+    "color": "#3B82F6",
+    "dept": "engineering",
+    "description": "Configure CI/CD pipelines, Docker containers, and cloud deployments. Handles GitHub Actions, Kubernetes, and infrastructure automation. Use PROACTIVELY when setting up deployments, containers, or CI/CD workflows.",
+    "name": "Deployment Engineer",
+    "role": "DevOps",
+    "source": "claude-code-tresor/subagents/engineering/devops/deployment-engineer/agent.md",
+    "subcategory": "devops",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "Task"
+    ]
+  },
+  "devops-troubleshooter": {
+    "color": "#3B82F6",
+    "dept": "engineering",
+    "description": "Debug production issues, analyze logs, and fix deployment failures. Masters monitoring tools, incident response, and root cause analysis. Use PROACTIVELY for production debugging or system outages.",
+    "name": "DevOps Troubleshooter",
+    "role": "DevOps",
+    "source": "claude-code-tresor/subagents/engineering/devops/devops-troubleshooter/agent.md",
+    "subcategory": "devops",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "Task"
+    ]
+  },
+  "docs-architect": {
+    "color": "#3B82F6",
+    "dept": "engineering",
+    "description": "Creates comprehensive technical documentation from existing codebases. Analyzes architecture, design patterns, and implementation details to produce long-form technical manuals and ebooks. Use PROACTIVELY for system documentation, architecture guides, or technical deep-dives.",
+    "name": "Docs Architect",
+    "role": "Architecture",
+    "source": "claude-code-tresor/subagents/engineering/architecture/docs-architect/agent.md",
+    "subcategory": "architecture",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "Task"
+    ]
+  },
+  "docs-writer": {
+    "color": "#FFD700",
+    "dept": "core",
+    "description": "Expert technical documentation specialist for creating comprehensive, user-friendly documentation across all project types. Use proactively for API docs, user guides, and technical documentation.",
+    "name": "Docs Writer",
+    "role": "Core",
+    "source": "claude-code-tresor/subagents/core/docs-writer/agent.md",
+    "subcategory": "",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "WebFetch",
+      "Skill"
+    ]
+  },
+  "dx-optimizer": {
+    "color": "#3B82F6",
+    "dept": "engineering",
+    "description": "Developer Experience specialist. Improves tooling, setup, and workflows. Use PROACTIVELY when setting up new projects, after team feedback, or when development friction is noticed.",
+    "name": "Dx Optimizer",
+    "role": "DevOps",
+    "source": "claude-code-tresor/subagents/engineering/devops/dx-optimizer/agent.md",
+    "subcategory": "devops",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "Task"
+    ]
+  },
+  "educational-content-writer": {
+    "color": "#10B981",
+    "dept": "marketing",
+    "description": "Educational content specialist for step-by-step tutorials, onboarding guides, and concept explanations. Use proactively for transforming complex concepts into progressive learning experiences.",
+    "id_note": "Renamed locally from 'tutorial-engineer', which collides with another department's agent upstream. See scripts/generate_agents_json.py.",
+    "name": "Educational Content Writer",
+    "role": "Content",
+    "source": "claude-code-tresor/subagents/marketing/content/tutorial-engineer/agent.md",
+    "subcategory": "content",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "WebSearch",
+      "WebFetch"
+    ],
+    "upstream_name": "tutorial-engineer"
+  },
+  "elixir-pro": {
+    "color": "#3B82F6",
+    "dept": "engineering",
+    "description": "Write idiomatic Elixir code with OTP patterns, supervision trees, and Phoenix LiveView. Masters concurrency, fault tolerance, and distributed systems. Use PROACTIVELY for Elixir refactoring, OTP design, or complex BEAM optimizations.",
+    "name": "Elixir Pro",
+    "role": "Languages",
+    "source": "claude-code-tresor/subagents/engineering/languages/elixir-pro/agent.md",
+    "subcategory": "languages",
+    "tools": [
+      "Read",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash"
+    ]
+  },
+  "error-detective": {
+    "color": "#3B82F6",
+    "dept": "engineering",
+    "description": "Search logs and codebases for error patterns, stack traces, and anomalies. Correlates errors across systems and identifies root causes. Use PROACTIVELY when debugging issues, analyzing logs, or investigating production errors.",
+    "name": "Error Detective",
+    "role": "Backend",
+    "source": "claude-code-tresor/subagents/engineering/backend/error-detective/agent.md",
+    "subcategory": "backend",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "Task"
+    ]
+  },
+  "experience-analyzer": {
+    "color": "#EC4899",
+    "dept": "design",
+    "description": "Customer experience analyst for analyzing feedback data, identifying friction points, and optimizing user journeys. Use for support ticket analysis and customer journey mapping.",
+    "name": "Experience Analyzer",
+    "role": "UX",
+    "source": "claude-code-tresor/subagents/design/ux/experience-analyzer/agent.md",
+    "subcategory": "ux",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "WebSearch",
+      "WebFetch"
+    ]
+  },
+  "experiment-tracker": {
+    "color": "#8B5CF6",
+    "dept": "product",
+    "description": "Experiment orchestrator for A/B testing, feature experiments, and data-driven iteration. PROACTIVELY use when experiments start or results need analysis.",
+    "name": "Experiment Tracker",
+    "role": "Analytics",
+    "source": "claude-code-tresor/subagents/product/analytics/experiment-tracker/agent.md",
+    "subcategory": "analytics",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "TodoWrite"
+    ]
+  },
+  "feedback-synthesizer": {
+    "color": "#8B5CF6",
+    "dept": "product",
+    "description": "User feedback analyst for synthesizing multi-source feedback into actionable insights. Use for feedback analysis, pattern recognition, and feature prioritization.",
+    "name": "Feedback Synthesizer",
+    "role": "Research",
+    "source": "claude-code-tresor/subagents/product/research/feedback-synthesizer/agent.md",
+    "subcategory": "research",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "WebSearch",
+      "WebFetch"
+    ]
+  },
+  "finance-tracker": {
+    "color": "#F59E0B",
+    "dept": "leadership",
+    "description": "Budget management, cost optimization, revenue forecasting, and financial performance analysis with unit economics, ROI tracking, investor reporting, and strategic financial planning for app development and SaaS businesses.",
+    "name": "Finance Tracker",
+    "role": "Finance",
+    "source": "claude-code-tresor/subagents/leadership/finance/finance-tracker/agent.md",
+    "subcategory": "finance",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "WebSearch",
+      "WebFetch",
+      "Task"
+    ]
+  },
+  "financial-analyst": {
+    "color": "#F59E0B",
+    "dept": "leadership",
+    "description": "Comprehensive financial analysis, ROI modeling, budget planning, and investment evaluation with three-statement financial models, scenario-based projections, and unit economics analysis for strategic business decisions.",
+    "name": "Financial Analyst",
+    "role": "Finance",
+    "source": "claude-code-tresor/subagents/leadership/finance/financial-analyst/agent.md",
+    "subcategory": "finance",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "WebSearch",
+      "WebFetch",
+      "Task"
+    ]
+  },
+  "flutter-expert": {
+    "color": "#3B82F6",
+    "dept": "engineering",
+    "description": "Master Flutter development with Dart, widgets, and platform integrations. Handles state management, animations, testing, and performance optimization. Deploys to iOS, Android, Web, and desktop. Use PROACTIVELY for Flutter architecture, UI implementation, or cross-platform features.",
+    "name": "Flutter Expert",
+    "role": "Mobile",
+    "source": "claude-code-tresor/subagents/engineering/mobile/flutter-expert/agent.md",
+    "subcategory": "mobile",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "Task"
+    ]
+  },
+  "frontend-developer": {
+    "color": "#3B82F6",
+    "dept": "engineering",
+    "description": "Build React components, implement responsive layouts, and handle client-side state management. Optimizes frontend performance and ensures accessibility. Use PROACTIVELY when creating UI components or fixing frontend issues.",
+    "name": "Frontend Developer",
+    "role": "Frontend",
+    "source": "claude-code-tresor/subagents/engineering/frontend/frontend-developer/agent.md",
+    "subcategory": "frontend",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "Task"
+    ]
+  },
+  "frontend-ux-specialist": {
+    "color": "#3B82F6",
+    "dept": "engineering",
+    "description": "Use this agent when you need to create, review, or optimize user interfaces and frontend components. This includes building new UI components, improving existing interfaces, ensuring accessibility compliance, optimizing frontend performance, implementing responsive designs, or addressing user experience concerns. The agent excels at mobile-first development, accessibility standards, and performance optimization.",
+    "name": "Frontend UX Specialist",
+    "role": "Frontend",
+    "source": "claude-code-tresor/subagents/engineering/frontend/frontend-ux-specialist/agent.md",
+    "subcategory": "frontend",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "Task"
+    ]
+  },
+  "golang-pro": {
+    "color": "#3B82F6",
+    "dept": "engineering",
+    "description": "Write idiomatic Go code with goroutines, channels, and interfaces. Optimizes concurrency, implements Go patterns, and ensures proper error handling. Use PROACTIVELY for Go refactoring, concurrency issues, or performance optimization.",
+    "name": "Golang Pro",
+    "role": "Languages",
+    "source": "claude-code-tresor/subagents/engineering/languages/golang-pro/agent.md",
+    "subcategory": "languages",
+    "tools": [
+      "Read",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash"
+    ]
+  },
+  "graphql-architect": {
+    "color": "#3B82F6",
+    "dept": "engineering",
+    "description": "Design GraphQL schemas, resolvers, and federation. Optimizes queries, solves N+1 problems, and implements subscriptions. Use PROACTIVELY for GraphQL API design or performance issues.",
+    "name": "Graphql Architect",
+    "role": "Backend",
+    "source": "claude-code-tresor/subagents/engineering/backend/graphql-architect/agent.md",
+    "subcategory": "backend",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "Task"
+    ]
+  },
+  "growth-hacker": {
+    "color": "#10B981",
+    "dept": "marketing",
+    "description": "Growth specialist for rapid user acquisition, viral loops, and data-driven experiments. Use for growth strategy, A/B testing, and conversion optimization.",
+    "name": "Growth Hacker",
+    "role": "Growth",
+    "source": "claude-code-tresor/subagents/marketing/growth/growth-hacker/agent.md",
+    "subcategory": "growth",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "WebSearch",
+      "WebFetch"
+    ]
+  },
+  "incident-responder": {
+    "color": "#3B82F6",
+    "dept": "engineering",
+    "description": "Handles production incidents with urgency and precision. Use IMMEDIATELY when production issues occur. Coordinates debugging, implements fixes, and documents post-mortems.",
+    "name": "Incident Responder",
+    "role": "DevOps",
+    "source": "claude-code-tresor/subagents/engineering/devops/incident-responder/agent.md",
+    "subcategory": "devops",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "Task"
+    ]
+  },
+  "infrastructure-maintainer": {
+    "color": "#3B82F6",
+    "dept": "engineering",
+    "description": "Use this agent when monitoring system health, optimizing performance, managing scaling, or ensuring infrastructure reliability. This agent excels at keeping studio applications running smoothly while preparing for growth and preventing disasters.",
+    "name": "Infrastructure Maintainer",
+    "role": "DevOps",
+    "source": "claude-code-tresor/subagents/engineering/devops/infrastructure-maintainer/agent.md",
+    "subcategory": "devops",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "Task"
+    ]
+  },
+  "instagram-curator": {
+    "color": "#10B981",
+    "dept": "marketing",
+    "description": "Instagram specialist for visual content strategy, Stories, Reels, and platform growth. Use for Instagram marketing, engagement optimization, and visual aesthetics.",
+    "name": "Instagram Curator",
+    "role": "Social",
+    "source": "claude-code-tresor/subagents/marketing/social/instagram-curator/agent.md",
+    "subcategory": "social",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "WebSearch",
+      "WebFetch"
+    ]
+  },
+  "integration-specialist": {
+    "color": "#6366F1",
+    "dept": "ai-automation",
+    "description": "Use this agent when you need API design, system integration, data flow optimization, and comprehensive integration architecture. Specializes in creating seamless connections between diverse systems while ensuring data consistency, security, and optimal performance.",
+    "name": "Integration Specialist",
+    "role": "Automation",
+    "source": "claude-code-tresor/subagents/ai-automation/automation/integration-specialist/agent.md",
+    "subcategory": "automation",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "WebSearch",
+      "WebFetch",
+      "Task"
+    ]
+  },
+  "investment-analyst": {
+    "color": "#F59E0B",
+    "dept": "leadership",
+    "description": "M&A analysis, funding strategies, valuation modeling, and investment evaluation with comprehensive due diligence, DCF modeling, comparable analysis, and strategic transaction assessment across multiple deal structures.",
+    "name": "Investment Analyst",
+    "role": "Finance",
+    "source": "claude-code-tresor/subagents/leadership/finance/investment-analyst/agent.md",
+    "subcategory": "finance",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "WebSearch",
+      "WebFetch",
+      "Task"
+    ]
+  },
+  "ios-developer": {
+    "color": "#3B82F6",
+    "dept": "engineering",
+    "description": "Develop native iOS applications with Swift/SwiftUI. Masters UIKit/SwiftUI, Core Data, networking, and app lifecycle. Use PROACTIVELY for iOS-specific features, App Store optimization, or native iOS development.",
+    "name": "Ios Developer",
+    "role": "Mobile",
+    "source": "claude-code-tresor/subagents/engineering/mobile/ios-developer/agent.md",
+    "subcategory": "mobile",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "Task"
+    ]
+  },
+  "java-pro": {
+    "color": "#3B82F6",
+    "dept": "engineering",
+    "description": "Master modern Java with streams, concurrency, and JVM optimization. Handles Spring Boot, reactive programming, and enterprise patterns. Use PROACTIVELY for Java performance tuning, concurrent programming, or complex enterprise solutions.",
+    "name": "Java Pro",
+    "role": "Languages",
+    "source": "claude-code-tresor/subagents/engineering/languages/java-pro/agent.md",
+    "subcategory": "languages",
+    "tools": [
+      "Read",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash"
+    ]
+  },
+  "javascript-pro": {
+    "color": "#3B82F6",
+    "dept": "engineering",
+    "description": "Master modern JavaScript with ES6+, async patterns, and Node.js APIs. Handles promises, event loops, and browser/Node compatibility. Use PROACTIVELY for JavaScript optimization, async debugging, or complex JS patterns.",
+    "name": "Javascript Pro",
+    "role": "Languages",
+    "source": "claude-code-tresor/subagents/engineering/languages/javascript-pro/agent.md",
+    "subcategory": "languages",
+    "tools": [
+      "Read",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash"
+    ]
+  },
+  "legacy-modernizer": {
+    "color": "#3B82F6",
+    "dept": "engineering",
+    "description": "Refactor legacy codebases, migrate outdated frameworks, and implement gradual modernization. Handles technical debt, dependency updates, and backward compatibility. Use PROACTIVELY for legacy system updates, framework migrations, or technical debt reduction.",
+    "name": "Legacy Modernizer",
+    "role": "Code Quality",
+    "source": "claude-code-tresor/subagents/engineering/code-quality/legacy-modernizer/agent.md",
+    "subcategory": "code-quality",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "Task"
+    ]
+  },
+  "legal-advisor": {
+    "color": "#F59E0B",
+    "dept": "leadership",
+    "description": "Draft privacy policies, terms of service, disclaimers, and legal notices with GDPR, CCPA, LGPD compliance, cookie policies, data processing agreements, and intellectual property documentation.",
+    "name": "Legal Advisor",
+    "role": "Compliance",
+    "source": "claude-code-tresor/subagents/leadership/compliance/legal-advisor/agent.md",
+    "subcategory": "compliance",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "WebSearch",
+      "WebFetch",
+      "Task"
+    ]
+  },
+  "legal-compliance-checker": {
+    "color": "#F59E0B",
+    "dept": "leadership",
+    "description": "Review terms of service, privacy policies, ensure regulatory compliance for app development with GDPR, CCPA, COPPA, HIPAA, accessibility standards, and platform policy adherence.",
+    "name": "Legal Compliance Checker",
+    "role": "Compliance",
+    "source": "claude-code-tresor/subagents/leadership/compliance/legal-compliance-checker/agent.md",
+    "subcategory": "compliance",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "WebSearch",
+      "WebFetch",
+      "Task"
+    ]
+  },
+  "managed-services-engineer": {
+    "color": "#06B6D4",
+    "dept": "account-customer-success",
+    "description": "Use this agent when you need to ensure product-customer alignment, manage release updates, identify optimization opportunities, or maintain implementation health and performance. Specializes in product-customer alignment, release management, and implementation optimization.",
+    "name": "Managed Services Engineer",
+    "role": "Account Management",
+    "source": "claude-code-tresor/subagents/account-customer-success/account-management/managed-services-engineer/agent.md",
+    "subcategory": "account-management",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "WebSearch",
+      "WebFetch",
+      "Task"
+    ]
+  },
+  "market-research-analyst": {
+    "color": "#F97316",
+    "dept": "research",
+    "description": "Comprehensive market intelligence, competitive analysis, industry trends, and business research compiled into executive-ready reports using BLUF methodology with systematic intelligence gathering and source verification.",
+    "name": "Market Research Analyst",
+    "role": "Market",
+    "source": "claude-code-tresor/subagents/research/market/market-research-analyst/agent.md",
+    "subcategory": "market",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "WebSearch",
+      "WebFetch",
+      "Task"
+    ]
+  },
+  "minecraft-bukkit-pro": {
+    "color": "#3B82F6",
+    "dept": "engineering",
+    "description": "Master Minecraft server plugin development with Bukkit, Spigot, and Paper APIs. Specializes in event-driven architecture, command systems, world manipulation, player management, and performance optimization. Use PROACTIVELY for plugin architecture, gameplay mechanics, server-side features, or cross-version compatibility.",
+    "name": "Minecraft Bukkit Pro",
+    "role": "Languages",
+    "source": "claude-code-tresor/subagents/engineering/languages/minecraft-bukkit-pro/agent.md",
+    "subcategory": "languages",
+    "tools": [
+      "Read",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash"
+    ]
+  },
+  "ml-engineer": {
+    "color": "#6366F1",
+    "dept": "ai-automation",
+    "description": "Use this agent when you need machine learning model development, MLOps implementation, production ML systems, and AI model optimization. Specializes in building scalable, reliable ML systems that deliver consistent performance in production environments.",
+    "name": "ML Engineer",
+    "role": "ML Engineering",
+    "source": "claude-code-tresor/subagents/ai-automation/ml-engineering/ml-engineer/agent.md",
+    "subcategory": "ml-engineering",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "WebSearch",
+      "WebFetch",
+      "Task"
+    ]
+  },
+  "mlops-engineer": {
+    "color": "#6366F1",
+    "dept": "ai-automation",
+    "description": "Use this agent when you need ML infrastructure automation, model deployment pipelines, experiment tracking, and production ML operations. Specializes in building robust MLOps systems that enable rapid model iteration and reliable production deployment.",
+    "name": "MLOps Engineer",
+    "role": "ML Engineering",
+    "source": "claude-code-tresor/subagents/ai-automation/ml-engineering/mlops-engineer/agent.md",
+    "subcategory": "ml-engineering",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "WebSearch",
+      "WebFetch",
+      "Task"
+    ]
+  },
+  "mobile-developer": {
+    "color": "#3B82F6",
+    "dept": "engineering",
+    "description": "Develop React Native or Flutter apps with native integrations. Handles offline sync, push notifications, and app store deployments. Use PROACTIVELY for mobile features, cross-platform code, or app optimization.",
+    "name": "Mobile Developer",
+    "role": "Mobile",
+    "source": "claude-code-tresor/subagents/engineering/mobile/mobile-developer/agent.md",
+    "subcategory": "mobile",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "Task"
+    ]
+  },
+  "network-engineer": {
+    "color": "#3B82F6",
+    "dept": "engineering",
+    "description": "Debug network connectivity, configure load balancers, and analyze traffic patterns. Handles DNS, SSL/TLS, CDN setup, and network security. Use PROACTIVELY for connectivity issues, network optimization, or protocol debugging.",
+    "name": "Network Engineer",
+    "role": "DevOps",
+    "source": "claude-code-tresor/subagents/engineering/devops/network-engineer/agent.md",
+    "subcategory": "devops",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "Task"
+    ]
+  },
+  "operations-optimizer": {
+    "color": "#14B8A6",
+    "dept": "operations",
+    "description": "Process analysis, workflow automation, efficiency improvement, and operational excellence with lean methodologies, process mapping, bottleneck identification, and continuous improvement initiatives.",
+    "name": "Operations Optimizer",
+    "role": "Infrastructure",
+    "source": "claude-code-tresor/subagents/operations/infrastructure/operations-optimizer/agent.md",
+    "subcategory": "infrastructure",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "WebSearch",
+      "WebFetch",
+      "Task"
+    ]
+  },
+  "partnership-strategist": {
+    "color": "#F59E0B",
+    "dept": "leadership",
+    "description": "Partnership evaluation, channel strategy, integration planning, and strategic alliance development with partner ecosystem design, co-marketing strategies, and revenue sharing models for collaborative growth.",
+    "name": "Partnership Strategist",
+    "role": "Strategy",
+    "source": "claude-code-tresor/subagents/leadership/strategy/partnership-strategist/agent.md",
+    "subcategory": "strategy",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "WebSearch",
+      "WebFetch",
+      "Task"
+    ]
+  },
+  "payment-integration": {
+    "color": "#3B82F6",
+    "dept": "engineering",
+    "description": "Integrate Stripe, PayPal, and payment processors. Handles checkout flows, subscriptions, webhooks, and PCI compliance. Use PROACTIVELY when implementing payments, billing, or subscription features.",
+    "name": "Payment Integration",
+    "role": "Backend",
+    "source": "claude-code-tresor/subagents/engineering/backend/payment-integration/agent.md",
+    "subcategory": "backend",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "Task"
+    ]
+  },
+  "performance-benchmarker": {
+    "color": "#3B82F6",
+    "dept": "engineering",
+    "description": "Use this agent for comprehensive performance testing, profiling, and optimization recommendations. This agent specializes in measuring speed, identifying bottlenecks, and providing actionable optimization strategies for applications.",
+    "name": "Performance Benchmarker",
+    "role": "Testing",
+    "source": "claude-code-tresor/subagents/engineering/testing/performance-benchmarker/agent.md",
+    "subcategory": "testing",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "Task"
+    ]
+  },
+  "performance-tuner": {
+    "color": "#FFD700",
+    "dept": "core",
+    "description": "Performance engineering specialist for application profiling, optimization, and scalability. Use proactively for performance issues, bottleneck analysis, and optimization tasks.",
+    "name": "Performance Tuner",
+    "role": "Core",
+    "source": "claude-code-tresor/subagents/core/performance-tuner/agent.md",
+    "subcategory": "",
+    "tools": [
+      "Read",
+      "Edit",
+      "Bash",
+      "Grep",
+      "Glob",
+      "Task",
+      "Skill"
+    ]
+  },
+  "php-pro": {
+    "color": "#3B82F6",
+    "dept": "engineering",
+    "description": "Write idiomatic PHP code with generators, iterators, SPL data structures, and modern OOP features. Use PROACTIVELY for high-performance PHP applications.",
+    "name": "Php Pro",
+    "role": "Languages",
+    "source": "claude-code-tresor/subagents/engineering/languages/php-pro/agent.md",
+    "subcategory": "languages",
+    "tools": [
+      "Read",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash"
+    ]
+  },
+  "prd-writer": {
+    "color": "#8B5CF6",
+    "dept": "product",
+    "description": "Product requirements specialist for creating comprehensive PRDs with testable requirements and clear acceptance criteria. Use for product documentation and requirements gathering.",
+    "name": "Prd Writer",
+    "role": "Requirements",
+    "source": "claude-code-tresor/subagents/product/requirements/prd-writer/agent.md",
+    "subcategory": "requirements",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "WebSearch",
+      "WebFetch"
+    ]
+  },
+  "pricing-strategist": {
+    "color": "#F59E0B",
+    "dept": "leadership",
+    "description": "Dynamic pricing analysis, revenue optimization, competitive pricing strategies, and pricing model development with value-based pricing, tiered structures, A/B testing frameworks, and willingness-to-pay analysis.",
+    "name": "Pricing Strategist",
+    "role": "Finance",
+    "source": "claude-code-tresor/subagents/leadership/finance/pricing-strategist/agent.md",
+    "subcategory": "finance",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "WebSearch",
+      "WebFetch",
+      "Task"
+    ]
+  },
+  "product-engineer": {
+    "color": "#06B6D4",
+    "dept": "account-customer-success",
+    "description": "Use this agent when you need to analyze customer use cases and map them to product capabilities, identify feature gaps, evaluate technical integration opportunities, or align product roadmaps with customer needs. Product Engineer specializing in technical product strategy and product-market alignment.",
+    "name": "Product Engineer",
+    "role": "Support",
+    "source": "claude-code-tresor/subagents/account-customer-success/support/product-engineer/agent.md",
+    "subcategory": "support",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "WebSearch",
+      "WebFetch",
+      "Task"
+    ]
+  },
+  "product-manager": {
+    "color": "#8B5CF6",
+    "dept": "product",
+    "description": "Product management orchestrator for coordinating specialized agents to deliver complete features. Use for cross-functional development work and complex initiatives.",
+    "name": "Product Manager",
+    "role": "Management",
+    "source": "claude-code-tresor/subagents/product/management/product-manager/agent.md",
+    "subcategory": "management",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "WebSearch",
+      "WebFetch",
+      "Task",
+      "Skill"
+    ]
+  },
+  "project-shipper": {
+    "color": "#8B5CF6",
+    "dept": "product",
+    "description": "Launch orchestrator for release management, go-to-market execution, and stakeholder communication. PROACTIVELY use when approaching launch milestones or release deadlines.",
+    "name": "Project Shipper",
+    "role": "Management",
+    "source": "claude-code-tresor/subagents/product/management/project-shipper/agent.md",
+    "subcategory": "management",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "TodoWrite",
+      "WebSearch",
+      "WebFetch"
+    ]
+  },
+  "prompt-engineer": {
+    "color": "#6366F1",
+    "dept": "ai-automation",
+    "description": "Optimizes prompts for LLMs and AI systems. Use when building AI features, improving agent performance, or crafting system prompts. Expert in prompt patterns and techniques for quick iterations.",
+    "name": "Prompt Engineer",
+    "role": "Prompts",
+    "source": "claude-code-tresor/subagents/ai-automation/prompts/prompt-engineer/agent.md",
+    "subcategory": "prompts",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "WebSearch",
+      "WebFetch",
+      "Task"
+    ]
+  },
+  "prompt-engineer-advanced": {
+    "color": "#6366F1",
+    "dept": "ai-automation",
+    "description": "Use this agent when you need advanced prompt engineering, LLM optimization, AI system architecture, and conversational AI development. Specializes in creating production-grade prompts that deliver consistent, reliable, and safe AI experiences across various business applications.",
+    "name": "Prompt Engineer Advanced",
+    "role": "Prompts",
+    "source": "claude-code-tresor/subagents/ai-automation/prompts/prompt-engineer-advanced/agent.md",
+    "subcategory": "prompts",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "WebSearch",
+      "WebFetch",
+      "Task"
+    ]
+  },
+  "python-pro": {
+    "color": "#3B82F6",
+    "dept": "engineering",
+    "description": "Write idiomatic Python code with advanced features like decorators, generators, and async/await. Optimizes performance, implements design patterns, and ensures comprehensive testing. Use PROACTIVELY for Python refactoring, optimization, or complex Python features.",
+    "name": "Python Pro",
+    "role": "Languages",
+    "source": "claude-code-tresor/subagents/engineering/languages/python-pro/agent.md",
+    "subcategory": "languages",
+    "tools": [
+      "Read",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash"
+    ]
+  },
+  "qa-test-engineer": {
+    "color": "#3B82F6",
+    "dept": "engineering",
+    "description": "Use this agent when you need comprehensive testing strategies, test automation implementation, quality assurance planning, or edge case analysis. This includes writing test suites, designing test cases, analyzing test coverage, identifying potential failure scenarios, or establishing quality gates for any codebase or feature.",
+    "name": "QA Test Engineer",
+    "role": "Testing",
+    "source": "claude-code-tresor/subagents/engineering/testing/qa-test-engineer/agent.md",
+    "subcategory": "testing",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "Task"
+    ]
+  },
+  "quant-analyst": {
+    "color": "#F59E0B",
+    "dept": "leadership",
+    "description": "Build financial models, backtest trading strategies, and analyze market data with risk metrics, portfolio optimization, statistical arbitrage, time series forecasting, and options pricing for algorithmic trading.",
+    "name": "Quant Analyst",
+    "role": "Finance",
+    "source": "claude-code-tresor/subagents/leadership/finance/quant-analyst/agent.md",
+    "subcategory": "finance",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "WebSearch",
+      "WebFetch",
+      "Task"
+    ]
+  },
+  "reddit-community-builder": {
+    "color": "#10B981",
+    "dept": "marketing",
+    "description": "Reddit specialist for authentic engagement, organic growth, and community-first strategies. Use for Reddit marketing, subreddit participation, and reputation building.",
+    "name": "Reddit Community Builder",
+    "role": "Social",
+    "source": "claude-code-tresor/subagents/marketing/social/reddit-community-builder/agent.md",
+    "subcategory": "social",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "WebSearch",
+      "WebFetch"
+    ]
+  },
+  "reddit-intelligence": {
+    "color": "#F97316",
+    "dept": "research",
+    "description": "Analyze Reddit communities for market intelligence, user sentiment, pain point extraction, and trend identification with behavioral pattern recognition and organic user insights from authentic discussions.",
+    "name": "Reddit Intelligence",
+    "role": "Market",
+    "source": "claude-code-tresor/subagents/research/market/reddit-intelligence/agent.md",
+    "subcategory": "market",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "WebSearch",
+      "WebFetch",
+      "Task"
+    ]
+  },
+  "refactor-expert": {
+    "color": "#FFD700",
+    "dept": "core",
+    "description": "Code refactoring specialist focused on clean architecture, SOLID principles, and technical debt reduction. Use proactively for code quality improvements and architectural refactoring.",
+    "name": "Refactor Expert",
+    "role": "Core",
+    "source": "claude-code-tresor/subagents/core/refactor-expert/agent.md",
+    "subcategory": "",
+    "tools": [
+      "Read",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "Task",
+      "Skill"
+    ]
+  },
+  "reference-builder": {
+    "color": "#3B82F6",
+    "dept": "engineering",
+    "description": "Creates exhaustive technical references and API documentation. Generates comprehensive parameter listings, configuration guides, and searchable reference materials. Use PROACTIVELY for API docs, configuration references, or complete technical specifications.",
+    "name": "Reference Builder",
+    "role": "Documentation",
+    "source": "claude-code-tresor/subagents/engineering/documentation/reference-builder/agent.md",
+    "subcategory": "documentation",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "Task"
+    ]
+  },
+  "requirements-generator": {
+    "color": "#8B5CF6",
+    "dept": "product",
+    "description": "Product requirements generator for transforming ideas into structured PRDs. Use for feature requests, product concepts, and business problem documentation.",
+    "name": "Requirements Generator",
+    "role": "Requirements",
+    "source": "claude-code-tresor/subagents/product/requirements/requirements-generator/agent.md",
+    "subcategory": "requirements",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "WebSearch",
+      "WebFetch"
+    ]
+  },
+  "retention-specialist": {
+    "color": "#06B6D4",
+    "dept": "account-customer-success",
+    "description": "Use this agent when you need customer retention analysis, churn reduction strategies, loyalty program design, and customer lifecycle optimization. Senior Retention Specialist specializing in building comprehensive retention strategies that maximize customer lifetime value.",
+    "name": "Retention Specialist",
+    "role": "Customer Success",
+    "source": "claude-code-tresor/subagents/account-customer-success/customer-success/retention-specialist/agent.md",
+    "subcategory": "customer-success",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "WebSearch",
+      "WebFetch",
+      "Task"
+    ]
+  },
+  "revenue-analyst": {
+    "color": "#14B8A6",
+    "dept": "operations",
+    "description": "Revenue forecasting, pipeline analysis, growth metrics tracking, and revenue optimization with SaaS metrics, customer cohort modeling, and predictive analytics for sustainable business growth.",
+    "name": "Revenue Analyst",
+    "role": "Analytics",
+    "source": "claude-code-tresor/subagents/operations/analytics/revenue-analyst/agent.md",
+    "subcategory": "analytics",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "WebSearch",
+      "WebFetch",
+      "Task"
+    ]
+  },
+  "risk-assessor": {
+    "color": "#F59E0B",
+    "dept": "leadership",
+    "description": "Comprehensive risk modeling, scenario planning, business continuity analysis, and risk mitigation strategies with Monte Carlo simulations, quantitative risk analysis, and early warning systems.",
+    "name": "Risk Assessor",
+    "role": "Risk",
+    "source": "claude-code-tresor/subagents/leadership/risk/risk-assessor/agent.md",
+    "subcategory": "risk",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "WebSearch",
+      "WebFetch",
+      "Task"
+    ]
+  },
+  "risk-manager": {
+    "color": "#F59E0B",
+    "dept": "leadership",
+    "description": "Monitor portfolio risk, R-multiples, and position limits with hedging strategies, expectancy calculations, stop-loss implementation, VaR analysis, and comprehensive risk assessment for portfolio protection.",
+    "name": "Risk Manager",
+    "role": "Finance",
+    "source": "claude-code-tresor/subagents/leadership/finance/risk-manager/agent.md",
+    "subcategory": "finance",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "WebSearch",
+      "WebFetch",
+      "Task"
+    ]
+  },
+  "root-cause-analyzer": {
+    "color": "#FFD700",
+    "dept": "core",
+    "description": "Expert debugging specialist focused on comprehensive root cause analysis (RCA), systematic problem-solving, and minimal-impact fixes. Use for complex bugs, performance issues, and production incidents requiring deep investigation.",
+    "name": "Root Cause Analyzer",
+    "role": "Core",
+    "source": "claude-code-tresor/subagents/core/root-cause-analyzer/agent.md",
+    "subcategory": "",
+    "tools": [
+      "Read",
+      "Edit",
+      "Bash",
+      "Grep",
+      "Glob",
+      "Task",
+      "Skill"
+    ]
+  },
+  "ruby-pro": {
+    "color": "#3B82F6",
+    "dept": "engineering",
+    "description": "Write idiomatic Ruby code with metaprogramming, Rails patterns, and performance optimization. Specializes in Ruby on Rails, gem development, and testing frameworks. Use PROACTIVELY for Ruby refactoring, optimization, or complex Ruby features.",
+    "name": "Ruby Pro",
+    "role": "Languages",
+    "source": "claude-code-tresor/subagents/engineering/languages/ruby-pro/agent.md",
+    "subcategory": "languages",
+    "tools": [
+      "Read",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash"
+    ]
+  },
+  "rust-pro": {
+    "color": "#3B82F6",
+    "dept": "engineering",
+    "description": "Write idiomatic Rust with ownership patterns, lifetimes, and trait implementations. Masters async/await, safe concurrency, and zero-cost abstractions. Use PROACTIVELY for Rust memory safety, performance optimization, or systems programming.",
+    "name": "Rust Pro",
+    "role": "Languages",
+    "source": "claude-code-tresor/subagents/engineering/languages/rust-pro/agent.md",
+    "subcategory": "languages",
+    "tools": [
+      "Read",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash"
+    ]
+  },
+  "sales-automator": {
+    "color": "#06B6D4",
+    "dept": "account-customer-success",
+    "description": "Use this agent when you need to draft cold emails, follow-ups, and proposal templates. Creates pricing pages, case studies, and sales scripts. Use for sales outreach, lead nurturing, and conversion optimization.",
+    "name": "Sales Automator",
+    "role": "Sales",
+    "source": "claude-code-tresor/subagents/account-customer-success/sales/sales-automator/agent.md",
+    "subcategory": "sales",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "WebSearch",
+      "WebFetch",
+      "Task"
+    ]
+  },
+  "sales-engineer": {
+    "color": "#06B6D4",
+    "dept": "account-customer-success",
+    "description": "Use this agent when you need technical sales support, solution architecture, demo preparation, and proof-of-concept development for complex technical products. Senior Sales Engineer specializing in translating complex technical capabilities into business value.",
+    "name": "Sales Engineer",
+    "role": "Sales",
+    "source": "claude-code-tresor/subagents/account-customer-success/sales/sales-engineer/agent.md",
+    "subcategory": "sales",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "WebSearch",
+      "WebFetch",
+      "Task"
+    ]
+  },
+  "scala-pro": {
+    "color": "#3B82F6",
+    "dept": "engineering",
+    "description": "Master enterprise-grade Scala development with functional programming, distributed systems, and big data processing. Expert in Apache Pekko, Akka, Spark, ZIO/Cats Effect, and reactive architectures. Use PROACTIVELY for Scala system design, performance optimization, or enterprise integration.",
+    "name": "Scala Pro",
+    "role": "Languages",
+    "source": "claude-code-tresor/subagents/engineering/languages/scala-pro/agent.md",
+    "subcategory": "languages",
+    "tools": [
+      "Read",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash"
+    ]
+  },
+  "search-specialist": {
+    "color": "#F97316",
+    "dept": "research",
+    "description": "Expert web researcher using advanced search techniques, query optimization, domain filtering, and multi-source verification for competitive analysis, fact-checking, and comprehensive information synthesis.",
+    "name": "Search Specialist",
+    "role": "Data",
+    "source": "claude-code-tresor/subagents/research/data/search-specialist/agent.md",
+    "subcategory": "data",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "WebSearch",
+      "WebFetch",
+      "Task"
+    ]
+  },
+  "security-auditor": {
+    "color": "#FFD700",
+    "dept": "core",
+    "description": "Security specialist for vulnerability assessment, secure authentication, and OWASP compliance. Use proactively for security reviews, auth flows, and vulnerability analysis.",
+    "name": "Security Auditor",
+    "role": "Core",
+    "source": "claude-code-tresor/subagents/core/security-auditor/agent.md",
+    "subcategory": "",
+    "tools": [
+      "Read",
+      "Edit",
+      "Bash",
+      "Grep",
+      "Glob",
+      "Task",
+      "Skill"
+    ]
+  },
+  "security-threat-analyst": {
+    "color": "#3B82F6",
+    "dept": "engineering",
+    "description": "Use this agent when you need to perform security assessments, threat modeling, vulnerability analysis, or implement security controls. This includes reviewing code for security vulnerabilities, designing secure architectures, implementing authentication/authorization, analyzing potential attack vectors, or responding to security incidents.",
+    "name": "Security Threat Analyst",
+    "role": "Security",
+    "source": "claude-code-tresor/subagents/engineering/security/security-threat-analyst/agent.md",
+    "subcategory": "security",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "Task"
+    ]
+  },
+  "sprint-prioritizer": {
+    "color": "#8B5CF6",
+    "dept": "product",
+    "description": "Sprint planning specialist for maximizing value delivery in 6-day cycles. Use for feature prioritization, roadmap planning, and trade-off decisions.",
+    "name": "Sprint Prioritizer",
+    "role": "Management",
+    "source": "claude-code-tresor/subagents/product/management/sprint-prioritizer/agent.md",
+    "subcategory": "management",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "TodoWrite"
+    ]
+  },
+  "sql-pro": {
+    "color": "#3B82F6",
+    "dept": "engineering",
+    "description": "Write complex SQL queries, optimize execution plans, and design normalized schemas. Masters CTEs, window functions, and stored procedures. Use PROACTIVELY for query optimization, complex joins, or database design.",
+    "name": "Sql Pro",
+    "role": "Languages",
+    "source": "claude-code-tresor/subagents/engineering/languages/sql-pro/agent.md",
+    "subcategory": "languages",
+    "tools": [
+      "Read",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash"
+    ]
+  },
+  "studio-producer": {
+    "color": "#8B5CF6",
+    "dept": "product",
+    "description": "Studio orchestrator for cross-team coordination, resource optimization, and workflow engineering. PROACTIVELY use when coordinating multiple teams or optimizing workflows.",
+    "name": "Studio Producer",
+    "role": "Management",
+    "source": "claude-code-tresor/subagents/product/management/studio-producer/agent.md",
+    "subcategory": "management",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "TodoWrite"
+    ]
+  },
+  "support-responder": {
+    "color": "#14B8A6",
+    "dept": "operations",
+    "description": "Handle customer support inquiries, create support documentation, automated responses, and analyze support patterns to maintain high-quality support while identifying product improvement opportunities.",
+    "name": "Support Responder",
+    "role": "Support",
+    "source": "claude-code-tresor/subagents/operations/support/support-responder/agent.md",
+    "subcategory": "support",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "WebSearch",
+      "WebFetch",
+      "Task"
+    ]
+  },
+  "support-ticket-handler": {
+    "color": "#14B8A6",
+    "dept": "operations",
+    "description": "Handle support tickets, FAQ responses, and customer emails with troubleshooting guides, canned responses, and help documentation focused on quick resolution and customer satisfaction.",
+    "id_note": "Renamed locally from 'customer-support', which collides with another department's agent upstream. See scripts/generate_agents_json.py.",
+    "name": "Support Ticket Handler",
+    "role": "Support",
+    "source": "claude-code-tresor/subagents/operations/support/customer-support/agent.md",
+    "subcategory": "support",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "WebSearch",
+      "WebFetch",
+      "Task"
+    ],
+    "upstream_name": "customer-support"
+  },
+  "systems-architect": {
+    "color": "#FFD700",
+    "dept": "core",
+    "description": "Expert system architect specializing in evidence-based design decisions, scalable system patterns, and long-term technical strategy. Use proactively for architectural reviews and system design.",
+    "name": "Systems Architect",
+    "role": "Core",
+    "source": "claude-code-tresor/subagents/core/systems-architect/agent.md",
+    "subcategory": "",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "WebFetch",
+      "Task"
+    ]
+  },
+  "tam-market-sizing": {
+    "color": "#F97316",
+    "dept": "research",
+    "description": "Comprehensive market sizing analysis, total addressable market (TAM) calculations, and market opportunity assessments with top-down, bottom-up, and value theory methodologies.",
+    "name": "Tam Market Sizing",
+    "role": "Market",
+    "source": "claude-code-tresor/subagents/research/market/tam-market-sizing/agent.md",
+    "subcategory": "market",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "WebSearch",
+      "WebFetch",
+      "Task"
+    ]
+  },
+  "terraform-specialist": {
+    "color": "#3B82F6",
+    "dept": "engineering",
+    "description": "Write advanced Terraform modules, manage state files, and implement IaC best practices. Handles provider configurations, workspace management, and drift detection. Use PROACTIVELY for Terraform modules, state issues, or IaC automation.",
+    "name": "Terraform Specialist",
+    "role": "DevOps",
+    "source": "claude-code-tresor/subagents/engineering/devops/terraform-specialist/agent.md",
+    "subcategory": "devops",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "Task"
+    ]
+  },
+  "test-automator": {
+    "color": "#3B82F6",
+    "dept": "engineering",
+    "description": "Create comprehensive test suites with unit, integration, and e2e tests. Sets up CI pipelines, mocking strategies, and test data. Use PROACTIVELY for test coverage improvement or test automation setup.",
+    "name": "Test Automator",
+    "role": "Testing",
+    "source": "claude-code-tresor/subagents/engineering/testing/test-automator/agent.md",
+    "subcategory": "testing",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "Task"
+    ]
+  },
+  "test-engineer": {
+    "color": "#FFD700",
+    "dept": "core",
+    "description": "Specialized testing expert for comprehensive test creation, validation, and quality assurance across all testing levels. Use proactively for test generation and coverage analysis.",
+    "name": "Test Engineer",
+    "role": "Core",
+    "source": "claude-code-tresor/subagents/core/test-engineer/agent.md",
+    "subcategory": "",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Bash",
+      "Grep",
+      "Glob",
+      "Task",
+      "Skill"
+    ]
+  },
+  "test-results-analyzer": {
+    "color": "#3B82F6",
+    "dept": "engineering",
+    "description": "Use this agent for analyzing test results, synthesizing test data, identifying trends, and generating quality metrics reports. This agent specializes in turning raw test data into actionable insights that drive quality improvements.",
+    "name": "Test Results Analyzer",
+    "role": "Testing",
+    "source": "claude-code-tresor/subagents/engineering/testing/test-results-analyzer/agent.md",
+    "subcategory": "testing",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "Task"
+    ]
+  },
+  "tiktok-strategist": {
+    "color": "#10B981",
+    "dept": "marketing",
+    "description": "TikTok specialist for viral content creation, trend leverage, and algorithm optimization. Use for TikTok marketing strategies and influencer collaborations.",
+    "name": "Tiktok Strategist",
+    "role": "Social",
+    "source": "claude-code-tresor/subagents/marketing/social/tiktok-strategist/agent.md",
+    "subcategory": "social",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "WebSearch",
+      "WebFetch"
+    ]
+  },
+  "tool-evaluator": {
+    "color": "#3B82F6",
+    "dept": "engineering",
+    "description": "Use this agent when evaluating new development tools, frameworks, or services for the studio. This agent specializes in rapid tool assessment, comparative analysis, and making recommendations that align with development cycle philosophy.",
+    "name": "Tool Evaluator",
+    "role": "Testing",
+    "source": "claude-code-tresor/subagents/engineering/testing/tool-evaluator/agent.md",
+    "subcategory": "testing",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "Task"
+    ]
+  },
+  "trend-researcher": {
+    "color": "#8B5CF6",
+    "dept": "product",
+    "description": "Market trend analyst for identifying viral opportunities and emerging behaviors. Use for trend detection, market opportunities, and competitive analysis.",
+    "name": "Trend Researcher",
+    "role": "Research",
+    "source": "claude-code-tresor/subagents/product/research/trend-researcher/agent.md",
+    "subcategory": "research",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "WebSearch",
+      "WebFetch"
+    ]
+  },
+  "tutorial-engineer": {
+    "color": "#3B82F6",
+    "dept": "engineering",
+    "description": "Creates step-by-step tutorials and educational content from code. Transforms complex concepts into progressive learning experiences with hands-on examples. Use PROACTIVELY for onboarding guides, feature tutorials, or concept explanations.",
+    "name": "Tutorial Engineer",
+    "role": "Documentation",
+    "source": "claude-code-tresor/subagents/engineering/documentation/tutorial-engineer/agent.md",
+    "subcategory": "documentation",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "Task"
+    ]
+  },
+  "twitter-engager": {
+    "color": "#10B981",
+    "dept": "marketing",
+    "description": "Twitter/X specialist for real-time engagement, viral tweets, and community building. Use for Twitter marketing, trending topics, and thought leadership.",
+    "name": "Twitter Engager",
+    "role": "Social",
+    "source": "claude-code-tresor/subagents/marketing/social/twitter-engager/agent.md",
+    "subcategory": "social",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "WebSearch",
+      "WebFetch"
+    ]
+  },
+  "typescript-pro": {
+    "color": "#3B82F6",
+    "dept": "engineering",
+    "description": "Master TypeScript with advanced types, generics, and strict type safety. Handles complex type systems, decorators, and enterprise-grade patterns. Use PROACTIVELY for TypeScript architecture, type inference optimization, or advanced typing patterns.",
+    "name": "Typescript Pro",
+    "role": "Languages",
+    "source": "claude-code-tresor/subagents/engineering/languages/typescript-pro/agent.md",
+    "subcategory": "languages",
+    "tools": [
+      "Read",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash"
+    ]
+  },
+  "ui-designer": {
+    "color": "#EC4899",
+    "dept": "design",
+    "description": "UI design specialist for creating beautiful, functional interfaces that can be implemented quickly. Use for interface design, component systems, and visual aesthetics.",
+    "name": "UI Designer",
+    "role": "UI",
+    "source": "claude-code-tresor/subagents/design/ui/ui-designer/agent.md",
+    "subcategory": "ui",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "WebSearch",
+      "WebFetch"
+    ]
+  },
+  "ui-ux-analyst": {
+    "color": "#EC4899",
+    "dept": "design",
+    "description": "UI/UX analysis specialist for design feedback, strategic guidance, and improving user interfaces. Use for design reviews, usability analysis, and UX strategy.",
+    "name": "UI UX Analyst",
+    "role": "UI",
+    "source": "claude-code-tresor/subagents/design/ui/ui-ux-analyst/agent.md",
+    "subcategory": "ui",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "WebSearch",
+      "WebFetch"
+    ]
+  },
+  "ui-ux-designer": {
+    "color": "#3B82F6",
+    "dept": "engineering",
+    "description": "Create interface designs, wireframes, and design systems. Masters user research, prototyping, and accessibility standards. Use PROACTIVELY for design systems, user flows, or interface optimization.",
+    "name": "UI UX Designer",
+    "role": "Frontend",
+    "source": "claude-code-tresor/subagents/engineering/frontend/ui-ux-designer/agent.md",
+    "subcategory": "frontend",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "Task"
+    ]
+  },
+  "unity-developer": {
+    "color": "#3B82F6",
+    "dept": "engineering",
+    "description": "Build Unity games with optimized C# scripts, efficient rendering, and proper asset management. Handles gameplay systems, UI implementation, and platform deployment. Use PROACTIVELY for Unity performance issues, game mechanics, or cross-platform builds.",
+    "name": "Unity Developer",
+    "role": "Mobile",
+    "source": "claude-code-tresor/subagents/engineering/mobile/unity-developer/agent.md",
+    "subcategory": "mobile",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "Task"
+    ]
+  },
+  "ux-researcher": {
+    "color": "#EC4899",
+    "dept": "design",
+    "description": "UX research specialist for user research, behavior analysis, journey mapping, and design validation. Use for understanding user needs and validating design decisions.",
+    "name": "UX Researcher",
+    "role": "UX",
+    "source": "claude-code-tresor/subagents/design/ux/ux-researcher/agent.md",
+    "subcategory": "ux",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "WebSearch",
+      "WebFetch"
+    ]
+  },
+  "visual-storyteller": {
+    "color": "#EC4899",
+    "dept": "design",
+    "description": "Visual narrative specialist for creating visual stories, infographics, presentations, and communicating complex ideas through imagery. Use for data visualization and visual communication.",
+    "name": "Visual Storyteller",
+    "role": "Visual",
+    "source": "claude-code-tresor/subagents/design/visual/visual-storyteller/agent.md",
+    "subcategory": "visual",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "WebSearch",
+      "WebFetch"
+    ]
+  },
+  "whimsy-injector": {
+    "color": "#EC4899",
+    "dept": "design",
+    "description": "Delight specialist for adding joy, surprise, and memorable moments to user experiences. PROACTIVELY use after any UI/UX changes to ensure delightful, playful elements are incorporated.",
+    "name": "Whimsy Injector",
+    "role": "Visual",
+    "source": "claude-code-tresor/subagents/design/visual/whimsy-injector/agent.md",
+    "subcategory": "visual",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob"
+    ]
+  },
+  "workflow-analyst": {
+    "color": "#6366F1",
+    "dept": "ai-automation",
+    "description": "Use this agent when you need process mapping, automation opportunity analysis, workflow optimization, and efficiency improvement strategies. Specializes in systematic process improvement that combines analytical rigor with practical automation solutions.",
+    "name": "Workflow Analyst",
+    "role": "Automation",
+    "source": "claude-code-tresor/subagents/ai-automation/automation/workflow-analyst/agent.md",
+    "subcategory": "automation",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "WebSearch",
+      "WebFetch",
+      "Task"
+    ]
+  },
+  "workflow-optimizer": {
+    "color": "#3B82F6",
+    "dept": "engineering",
+    "description": "Use this agent for optimizing human-agent collaboration workflows and analyzing workflow efficiency. This agent specializes in identifying bottlenecks, streamlining processes, and ensuring smooth handoffs between human creativity and AI assistance.",
+    "name": "Workflow Optimizer",
+    "role": "Testing",
+    "source": "claude-code-tresor/subagents/engineering/testing/workflow-optimizer/agent.md",
+    "subcategory": "testing",
+    "tools": [
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "Task"
+    ]
+  }
+}

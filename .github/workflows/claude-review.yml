@@ -193,13 +193,31 @@ jobs:
           LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
         run: |
           # Comment-only by default. META-SPEC §4 forbids an agent editing one
-          # document to match another as a drive-by, and a bot running --fix over
-          # specs/ is precisely that. Opt in per PR with `claude-review-fix`.
+          # document to match another as a drive-by, and a bot with edit tools
+          # loose over specs/ is precisely that. Opt in per PR with
+          # `claude-review-fix`.
+          #
+          # Enforced by DENYING THE EDIT TOOLS, not by a mode flag. `--comment`
+          # and `--fix` are claude-code-action *inputs*, not Claude Code CLI
+          # options, and `claude_args` is forwarded verbatim to the CLI -- so
+          # they died with `unknown option '--comment'` before the review ever
+          # started. Verified against `claude --help` on 2.1.220: the CLI has
+          # --allowed-tools / --disallowed-tools and no --comment or --fix.
+          #
+          # This is the §9 failure mode again: a plausible-sounding flag nobody
+          # checked against the tool that receives it.
+          #
+          # `fix` is emitted separately and is what the prompt reads. Deriving
+          # the prompt's ENABLED/DISABLED line by string-matching `flags` meant
+          # any change to the flag spelling silently told the model the opposite
+          # of what the tool permissions enforced.
           if printf '%s' "$LABELS" | grep -q '"claude-review-fix"'; then
-            echo "flags=--comment --fix" >> "$GITHUB_OUTPUT"
+            echo "fix=true" >> "$GITHUB_OUTPUT"
+            echo "flags=" >> "$GITHUB_OUTPUT"
             echo "::notice::Fix mode ENABLED for this PR (label: claude-review-fix). specs/meta/** stays off-limits."
           else
-            echo "flags=--comment" >> "$GITHUB_OUTPUT"
+            echo "fix=false" >> "$GITHUB_OUTPUT"
+            echo 'flags=--disallowed-tools "Edit,Write,MultiEdit,NotebookEdit"' >> "$GITHUB_OUTPUT"
             echo "::notice::Comment-only mode. Add the claude-review-fix label to allow mechanical fixes."
           fi
 
@@ -378,7 +396,11 @@ jobs:
 
             ## 9. Fix mode
 
-            Fixes are ${{ steps.mode.outputs.flags == '--comment --fix' && 'ENABLED' || 'DISABLED' }} on this PR.
+            Fixes are ${{ steps.mode.outputs.fix == 'true' && 'ENABLED' || 'DISABLED' }} on this PR.
+
+            When DISABLED this is also enforced at the tool layer — Edit, Write,
+            MultiEdit and NotebookEdit are denied, so an edit attempt fails
+            rather than silently succeeding against the instruction above.
 
             If DISABLED: comment only. Do not edit any file.
 

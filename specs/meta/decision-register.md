@@ -4,7 +4,7 @@ title: Decision Register — every locked decision, with a citable id
 tier: 0
 authority: constitution
 status: ACTIVE
-doc_set_version: 0.2.6
+doc_set_version: 0.2.7
 last_updated: 2026-07
 owner: adamtasteslikegood
 derives_from: [META-SPEC]
@@ -57,29 +57,43 @@ sensible it reads — it is `PROPOSED` until ratified at the right tier.
 
 | Id | Decision | Choice | Rationale | Origin | Status |
 |---|---|---|---|---|---|
-| `D-003` | Game engine | Godot 4 | Free, MIT, GDScript reads like Python, strong 2D/TileMap support. Chosen over Three.js and Unity. | `PROJECT-OVERVIEW` | `LOCKED` |
+| `D-003` | Game engine | Godot 4 | Free, MIT, GDScript reads like Python, strong 2D/TileMap support. Chosen over Three.js and Unity. | `PLATFORM-DECISIONS` | `LOCKED` |
 | `D-005` | Bridge UI-awareness | Zero. The bridge never knows the UI exists | Enables a CLI, a web UI, or a future 3D frontend to swap in with no bridge change. Enforced by the swap test as a hard review gate. | `META-SPEC` §5.1 | `LOCKED` |
-| `D-015` | Bridge transport | Python WebSocket server, local, `ws://localhost:8765` | Local process, no deployment needed for the prototype. | `PROJECT-OVERVIEW` | `LOCKED` |
-| `D-016` | Agent data layer | `data/agents.json` generated from the `claude-code-tresor` submodule; never hand-edited | The submodule is the canonical agent layer. Hand-editing forks the truth. Minimum fields: `{name, role, dept, colour, tools, description}`. | `PROJECT-OVERVIEW` | `LOCKED` |
+| `D-015` | Bridge transport | Python WebSocket server, local, `ws://localhost:8765` | Local process, no deployment needed for the prototype. | `PLATFORM-DECISIONS` | `LOCKED` |
+| `D-016` | Agent data layer | `data/agents.json` generated from the `claude-code-tresor` submodule; never hand-edited | The submodule is the canonical agent layer. Hand-editing forks the truth. Minimum fields: `{name, role, dept, colour, tools, description}`. | `PLATFORM-DECISIONS` | `LOCKED` |
 | `D-017` | Department taxonomy | Nine departments plus Core, each with a fixed floor/zone and hex tint | The office layout derives from the taxonomy; the taxonomy derives from the submodule. | `AGENT-DIRECTORY` | `LOCKED` |
-| `D-018` | Licence | MIT, © 2026 Adam Schoen | Matches the attribution the project already carries and the upstream `claude-code-tresor` licensing. Resolves the Apache-2.0 `LICENSE` file versus MIT documentation conflict in favour of the documentation. | `PROJECT-OVERVIEW` | `LOCKED` |
-| `D-021` | Submodule tracking branch | The `claude-code-tresor` gitlink tracks **`10110TLGP/dev`** | Confirmed by the owner and by `origin/HEAD`, which points at it — it is the fork's default branch. Bumps fast-forward the pin to that branch's head. Recorded because "is the pin stale?" is unanswerable without knowing the target branch, and the answer previously lived only in someone's head. | `PROJECT-OVERVIEW` | `LOCKED` |
-| `D-022` | Fork's `10110TLGP/main` | **Reserved as the fork's release branch.** Not abandoned, not a pin target — dormant until the fork has a `release.yml` and tagged GitHub releases | The submodule mirrors this repo's own model: `dev` integrates, `main` releases. Once release tooling exists, the fork cuts `dev` → `main`, tags it, and back-syncs `main` → `dev`. Until then the pin follows `dev` (`D-021`) and `main` is left alone. Recorded so nobody prunes it as a stale branch or pins to it expecting the newer commit. | `PROJECT-OVERVIEW` | `LOCKED` |
-| `D-023` | Merge strategy | **Merge commits.** Squash and rebase merging are disabled in repository settings (verified 2026-07-26) | Deliberate, not a default. The squash-only rule was inherited from `alirezarezvani/claude-code-tresor` and was never chosen for this project; squash merging has caused the owner real problems on other repositories. Merge commits keep a PR's commit series intact and bisectable. Consequences: `dev` is not linear and "Require linear history" must stay off (it would block every merge), and reverting a merged PR needs `git revert -m 1`. **Do not switch to squash on a linter's or bot's suggestion** — that is how the wrong rule arrived. **`PROPOSED`, not `LOCKED`:** the substance is agreed, but `PROJECT-OVERVIEW` declares `authority: derived`, which per `META-SPEC` §2 may originate nothing. Ratify once [issue #11](https://github.com/adamtasteslikegood/10110TasteslikegoodPlaza/issues/11) settles where project-level decisions live. | `PROJECT-OVERVIEW` | `PROPOSED` |
+| `D-018` | Licence | MIT, © 2026 Adam Schoen | Matches the attribution the project already carries and the upstream `claude-code-tresor` licensing. Resolves the Apache-2.0 `LICENSE` file versus MIT documentation conflict in favour of the documentation. | `PLATFORM-DECISIONS` | `LOCKED` |
+| `D-021` | Submodule tracking branch | The `claude-code-tresor` gitlink tracks **`10110TLGP/dev`** | Confirmed by the owner and by `origin/HEAD`, which points at it — it is the fork's default branch. Bumps fast-forward the pin to that branch's head. Recorded because "is the pin stale?" is unanswerable without knowing the target branch, and the answer previously lived only in someone's head. | `PLATFORM-DECISIONS` | `LOCKED` |
+| `D-022` | Fork's `10110TLGP/main` | **Reserved as the fork's release branch.** Not abandoned, not a pin target — dormant until the fork has a `release.yml` and tagged GitHub releases | The submodule mirrors this repo's own model: `dev` integrates, `main` releases. Once release tooling exists, the fork cuts `dev` → `main`, tags it, and back-syncs `main` → `dev`. Until then the pin follows `dev` (`D-021`) and `main` is left alone. Recorded so nobody prunes it as a stale branch or pins to it expecting the newer commit. | `PLATFORM-DECISIONS` | `LOCKED` |
+| `D-024` | Agent data source and curation | Generate `data/agents.json` from `subagents/` only; curate the three upstream id collisions in code | Upstream v2.7.0 made `subagents/` PRIMARY and `agents/` a backward-compat shim — 8 symlinks plus 8 stale pre-v2.7.0 flat files still carrying `category: engineering` / `color: blue` for the core eight. Separately, the 133 files hold only **130 distinct slugs**: `infrastructure-maintainer` is one role filed twice (operations copy **removed**), while `customer-support` and `tutorial-engineer` are genuinely different jobs sharing a name (renamed `support-ticket-handler`, `educational-content-writer`). Result: **132 entries**. Curation tables are keyed by *source path*, so an upstream move fails the build instead of mis-applying; a new collision is a hard error, never an auto-suffix, because "one role or two" needs a human reading both. **Before renaming or removing an agent, grep `commands/`** — 19 of the 24 orchestration commands reference agents by id, covering 26 of the 132. `D-016` holds: the curation is code in the diff, and the JSON stays a pure function of submodule + tables. | `PLATFORM-DECISIONS` | `LOCKED` |
+| `D-023` | Merge strategy | **Merge commits.** Squash and rebase merging are disabled in repository settings (verified 2026-07-26) | Deliberate, not a default. The squash-only rule was inherited from `alirezarezvani/claude-code-tresor` and was never chosen for this project; squash merging has caused the owner real problems on other repositories. Merge commits keep a PR's commit series intact and bisectable. Consequences: `dev` is not linear and "Require linear history" must stay off (it would block every merge), and reverting a merged PR needs `git revert -m 1`. **Do not switch to squash on a linter's or bot's suggestion** — that is how the wrong rule arrived. | `PLATFORM-DECISIONS` | `LOCKED` |
 
 ## Not yet authorised
 
-**`D-023` (merge strategy)** — substance agreed, origin not entitled. `PROJECT-OVERVIEW`
-declares `authority: derived`, which `META-SPEC` §2 says may originate nothing, so the
-row above sits at `PROPOSED`. Ratify when
-[issue #11](https://github.com/adamtasteslikegood/10110TasteslikegoodPlaza/issues/11)
-settles where project-level decisions live. Six earlier rows (`D-003`, `D-015`,
-`D-016`, `D-018`, `D-021`, `D-022`) carry the same defect and were locked before it was
-noticed; #11 covers them together rather than this change re-opening settled rows.
+**Empty as of v0.2.7.** Every registered decision now names an entitled origin.
 
-`D-014` and `D-020` were both proposed only by
-`ALIGNED-SPEC-025` (tier 4, not entitled to originate implementation decisions) and
-were ratified into `DESIGN-25D` in v0.2.6 — see its `## Ratified in v0.2.6` section.
+Two batches got here, and both are worth remembering because the failure mode
+repeats:
+
+- `D-014` and `D-020` were proposed only by `ALIGNED-SPEC-025` (tier 4, entitled to
+  originate nothing). Ratified into `DESIGN-25D` in v0.2.6 — see its
+  `## Ratified in v0.2.6` section.
+- `D-003`, `D-015`, `D-016`, `D-018`, `D-021`, `D-022`, `D-023` and `D-024` all named
+  `PROJECT-OVERVIEW` as origin while it declared `authority: derived` — licensed by
+  `META-SPEC` §2 to decide nothing new. Seven of the eight were marked `LOCKED`
+  before anyone noticed. Closed in v0.2.7 by
+  [`../../docs/designs/platform-decisions.md`](../../docs/designs/platform-decisions.md),
+  a tier-2 `implementation` document created to hold exactly this class of decision.
+  Tracked as [issue #11](https://github.com/adamtasteslikegood/10110TasteslikegoodPlaza/issues/11).
+  **No decision changed**; only which document is entitled to hold it.
+
+`scripts/validate_specs.py` now fails the build when a document declares `decides:`
+without an authority licensed to originate — the check whose absence let the second
+batch through. It is a coarse gate: it asks whether an authority may decide
+*something*, not whether a given decision falls inside that authority's subject
+matter. That second question is still a human one at review time, and §4.9 of
+[`spec-drivers-v0.2.5.md`](spec-drivers-v0.2.5.md) records the one open instance of
+it.
 
 When something lands here again, it stays until an entitled document adopts it.
 Reasoning being sound is not the same as being authorised; that distinction is the
@@ -98,4 +112,4 @@ point of the tier ladder.
    `SUPERSEDED` — do not delete it — and bump `doc_set_version` across the set.
 4. Add the `D-nnn` to the origin document's `decides:` frontmatter list.
 
-*Doc set version: 0.2.6 · Last updated: July 2026*
+*Doc set version: 0.2.7 · Last updated: July 2026*

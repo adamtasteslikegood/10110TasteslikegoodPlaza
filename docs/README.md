@@ -4,7 +4,7 @@ title: docs/ — design and reference index
 tier: 4
 authority: summary
 status: ACTIVE
-doc_set_version: 0.2.6
+doc_set_version: 0.2.7
 last_updated: 2026-07
 owner: adamtasteslikegood
 derives_from: [META-SPEC]
@@ -26,6 +26,7 @@ frontmatter; `docs/storyboard-week1.md` is the sole origin of concept decisions 
 | File | Purpose |
 |---|---|
 | [`designs/2.5D-RPG-Prototype.md`](designs/2.5D-RPG-Prototype.md) | **Active design.** Promoted CEO plan (2026-04-27) pivoting the prototype from 3D first-person to 2.5D top-down. |
+| [`designs/platform-decisions.md`](designs/platform-decisions.md) | **Platform authority.** The decisions that outlive the current frontend — engine, bridge transport, agent data layer, licence, submodule and merge policy. Scope test: would it survive replacing the whole frontend? |
 | [`storyboard-week1.md`](storyboard-week1.md) | **The concept source of truth.** Week 1 tutorial narrative beats, Day 0 through Days 4–5, dual-purpose: game story = real onboarding. Scenes are citable as `SB-01`–`SB-18`; the contract and index live in [`../specs/meta/concept-driver.md`](../specs/meta/concept-driver.md). Edits are concept changes and need human sign-off. |
 | [`quick-reference.md`](quick-reference.md) | One-page summary: build order, autoload list, department table, key decisions. |
 | [`agent-directory.md`](agent-directory.md) | Taxonomy of the 133 agent roles across nine departments plus Core. Source-of-truth for the department/color mapping (mirrored in the top-level `README.md`). |

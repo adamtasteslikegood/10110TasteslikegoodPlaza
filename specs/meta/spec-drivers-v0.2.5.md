@@ -4,7 +4,7 @@ title: Spec Drivers v0.2.5 — what this doc-set version must produce
 tier: 0
 authority: constitution
 status: ACTIVE
-doc_set_version: 0.2.6
+doc_set_version: 0.2.7
 last_updated: 2026-07
 owner: adamtasteslikegood
 derives_from: [META-SPEC]
@@ -23,7 +23,7 @@ Version semantics: `0` = pre-prototype · `.2` = second aligned concept revision
 ---
 
 > **Filename note.** This file still carries `v0.2.5` in its name while holding live
-> v0.2.6 content — the open-conflict register is the working copy, not a frozen
+> v0.2.7 content — the open-conflict register is the working copy, not a frozen
 > record. Splitting it (or renaming to an unversioned `spec-drivers.md`) is worth
 > doing at v0.3; renaming a `doc_id` one PR after shipping it costs more than it
 > saves.
@@ -43,6 +43,20 @@ means the set version moves — `META-SPEC` §8.4.
 
 **Done when:** §4.2–4.5 all read RESOLVED, no decision sits in "Not yet authorised"
 without a reason, and `Validate Specs` is green at `doc_set_version: 0.2.6`.
+
+## 1c. Delivering in v0.2.7
+
+Closing §4.8 — the last conflict where the meta layer contradicted *itself* rather
+than two product documents disagreeing. `PLATFORM-DECISIONS` created as the entitled
+home for platform and repository decisions; eight origins moved off
+`PROJECT-OVERVIEW`; `D-023` and `D-024` flip `PROPOSED` → `LOCKED`; the validator
+gains the authority-to-originate check whose absence let the whole class through.
+
+Two decisions changed status, so the set version moves — `META-SPEC` §8.4.
+
+**Done when:** "Not yet authorised" is empty, §4.8 reads RESOLVED, the new check
+demonstrably fails on the unfixed tree, and `Validate Specs` is green at
+`doc_set_version: 0.2.7`.
 
 ## 1. What v0.2.5 delivered
 
@@ -93,14 +107,15 @@ now; neither is started.
 |---|---|---|
 | **Round 1 — Govern** ✅ v0.2.5 | Meta layer, schema, registry, validator, CI gate, conflict register | `Validate Specs` green; §1 all true |
 | **Round 1b — Reconcile** ✅ v0.2.6 | Close §4.2–4.5: real agent count, `D-020` and `D-014` ratified, branching policy corrected | Six of seven conflicts RESOLVED |
-| **Round 2 — Data (M3)** | `agents.json` generator over the submodule, its schema, count validation against `D-017` | Generated file validates; 133 entries, core-eight collision resolved per §4.2 |
+| **Round 2 — Data (M3)** ✅ | `agents.json` generator over the submodule, colour cross-check against `D-017`, curation of upstream id collisions | 132 entries; `Validate Agent Data` green in CI |
+| **Round 2b — Re-govern** ✅ v0.2.7 | Close §4.8: `PLATFORM-DECISIONS` created, eight origins moved, authority-to-originate check added to the validator | "Not yet authorised" empty; new check proven to fail on the unfixed tree |
 | **Round 3 — Frontend (M1, M4)** | Godot 4 project, the three autoloads, 2.5D navigation, proximity dialogue | Dialogue panel renders live from `AgentRegistry` for one department |
 | **Round 4 — Bridge (M5–M8)** | Synchronous WebSocket bridge, intent/result shape, wait-or-delegate, end-to-end | M8 demonstrable in-engine |
 
 ## 4. Open-conflict register
 
 Per [`META-SPEC.md`](META-SPEC.md) §4, conflicts are recorded rather than silently
-resolved. **Seven resolved, one open (§4.8)** as of v0.2.6. Resolved entries are kept, not
+resolved. **Eight resolved, one open (§4.9)** as of v0.2.7. Resolved entries are kept, not
 deleted — the record of *how* a conflict was settled is what stops it reopening.
 
 ### 4.1 `ALIGNED-SPEC-025` §01.3 versus `STORYBOARD-W1` — **RESOLVED**
@@ -130,10 +145,12 @@ Method, per-category figures, and the format comparison are in
 [`../../docs/agent-directory.md`](../../docs/agent-directory.md) § Agent counts —
 the taxonomy authority (`D-017`). Every other mention now derives from there.
 
-**Follow-on, not a conflict:** `data/agents.json` is keyed by agent id (`D-016`),
-so the core eight collide. Recorded as an M3 hazard with a recommendation (prefer
-the catalog format) but deliberately not locked — decide it when the generator
-exists and the data shape is visible.
+**Follow-on, resolved in M3:** the core-eight "collision" was not one — upstream
+v2.7.0 made `subagents/` PRIMARY and `agents/` a backward-compat shim, so the
+generator reads `subagents/` only. The real collision was three cross-department
+duplicate slugs that only the generator surfaced: 133 files, 130 distinct ids. One
+removed as a genuine duplicate, two renamed. `data/agents.json` holds 132 entries.
+Registered as `D-024`.
 
 ### 4.3 Layer 2 was described two different ways — **RESOLVED**
 
@@ -208,39 +225,79 @@ merged the same upstream state by a different route (`bcfe30c` a direct merge,
 That matters for the first release: `dev` → `main` will not fast-forward, but the
 merge is content-free and cannot conflict. Nothing needs reconciling before then.
 
-### 4.8 `PROJECT-OVERVIEW` originates decisions its authority forbids — **OPEN**
+### 4.8 `PROJECT-OVERVIEW` originates decisions its authority forbids — **RESOLVED**
 
-**Tracked as [issue #11](https://github.com/adamtasteslikegood/10110TasteslikegoodPlaza/issues/11)**, which carries the three options in full. This entry is the summary; the issue is where the discussion and the resolution live.
+Tracked as [issue #11](https://github.com/adamtasteslikegood/10110TasteslikegoodPlaza/issues/11),
+which carries the three options in full.
 
-Found while registering `D-023`. `README.md` declares `authority: derived`, and
+Found while registering `D-023`. `README.md` declared `authority: derived`, and
 [`META-SPEC.md`](META-SPEC.md) §2 says `derived` may decide "nothing new — sequences
-and applies decisions made above it." But the register names `PROJECT-OVERVIEW` as
-the origin of **seven** decisions: `D-003` (engine), `D-015` (bridge transport),
+and applies decisions made above it." But the register named `PROJECT-OVERVIEW` as
+the origin of **eight** decisions: `D-003` (engine), `D-015` (bridge transport),
 `D-016` (agent data layer), `D-018` (licence), `D-021` (submodule tracking branch),
-`D-022` (fork's release branch), `D-023` (merge strategy).
+`D-022` (fork's release branch), `D-023` (merge strategy), `D-024` (agent curation).
+`D-024` acquired the same defect *after* this conflict was already open — which is
+the argument for enforcing it in code rather than in prose.
 
-So the layer contradicts itself, and the validator does not catch it — it checks
-that every `D-nnn` in a `decides:` list exists in the register, but never that the
-declaring document's `authority` permits deciding at all.
+**Closed on 2026-07-27, option (b), chosen by the owner.** The eight moved to
+[`../../docs/designs/platform-decisions.md`](../../docs/designs/platform-decisions.md)
+(`PLATFORM-DECISIONS`, tier 2, `authority: implementation`) — a document whose scope
+test is "would this decision survive replacing the entire frontend?". It uses the
+existing authority vocabulary, so no schema enum change and no new tier. `README.md`
+loses its `decides:` list and goes back to being purely the reconciliation of the
+two axes, which is what `META-SPEC` §2 already described it as.
 
-Neither side is obviously right, which is why this is recorded rather than fixed:
+Option (a) — a new `platform` authority — was the more precise fit and was rejected
+on cost: schema enum, registry, validator, and constitution all change to express a
+distinction that `implementation` already carries. Option (c) — softening `derived`
+— was rejected because amending the rule to fit what already happened is the exact
+failure the meta layer exists to prevent.
 
-- Those seven are real decisions that needed *somewhere* to live, and none of them
-  is concept (tier 1) or a promoted design (tier 2 `implementation`). They are
-  project- and process-level: engine, transport, licence, branch policy.
-- `README.md` genuinely is a reconciliation document. Giving it origination
-  authority weakens the tier ladder's central claim.
+**No decision changed.** All eight were substantively correct and independently
+evidenced before the move; what was wrong was the bookkeeping about who was entitled
+to make them.
 
-**Owner action:** pick one — (a) add a `platform` or `process` authority for
-project-level decisions and move these seven to a document that holds it, (b) split
-them out into a tier-2 design doc, or (c) accept `PROJECT-OVERVIEW` as a legitimate
-origin and soften `derived` in `META-SPEC` §2. Whichever is chosen, the validator
-should then gain a check that a document may only `decide` what its `authority`
-allows — the gap that let this through.
+**The gap is now closed in code.** `scripts/validate_specs.py` gained
+`check_decision_authority()`, which fails the build when a document declares
+`decides:` without an authority listed in the schema's
+`authority.x-may-originate`. Verified by running it against the unfixed tree first:
+it named `README.md` and all eight ids. The permitted set is read from
+`spec-frontmatter.schema.json` rather than restated in the script, so the gate
+cannot drift from the contract.
 
-Nothing is blocked by this: every one of the seven decisions is substantively
-correct and independently evidenced. What is wrong is the bookkeeping about who was
-entitled to make them.
+### 4.9 `META-SPEC` originates an architecture decision — **OPEN**
+
+**Tracked as [issue #18](https://github.com/adamtasteslikegood/10110TasteslikegoodPlaza/issues/18)**,
+which carries the three options in full. This entry is the summary; the issue is
+where it gets settled.
+
+Surfaced by writing the §4.8 validator check and asking what it deliberately does
+not cover.
+
+`D-005` (the bridge never knows the UI exists) names `META-SPEC` §5.1 as its origin.
+But §2 of that same document says tier 0 originates "rules about documents. **Never
+product decisions.**" `D-005` is an architecture constraint on the product. Same
+shape as §4.8, one tier up.
+
+The new check does not catch it, for two reasons worth stating rather than leaving
+implicit: `META-SPEC.md` declares no `decides:` list, and `constitution` is in the
+permitted set anyway. The gate asks whether an authority may originate *something*
+— it cannot ask whether a particular decision falls inside that authority's subject
+matter. No validator can.
+
+Both sides have a case:
+
+- `D-005` is genuinely load-bearing for how the doc set is read — the swap test is a
+  review gate, which is rule-shaped, not product-shaped. Where it lives is arguably
+  correct.
+- Or it is an architecture decision that belongs in `PLATFORM-DECISIONS` alongside
+  `D-015`, leaving `META-SPEC` §5.1 to *cite* it as a binding review rule rather than
+  originate it. That reading keeps tier 0 clean.
+
+**Owner action:** decide whether `D-005` moves to `PLATFORM-DECISIONS` (with §5.1
+rewritten to cite it) or stays and `META-SPEC` §2 gains an explicit carve-out for
+cross-cutting boundary rules. Nothing is blocked either way — `D-005` is enforced
+by review and by the swap test regardless of which file holds it.
 
 ## 5. Exit criteria to v1.0.0
 
@@ -252,4 +309,4 @@ this version does not move it.
 Between here and there, each round closes with the same check: the register has no
 conflict that has been open longer than the round that discovered it.
 
-*Doc set version: 0.2.6 · Last updated: July 2026*
+*Doc set version: 0.2.7 · Last updated: July 2026*

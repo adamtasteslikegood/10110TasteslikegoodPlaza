@@ -10,6 +10,78 @@ section at release time. PR references in parentheses.
 
 ## [Unreleased]
 
+### Changed — doc set v0.2.7: the eight decisions get an entitled home (#11)
+
+- **`docs/designs/platform-decisions.md` created** (`PLATFORM-DECISIONS`, tier 2,
+  `authority: implementation`) and now originates `D-003`, `D-015`, `D-016`,
+  `D-018`, `D-021`, `D-022`, `D-023`, `D-024`. Its scope test: *would this decision
+  survive replacing the entire frontend?* If it dies with the 2.5D prototype it
+  belongs in the promoted design instead.
+- **`README.md` loses its `decides:` list.** It declared `authority: derived` —
+  licensed by `META-SPEC` §2 to decide "nothing new" — while being named as the
+  origin of all eight. The layer contradicted itself, and the set validated green
+  for two releases. Option (b) of issue #11, chosen by the owner: existing authority
+  vocabulary, no schema enum change, no new tier.
+- **`D-023` and `D-024` flip `PROPOSED` → `LOCKED`.** Their substance was never in
+  question; only the bookkeeping about who was entitled to make them. "Not yet
+  authorised" in the decision register is now empty.
+- **The validator gained the check whose absence caused this.**
+  `check_decision_authority()` fails the build when a document declares `decides:`
+  without an authority listed in `authority.x-may-originate` — published in
+  `spec-frontmatter.schema.json`, not restated in the script, so the gate cannot
+  drift from the contract. Verified by running it against the unfixed tree first:
+  it named `README.md` and all eight ids before anything was moved.
+- **A coarse gate, deliberately.** It asks whether an authority may originate
+  *something*, not whether a given decision falls inside that authority's subject
+  matter. Writing it surfaced one instance of the second kind — `D-005` is an
+  architecture decision originated by tier-0 `META-SPEC`, which §2 says may never
+  originate product decisions. Recorded as open conflict **§4.9** rather than fixed,
+  per the conflict protocol; nothing is blocked either way.
+
+### Added — M3: the agent data layer (`D-024`)
+
+- **`data/agents.json` — 132 agents**, generated from the submodule by
+  `scripts/generate_agents_json.py`, with a `Validate Agent Data` CI job that
+  regenerates and fails on drift. That job is what makes `D-016` ("generated,
+  never hand-edited") a gate rather than a rule.
+- **Reads `subagents/` only.** The core-eight "collision" recorded earlier as an
+  open M3 hazard was never one: upstream v2.7.0 made `subagents/` PRIMARY and left
+  `agents/` as a backward-compat shim — 8 symlinks plus 8 pre-v2.7.0 flat files
+  that were never deleted and still carry `category: engineering` / `color: blue`
+  for the core eight. Those stale copies matter more than they look: the core eight
+  are the most-referenced agents in the orchestration commands — of the 24 command
+  files under `commands/` (39 `.md` in total, 15 of them READMEs), `security-auditor`
+  is named in 10, `systems-architect` 9, `test-engineer` 8.
+- **The real collision only the generator could find.** 133 files carry just **130
+  distinct slugs**. `infrastructure-maintainer` is one role filed twice (operations
+  copy removed); `customer-support` and `tutorial-engineer` are genuinely different
+  jobs sharing a name (renamed `support-ticket-handler` and
+  `educational-content-writer`). Upstream's own `DUPLICATE-ANALYSIS.md` is v2.5.0
+  and predates the consolidation that caused them.
+- **83 of 133 agents declare `tools` as a bare comma string**, which YAML reads as
+  `str`, not `list`. Passed through unchanged that would have handed GDScript a
+  string where it expects an array for most of the directory — an M4 bug caught at
+  M3. All three upstream syntaxes are normalised to `list[str]`.
+- Department colours are cross-checked against the `D-017` taxonomy, so a drifting
+  upstream colour fails the build instead of silently retinting a department. All
+  132 currently agree.
+- `role` is derived from the taxonomy, not from prose. An earlier pass truncated the
+  description on punctuation and produced labels like "UI design specialist for
+  creating beautiful"; topical relevance has to win over mechanical trimming.
+
+### Fixed
+
+- Curation tables are keyed by **source path**, not slug, so an upstream move fails
+  the build rather than silently applying an override to the wrong agent. A *new*
+  collision is a hard error, never an auto-suffix — deciding "one role or two"
+  means reading both descriptions.
+- Renamed agents were keeping their upstream display names, so two NPCs would have
+  shown the same label above different sprites. Display name is now recomputed from
+  the final id; all 132 are unique.
+- Corrected the stale "M3 hazard" framing in `docs/agent-directory.md`, `CLAUDE.md`
+  and `spec-drivers` §4.2, and the README department table (Operations 6 → 5, total
+  133 → 132).
+
 ### Changed — merge strategy is now a recorded decision (`D-023`)
 
 - **Merge commits are the deliberate policy, not a settings accident.** The previous

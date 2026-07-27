@@ -1,0 +1,140 @@
+---
+doc_id: PLATFORM-DECISIONS
+title: Platform Decisions — engine, transport, data layer, licence, repo policy
+tier: 2
+authority: implementation
+status: ACTIVE
+doc_set_version: 0.2.7
+last_updated: 2026-07
+owner: adamtasteslikegood
+derives_from: [META-SPEC]
+supersedes: []
+decides: [D-003, D-015, D-016, D-018, D-021, D-022, D-023, D-024]
+---
+
+# Platform Decisions
+
+> **One line:** the eight project-level decisions that are neither concept nor
+> prototype design — engine, transport, data layer, licence, and repository
+> policy — and the document entitled to originate them.
+
+This document exists because those decisions previously had no entitled home.
+[`../../README.md`](../../README.md) (`PROJECT-OVERVIEW`) was named as their origin
+while declaring `authority: derived`, which
+[`../../specs/meta/META-SPEC.md`](../../specs/meta/META-SPEC.md) §2 licenses to
+decide *nothing new*. The layer contradicted itself. Recorded as open conflict §4.8
+in [`../../specs/meta/spec-drivers-v0.2.5.md`](../../specs/meta/spec-drivers-v0.2.5.md),
+tracked as [issue #11](https://github.com/adamtasteslikegood/10110TasteslikegoodPlaza/issues/11),
+and closed by creating this file.
+
+**Nothing here is a new decision.** All eight were already made, already evidenced,
+and already being acted on. What changed is which document is entitled to hold
+them — `PROJECT-OVERVIEW` goes back to being purely the reconciliation of the two
+axes, which is what `META-SPEC` §2 already said it was.
+
+## 1. Scope — what belongs in this document
+
+| Belongs here | Belongs elsewhere |
+|---|---|
+| Engine, language, and runtime choices | How a scene is built → [`2.5D-RPG-Prototype.md`](2.5D-RPG-Prototype.md) |
+| Transport and process boundaries for the bridge | What the player experiences → [`../storyboard-week1.md`](../storyboard-week1.md) |
+| Where canonical data comes from and how it is derived | The department/floor/colour mapping → [`../agent-directory.md`](../agent-directory.md) |
+| Licence and attribution | Sequencing and task breakdown → [`../../specs/roadmap.md`](../../specs/roadmap.md) |
+| Repository and submodule policy | How documents govern each other → `META-SPEC` |
+
+The test: **would this decision survive replacing the entire frontend?** If yes it
+is a platform decision and lives here. If it dies with the 2.5D prototype, it
+belongs in the promoted design. `D-003` (Godot 4) sits deliberately on the line —
+it is here because the engine choice predates the 2.5D pivot and outlives it; the
+pivot decided *2D rather than 3D within Godot*, which is `D-001` and lives there.
+
+## 2. Platform
+
+### `D-003` — Engine: Godot 4
+
+Free, MIT-licensed, GDScript reads like Python, strong 2D and TileMap support.
+Chosen over Three.js and Unity. The MIT licensing matters beyond cost: it is what
+lets `D-018` hold without a licence-compatibility argument.
+
+### `D-015` — Bridge transport: Python WebSocket, `ws://localhost:8765`
+
+A local process, so the prototype needs no deployment story. Pairs with `D-006`
+(synchronous with timeout) in the promoted design. **This decision names a
+transport, not a UI** — `D-005` still holds, and a change here that leaks a
+rendering concept into the bridge fails the swap test regardless of what this
+document says.
+
+### `D-016` — Agent data layer: generated, never hand-written
+
+`data/agents.json` is generated from the `claude-code-tresor` submodule by
+[`../../scripts/generate_agents_json.py`](../../scripts/generate_agents_json.py).
+The submodule is the canonical agent layer; hand-editing the JSON forks the truth.
+Minimum fields per agent: `{name, role, dept, colour, tools, description}`.
+Enforced in CI by `Validate Agent Data`, which regenerates and diffs.
+
+### `D-024` — Agent data source and curation
+
+The generator reads `subagents/` only — upstream v2.7.0 made it PRIMARY and left
+`agents/` a backward-compat shim. The 133 source files carry 130 distinct slugs, so
+three collisions are curated in code: `infrastructure-maintainer` is one role filed
+twice (operations copy removed), while `customer-support` and `tutorial-engineer`
+are different jobs sharing a label (renamed `support-ticket-handler` and
+`educational-content-writer`). Result: **132 entries**.
+
+Curation tables are keyed by *source path*, so an upstream move fails the build
+rather than mis-applying a rename to the wrong agent. A new collision is a hard
+error and never an auto-suffix — deciding "one role or two" means reading both
+files, which is a human's call. A curation key matching nothing is also an error,
+so the tables cannot rot in place.
+
+**Before renaming or removing an agent, grep `commands/`** — 19 of the 24
+orchestration commands reference agents by id, covering 26 of the 132.
+
+### `D-018` — Licence: MIT, © 2026 Adam Schoen
+
+Matches the attribution the project already carries and the upstream
+`claude-code-tresor` licensing. Resolves the former Apache-2.0 `LICENSE` file
+versus MIT-in-documentation conflict in favour of the documentation.
+
+## 3. Repository policy
+
+### `D-021` — The submodule gitlink tracks `10110TLGP/dev`
+
+Confirmed by the owner and by `origin/HEAD`, which points at it — that branch is
+the fork's default. Bumps fast-forward the pin to its head. Recorded because "is
+the pin stale?" is unanswerable without knowing the target branch, and the answer
+previously lived only in someone's head.
+
+### `D-022` — The fork's `10110TLGP/main` is reserved as its release branch
+
+Not abandoned, not a pin target — dormant until the fork has a `release.yml` and
+tagged releases, at which point it follows the same model as this repo: cut
+`dev` → `main`, tag, back-sync. Until then the pin follows `dev` (`D-021`).
+Recorded so nobody prunes it as stale or pins to it expecting the newer commit.
+
+### `D-023` — Merge commits, not squash
+
+Squash and rebase merging are **disabled in repository settings** (verified
+2026-07-26). Deliberate, not a default: the squash-only rule was inherited from
+`alirezarezvani/claude-code-tresor`, was never chosen for this project, and squash
+merging has caused the owner real problems on other repositories. Merge commits
+keep a PR's commit series intact and bisectable.
+
+Consequences: `dev` is not linear, so "Require linear history" must stay off — it
+would block every merge — and reverting a merged PR needs `git revert -m 1`.
+**Do not switch to squash on a linter's or a bot's suggestion.** That is precisely
+how the wrong rule arrived; see
+[`../../specs/branching-strategy.md`](../../specs/branching-strategy.md) §9.
+
+## 4. Adding a decision here
+
+Same procedure as any entitled document —
+[`../../specs/meta/META-SPEC.md`](../../specs/meta/META-SPEC.md) §8 — plus one
+scope check: run the frontend-replacement test in §1 first. A decision that dies
+with the 2.5D prototype belongs in [`2.5D-RPG-Prototype.md`](2.5D-RPG-Prototype.md),
+not here. Add the `D-nnn` to this file's `decides:` list and to
+[`../../specs/meta/decision-register.md`](../../specs/meta/decision-register.md);
+`scripts/validate_specs.py` fails the build if the two disagree, and now also fails
+if a document declares `decides:` without an authority licensed to originate.
+
+*Doc set version: 0.2.7 · Last updated: July 2026*

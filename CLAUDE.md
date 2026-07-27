@@ -4,8 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository state
 
-This repo sits **between planning and prototype**. There is no Godot project yet and no `agents.json`, but there is:
+This repo sits **between planning and prototype**. There is no Godot project yet, but the data layer now exists:
 
+- `data/agents.json` — **132 agents**, generated from the submodule by `scripts/generate_agents_json.py` (`D-024`). Never hand-edit it; regenerate. M3 is done.
 - A working CI pipeline (`.github/workflows/ci.yml`) that already lints Python on every push/PR.
 - Two Atlassian integration scripts (`generate_report.py`, `post_to_confluence.py`) wired to a Jira project keyed `TO` and a Confluence parent page.
 - The upstream agent directory wired in as a git submodule at `./claude-code-tresor` (relative URL, not initialized in fresh checkouts — see below).
@@ -36,6 +37,8 @@ Deferred: true WebSocket streaming, unique sprites per agent, 3D first-person.
 - `specs/meta/spec-drivers-v0.2.5.md` — what v0.2.5 delivers, the traceability chain, and the **open-conflict register**. Check §4 before assuming a contradiction is yours to fix.
 
 Short version: tier 0 `specs/meta/` governs · tier 1 `docs/storyboard-week1.md` owns concept · tier 2 `docs/designs/*` owns implementation and `README.md` reconciles both · tier 3 `specs/roadmap.md` + `specs/task-tracker.md` sequence · tier 4 summaries and research are authoritative over nothing. **Lower tier wins.** Never silently reconcile two disagreeing docs — record it in the open-conflict register and raise it.
+
+`README.md` reconciles; it does not decide. It declared `authority: derived` while being named as the origin of eight decisions, and the set validated green for two releases before anyone noticed. Fixed in v0.2.7 — the eight moved to `docs/designs/platform-decisions.md`, and the validator now fails the build when a document declares `decides:` without an authority licensed to originate. Don't add a `decides:` list to a `derived`, `summary`, `research`, or `historical` document; it will not pass CI.
 
 Every governed doc declares `doc_id`/`tier`/`authority`/`status` in YAML frontmatter, validated against `specs/meta/spec-frontmatter.schema.json` and indexed in `specs/meta/doc-registry.json`. Run `python3 scripts/validate_specs.py` (stdlib only) before pushing; it runs in CI as `Validate Specs`.
 
@@ -103,14 +106,15 @@ This submodule is the source of truth for the agent definitions that need to bec
 - `subagents/` — 133 agent definitions nested `<dept>/<subcat>/<name>/agent.md` across ten categories (`engineering/`, `design/`, `marketing/`, `product/`, `leadership/`, `operations/`, `research/`, `ai-automation/`, `account-customer-success/`, `core/`), plus an `AGENT-INDEX.md`.
 - `agents/` — the same 8 core roles (`systems-architect`, `config-safety-reviewer`, `root-cause-analyzer`, `security-auditor`, `test-engineer`, `performance-tuner`, `refactor-expert`, `docs-writer`) in Claude Code's **runtime** format, not 8 additional roles.
 
-**141 files = 8 + 133, spanning 133 distinct roles.** Both numbers are right; say which you mean. The core eight appear in both trees in different formats, so keying `agents.json` by id makes them collide — see `docs/agent-directory.md` § Agent counts for the M3 hazard.
+**141 files = 8 + 133, spanning 133 distinct roles.** Both numbers are right; say which you mean. Upstream v2.7.0 made `subagents/` PRIMARY and left `agents/` as a backward-compat shim (symlinks plus stale pre-v2.7.0 flat files), so the generator reads `subagents/` only. Separately, those 133 files carry just **130 distinct slugs** — three cross-department collisions, curated in `scripts/generate_agents_json.py`, leaving **132 entries** in `data/agents.json`. See `docs/agent-directory.md` § Agent counts.
 
 ## CI workflows
 
-`.github/workflows/ci.yml` runs on push/PR to `main` and `dev`. Three jobs:
+`.github/workflows/ci.yml` runs on push/PR to `main` and `dev`. Four jobs:
 
 The workflow declares `permissions: contents: read` at the top level — every job only reads the repo, and without it `GITHUB_TOKEN` inherits the repository default (CodeQL flags this as `actions/missing-workflow-permissions`, one alert per job). A job that later needs more should declare its own block rather than widening the top-level one. The `gemini-*.yml` workflows declare permissions per job instead.
 
+- **`Validate Agent Data`** — runs `python3 scripts/generate_agents_json.py --check`. Needs the submodule (`submodules: recursive`) and `pyyaml`. Fails if `data/agents.json` has drifted from the submodule.
 - **`Validate Specs`** — runs `python3 scripts/validate_specs.py`. Stdlib only, no `pip install` step by design. Hard-fails when a governed doc is missing frontmatter, is unregistered in `specs/meta/doc-registry.json`, declares an authority the registry doesn't grant, links to a file that doesn't exist, disagrees about `doc_set_version`, or indexes a scene id the storyboard doesn't carry.
 - **`Lint Python Bridge`** — installs `flake8 black websockets`, then:
   - `black --check .` (warnings only — failures are echoed but don't fail the build)
@@ -149,6 +153,7 @@ Top level holds the entry-point docs every contributor (human or agent) is expec
 `docs/` — design and reference (the *what* and *why*, slow-changing). See `docs/README.md` for the folder index.
 
 - `docs/designs/2.5D-RPG-Prototype.md` — **active design.** The 2.5D top-down pivot.
+- `docs/designs/platform-decisions.md` — **platform authority.** Engine, bridge transport, agent data layer, licence, submodule and merge policy (`D-003`, `D-015`, `D-016`, `D-018`, `D-021`–`D-024`). Scope test: would the decision survive replacing the whole frontend? If it dies with the 2.5D prototype it belongs in the design doc instead.
 - `docs/storyboard-week1.md` — Day 0 / Day 1 / Day 2 tutorial narrative beats.
 - `docs/quick-reference.md` — one-page summary: build order, autoloads, department table.
 - `docs/agent-directory.md` — taxonomy of the 133 agent roles across nine departments plus Core. **Taxonomy authority (`D-017`)** — every other count in the repo derives from here.
