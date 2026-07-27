@@ -19,7 +19,11 @@ defaults:
 jobs:
   review:
     runs-on: 'ubuntu-latest'
-    timeout-minutes: 7
+    # Raised from 7 on PR #19, which was cancelled at 7m15s reviewing a 48-file
+    # diff. A cancelled review reports `fail`, so the red check said nothing about
+    # the code -- it meant the reviewer ran out of clock. That is the same
+    # uninformative signal as a green check that never ran, just inverted.
+    timeout-minutes: 20
     permissions:
       contents: 'read'
       id-token: 'write'

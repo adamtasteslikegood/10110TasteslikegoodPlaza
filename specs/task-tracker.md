@@ -4,7 +4,7 @@ title: 10110 TastesLike Plaza — PM Task Tracker
 tier: 3
 authority: derived
 status: ACTIVE
-doc_set_version: 0.2.7
+doc_set_version: 0.2.8
 last_updated: 2026-07
 owner: adamtasteslikegood
 derives_from: [ROADMAP]
@@ -49,12 +49,15 @@ derives_from: [ROADMAP]
 
 ## Phase 1 — Godot prototype  (target: weeks 1–3)
 
-### M1 — Godot setup
-- [ ] Download Godot 4
-- [ ] Run First Person Shooter demo — confirm movement works
-- [ ] Create new project
-- [ ] Import FPS CharacterBody3D controller into new project
-- [ ] Confirm player walks, looks around, has collision
+### M1 — Godot setup ✅ v0.2.8
+- [x] Godot 4.7.1 installed
+- [x] Create project (`project.godot`, three autoloads registered)
+- [x] Player controller — `CharacterBody2D`, 8-direction, arrows + WASD
+- [x] Confirm player walks and collides with walls
+
+The FPS-demo steps are dropped rather than ticked: `D-001` pivoted to 2.5D
+top-down, so there is no `CharacterBody3D` controller to import. Top-down movement
+is ~15 lines (`scenes/player/player.gd`) and needed no template.
 
 ### M2 — Grey-box office
 - [ ] Block out lobby
@@ -67,21 +70,22 @@ derives_from: [ROADMAP]
 - [ ] Bake NavigationRegion3D for the full floor
 - [ ] Playtest: does it feel right to walk through?
 
-### M3 — Agent data layer
-- [ ] Create `data/agents.json` from directory
-- [ ] Create `autoload/AgentRegistry.gd`
-- [ ] Add AgentRegistry to Project → Autoload
-- [ ] Test: `AgentRegistry.get_agent("systems-architect")` returns correct data
-- [ ] Create `autoload/GameEvents.gd` with core signals
-- [ ] Create `autoload/GameState.gd` with unlock/task tracking
+### M3 — Agent data layer ✅
+- [x] Create `data/agents.json` from directory — 132 agents, generated (`D-016`, `D-024`)
+- [x] Create `autoload/AgentRegistry.gd`
+- [x] Add AgentRegistry to Project → Autoload
+- [x] Test: `AgentRegistry.get_agent("systems-architect")` returns correct data — asserted in `tests/smoke_test.gd`
+- [x] Create `autoload/GameEvents.gd` with core signals
+- [x] Create `autoload/GameState.gd` with unlock/task tracking
 
-### M4 — First NPC
-- [ ] Create NPC scene (CharacterBody3D + Area3D + Label3D)
-- [ ] Write `npc.gd` with agent_id export + proximity signal
-- [ ] Place Systems Architect NPC in server room
-- [ ] Create basic HUD dialogue panel (CanvasLayer)
-- [ ] Wire GameEvents.npc_approached → dialogue panel populates from agent data
-- [ ] Playtest: walk up to NPC → panel shows → walk away → panel hides
+### M4 — First NPC ✅ v0.2.8
+- [x] Create NPC scene — `CharacterBody2D` + `Area2D` + `Label` (2D equivalents, `D-001`)
+- [x] Write `agent_npc.gd` with `agent_id` export + proximity signal
+- [x] Place Systems Architect NPC in server room (`SB-05`); Security Auditor too (`SB-06`)
+- [x] Create basic HUD dialogue panel (CanvasLayer)
+- [x] Wire `GameEvents.npc_approached` → dialogue panel populates from agent data
+- [x] Playtest: walk up to NPC → panel shows → walk away → panel hides
+- [x] Typewriter reveal (`D-007`) exercised early, over the agent description
 
 ### M5 — Assistant chat UI
 - [ ] Create assistant overlay (CanvasLayer)
@@ -164,7 +168,7 @@ derives_from: [ROADMAP]
 | Tutorial company name | Open | Should feel like a real startup |
 | Art direction | Open | Even rough moodboard helps |
 | Multiplayer scope | Open | Single-user for prototype; define later |
-| Web export vs desktop | Open | Godot supports both; decide before M1 |
+| Web export vs desktop | Open | Still open, but no longer blocks M1. CI imports and smoke-tests headlessly instead of exporting; decide when something needs to consume an artifact |
 | How to handle agent errors in-world | Open | NPC "unavailable"? Error message in inbox? |
 | Save game format | Open | JSON file vs Godot Resource |
 | Platform target (Win/Mac/Linux) | Open | Godot exports all three |

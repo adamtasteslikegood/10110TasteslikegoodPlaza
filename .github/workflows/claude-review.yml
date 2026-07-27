@@ -13,17 +13,43 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # WHAT THIS REPO ACTUALLY NEEDS REVIEWED
 #
-# This is a documentation- and specification-governed repo, not an application.
-# There is no Godot project, no Node, no server code. The defect classes that
-# matter here are claims-about-state and governance bookkeeping, so the prompt
-# below targets those instead of the usual code-review surface:
+# WHAT THIS FILE DOES NOT DO: describe the repository.
+#
+# CLAUDE.md is the source of truth for what this repo contains and what is
+# runnable in it, and it is expected to change as the project does. This file
+# used to carry its own copy ("a governed document set, not an application --
+# there is no Godot project and no Node"). That copy was accurate when written
+# and became false the moment M1 landed, while still being handed to every
+# reviewer as fact.
+#
+# A stale copy here is worse than a stale copy in a doc, because of the trap
+# below: correcting it is expensive. So this prompt states review METHOD and
+# points at CLAUDE.md for repository STATE. Resist re-adding "this repo is..."
+# text; it will rot, and you will not be able to fix it cheaply.
+#
+# THE SELF-EDIT TRAP -- read before changing this file.
+#
+# claude-code-action refuses to run when the workflow differs from the copy on
+# the default branch ("Skipping action due to workflow validation"), which stops
+# a PR rewriting its own reviewer. Correct behaviour, but it means ANY PR that
+# edits this file is unreviewable by this reviewer, and the check still reports
+# a fast green. Observed on #17 (run 3) and #19. Consequences:
+#   * Keep edits here rare and small, in their own PR where possible.
+#   * A green check on a PR that touches this file proves nothing -- read the
+#     job log for the skip warning before believing it.
+#
+# DURABLE DEFECT CLASSES (these are about method, not about what exists today):
 #
 #   * Repository-state claims that have gone stale or were checked against an
 #     endpoint that cannot see the answer.
-#   * Decision-register bookkeeping — a `D-nnn` locked from a document whose
+#   * Decision-register bookkeeping -- a `D-nnn` locked from a document whose
 #     `authority` does not permit deciding.
-#   * Cross-reference integrity — section cites, CHANGELOG self-consistency.
+#   * Cross-reference integrity -- section cites, CHANGELOG self-consistency.
 #   * The governed document set staying green under scripts/validate_specs.py.
+#   * Code, in whatever language the repo currently holds, violating a LOCKED
+#     decision -- notably D-016 (agent facts must be read from the generated
+#     data, never hard-coded) and D-005 (the bridge must never learn the UI
+#     exists).
 #
 # ─────────────────────────────────────────────────────────────────────────────
 # NO AUTO-FIX ON GOVERNED DOCUMENTS — this is the important adaptation.
@@ -254,9 +280,18 @@ jobs:
             its base branch. Be rigorous. Do not fabricate issues, and do not pad the
             review to look thorough.
 
-            Read CLAUDE.md and specs/meta/META-SPEC.md before reviewing. This repo is
-            a governed document set, not an application — there is no Godot project
-            and no Node. Never recommend commands that do not exist here.
+            Read CLAUDE.md and specs/meta/META-SPEC.md FIRST. They are the source
+            of truth for what this repository currently contains and what is
+            runnable in it. This prompt deliberately does not restate that — a
+            second copy rots, and it rotted before. If CLAUDE.md and anything in
+            this prompt disagree about repository state, CLAUDE.md wins; say so
+            in your review rather than following the stale one.
+
+            Never recommend a command that does not exist here. Before claiming
+            you ran anything, confirm the tool is actually on this runner: this
+            job installs nothing beyond the checkout, so language runtimes and
+            engines the repo uses are generally NOT present. Write "I could not
+            run X" rather than implying you did.
 
             ## 1. Scope and effort
 

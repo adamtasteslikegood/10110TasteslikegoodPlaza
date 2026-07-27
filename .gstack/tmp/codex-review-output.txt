@@ -1,0 +1,6 @@
+The new Godot CI job is intended to gate the prototype, but its install step writes to a root-owned system directory without elevation, so the job will fail before executing the smoke test.
+
+Review comment:
+
+- [P1] Install Godot somewhere writable by the runner — /home/allisone/Projects/10110TasteslikegoodPlaza/.github/workflows/ci.yml:131-131
+  On `ubuntu-latest` workflow steps run as the unprivileged `runner` user, and `/usr/local/bin` is root-owned, so this `mv` exits with permission denied before the import or smoke test can run. This makes the newly real `godot-build` job fail on every CI run unless the install uses `sudo` or places the binary in a runner-writable directory added to `PATH`.

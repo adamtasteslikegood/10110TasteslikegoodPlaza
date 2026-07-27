@@ -12,3 +12,7 @@ gha-creds-*.json
 
 # python cache
 __pycache__/
+
+# Godot
+.godot/
+*.translation

@@ -1,0 +1,36 @@
+; Engine configuration file.
+; Godot 4.7 — see docs/designs/2.5D-RPG-Prototype.md (D-001: 2.5D top-down, Godot 2D).
+;
+; Movement uses the built-in ui_left/right/up/down actions rather than a custom
+; input map. The [input] block serialises InputEventKey as an inline Object(...)
+; literal whose fields shift between engine versions; ui_* is stable, works on a
+; fresh checkout with no setup, and player.gd layers WASD on top by polling
+; physical keycodes. See scenes/player/player.gd.
+
+config_version=5
+
+[application]
+
+config/name="10110 TastesLike Plaza"
+config/description="A 2.5D top-down office world that is a graphical interface for a real AI agent workspace."
+run/main_scene="res://scenes/main.tscn"
+config/features=PackedStringArray("4.7", "GL Compatibility")
+config/icon="res://icon.svg"
+
+[autoload]
+
+AgentRegistry="*res://autoload/AgentRegistry.gd"
+GameEvents="*res://autoload/GameEvents.gd"
+GameState="*res://autoload/GameState.gd"
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/stretch/mode="canvas_items"
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+environment/defaults/default_clear_color=Color(0.12, 0.12, 0.14, 1)
