@@ -10,6 +10,34 @@ section at release time. PR references in parentheses.
 
 ## [Unreleased]
 
+### Changed — doc set v0.2.7: the eight decisions get an entitled home (#11)
+
+- **`docs/designs/platform-decisions.md` created** (`PLATFORM-DECISIONS`, tier 2,
+  `authority: implementation`) and now originates `D-003`, `D-015`, `D-016`,
+  `D-018`, `D-021`, `D-022`, `D-023`, `D-024`. Its scope test: *would this decision
+  survive replacing the entire frontend?* If it dies with the 2.5D prototype it
+  belongs in the promoted design instead.
+- **`README.md` loses its `decides:` list.** It declared `authority: derived` —
+  licensed by `META-SPEC` §2 to decide "nothing new" — while being named as the
+  origin of all eight. The layer contradicted itself, and the set validated green
+  for two releases. Option (b) of issue #11, chosen by the owner: existing authority
+  vocabulary, no schema enum change, no new tier.
+- **`D-023` and `D-024` flip `PROPOSED` → `LOCKED`.** Their substance was never in
+  question; only the bookkeeping about who was entitled to make them. "Not yet
+  authorised" in the decision register is now empty.
+- **The validator gained the check whose absence caused this.**
+  `check_decision_authority()` fails the build when a document declares `decides:`
+  without an authority listed in `authority.x-may-originate` — published in
+  `spec-frontmatter.schema.json`, not restated in the script, so the gate cannot
+  drift from the contract. Verified by running it against the unfixed tree first:
+  it named `README.md` and all eight ids before anything was moved.
+- **A coarse gate, deliberately.** It asks whether an authority may originate
+  *something*, not whether a given decision falls inside that authority's subject
+  matter. Writing it surfaced one instance of the second kind — `D-005` is an
+  architecture decision originated by tier-0 `META-SPEC`, which §2 says may never
+  originate product decisions. Recorded as open conflict **§4.9** rather than fixed,
+  per the conflict protocol; nothing is blocked either way.
+
 ### Added — M3: the agent data layer (`D-024`)
 
 - **`data/agents.json` — 132 agents**, generated from the submodule by

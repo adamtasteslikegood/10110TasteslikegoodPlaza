@@ -402,6 +402,57 @@ def check_scene_ids(documents: dict, problems: list) -> None:
         )
 
 
+def check_decision_authority(documents: dict, schema: dict, problems: list) -> None:
+    """A document may only originate decisions if its authority licenses it to.
+
+    The gap this closes: ``check_decisions`` confirmed every claimed ``D-nnn``
+    existed in the register, but never asked whether the *claiming* document was
+    entitled to decide anything at all. ``PROJECT-OVERVIEW`` originated eight
+    decisions while declaring ``authority: derived`` -- licensed by META-SPEC
+    section 2 to decide "nothing new" -- and the set validated green for two
+    releases. See issue #11.
+
+    Deliberately a coarse gate. It enforces "may this authority originate
+    *something*", read from the schema so the rule cannot drift from the
+    published contract. It cannot enforce "is this particular decision within
+    that authority's subject matter" -- that a tier-0 constitution document is
+    deciding about documents rather than about the product stays a human
+    judgement, and one worth making at review time.
+    """
+    authority_schema = schema.get("properties", {}).get("authority", {})
+    permitted = authority_schema.get("x-may-originate", {}).get("values")
+    if not permitted:
+        # No published rule means nothing to enforce. Say so rather than
+        # passing silently -- a check that quietly does nothing is worse than
+        # no check, because the green tick still reads as coverage.
+        target = documents.get("META-SPEC", {}).get("path", SCHEMA_PATH)
+        problems.append(
+            Problem(
+                target,
+                "spec-frontmatter.schema.json declares no authority.x-may-originate "
+                "values, so 'may this document decide anything' cannot be checked",
+            )
+        )
+        return
+
+    for doc_id, info in sorted(documents.items()):
+        claimed = info["fields"].get("decides", [])
+        if not claimed:
+            continue
+        authority = info["fields"].get("authority")
+        if authority not in permitted:
+            allowed = ", ".join(permitted)
+            problems.append(
+                Problem(
+                    info["path"],
+                    f"declares authority {authority!r} but claims to originate "
+                    f"{', '.join(claimed)} -- only [{allowed}] may originate "
+                    "decisions. Move them to an entitled document, or change this "
+                    "one's authority deliberately (META-SPEC section 2)",
+                )
+            )
+
+
 def check_decisions(documents: dict, problems: list) -> None:
     """Every D-nnn claimed in frontmatter must be in the decision register."""
     register = documents.get("DECISION-REGISTER")
@@ -444,6 +495,7 @@ def main() -> int:
     skipped_links = check_links(documents, problems)
     check_scene_ids(documents, problems)
     check_decisions(documents, problems)
+    check_decision_authority(documents, schema, problems)
 
     if problems:
         print(f"Spec validation FAILED -- {len(problems)} problem(s):\n")

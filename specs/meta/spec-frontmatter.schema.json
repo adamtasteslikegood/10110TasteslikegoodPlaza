@@ -43,7 +43,11 @@
         "summary",
         "research",
         "historical"
-      ]
+      ],
+      "x-may-originate": {
+        "$comment": "Which authorities may appear on a document that declares `decides`. The four omitted values (derived, summary, research, historical) are licensed to originate nothing, so a `decides` list on one of them is a contradiction; scripts/validate_specs.py reads this list and fails the build. This is the COARSE gate only -- it says an authority may originate something, not that a given decision falls within that authority's subject matter. Whether a constitution document is deciding about documents (permitted) or about the product (not) is a judgement no validator makes.",
+        "values": ["constitution", "concept", "implementation", "taxonomy"]
+      }
     },
     "status": {
       "type": "string",
@@ -76,7 +80,7 @@
     },
     "decides": {
       "type": "array",
-      "description": "Decision IDs (D-nnn) this document is the origin of. Only tier 0-2 documents may claim these. Registered in specs/meta/decision-register.md.",
+      "description": "Decision IDs (D-nnn) this document is the origin of. Only tier 0-2 documents may claim these, and only when their `authority` appears in authority.x-may-originate. Registered in specs/meta/decision-register.md.",
       "items": { "type": "string", "pattern": "^D-[0-9]{3}$" }
     }
   }

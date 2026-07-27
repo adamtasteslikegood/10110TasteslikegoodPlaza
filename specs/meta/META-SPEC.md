@@ -4,7 +4,7 @@ title: Meta-Spec — how the Plaza doc set governs itself
 tier: 0
 authority: constitution
 status: ACTIVE
-doc_set_version: 0.2.6
+doc_set_version: 0.2.7
 last_updated: 2026-07
 owner: adamtasteslikegood
 derives_from: []
@@ -59,16 +59,29 @@ Every governed document declares a `tier`. **Lower tier wins.**
 Alongside `tier`, each document declares an `authority` — what it is licensed to
 decide:
 
-| `authority` | Licensed to decide |
-|---|---|
-| `constitution` | How documents are written, read, and reconciled. |
-| `concept` | The story, the player, the world, the fiction. **Exactly one document holds this.** |
-| `implementation` | Engine, architecture, scope, technical approach. |
-| `taxonomy` | One specific reference mapping (departments, floors, colours). |
-| `derived` | Nothing new. Sequences and applies decisions made above it. |
-| `summary` | Nothing. Regenerable from its sources; if it disagrees, it is wrong. |
-| `research` | Nothing. Background, findings, and rationale to cite. |
-| `historical` | Nothing. Retained so old links and old context still land. |
+| `authority` | Licensed to decide | May declare `decides:` |
+|---|---|---|
+| `constitution` | How documents are written, read, and reconciled. | Yes |
+| `concept` | The story, the player, the world, the fiction. **Exactly one document holds this.** | Yes |
+| `implementation` | Engine, architecture, scope, technical approach. | Yes |
+| `taxonomy` | One specific reference mapping (departments, floors, colours). | Yes |
+| `derived` | Nothing new. Sequences and applies decisions made above it. | **No** |
+| `summary` | Nothing. Regenerable from its sources; if it disagrees, it is wrong. | **No** |
+| `research` | Nothing. Background, findings, and rationale to cite. | **No** |
+| `historical` | Nothing. Retained so old links and old context still land. | **No** |
+
+The right-hand column is enforced, not advisory: it is published in
+[`spec-frontmatter.schema.json`](spec-frontmatter.schema.json) as
+`authority.x-may-originate` and `scripts/validate_specs.py` fails the build on a
+`decides:` list that violates it. It went in after `PROJECT-OVERVIEW` originated
+eight decisions while declaring `derived`, and the set validated green for two
+releases — see [`spec-drivers-v0.2.5.md`](spec-drivers-v0.2.5.md) §4.8.
+
+**What the gate does not check:** whether a given decision falls inside its
+authority's *subject matter*. A `constitution` document deciding about documents is
+correct; the same document deciding about the product is not, and both look
+identical to the validator. That judgement stays with review — §4.9 records the one
+known open instance.
 
 **Two axes, one reconciliation.** Concept flows down from tier 1; implementation
 flows down from tier 2. They are independent — a promoted design may override how
@@ -85,6 +98,7 @@ tier 0   META-SPEC ─ CONCEPT-DRIVER ─ DECISION-REGISTER ─ SPEC-DRIVERS-025
 tier 1   STORYBOARD-W1        ← concept & narrative originate HERE, nowhere else
              │
 tier 2   DESIGN-25D (how to build)   AGENT-DIRECTORY (taxonomy)
+         PLATFORM-DECISIONS (engine, transport, licence, repo policy)
              └──────────┬───────────┘
                         ▼
              PROJECT-OVERVIEW  ← reconciles both axes for public consumption
@@ -165,7 +179,7 @@ These are hard gates, not preferences. A change that breaks one fails review.
 
 ## 7. Versioning
 
-- The doc **set** carries one semantic version. This release is **0.2.5**. Files do
+- The doc **set** carries one semantic version. This release is **0.2.7**. Files do
   not version independently; each declares `doc_set_version` and the validator
   requires them all to agree.
 - `1.0.0` is cut when M8 is demonstrable in-engine.
@@ -185,4 +199,4 @@ These are hard gates, not preferences. A change that breaks one fails review.
    [`decision-register.md`](decision-register.md) and bump `doc_set_version`
    everywhere in the same commit.
 
-*Doc set version: 0.2.6 · Last updated: July 2026*
+*Doc set version: 0.2.7 · Last updated: July 2026*

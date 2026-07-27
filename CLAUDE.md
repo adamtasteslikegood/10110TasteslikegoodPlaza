@@ -38,6 +38,8 @@ Deferred: true WebSocket streaming, unique sprites per agent, 3D first-person.
 
 Short version: tier 0 `specs/meta/` governs · tier 1 `docs/storyboard-week1.md` owns concept · tier 2 `docs/designs/*` owns implementation and `README.md` reconciles both · tier 3 `specs/roadmap.md` + `specs/task-tracker.md` sequence · tier 4 summaries and research are authoritative over nothing. **Lower tier wins.** Never silently reconcile two disagreeing docs — record it in the open-conflict register and raise it.
 
+`README.md` reconciles; it does not decide. It declared `authority: derived` while being named as the origin of eight decisions, and the set validated green for two releases before anyone noticed. Fixed in v0.2.7 — the eight moved to `docs/designs/platform-decisions.md`, and the validator now fails the build when a document declares `decides:` without an authority licensed to originate. Don't add a `decides:` list to a `derived`, `summary`, `research`, or `historical` document; it will not pass CI.
+
 Every governed doc declares `doc_id`/`tier`/`authority`/`status` in YAML frontmatter, validated against `specs/meta/spec-frontmatter.schema.json` and indexed in `specs/meta/doc-registry.json`. Run `python3 scripts/validate_specs.py` (stdlib only) before pushing; it runs in CI as `Validate Specs`.
 
 `specs/aligned-spec-v0.2.5.md` is **no longer the source of truth** — it is a tier-4 research input (`status: SUPERSEDED`). Its normative content was promoted into `specs/meta/`; its §01.3 fabricated a 14-scene spine that contradicts the real storyboard. Cite it for findings and rationale, not as law.
@@ -151,6 +153,7 @@ Top level holds the entry-point docs every contributor (human or agent) is expec
 `docs/` — design and reference (the *what* and *why*, slow-changing). See `docs/README.md` for the folder index.
 
 - `docs/designs/2.5D-RPG-Prototype.md` — **active design.** The 2.5D top-down pivot.
+- `docs/designs/platform-decisions.md` — **platform authority.** Engine, bridge transport, agent data layer, licence, submodule and merge policy (`D-003`, `D-015`, `D-016`, `D-018`, `D-021`–`D-024`). Scope test: would the decision survive replacing the whole frontend? If it dies with the 2.5D prototype it belongs in the design doc instead.
 - `docs/storyboard-week1.md` — Day 0 / Day 1 / Day 2 tutorial narrative beats.
 - `docs/quick-reference.md` — one-page summary: build order, autoloads, department table.
 - `docs/agent-directory.md` — taxonomy of the 133 agent roles across nine departments plus Core. **Taxonomy authority (`D-017`)** — every other count in the repo derives from here.
