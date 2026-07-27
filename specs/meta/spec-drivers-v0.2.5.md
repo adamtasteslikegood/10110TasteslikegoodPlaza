@@ -267,6 +267,10 @@ cannot drift from the contract.
 
 ### 4.9 `META-SPEC` originates an architecture decision — **OPEN**
 
+**Tracked as [issue #18](https://github.com/adamtasteslikegood/10110TasteslikegoodPlaza/issues/18)**,
+which carries the three options in full. This entry is the summary; the issue is
+where it gets settled.
+
 Surfaced by writing the §4.8 validator check and asking what it deliberately does
 not cover.
 
