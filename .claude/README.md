@@ -13,7 +13,7 @@ checkout resolves the plugins without extra setup.
 | Skill | Why it's here |
 |---|---|
 | `zero-hallucination-coder` | Grounds code in verified references. Directly serves the META-SPEC binding rules *don't-invent-infrastructure* and *cite-the-source-doc* — this repo has repeatedly been bitten by invented `npm test`-style commands. |
-| `grill-with-docs` | Interrogates a plan against the docs it claims to follow. Matches the tier ladder and the conflict protocol in `specs/meta/META-SPEC.md`. |
+| `grill-with-docs` | Interrogates a plan against the docs it claims to follow. Matches the tier ladder and the conflict protocol in `specs/meta/META-SPEC.md`. Invoke it through `skills/grill-with-specs` — see below. |
 | `code-tour` | Persona-targeted walkthroughs — useful for onboarding onto the three autoloads and the `scenes/` layout. |
 | `collab-proof` | Post-session retrospective that calibrates what the agent actually got right. |
 
@@ -45,5 +45,16 @@ Before adding a plugin, check its skill names against what is already available 
 
 ## `skills/`
 
-Project-local skills committed to the repo. Currently `review-specs` — the governed-document
-review pass used when reviewing a PR or branch here.
+Project-local skills committed to the repo.
+
+- **`review-specs`** — the governed-document review pass used when reviewing a PR or branch here.
+- **`grill-with-specs`** — the adapter that points `grill-with-docs` at this repo. The upstream
+  skill assumes a `CONTEXT.md` glossary and one ADR file per decision under `docs/adr/`, and it
+  creates both lazily if they are missing. Neither exists here and neither should: the equivalent
+  authorities are `specs/meta/META-SPEC.md` §2 for vocabulary and `specs/meta/decision-register.md`
+  for `D-nnn` decisions. The adapter remaps those paths, swaps the three upstream validators for
+  `scripts/validate_specs.py` (they parse formats this repo does not use), and adds the tier and
+  origin questions the register needs answered before a row can be written.
+
+The adapter is a separate skill rather than an edit to the plugin because the plugin lives in
+`~/.claude/plugins/cache/` and is replaced wholesale on the next install or version bump.
