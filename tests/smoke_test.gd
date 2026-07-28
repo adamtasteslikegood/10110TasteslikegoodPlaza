@@ -36,7 +36,6 @@ const CORE_COLOR := "#FFD700"
 ## sits in agent_npc.tscn, and Godot rewrites .tscn files wholesale on save --
 ## any warning comment placed next to it disappears the first time the scene is
 ## opened in the editor. A test survives.
-const NPC_BODY_SIZE := Vector2(28, 32)
 
 var _failures: Array[String] = []
 
@@ -158,7 +157,17 @@ func _check_feel_bands(instance: Node) -> void:
 
 	# Floor: the NPC's own body blocks you, so a radius inside it can never be
 	# entered -- you collide with the agent before you trigger them.
-	var floor_px := NPC_BODY_SIZE.length() * 0.5
+	#
+	# Read from the scene, NOT from a constant here. The first version of this
+	# check hardcoded Vector2(28, 32) while the comment above claimed both bounds
+	# were scene-derived -- a second copy of scene state in the very commit that
+	# argued against second copies of scene state. Caught by the independent
+	# Claude review on PR #20 (#21).
+	var body: CollisionShape2D = a.get_node_or_null("Collision")
+	if body == null or not (body.shape is RectangleShape2D):
+		_fail("AgentNPC has no RectangleShape2D 'Collision' — cannot derive the proximity floor")
+		return
+	var floor_px: float = (body.shape as RectangleShape2D).size.length() * 0.5
 	if radius <= floor_px:
 		_fail(
 			(
