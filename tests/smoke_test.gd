@@ -18,6 +18,25 @@ const EXPECTED_AGENT_COUNT := 132
 const CORE_DEPT := "core"
 const CORE_COLOR := "#FFD700"
 
+## Feel values are PLAYTESTED, NOT FIXED. 48px proximity and 55 chars/sec were both
+## confirmed good in-engine on 2026-07-26 and are expected to be fine-tuned again.
+##
+## So these assert a BAND, never an equality. An `== 48.0` check would turn every
+## future tuning pass into a red build, which teaches people to delete the check.
+## A band leaves tuning free and catches only the two things that are actually
+## broken rather than merely different.
+##
+## Both bounds below are DERIVED from the scene and re-derived at runtime, so
+## moving an NPC moves the bound instead of quietly invalidating it. That matters
+## more than it sounds: a hand-written constant here would be a second copy of
+## scene state, which is the failure mode branching-strategy.md section 9 now has
+## five entries for.
+##
+## The .tscn is also why this lives in a test and not a comment. `radius = 48.0`
+## sits in agent_npc.tscn, and Godot rewrites .tscn files wholesale on save --
+## any warning comment placed next to it disappears the first time the scene is
+## opened in the editor. A test survives.
+
 var _failures: Array[String] = []
 
 
@@ -115,8 +134,75 @@ func _check_scene_tree() -> void:
 	_check_npc_ready(instance)
 	_check_office_built(instance)
 	_check_hud_ready(instance)
+	_check_feel_bands(instance)
 
 	instance.queue_free()
+
+
+func _check_feel_bands(instance: Node) -> void:
+	var a: Node2D = instance.get_node_or_null("Office/SystemsArchitect")
+	var b: Node2D = instance.get_node_or_null("Office/SecurityAuditor")
+	if a == null or b == null:
+		# Already reported by _check_npc_ready; nothing to derive a bound from.
+		return
+
+	var shape: CollisionShape2D = a.get_node_or_null("Proximity/ProximityShape")
+	if shape == null:
+		_fail("AgentNPC has no Proximity/ProximityShape — the whole M4 trigger is gone")
+		return
+	if not (shape.shape is CircleShape2D):
+		_fail("proximity shape is %s, expected CircleShape2D" % [shape.shape])
+		return
+	var radius: float = (shape.shape as CircleShape2D).radius
+
+	# Floor: the NPC's own body blocks you, so a radius inside it can never be
+	# entered -- you collide with the agent before you trigger them.
+	#
+	# Read from the scene, NOT from a constant here. The first version of this
+	# check hardcoded Vector2(28, 32) while the comment above claimed both bounds
+	# were scene-derived -- a second copy of scene state in the very commit that
+	# argued against second copies of scene state. Caught by the independent
+	# Claude review on PR #20 (#21).
+	var body: CollisionShape2D = a.get_node_or_null("Collision")
+	if body == null or not (body.shape is RectangleShape2D):
+		_fail("AgentNPC has no RectangleShape2D 'Collision' — cannot derive the proximity floor")
+		return
+	var floor_px: float = (body.shape as RectangleShape2D).size.length() * 0.5
+	if radius <= floor_px:
+		_fail(
+			(
+				"proximity radius %.1f is inside the NPC's own %.1fpx collision body — unreachable"
+				% [radius, floor_px]
+			)
+		)
+
+	# Ceiling: half the gap between the two server-room agents. Past that the
+	# circles overlap, you stand in both, and the panel shows whichever signal
+	# arrived last rather than who you walked up to.
+	var ceiling_px := a.position.distance_to(b.position) * 0.5
+	if radius >= ceiling_px:
+		_fail(
+			(
+				"proximity radius %.1f >= %.1f (half the SB-05/SB-06 gap) — both NPCs fire at once"
+				% [radius, ceiling_px]
+			)
+		)
+
+	# D-007 locks the typewriter itself, not its speed. A rate high enough to
+	# finish inside one frame is indistinguishable from having removed it, which
+	# is a LOCKED decision quietly reverting rather than a tuning choice.
+	var hud: Node = instance.get_node_or_null("HUD")
+	if hud == null:
+		return
+	var consts: Dictionary = hud.get_script().get_script_constant_map()
+	if not consts.has("CHARS_PER_SECOND"):
+		_fail("dialogue_panel.gd no longer defines CHARS_PER_SECOND — D-007 has no rate")
+		return
+	var cps: float = consts["CHARS_PER_SECOND"]
+	# 60fps, so >600 reveals a 10-char line instantly. Under 10 an average
+	# description outlasts anyone's patience and the panel reads as hung.
+	if cps < 10.0 or cps > 600.0:
+		_fail("CHARS_PER_SECOND is %.1f — outside the readable 10..600 band (D-007)" % cps)
 
 
 func _check_npc_ready(instance: Node) -> void:

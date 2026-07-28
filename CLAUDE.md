@@ -11,7 +11,6 @@ This repo is **a running Godot prototype**. `project.godot` exists and `godot .`
 - Two Atlassian integration scripts (`generate_report.py`, `post_to_confluence.py`) wired to a Jira project keyed `TO` and a Confluence parent page.
 - The upstream agent directory wired in as a git submodule at `./claude-code-tresor` (relative URL, not initialized in fresh checkouts — see below).
 - A consolidated documentation layout: `docs/` for design and reference, `specs/` for development-process files. Each folder has its own `README.md` describing what belongs there. The active design is `docs/designs/2.5D-RPG-Prototype.md`; the active work plan is `specs/roadmap.md`.
-- A bunch of `gemini-*` workflows and matching `.toml` command files driving an autonomous triage/review bot.
 
 Godot commands are real now: `godot .` runs it, `godot --headless --import` imports it, `godot --headless tests/smoke_test.tscn` gates it (exits 1 on failure). Node/npm infrastructure still does not exist — don't invent `npm test`. What's actually runnable is described below.
 
@@ -112,7 +111,7 @@ This submodule is the source of truth for the agent definitions that need to bec
 
 `.github/workflows/ci.yml` runs on push/PR to `main` and `dev`. Four jobs:
 
-The workflow declares `permissions: contents: read` at the top level — every job only reads the repo, and without it `GITHUB_TOKEN` inherits the repository default (CodeQL flags this as `actions/missing-workflow-permissions`, one alert per job). A job that later needs more should declare its own block rather than widening the top-level one. The `gemini-*.yml` workflows declare permissions per job instead.
+The workflow declares `permissions: contents: read` at the top level — every job only reads the repo, and without it `GITHUB_TOKEN` inherits the repository default (CodeQL flags this as `actions/missing-workflow-permissions`, one alert per job). A job that later needs more should declare its own block rather than widening the top-level one. `claude-review.yml` declares permissions per job instead.
 
 - **`Validate Agent Data`** — runs `python3 scripts/generate_agents_json.py --check`. Needs the submodule (`submodules: recursive`) and `pyyaml`. Fails if `data/agents.json` has drifted from the submodule.
 - **`Validate Specs`** — runs `python3 scripts/validate_specs.py`. Stdlib only, no `pip install` step by design. Hard-fails when a governed doc is missing frontmatter, is unregistered in `specs/meta/doc-registry.json`, declares an authority the registry doesn't grant, links to a file that doesn't exist, disagrees about `doc_set_version`, or indexes a scene id the storyboard doesn't carry.
@@ -123,7 +122,9 @@ The workflow declares `permissions: contents: read` at the top level — every j
   Any new Python here needs to at least pass the strict flake8 subset.
 - **`Export Godot 4 Prototype`** — despite the name, it does not export. It installs Godot 4.7.1 from the `godotengine/godot` GitHub release, runs `godot --headless --import`, then runs `tests/smoke_test.tscn`, which asserts the 132 agents loaded, the Core eight are gold, `tools` is still a list, and `main.tscn` instantiates. No export templates are downloaded — a web export would pull ~1GB per run for an artifact nothing consumes yet. It echoed a string and passed vacuously until v0.2.8.
 
-Separately, the `gemini-*.yml` workflows + `.gemini/commands/` + `.github/commands/` files implement a gemini-cli-driven triage/review/plan-execute bot triggered by `@gemini-cli` mentions and a schedule. Don't edit those files without understanding the dispatch flow in `gemini-dispatch.yml` — they orchestrate one another.
+`.github/workflows/claude-review.yml` is the one independent reviewer wired into PRs. It is advisory (`continue-on-error`) and never a required check. Read its `on:` block for when it fires rather than assuming — that is the only copy of that fact. **It cannot review changes to itself** — `claude-code-action` refuses to run when the workflow differs from the copy on the default branch, and still reports a fast green, so read the job log rather than the check mark on any PR that edits it.
+
+The `gemini-*.yml` suite that used to sit here was removed on 2026-07-28. It never completed a single review on this repo: it hung during the code-review extension install and was killed by its own timeout on every run. Recovering it from git history is not a starting point — start fresh.
 
 ## Python scripts (Atlassian glue)
 
@@ -185,7 +186,7 @@ Nine departments map to nine office floors (now "rooms" in 2.5D), each with a fi
 
 The intended flow is `feature/* | fix/* | hotfix/* → dev → main` with Conventional Commits and squash merges. What's actually in the remote right now:
 
-- `main` — production line; has the Atlassian scripts, CI, submodule, gemini workflows.
+- `main` — production line; has the Atlassian scripts, CI, and the submodule.
 - `dev` — **integration branch**, caught up to `main` via PR #3. New work targets `dev`; `dev` → `main` on release.
 - `feature/TO-1-prototype-initialization` — long-lived feature branch with extensive `scripts/` and `scripts/scripts-bakup/` shell/Python tooling (Jira PM daemon, ahead-behind scripts, etc.).
 - Task-assigned working branches (e.g. `claude/...`) — develop here, commit, push, open a draft PR. The session-assigned branch is specified in the system prompt.

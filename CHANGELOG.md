@@ -32,6 +32,25 @@ section at release time. PR references in parentheses.
   inside that authority's subject matter, and `META-SPEC` declares no `decides:`
   list anyway. §4.9 was found by a human asking what the new check deliberately
   could not see — worth repeating whenever a gate ships.
+### Added — playtest bands on the two feel values
+
+- **The smoke test now guards proximity radius and typewriter rate as ranges, not
+  as fixed numbers.** Both were confirmed good in-engine on 2026-07-26 and both are
+  expected to be tuned again, so an equality assertion would make every future
+  tuning pass a red build — which is how a check gets deleted. The band leaves
+  tuning free and catches only the two states that are actually broken.
+- **Both bounds are derived from the scene at runtime.** The floor is the NPC's own
+  collision half-diagonal (a radius inside it can never be entered — the body stops
+  you first); the ceiling is half the measured gap between `SB-05` and `SB-06`
+  (past it both proximity circles overlap and the panel shows whichever signal
+  landed last). Moving an NPC moves the bound, so this cannot become a stale second
+  copy of scene state.
+- **The typewriter check enforces `D-007`, not a preferred speed.** A rate that
+  finishes inside one frame is a LOCKED decision silently reverting, not a tuning
+  choice; anything in `10..600` chars/sec passes.
+- Placed in a test rather than a comment because `radius` lives in
+  `agent_npc.tscn`, and Godot rewrites `.tscn` files wholesale on save — a warning
+  comment there disappears the first time the scene is opened in the editor.
 
 ### Added — Round 3: the office is walkable (M1 + M4, doc set v0.2.8)
 
