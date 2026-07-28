@@ -103,8 +103,7 @@
 #
 # ON SHA PINNING: this repo does NOT require it. `sha_pinning_required: false`,
 # `allowed_actions: all`, and ci.yml uses plain tags (actions/checkout@v4). The
-# SHA-pinned `uses:` lines in the gemini-*.yml workflows came from upstream
-# templates, not from a policy here.
+# SHA-pinned `uses:` lines came from upstream templates, not from a policy here.
 #
 # The two SHAs below are pinned anyway, deliberately, and both were verified
 # against upstream on 2026-07-26:
@@ -146,8 +145,9 @@ jobs:
     # Same-repo only (forks/Dependabot have no secrets → skip cleanly), non-bot,
     # non-draft; on `labeled` events only fire for the two review labels.
     #
-    # `sender.type != 'Bot'` also keeps this from answering the gemini-*.yml
-    # triage bots, which post on PRs in this repo and would otherwise trigger it.
+    # `sender.type != 'Bot'` keeps this from answering other bots that comment on
+    # PRs here. It was added for the gemini-*.yml triage bots, which are now gone;
+    # it stays because Dependabot, CodeQL and GitGuardian all still post.
     if: >-
       github.event_name == 'workflow_dispatch' ||
       (

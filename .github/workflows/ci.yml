@@ -13,8 +13,8 @@ on:
 #
 # Without this, GITHUB_TOKEN inherits the repository default, which may be
 # read/write. CodeQL flags that as actions/missing-workflow-permissions - one
-# alert per job. The gemini-*.yml workflows already declare permissions at the
-# job level; this file was the only one with none at any level.
+# alert per job. claude-review.yml already declares permissions at the job
+# level; this file was the only one with none at any level.
 #
 # A job that later needs more (publishing a release, commenting on a PR) should
 # declare its own `permissions:` block rather than widening this one.

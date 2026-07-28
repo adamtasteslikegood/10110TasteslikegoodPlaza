@@ -30,7 +30,7 @@ Most branching docs describe an aspiration. This section is the honest split.
 | Merge commits, not squash (`D-023`) | **Enforced by repository settings** — squash and rebase merging are disabled. Verified 2026-07-26; §4 has the re-check command |
 | `ci.yml` — `Validate Specs`, `Lint Python Bridge`, `Export Godot 4 Prototype` | **Runs on every push and PR to `main` and `dev`** |
 | CodeQL (`Analyze (python)`, `Analyze (actions)`), GitGuardian | **Runs on PRs** |
-| `gemini-*.yml` triage / review / plan-execute | **Runs on PRs, issues, `@gemini-cli` mentions, and a schedule** |
+| `claude-review.yml` — independent review | **Runs on PRs to `main` and `dev`**; see its `on:` block for the exact trigger set. Advisory, never a required check |
 | Branch protection on `dev` | **Active** — ruleset `18798438`: PR required, deletion and force-push blocked, code scanning gates merge. See §5 |
 | Branch protection on `main` | **Not configured.** §5 "Still to apply" |
 | Required status checks by name | **Not configured** — `dev`'s ruleset gates `code_scanning` but does not require `Validate Specs` or `Lint Python Bridge` by name |
