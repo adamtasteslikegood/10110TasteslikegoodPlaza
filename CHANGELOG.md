@@ -32,6 +32,7 @@ section at release time. PR references in parentheses.
   inside that authority's subject matter, and `META-SPEC` declares no `decides:`
   list anyway. §4.9 was found by a human asking what the new check deliberately
   could not see — worth repeating whenever a gate ships.
+
 ### Added — playtest bands on the two feel values
 
 - **The smoke test now guards proximity radius and typewriter rate as ranges, not
