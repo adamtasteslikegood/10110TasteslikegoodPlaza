@@ -4,7 +4,7 @@ title: 10110 TastesLike Plaza — Branching Strategy
 tier: 3
 authority: derived
 status: ACTIVE
-doc_set_version: 0.2.8
+doc_set_version: 0.2.9
 last_updated: 2026-07
 owner: adamtasteslikegood
 derives_from: [META-SPEC]

@@ -4,7 +4,7 @@ title: 10110 TastesLike Plaza — Project Overview
 tier: 2
 authority: derived
 status: ACTIVE
-doc_set_version: 0.2.8
+doc_set_version: 0.2.9
 last_updated: 2026-07
 owner: adamtasteslikegood
 derives_from: [STORYBOARD-W1, DESIGN-25D, PLATFORM-DECISIONS]
