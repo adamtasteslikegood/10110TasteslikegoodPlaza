@@ -26,3 +26,6 @@ npm-debug.log*
 # Committing it is a disclosure decision, not a formatting one. Regenerate with
 # generate_report.py; post it with post_to_confluence.py.
 report.md
+
+# git worktrees
+.claude/worktrees/
