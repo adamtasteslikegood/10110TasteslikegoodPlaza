@@ -10,6 +10,35 @@ section at release time. PR references in parentheses.
 
 ## [Unreleased]
 
+### Fixed — `CLAUDE.md` caught up to the running prototype
+
+- **`black --check .` was documented as advisory. It is not.** The CI step carries
+  no `continue-on-error` and no `|| true`, so unformatted Python reddens the build.
+  An agent trusting the old line would have pushed and been surprised. `dev` is
+  green today, so nothing was actually broken — only the guidance was.
+- **The two "when Godot code arrives" sections were still written in the future
+  tense** while `autoload/`, `scenes/` and `tests/` had already shipped. The layout
+  block now shows what exists, marks `bridge/` as the one `TODO`, and names the
+  real scene files.
+- **Milestone status corrected.** The file claimed only M3 was done; M1 and M4
+  landed in v0.2.8. The critical-path section said so as if all three legs were
+  pending, which is the most misleading thing an agent could read here. It now
+  points at `specs/task-tracker.md` as the status of record rather than becoming a
+  second copy of it.
+- **`D-005` added to the `platform-decisions.md` decision list** — it moved there
+  in v0.2.9 and the list had not been updated. The reasoning for *why* the move
+  happened is now stated where an agent will hit it, including the part no
+  validator can check.
+- **A `Commands` table replaces the commands scattered through the prose.** Every
+  row was executed against this checkout: `validate_specs.py`, the agents
+  `--check`, `godot --headless --import` and the smoke test all pass.
+- **`Docs/` (capital D) and `.claude/` documented for the first time.** `Docs/` is
+  a governed tree the validator scans and is trivially confused with `docs/` on a
+  case-sensitive filesystem. `.claude/` deliberately is not governed, and the
+  reasoning behind its small enabled-skill set lives in `.claude/README.md`.
+- Added `docs/.gdignore` and the Godot `.uid`/`.tscn`-rewrite facts, both of which
+  are invisible until you trip over them.
+
 ### Changed — doc set v0.2.9: `D-005` gets an entitled origin (#18)
 
 - **`D-005` (the bridge never knows the UI exists) moves to `PLATFORM-DECISIONS`.**

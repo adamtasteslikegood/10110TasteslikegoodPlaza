@@ -6,13 +6,29 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This repo is **a running Godot prototype**. `project.godot` exists and `godot .` opens a walkable office:
 
-- `data/agents.json` — **132 agents**, generated from the submodule by `scripts/generate_agents_json.py` (`D-024`). Never hand-edit it; regenerate. M3 is done.
-- A working CI pipeline (`.github/workflows/ci.yml`) that already lints Python on every push/PR.
+- Three autoloads in `autoload/`, registered in `project.godot`, plus `scenes/` for the world, player, NPC and dialogue panel — see the two architecture sections below.
+- `data/agents.json` — **132 agents**, generated from the submodule by `scripts/generate_agents_json.py` (`D-024`). Never hand-edit it; regenerate.
+- A working CI pipeline (`.github/workflows/ci.yml`) — four jobs, all of them real gates since v0.2.8.
 - Two Atlassian integration scripts (`generate_report.py`, `post_to_confluence.py`) wired to a Jira project keyed `TO` and a Confluence parent page.
 - The upstream agent directory wired in as a git submodule at `./claude-code-tresor` (relative URL, not initialized in fresh checkouts — see below).
 - A consolidated documentation layout: `docs/` for design and reference, `specs/` for development-process files. Each folder has its own `README.md` describing what belongs there. The active design is `docs/designs/2.5D-RPG-Prototype.md`; the active work plan is `specs/roadmap.md`.
 
-Godot commands are real now: `godot .` runs it, `godot --headless --import` imports it, `godot --headless tests/smoke_test.tscn` gates it (exits 1 on failure). Node/npm infrastructure still does not exist — don't invent `npm test`. What's actually runnable is described below.
+**M1, M3 and M4 are done** (`specs/task-tracker.md` is the status of record — check it rather than this line). The next code milestone is the bridge, M5–M8.
+
+## Commands
+
+Godot commands are real. Node/npm infrastructure does not exist — never invent `npm test`, `npm run build`, or a `package.json` script. This table is everything that actually runs:
+
+| Command | What it does |
+|---|---|
+| `git submodule update --init --recursive` | Populates `claude-code-tresor/`. Empty in fresh checkouts; the generator needs it. |
+| `godot .` | Opens the prototype — lobby, corridor, server room; arrows or WASD. |
+| `godot --headless --import` | Imports assets. Needed once on a fresh clone before the headless test. |
+| `godot --headless tests/smoke_test.tscn` | The build gate. Exits 1 on failure. Run it before pushing Godot changes. |
+| `python3 scripts/validate_specs.py` | Governed-document validator. Stdlib only, no install step. Run it before pushing doc changes. |
+| `python3 scripts/generate_agents_json.py --check` | Fails if `data/agents.json` drifted from the submodule. Drop `--check` to regenerate. Needs `pyyaml`. |
+| `black --check .` | Formatting gate. **Hard-fails CI** — run `black .` before pushing Python. |
+| `flake8 . --select=E9,F63,F7,F82` | Syntax errors and undefined names. Also hard-fails; the wider `--max-complexity` pass is advisory. |
 
 ## Critical architectural reframe (read this before trusting the legacy reference docs)
 
@@ -39,6 +55,8 @@ Short version: tier 0 `specs/meta/` governs · tier 1 `docs/storyboard-week1.md`
 
 `README.md` reconciles; it does not decide. It declared `authority: derived` while being named as the origin of eight decisions, and the set validated green for two releases before anyone noticed. Fixed in v0.2.7 — the eight moved to `docs/designs/platform-decisions.md`, and the validator now fails the build when a document declares `decides:` without an authority licensed to originate. Don't add a `decides:` list to a `derived`, `summary`, `research`, or `historical` document; it will not pass CI.
 
+`D-005` joined them in v0.2.9 for the mirror-image reason at the other end of the ladder: it named tier-0 `META-SPEC` §5.1 as its origin, and §2 of that same document says tier 0 originates rules about documents and **never product decisions**. `platform-decisions.md` now owns nine. Note what this class costs — no validator catches it. The §4.8 gate asks whether an authority may originate *something*; it cannot ask whether a given decision falls inside that authority's subject matter. Both were found by a human reading the ladder, not by CI.
+
 Every governed doc declares `doc_id`/`tier`/`authority`/`status` in YAML frontmatter, validated against `specs/meta/spec-frontmatter.schema.json` and indexed in `specs/meta/doc-registry.json`. Run `python3 scripts/validate_specs.py` (stdlib only) before pushing; it runs in CI as `Validate Specs`.
 
 `specs/aligned-spec-v0.2.5.md` is **no longer the source of truth** — it is a tier-4 research input (`status: SUPERSEDED`). Its normative content was promoted into `specs/meta/`; its §01.3 fabricated a 14-scene spine that contradicts the real storyboard. Cite it for findings and rationale, not as law.
@@ -64,7 +82,7 @@ Layer 2 is deliberately named for the **role, not the implementation** (`D-020`)
 
 ## Architecture: the three Godot autoloads
 
-When Godot code arrives, it's expected to plug into three global singletons (`Project → Autoload`) rather than introduce parallel state:
+All three exist and are registered in `project.godot` under `[autoload]`. New code plugs into them rather than introducing parallel state:
 
 | Autoload | File | Role |
 |---|---|---|
@@ -78,11 +96,11 @@ Interaction pattern: NPC `Area` (or `Area2D` under the 2.5D plan) fires `GameEve
 
 The proof-of-concept milestones from the roadmap are **M1 → M4 → M8**. The 2.5D pivot changes the *visuals* of M1 (top-down sprite instead of FPS controller) but not the milestone structure:
 
-- **M1** — Godot 4 project + player can navigate the world
-- **M4** — Proximity-triggered dialogue panel populated from `AgentRegistry`
-- **M8** — Player question → WebSocket bridge → real `claude @agent-name` CLI invocation → response rendered in dialogue panel (typewriter effect over the full JSON, per the promoted plan)
+- **M1 — done (v0.2.8).** Godot 4 project + player navigates the world. `scenes/player/player.gd`, `CharacterBody2D`, 8-direction, arrows plus WASD.
+- **M4 — done (v0.2.8).** Proximity-triggered dialogue panel populated from `AgentRegistry`. `scenes/npc/agent_npc.gd` fires the signal, `scenes/hud/dialogue_panel.gd` renders it.
+- **M8 — next.** Player question → WebSocket bridge → real `claude @agent-name` CLI invocation → response rendered in dialogue panel (typewriter effect over the full JSON, per the promoted plan).
 
-If a change risks one of these, flag it.
+Two of the three legs are standing, so the risk profile has shifted: the thing to protect now is **regression**, not just arrival. `tests/smoke_test.tscn` is what protects it — if a change makes that test harder to keep honest, flag it.
 
 ## The `claude-code-tresor` submodule
 
@@ -116,11 +134,11 @@ The workflow declares `permissions: contents: read` at the top level — every j
 - **`Validate Agent Data`** — runs `python3 scripts/generate_agents_json.py --check`. Needs the submodule (`submodules: recursive`) and `pyyaml`. Fails if `data/agents.json` has drifted from the submodule.
 - **`Validate Specs`** — runs `python3 scripts/validate_specs.py`. Stdlib only, no `pip install` step by design. Hard-fails when a governed doc is missing frontmatter, is unregistered in `specs/meta/doc-registry.json`, declares an authority the registry doesn't grant, links to a file that doesn't exist, disagrees about `doc_set_version`, or indexes a scene id the storyboard doesn't carry.
 - **`Lint Python Bridge`** — installs `flake8 black websockets`, then:
-  - `black --check .` (warnings only — failures are echoed but don't fail the build)
+  - `black --check .` — **hard fail.** The step carries no `continue-on-error` and no `|| true`, so unformatted Python reddens the build. Run `black .` before pushing.
   - `flake8 . --select=E9,F63,F7,F82` (hard fail on syntax errors / undefined names)
   - `flake8 . --exit-zero --max-complexity=10 --max-line-length=127` (advisory)
-  Any new Python here needs to at least pass the strict flake8 subset.
-- **`Export Godot 4 Prototype`** — despite the name, it does not export. It installs Godot 4.7.1 from the `godotengine/godot` GitHub release, runs `godot --headless --import`, then runs `tests/smoke_test.tscn`, which asserts the 132 agents loaded, the Core eight are gold, `tools` is still a list, and `main.tscn` instantiates. No export templates are downloaded — a web export would pull ~1GB per run for an artifact nothing consumes yet. It echoed a string and passed vacuously until v0.2.8.
+  This job does **not** check out the submodule, so it only ever sees this repo's own Python. New Python here has to pass both hard gates.
+- **`Export Godot 4 Prototype`** — despite the name, it does not export. It installs Godot 4.7.1 from the `godotengine/godot` GitHub release, runs `godot --headless --import`, then runs `tests/smoke_test.tscn`, which asserts the 132 agents loaded, the Core eight are gold, `tools` is still a list, and `main.tscn` runs. "Runs" is load-bearing: the test adds the scene to the tree so `_ready()` actually fires, because `instantiate()` alone leaves `@onready` paths unresolved and sails past renamed nodes and runtime errors. It also guards the two playtested feel values (NPC proximity radius, typewriter rate) as **bands derived from the scene at runtime**, never as equalities — an `== 48.0` check would redden every future tuning pass, which is how a check gets deleted. No export templates are downloaded — a web export would pull ~1GB per run for an artifact nothing consumes yet. It echoed a string and passed vacuously until v0.2.8.
 
 `.github/workflows/claude-review.yml` is the one independent reviewer wired into PRs. It is advisory (`continue-on-error`) and never a required check. Read its `on:` block for when it fires rather than assuming — that is the only copy of that fact. **It cannot review changes to itself** — `claude-code-action` refuses to run when the workflow differs from the copy on the default branch, and still reports a fast green, so read the job log rather than the check mark on any PR that edits it.
 
@@ -154,7 +172,7 @@ Top level holds the entry-point docs every contributor (human or agent) is expec
 `docs/` — design and reference (the *what* and *why*, slow-changing). See `docs/README.md` for the folder index.
 
 - `docs/designs/2.5D-RPG-Prototype.md` — **active design.** The 2.5D top-down pivot.
-- `docs/designs/platform-decisions.md` — **platform authority.** Engine, bridge transport, agent data layer, licence, submodule and merge policy (`D-003`, `D-015`, `D-016`, `D-018`, `D-021`–`D-024`). Scope test: would the decision survive replacing the whole frontend? If it dies with the 2.5D prototype it belongs in the design doc instead.
+- `docs/designs/platform-decisions.md` — **platform authority.** Engine, bridge transport, agent data layer, licence, submodule and merge policy (`D-003`, `D-005`, `D-015`, `D-016`, `D-018`, `D-021`–`D-024` — nine as of v0.2.9). Scope test: would the decision survive replacing the whole frontend? If it dies with the 2.5D prototype it belongs in the design doc instead.
 - `docs/storyboard-week1.md` — Day 0 / Day 1 / Day 2 tutorial narrative beats.
 - `docs/quick-reference.md` — one-page summary: build order, autoloads, department table.
 - `docs/agent-directory.md` — taxonomy of the 133 agent roles across nine departments plus Core. **Taxonomy authority (`D-017`)** — every other count in the repo derives from here.
@@ -168,9 +186,14 @@ Top level holds the entry-point docs every contributor (human or agent) is expec
 - `specs/task-tracker.md` — working checklist across all phases; same 3D-deprecation caveat as `roadmap.md`.
 - `specs/branching-strategy.md` — branch protection, status checks, CODEOWNERS gating. Still says "ClaudeForge" and references workflows that don't exist here; treat as intended policy until those land.
 
+`Docs/` — **capital D, a different directory.** On a case-sensitive filesystem `docs/` and `Docs/` coexist and an agent will conflate them. `Docs/files/` holds the first-run planning material as a tier-4 `HISTORICAL` signpost; the storyboard and concept there are largely unchanged, but its task tracker and 3D references are superseded. `scripts/validate_specs.py` governs `docs/`, `specs/`, `Docs/` and the root `README.md` — so anything you add under `Docs/` still needs frontmatter and a registry entry.
+
+`.claude/` — agent configuration, deliberately **not** a governed tree (the validator does not scan it, so no frontmatter needed). Read `.claude/README.md` before touching it; it records why only a small, justified set of skill plugins is enabled and which two are excluded on purpose. `.claude/skills/review-specs/` is a project-local skill: the governed-document review pass to use when reviewing a PR or branch here.
+
 Other top-level artifacts:
 
 - `report.md` — generated output of `generate_report.py`; commit it only deliberately.
+- `docs/.gdignore` — keeps Godot from importing the documentation tree as game assets. Don't delete it; a new docs subfolder full of `.html`/`.svg` will otherwise show up in the resource filesystem.
 
 ## Department / color scheme
 
@@ -195,24 +218,43 @@ The intended flow is `feature/* | fix/* | hotfix/* → dev → main` with Conven
 
 ## When you're asked to add Godot code
 
-The docs prescribe a specific structure once the Godot project is created. Follow it instead of inventing a new layout:
+The layout below is what exists (except `bridge/`, which is still `TODO`). Extend it rather than inventing a new one:
 
 ```
-project.godot
+project.godot           # [autoload] block registers all three singletons
 data/agents.json
 autoload/
-  AgentRegistry.gd
+  AgentRegistry.gd      # + .uid — Godot 4.4+ writes a .uid beside every script; commit it
   GameEvents.gd
   GameState.gd
-scenes/        # rooms, NPCs, HUD — each .tscn with its .gd beside it (D-025)
-tests/         # smoke_test.tscn — headless build gate
-scripts/       # Python tooling only (validate_specs.py, generate_agents_json.py)
-bridge/
-  bridge.py    # Phase 2 Python WebSocket server (ws://localhost:8765), synchronous-with-timeout per the 2.5D plan
+scenes/                 # each .tscn with its .gd beside it (D-025)
+  main.tscn             # run/main_scene — what `godot .` opens
+  world/office.tscn     # lobby, corridor, server room
+  player/player.tscn    # CharacterBody2D, 8-direction, arrows + WASD
+  npc/agent_npc.tscn    # stores an agent_id and nothing else
+  hud/dialogue_panel.tscn
+tests/
+  smoke_test.tscn       # headless build gate — see the CI section
+scripts/                # Python tooling only (validate_specs.py, generate_agents_json.py)
+bridge/                 # TODO (M5–M8)
+  bridge.py             # Python WebSocket server (ws://localhost:8765), synchronous-with-timeout per the 2.5D plan
 ```
+
+Godot rewrites `.tscn` files wholesale when a scene is saved in the editor, so a comment placed next to a tuned value there does not survive the next time anyone opens it. Put the constraint in `tests/smoke_test.gd` instead — that is why the feel values are asserted rather than annotated.
 
 `data/agents.json` already exists — 132 agents, generated by `scripts/generate_agents_json.py` (M3, `D-024`). Never hand-edit it and never type agent facts into a `.tscn`: an NPC scene stores an `agent_id` and nothing else, and everything shown comes from `AgentRegistry` at runtime. That is what `D-016` protects.
 
 The next code task is the bridge (M5–M8). `D-005` is the hard gate there: the bridge must not learn that Godot, scenes, or dialogue panels exist. If swapping the frontend for a CLI harness would require a bridge change, the boundary is broken.
 
 Note that there is already a `scripts/` directory worth of bash/Python tooling on the `feature/TO-1-prototype-initialization` branch. Before adding new `scripts/` files on `main`, check whether something equivalent already exists on that branch.
+
+## Behavioral Guidelines
+
+Four working principles, each with the form it takes in this repo:
+
+- **Think before coding.** Find the entitled document before writing anything — `specs/meta/` says which one wins. Cite the `D-nnn` or `SB-nn` you're acting on.
+- **Simplicity first.** Don't invent infrastructure. There is no `npm test` here; the Commands table above is the complete list of what runs. A command that isn't in it needs to be verified, not assumed.
+- **Surgical changes.** Never silently reconcile two disagreeing documents — record it in the open-conflict register and raise it. Don't duplicate state: agent facts live in `data/agents.json`, feel values live in the scene, and the test derives its bounds from the scene rather than copying them.
+- **Goal-driven execution.** M8 is the goal; `tests/smoke_test.tscn` is the evidence. `META-SPEC` §5.8 requires acceptance criteria to be machine-checkable, so "done" means a gate went green, not that the work looked finished.
+
+If the user-level `karpathy-guidelines` skill is installed (`~/.claude/skills/karpathy-guidelines/SKILL.md`) it expands on these; it is a per-machine convenience, not a dependency of this repo.
