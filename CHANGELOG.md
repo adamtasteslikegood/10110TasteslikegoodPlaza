@@ -72,8 +72,9 @@ section at release time. PR references in parentheses.
 - **Adds the questions a register row needs answered** — which tier owns it, which
   `doc_id` is entitled to originate it — and records that the validator's authority
   check is coarse by design: it gates whether an authority *may* originate anything,
-  never whether a decision falls inside its subject matter. That is the gap `D-005`
-  sat in through two green releases.
+  never whether a decision falls inside its subject matter. `D-005` sat in that gap
+  through two green releases until issue #18 closed it in v0.2.9 — the skill cites it
+  as a resolved worked example, not a live one (`TO-126`).
 - Written as a separate in-repo skill rather than an edit to the plugin, which lives
   in `~/.claude/plugins/cache/` and is replaced wholesale on the next version bump.
 
@@ -85,6 +86,28 @@ section at release time. PR references in parentheses.
   skill's own §2 exists to catch, and the same one `META-SPEC` §5.4 was corrected for
   in v0.2.9 — a hard-coded inventory dates faster than the thing it describes. Both
   now point at `CLAUDE.md` § Repository state rather than restating it.
+### Changed — doc set v0.2.9: `D-005` gets an entitled origin (#18)
+
+- **`D-005` (the bridge never knows the UI exists) moves to `PLATFORM-DECISIONS`.**
+  It named tier-0 `META-SPEC` §5.1 as its origin, while §2 of that same document
+  says tier 0 originates "rules about documents. **Never product decisions.**"
+  `D-005` is an architecture constraint on the product — so the constitution was
+  deciding architecture. Option (a) of issue #18, chosen by the owner.
+- **`META-SPEC` §5.1 now cites the decision instead of making it.** The rule is
+  stated there verbatim and binds agents exactly as hard as before. Nothing about
+  the bridge boundary changed; only which document was entitled to set it.
+- **Open conflict §4.9 resolved** — nine resolved, none open. The register keeps
+  resolved entries rather than deleting them, because the record of *how* a
+  conflict was settled is what stops it reopening.
+- **Same shape as §4.8, one tier up, and settled the same way.** Both times the
+  existing authority vocabulary already had a right answer, so nothing new had to
+  be invented. Both times the decision itself was never in question — only the
+  bookkeeping about who was entitled to make it.
+- **No validator can catch this class.** The §4.8 gate asks whether an authority
+  may originate *something*; it cannot ask whether a particular decision falls
+  inside that authority's subject matter, and `META-SPEC` declares no `decides:`
+  list anyway. §4.9 was found by a human asking what the new check deliberately
+  could not see — worth repeating whenever a gate ships.
 
 ### Added — playtest bands on the two feel values
 

@@ -4,7 +4,7 @@ title: Spec Drivers v0.2.5 — what this doc-set version must produce
 tier: 0
 authority: constitution
 status: ACTIVE
-doc_set_version: 0.2.8
+doc_set_version: 0.2.9
 last_updated: 2026-07
 owner: adamtasteslikegood
 derives_from: [META-SPEC]
@@ -129,7 +129,7 @@ now; neither is started.
 ## 4. Open-conflict register
 
 Per [`META-SPEC.md`](META-SPEC.md) §4, conflicts are recorded rather than silently
-resolved. **Eight resolved, one open (§4.9)** as of v0.2.8. Resolved entries are kept, not
+resolved. **Nine resolved, none open** as of v0.2.9. Resolved entries are kept, not
 deleted — the record of *how* a conflict was settled is what stops it reopening.
 
 ### 4.1 `ALIGNED-SPEC-025` §01.3 versus `STORYBOARD-W1` — **RESOLVED**
@@ -279,18 +279,25 @@ it named `README.md` and all eight ids. The permitted set is read from
 `spec-frontmatter.schema.json` rather than restated in the script, so the gate
 cannot drift from the contract.
 
-### 4.9 `META-SPEC` originates an architecture decision — **OPEN**
+### 4.9 `META-SPEC` originates an architecture decision — **RESOLVED**
 
-**Tracked as [issue #18](https://github.com/adamtasteslikegood/10110TasteslikegoodPlaza/issues/18)**,
-which carries the three options in full. This entry is the summary; the issue is
-where it gets settled.
+Settled by the owner as **option (a)** on
+[issue #18](https://github.com/adamtasteslikegood/10110TasteslikegoodPlaza/issues/18)
+in v0.2.9: `D-005` moves to `PLATFORM-DECISIONS`, and `META-SPEC` §5.1 is rewritten
+to **cite** it rather than originate it. Tier 0 stays purely about documents; the
+binding rule keeps working because §5.1 still states it. Same remedy as §4.8, one
+tier up — and chosen for the same reason: the existing authority vocabulary already
+had a right answer, so nothing new had to be invented.
+
+The rule itself never changed. What changed is which document is entitled to make
+it. That distinction is the whole point of the register.
 
 Surfaced by writing the §4.8 validator check and asking what it deliberately does
 not cover.
 
-`D-005` (the bridge never knows the UI exists) names `META-SPEC` §5.1 as its origin.
-But §2 of that same document says tier 0 originates "rules about documents. **Never
-product decisions.**" `D-005` is an architecture constraint on the product. Same
+`D-005` (the bridge never knows the UI exists) **named** `META-SPEC` §5.1 as its
+origin. But §2 of that same document says tier 0 originates "rules about documents.
+**Never product decisions.**" `D-005` is an architecture constraint on the product. Same
 shape as §4.8, one tier up.
 
 The new check does not catch it, for two reasons worth stating rather than leaving
@@ -308,10 +315,20 @@ Both sides have a case:
   `D-015`, leaving `META-SPEC` §5.1 to *cite* it as a binding review rule rather than
   originate it. That reading keeps tier 0 clean.
 
-**Owner action:** decide whether `D-005` moves to `PLATFORM-DECISIONS` (with §5.1
-rewritten to cite it) or stays and `META-SPEC` §2 gains an explicit carve-out for
-cross-cutting boundary rules. Nothing is blocked either way — `D-005` is enforced
-by review and by the swap test regardless of which file holds it.
+**Resolution:** option (a). `D-005` now lives in
+[`PLATFORM-DECISIONS`](../../docs/designs/platform-decisions.md), which is tier 2
+`authority: implementation` and entitled to originate it. `META-SPEC` §5.1 cites it
+and still binds agents to it. The option (b) reading — that the swap test is
+review-shaped rather than product-shaped, so §2's wording was merely too absolute —
+was considered and not taken: widening tier 0's licence to keep one decision in
+place would have cost more than moving the decision.
+
+Note what caught this. The §4.8 validator cannot see it, and no validator can: the
+gate asks whether an authority may originate *something*, not whether a particular
+decision falls inside that authority's subject matter. It was found by a human
+asking what the new check deliberately could not cover. Worth repeating whenever a
+gate ships — the question "what does this deliberately not catch?" is where the
+next §4.9 lives.
 
 ## 5. Exit criteria to v1.0.0
 
@@ -323,4 +340,4 @@ this version does not move it.
 Between here and there, each round closes with the same check: the register has no
 conflict that has been open longer than the round that discovered it.
 
-*Doc set version: 0.2.8 · Last updated: July 2026*
+*Doc set version: 0.2.9 · Last updated: July 2026*

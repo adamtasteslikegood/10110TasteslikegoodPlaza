@@ -75,8 +75,13 @@ result of a real trade-off. If any is missing, no register row. On top of those:
 That authority check is a coarse gate by design: it says whether an authority *may*
 originate, never whether this particular decision falls inside its subject matter. A
 tier-0 document deciding about documents is fine; deciding the product's architecture is
-not, and no validator catches it. That is the interview's job — `D-005` sat mis-originated
-in `META-SPEC` §5.1 through two green releases.
+not, and no validator catches it. That is the interview's job.
+
+The worked example is **closed, and that is the point**: `D-005` sat mis-originated in
+`META-SPEC` §5.1 through two green releases until issue #18 moved its origin to
+`PLATFORM-DECISIONS` in v0.2.9. The validator passed the whole time. A human asking what
+the new gate deliberately could not see is what found it. Expect the next one to look the
+same — green build, correct-looking frontmatter, wrong document deciding.
 
 ## Terminology edits
 
