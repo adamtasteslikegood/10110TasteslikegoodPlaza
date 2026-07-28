@@ -4,7 +4,7 @@ title: Meta-Spec — how the Plaza doc set governs itself
 tier: 0
 authority: constitution
 status: ACTIVE
-doc_set_version: 0.2.8
+doc_set_version: 0.2.9
 last_updated: 2026-07
 owner: adamtasteslikegood
 derives_from: []
@@ -80,8 +80,9 @@ releases — see [`spec-drivers-v0.2.5.md`](spec-drivers-v0.2.5.md) §4.8.
 **What the gate does not check:** whether a given decision falls inside its
 authority's *subject matter*. A `constitution` document deciding about documents is
 correct; the same document deciding about the product is not, and both look
-identical to the validator. That judgement stays with review — §4.9 records the one
-known open instance.
+identical to the validator. That judgement stays with review, and it works: §4.9
+was found by a human asking what the new check deliberately could not see, and is
+now resolved — the one instance it caught was in §5.1 of this very file.
 
 **Two axes, one reconciliation.** Concept flows down from tier 1; implementation
 flows down from tier 2. They are independent — a promoted design may override how
@@ -136,11 +137,19 @@ found six weeks later in code.
 
 These are hard gates, not preferences. A change that breaks one fails review.
 
-1. **The bridge never knows the UI exists.** No document, task, or line of code may
-   make the agent bridge (Layer 3) aware of Godot, scenes, sprites, HUD, rooms, or
-   any rendering concept. It exchanges intents and results only. *Swap test:* if
-   replacing Godot with a CLI would require a bridge change, the boundary is
-   broken. See `ALIGNED-SPEC-025` Document A for the conceptual message flow.
+1. **The bridge never knows the UI exists** — `D-005`, originated by
+   [`PLATFORM-DECISIONS`](../../docs/designs/platform-decisions.md). No document,
+   task, or line of code may make the agent bridge (Layer 3) aware of Godot,
+   scenes, sprites, HUD, rooms, or any rendering concept. It exchanges intents and
+   results only. *Swap test:* if replacing Godot with a CLI would require a bridge
+   change, the boundary is broken. See `ALIGNED-SPEC-025` Document A for the
+   conceptual message flow.
+
+   This rule **cites** `D-005`; it does not make it. Until v0.2.9 the register
+   named this section as the decision's origin, which put a product decision in
+   the one tier §2 forbids to originate them — the constitution deciding
+   architecture. Settled as option (a) on issue #18. The rule binds exactly as
+   hard as it did before; what changed is which document is entitled to say it.
 2. **Cite the authorising document.** State the `doc_id` (and `D-nnn` where one
    exists) that permitted a decision. Uncited decisions are unauthorised.
 3. **The Storyboard is protected.** Edits to `STORYBOARD-W1` are concept changes
@@ -185,7 +194,7 @@ These are hard gates, not preferences. A change that breaks one fails review.
 
 ## 7. Versioning
 
-- The doc **set** carries one semantic version. This release is **0.2.8**. Files do
+- The doc **set** carries one semantic version. This release is **0.2.9**. Files do
   not version independently; each declares `doc_set_version` and the validator
   requires them all to agree.
 - `1.0.0` is cut when M8 is demonstrable in-engine.
@@ -205,4 +214,4 @@ These are hard gates, not preferences. A change that breaks one fails review.
    [`decision-register.md`](decision-register.md) and bump `doc_set_version`
    everywhere in the same commit.
 
-*Doc set version: 0.2.8 · Last updated: July 2026*
+*Doc set version: 0.2.9 · Last updated: July 2026*

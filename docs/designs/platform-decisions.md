@@ -4,33 +4,40 @@ title: Platform Decisions — engine, transport, data layer, licence, repo polic
 tier: 2
 authority: implementation
 status: ACTIVE
-doc_set_version: 0.2.8
+doc_set_version: 0.2.9
 last_updated: 2026-07
 owner: adamtasteslikegood
 derives_from: [META-SPEC]
 supersedes: []
-decides: [D-003, D-015, D-016, D-018, D-021, D-022, D-023, D-024]
+decides: [D-003, D-005, D-015, D-016, D-018, D-021, D-022, D-023, D-024]
 ---
 
 # Platform Decisions
 
-> **One line:** the eight project-level decisions that are neither concept nor
-> prototype design — engine, transport, data layer, licence, and repository
-> policy — and the document entitled to originate them.
+> **One line:** the nine project-level decisions that are neither concept nor
+> prototype design — engine, bridge boundary, transport, data layer, licence, and
+> repository policy — and the document entitled to originate them.
 
 This document exists because those decisions previously had no entitled home.
-[`../../README.md`](../../README.md) (`PROJECT-OVERVIEW`) was named as their origin
-while declaring `authority: derived`, which
+[`../../README.md`](../../README.md) (`PROJECT-OVERVIEW`) was named as the origin of
+eight of them while declaring `authority: derived`, which
 [`../../specs/meta/META-SPEC.md`](../../specs/meta/META-SPEC.md) §2 licenses to
 decide *nothing new*. The layer contradicted itself. Recorded as open conflict §4.8
 in [`../../specs/meta/spec-drivers-v0.2.5.md`](../../specs/meta/spec-drivers-v0.2.5.md),
 tracked as [issue #11](https://github.com/adamtasteslikegood/10110TasteslikegoodPlaza/issues/11),
 and closed by creating this file.
 
-**Nothing here is a new decision.** All eight were already made, already evidenced,
+`D-005` joined them in v0.2.9 for the same reason at the opposite end of the ladder:
+its origin was tier-0 `META-SPEC`, which §2 forbids to originate product decisions
+at all. Open conflict §4.9, [issue #18](https://github.com/adamtasteslikegood/10110TasteslikegoodPlaza/issues/18).
+Twice now the entitlement error has been found by reading the authority column
+rather than the decision — the decisions themselves were never in doubt.
+
+**Nothing here is a new decision.** All nine were already made, already evidenced,
 and already being acted on. What changed is which document is entitled to hold
 them — `PROJECT-OVERVIEW` goes back to being purely the reconciliation of the two
-axes, which is what `META-SPEC` §2 already said it was.
+axes, which is what `META-SPEC` §2 already said it was, and `META-SPEC` goes back to
+deciding only about documents.
 
 ## 1. Scope — what belongs in this document
 
@@ -55,6 +62,32 @@ pivot decided *2D rather than 3D within Godot*, which is `D-001` and lives there
 Free, MIT-licensed, GDScript reads like Python, strong 2D and TileMap support.
 Chosen over Three.js and Unity. The MIT licensing matters beyond cost: it is what
 lets `D-018` hold without a licence-compatibility argument.
+
+### `D-005` — Bridge UI-awareness: zero
+
+The bridge never knows the UI exists. It exchanges intents and results; no
+document, task, or line of code may make Layer 3 aware of Godot, scenes, sprites,
+HUD, rooms, or any rendering concept.
+
+**Swap test:** if replacing Godot with a CLI harness would require a bridge
+change, the boundary is broken and the change fails review.
+
+This is what makes `D-020` — Layer 2 named for the role, not the implementation —
+architecture rather than aspiration. A CLI harness, a web UI, and the eventual 3D
+world are peers of 2.5D Godot, not replacements for the layer.
+
+*Originated here as of v0.2.9.* It was previously attributed to `META-SPEC` §5.1,
+which is tier 0 and licensed to decide about documents, never about the product —
+so a genuine architecture constraint was being originated by the one document
+forbidden to originate it. Recorded as open conflict §4.9, settled by the owner as
+option (a) on [issue #18](https://github.com/adamtasteslikegood/10110TasteslikegoodPlaza/issues/18).
+`META-SPEC` §5.1 still **states** the rule and still binds agents to it — it now
+cites this decision rather than making it. The rule did not change; only the
+question of who was entitled to make it.
+
+Scope note: it passes this document's own test. Replace the entire frontend and
+`D-005` is not merely unaffected — it is the decision that makes the replacement
+possible at all.
 
 ### `D-015` — Bridge transport: Python WebSocket, `ws://localhost:8765`
 
@@ -137,4 +170,4 @@ not here. Add the `D-nnn` to this file's `decides:` list and to
 `scripts/validate_specs.py` fails the build if the two disagree, and now also fails
 if a document declares `decides:` without an authority licensed to originate.
 
-*Doc set version: 0.2.8 · Last updated: July 2026*
+*Doc set version: 0.2.9 · Last updated: July 2026*

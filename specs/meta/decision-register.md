@@ -4,7 +4,7 @@ title: Decision Register — every locked decision, with a citable id
 tier: 0
 authority: constitution
 status: ACTIVE
-doc_set_version: 0.2.8
+doc_set_version: 0.2.9
 last_updated: 2026-07
 owner: adamtasteslikegood
 derives_from: [META-SPEC]
@@ -59,7 +59,7 @@ sensible it reads — it is `PROPOSED` until ratified at the right tier.
 | Id | Decision | Choice | Rationale | Origin | Status |
 |---|---|---|---|---|---|
 | `D-003` | Game engine | Godot 4 | Free, MIT, GDScript reads like Python, strong 2D/TileMap support. Chosen over Three.js and Unity. | `PLATFORM-DECISIONS` | `LOCKED` |
-| `D-005` | Bridge UI-awareness | Zero. The bridge never knows the UI exists | Enables a CLI, a web UI, or a future 3D frontend to swap in with no bridge change. Enforced by the swap test as a hard review gate. | `META-SPEC` §5.1 | `LOCKED` |
+| `D-005` | Bridge UI-awareness | Zero. The bridge never knows the UI exists | Enables a CLI, a web UI, or a future 3D frontend to swap in with no bridge change. Enforced by the swap test as a hard review gate. Origin moved from `META-SPEC` §5.1 in v0.2.9 — tier 0 may not originate a product decision; §5.1 now cites this rather than making it. Issue #18, option (a). | `PLATFORM-DECISIONS` | `LOCKED` |
 | `D-015` | Bridge transport | Python WebSocket server, local, `ws://localhost:8765` | Local process, no deployment needed for the prototype. | `PLATFORM-DECISIONS` | `LOCKED` |
 | `D-016` | Agent data layer | `data/agents.json` generated from the `claude-code-tresor` submodule; never hand-edited | The submodule is the canonical agent layer. Hand-editing forks the truth. Minimum fields: `{name, role, dept, colour, tools, description}`. | `PLATFORM-DECISIONS` | `LOCKED` |
 | `D-017` | Department taxonomy | Nine departments plus Core, each with a fixed floor/zone and hex tint | The office layout derives from the taxonomy; the taxonomy derives from the submodule. | `AGENT-DIRECTORY` | `LOCKED` |
@@ -113,4 +113,4 @@ point of the tier ladder.
    `SUPERSEDED` — do not delete it — and bump `doc_set_version` across the set.
 4. Add the `D-nnn` to the origin document's `decides:` frontmatter list.
 
-*Doc set version: 0.2.8 · Last updated: July 2026*
+*Doc set version: 0.2.9 · Last updated: July 2026*
