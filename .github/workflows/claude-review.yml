@@ -117,10 +117,30 @@ name: Claude Review (independent model)
 
 on:
   pull_request:
-    # Auto once per PR (opened / un-drafted) + on-demand via the `claude-review`
-    # label. Deliberately NOT `synchronize` — one review per PR keeps cost bounded;
-    # re-request by re-applying the label. To review every push, add `synchronize`.
-    types: [opened, ready_for_review, labeled]
+    # Every push, not just the first. This previously excluded `synchronize` to
+    # bound cost. That trade stopped making sense once fix commits — the ones
+    # most worth a second look — were the commits going unread.
+    #
+    # Written when this was the only independent reviewer working at all: gemini
+    # had never completed a run here (cancelled at 7m on #19 and 20m on #20, on
+    # a 54-file diff and a 2-file diff — diff size was never the cause) and
+    # Codex was usage-limited. Gemini was fixed in #23 by pinning
+    # GEMINI_CLI_VERSION, and now completes in ~2m, so that argument no longer
+    # carries this change on its own. The one below does.
+    #
+    # Reviewing once per PR meant every commit after the first review shipped
+    # unread — including fix commits, which is precisely when a second look is
+    # worth most. On #20 the reviewer found a real CRITICAL, and getting the fix
+    # for it reviewed took a manual label re-apply. A reviewer that has to be
+    # asked twice gets asked zero times on a busy day.
+    #
+    # Cost stays bounded by the `concurrency` block below rather than by looking
+    # less often: `cancel-in-progress: true` means a push mid-review kills the
+    # superseded run instead of stacking another alongside it.
+    #
+    # The `labeled` types stay — re-applying `claude-review` is still how you
+    # re-request a review without pushing a commit.
+    types: [opened, ready_for_review, labeled, synchronize]
     branches: [main, dev]
   workflow_dispatch:
     inputs:
