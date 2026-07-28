@@ -148,7 +148,7 @@ ATLASSIAN_API_TOKEN_BASE64_USEREMAIL=<base64(email:token)>
 ATLASSIAN_URL=<host, no scheme>
 ```
 
-- `generate_report.py` — queries Jira project `TO` for issues updated in the last 7 days, buckets them by status (done / in progress / blocked / todo), and writes `report.md`.
+- `generate_report.py` — queries Jira project `TO` for issues updated in the last 7 days, buckets them by status (done / in progress / blocked / todo), and writes `report.md`. **The `TO` target is stale and produces the wrong report.** `TO` is the other site's service board, so the committed `report.md` is headed "Status Report - 10110 Tasteslikegood Plaza" while every line under it is a Vegangenius Chef daily status. Plaza delivery lives in `PLZG`. Retargeting is pending a decision on what the report should cover — `PLZG` also carries security alerts for unrelated repos.
 - `post_to_confluence.py` — converts `report.md` to HTML and posts it as a child of Confluence page `11075756`, the home of space `PLZA` ("10110 Tasteslikegood Plaza"). No fallback: if that page is unreachable the script exits 1 rather than writing somewhere else.
 
 These read `./.env` directly (no python-dotenv); they'll crash with a `KeyError` if either var is missing. The lint job tolerates them as-is.
@@ -244,7 +244,7 @@ Reverting a merged PR here needs `git revert -m 1`, because `D-023` makes merge 
 | Key | Name | Type | Role |
 |---|---|---|---|
 | `PLZG` | 10110 Plaza Delivery | software, company-managed | **Delivery. This is the key that goes in a PR title.** |
-| `TO` | 10110 Tasteslikegood Plaza | business, team-managed | The team's WIP board. What `generate_report.py` reports on (`project = "TO"`, line 51) and the origin of the `feature/TO-1-prototype-initialization` branch name. |
+| `TO` | 10110 Tasteslikegood Plaza *(name is legacy)* | business, team-managed | **Not a Plaza board.** It is the service board for the other site's user-facing issues. The Plaza name survives from a misconfigured `tasteslikegood-dev` site where the recipe app and this project were combined. Plaza's original tickets `TO-19`–`TO-35` were migrated into `PLZG` on 2026-04-27; what remains is recipe-app work. Origin of the `feature/TO-1-prototype-initialization` branch name. |
 
 Confluence space **`PLZA`** ("10110 Tasteslikegood Plaza"), parent page **`11075756`** — the space home, `https://tasteslikegood.atlassian.net/wiki/x/rACp`. Until 2026-07-28 `post_to_confluence.py` posted into space **`TLG`** ("Tasteslikegood.org") instead, under `15925249` with a fallback to `15695959` — both of which are the sibling product's sprint-planning pages, not Plaza report parents. The fallback was removed with the fix: a fallback that silently writes into another product's space is how the reports ended up there.
 
