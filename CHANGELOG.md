@@ -10,6 +10,25 @@ section at release time. PR references in parentheses.
 
 ## [Unreleased]
 
+### Changed — `TO` is deprecated; Plaza work consolidates on `PLZG`
+
+- **`TO` is not a Plaza board and never should have been treated as one.** It is the
+  service board for the other site's user-facing issues; the "10110 Tasteslikegood Plaza"
+  project name survives from a misconfigured `tasteslikegood-dev` site where the recipe
+  app and this project were combined. Triaged 2026-07-28: of 52 issues, 34 are
+  `[repo-status]` daily reports for Vegangenius Chef, 15 are recipe-app engineering, 1 is
+  cookbook-repo housekeeping, and 2 were Plaza strays.
+- **The 2 strays moved** — `TO-125` → `PLZG-102`, `TO-126` → `PLZG-103`. Jira cannot move
+  an issue between a team-managed and a company-managed project, so they were recloned
+  with descriptions carried over verbatim, linked to the originals, and the originals
+  closed. Same pattern as the `TO-19`–`TO-35` migration of 2026-04-27.
+- **`TO` is now deprecated**, to be sundowned and then archived. It stays reachable only
+  to sync during the restructure, which follows an audit of `PLZG`. Treat it as read-only.
+- **Recorded that its name is the hazard.** While the project is still called "10110
+  Tasteslikegood Plaza" it will keep attracting Plaza work — which is precisely how
+  `TO-125` and `TO-126` were misfiled. Renaming it is a Jira UI action; no MCP tool can
+  update a project.
+
 ### Added — `package.json` as a task-runner facade, and a PR lifecycle policy
 
 - **`npm test` is now real**, and runs `validate_specs.py` → `godot --headless --import`
