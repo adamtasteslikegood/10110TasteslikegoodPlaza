@@ -1,0 +1,43 @@
+# `.claude/` — agent configuration
+
+Not a governed tree. `scripts/validate_specs.py` only scans `docs/`, `specs/`, `Docs/`, and the
+root `README.md`, so nothing here needs frontmatter or a `doc-registry.json` entry.
+
+## `settings.json` — enabled skill plugins
+
+Declares the [`alirezarezvani/claude-skills`](https://github.com/alirezarezvani/claude-skills)
+marketplace (as `claude-code-skills`) and enables four skills at **project scope**. The
+marketplace is declared here as well as in the user's own settings so a fresh contributor
+checkout resolves the plugins without extra setup.
+
+| Skill | Why it's here |
+|---|---|
+| `zero-hallucination-coder` | Grounds code in verified references. Directly serves the META-SPEC binding rules *don't-invent-infrastructure* and *cite-the-source-doc* — this repo has repeatedly been bitten by invented `npm test`-style commands. |
+| `grill-with-docs` | Interrogates a plan against the docs it claims to follow. Matches the tier ladder and the conflict protocol in `specs/meta/META-SPEC.md`. |
+| `code-tour` | Persona-targeted walkthroughs — useful for onboarding onto the three autoloads and the `scenes/` layout. |
+| `collab-proof` | Post-session retrospective that calibrates what the agent actually got right. |
+
+### Why only four
+
+The upstream marketplace ships **88 plugins / 436 skills**. Enabling all of them was rejected
+deliberately: this machine already had 222 user-scope skills registered with the Gemini CLI, and
+the symptom was an agent that looped without ever committing to an action. Skill-selection quality
+degrades as the catalogue grows, so this project takes a deliberately small, justified set.
+
+### Widening the set
+
+Add one line per plugin to `enabledPlugins`, in the form `<plugin-name>@claude-code-skills`.
+Plugin names come from `.claude-plugin/marketplace.json` in the marketplace repo.
+
+Two exclusions are intentional and should not be undone casually:
+
+- **`agenthub`** — ships skills named `init` and `run`, which collide with Claude Code built-ins.
+- **`karpathy-coder`** — functionally duplicates the existing user-level `karpathy-guidelines`.
+
+Before adding a plugin, check its skill names against what is already available (user-level
+`~/.claude/skills`, the gstack suite, and built-ins) so the catalogue stays free of duplicates.
+
+## `skills/`
+
+Project-local skills committed to the repo. Currently `review-specs` — the governed-document
+review pass used when reviewing a PR or branch here.
