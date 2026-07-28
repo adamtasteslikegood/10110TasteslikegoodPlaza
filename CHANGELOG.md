@@ -10,6 +10,34 @@ section at release time. PR references in parentheses.
 
 ## [Unreleased]
 
+### Added — `grill-with-specs`, the adapter that points a plugin at this repo
+
+- **`.claude/skills/grill-with-specs`** runs the `grill-with-docs` interview against
+  `specs/meta/` instead of the layout the plugin assumes. Upstream is anchored on a
+  `CONTEXT.md` glossary and one ADR file per decision under `docs/adr/`, and it
+  creates both lazily when they are missing. Neither exists here, so left
+  unredirected the plugin would have started a second glossary and a second decision
+  store beside `specs/meta/` — the fork the register exists to prevent.
+- **The plugin's three validators are replaced, not repointed.** `adr_scanner.py`
+  expects one file per decision; the register is a single table. They parse formats
+  this repo does not use, so the adapter runs `scripts/validate_specs.py` instead.
+- **Adds the questions a register row needs answered** — which tier owns it, which
+  `doc_id` is entitled to originate it — and records that the validator's authority
+  check is coarse by design: it gates whether an authority *may* originate anything,
+  never whether a decision falls inside its subject matter. That is the gap `D-005`
+  sat in through two green releases.
+- Written as a separate in-repo skill rather than an edit to the plugin, which lives
+  in `~/.claude/plugins/cache/` and is replaced wholesale on the next version bump.
+
+### Fixed — two stale infrastructure claims in `review-specs`
+
+- The review skill opened with "There is no Godot project and no Node here" and told
+  reviewers not to recommend `godot --headless`. The Godot project and that command
+  both landed in v0.2.8; only the Node half was still true. Same defect class the
+  skill's own §2 exists to catch, and the same one `META-SPEC` §5.4 was corrected for
+  in v0.2.9 — a hard-coded inventory dates faster than the thing it describes. Both
+  now point at `CLAUDE.md` § Repository state rather than restating it.
+
 ### Added — playtest bands on the two feel values
 
 - **The smoke test now guards proximity radius and typewriter rate as ranges, not

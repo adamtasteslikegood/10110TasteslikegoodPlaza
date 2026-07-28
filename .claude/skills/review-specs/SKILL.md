@@ -7,7 +7,7 @@ description: Review a PR or branch in this repo the way its defects actually app
 
 The interactive counterpart to `.github/workflows/claude-review.yml`. Same discipline, run by a session with network and `gh` rather than by CI.
 
-**Why this exists separately from a generic review skill.** There is no Godot project and no Node here. SQL injection, race conditions and N+1 queries have nothing to bite on. What breaks in this repo is *claims* — assertions about how the repository is configured, and bookkeeping about who was entitled to decide what.
+**Why this exists separately from a generic review skill.** The Godot project is small and there is no Node here — no web surface, no request handling, no ORM. SQL injection, race conditions and N+1 queries have nothing to bite on. What breaks in this repo is *claims* — assertions about how the repository is configured, and bookkeeping about who was entitled to decide what. GDScript under `autoload/`, `scenes/` and `tests/` still deserves an ordinary read for correctness; it is just not where the defects have been.
 
 **Not a governed document.** It lives in `.claude/` deliberately. Anything under `specs/` must be registered in `specs/meta/doc-registry.json` and declare an `authority`, and *which document may hold authority* is the open question in issue #11. A review checklist should not need that settled first.
 
@@ -126,5 +126,5 @@ Check open issues first; do not duplicate #11 (meta-layer authority), #12, #13, 
 - Re-status, reword or add a `D-nnn` row as a review fix.
 - Change a storyboard beat — that is a concept change needing human sign-off.
 - Bump `doc_set_version` or the submodule pointer.
-- Recommend commands this repo does not have (`npm test`, `godot --headless`).
+- Recommend commands this repo does not have. `npm test` and the whole Node toolchain are still absent. `godot .`, `godot --headless --import` and `godot --headless tests/smoke_test.tscn` are real as of v0.2.8 — check `CLAUDE.md` § Repository state before asserting either way, and never carry this list forward as settled.
 - Flag `{{rolels}}`-style template artifacts outside the section being edited; they are known upstream leftovers.

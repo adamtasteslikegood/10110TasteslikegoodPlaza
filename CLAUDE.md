@@ -168,9 +168,23 @@ Top level holds the entry-point docs every contributor (human or agent) is expec
 - `specs/task-tracker.md` — working checklist across all phases; same 3D-deprecation caveat as `roadmap.md`.
 - `specs/branching-strategy.md` — branch protection, status checks, CODEOWNERS gating. Still says "ClaudeForge" and references workflows that don't exist here; treat as intended policy until those land.
 
+`.claude/` — agent configuration. **Not a governed tree** — `scripts/validate_specs.py` only scans `docs/`, `specs/`, `Docs/` and the root `README.md`, so nothing here needs frontmatter or a `doc-registry.json` entry. See `.claude/README.md`.
+
+- `.claude/settings.json` — declares the `alirezarezvani/claude-skills` marketplace and enables four plugins at project scope. Four out of 88, deliberately: an oversized skill catalogue degrades selection quality. Read `.claude/README.md` § Why only four before widening it.
+- `.claude/skills/` — project-local skills committed to the repo, described below.
+
 Other top-level artifacts:
 
 - `report.md` — generated output of `generate_report.py`; commit it only deliberately.
+
+## The two project-local skills
+
+Both live in `.claude/skills/` because they encode how *this* repo breaks, which is not what a generic skill knows.
+
+- **`review-specs`** — the review pass for a PR or branch here, and the interactive counterpart to `.github/workflows/claude-review.yml`. Its highest-yield check is repository-state claims, because that is the defect class this document set actually produces.
+- **`grill-with-specs`** — the adapter that points the `grill-with-docs` plugin at this repo. The upstream skill is anchored on a `CONTEXT.md` glossary and one ADR file per decision under `docs/adr/`, and it **creates both lazily when they are missing**. Neither exists here and neither should: the equivalents are `specs/meta/META-SPEC.md` §2 for vocabulary and `specs/meta/decision-register.md` for `D-nnn` decisions. Left unredirected the plugin would start a second glossary and a second decision store beside `specs/meta/` — the exact fork the register exists to prevent. The adapter also swaps the plugin's three validators for `scripts/validate_specs.py`, which parse formats this repo does not use.
+
+Adapt a plugin from inside `.claude/skills/` rather than editing the plugin itself. Plugins live in `~/.claude/plugins/cache/<name>/<version>/` and are replaced wholesale on the next version bump, so an edit there is silently lost.
 
 ## Department / color scheme
 
