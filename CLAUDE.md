@@ -8,7 +8,7 @@ This repo is **a running Godot prototype**. `project.godot` exists and `godot .`
 
 - `data/agents.json` — **132 agents**, generated from the submodule by `scripts/generate_agents_json.py` (`D-024`). Never hand-edit it; regenerate. M3 is done.
 - A working CI pipeline (`.github/workflows/ci.yml`) that already lints Python on every push/PR.
-- Two Atlassian integration scripts (`generate_report.py`, `post_to_confluence.py`) wired to a Jira project keyed `TO` and a Confluence parent page.
+- Two Atlassian integration scripts (`generate_report.py`, `post_to_confluence.py`) wired to Jira project `TO` and the `PLZA` Confluence space. Delivery work is tracked in Jira `PLZG` — see § Pull request lifecycle for which key goes where.
 - The upstream agent directory wired in as a git submodule at `./claude-code-tresor` (relative URL, not initialized in fresh checkouts — see below).
 - A consolidated documentation layout: `docs/` for design and reference, `specs/` for development-process files. Each folder has its own `README.md` describing what belongs there. The active design is `docs/designs/2.5D-RPG-Prototype.md`; the active work plan is `specs/roadmap.md`.
 
@@ -149,7 +149,7 @@ ATLASSIAN_URL=<host, no scheme>
 ```
 
 - `generate_report.py` — queries Jira project `TO` for issues updated in the last 7 days, buckets them by status (done / in progress / blocked / todo), and writes `report.md`.
-- `post_to_confluence.py` — converts `report.md` to HTML and posts it as a child of Confluence page `15925249` (fallback `15695959`).
+- `post_to_confluence.py` — converts `report.md` to HTML and posts it as a child of Confluence page `11075756`, the home of space `PLZA` ("10110 Tasteslikegood Plaza"). No fallback: if that page is unreachable the script exits 1 rather than writing somewhere else.
 
 These read `./.env` directly (no python-dotenv); they'll crash with a `KeyError` if either var is missing. The lint job tolerates them as-is.
 
@@ -228,7 +228,7 @@ On feature branches, commit and push after every significant work-run so work is
 
 Opening a PR is not the end of the task. Every PR you author, or are actively working on or waiting on, is yours until it merges — this applies by default, without being asked.
 
-- **Jira key in the title (REQUIRED).** Every PR title must contain the Jira issue key for this project, which is keyed **`TO`** — e.g. `feat(bridge): synchronous agent invocation with timeout (TO-42)`. Jira's GitHub integration links PRs, branches and commits to an issue by scanning for the key in the PR title, so a PR without one is invisible to the board. Put the key in the branch name and commit messages too where practical — same scanner. Forgot it? Edit the PR title after the fact; Jira picks it up on its next rescan, typically within a couple of minutes. If no Jira issue exists for the work, that is the smell: file one first. `generate_report.py` queries `project = "TO"`, and `feature/TO-1-prototype-initialization` is the existing example of the branch-name form.
+- **Jira key in the title (REQUIRED).** Every PR title must contain a Jira issue key — for delivery work that is **`PLZG-###`**, e.g. `feat(bridge): synchronous agent invocation with timeout (PLZG-42)`. Jira's GitHub integration links PRs, branches and commits to an issue by scanning for the key in the PR title, so a PR without one is invisible to the board. Put the key in the branch name and commit messages too where practical — same scanner. Forgot it? Edit the PR title after the fact; Jira picks it up on its next rescan, typically within a couple of minutes. If no Jira issue exists for the work, that is the smell: file one first.
 - **Monitor it.** While the PR is open, check for new review comments, inline comments and failing checks (`gh pr view <n> --comments`, `gh api repos/{owner}/{repo}/pulls/<n>/comments`, `gh pr checks <n>`). Re-check whenever you return to the PR and before declaring any related work done — a PR with unaddressed feedback is not finished. Note that `claude-review.yml` is advisory and `continue-on-error`, so **read its job log rather than trusting its check mark**, and remember it cannot review changes to itself.
 - **Answer every comment.** For each piece of reviewer feedback, do one of two things: push a fix commit and reply confirming what changed, or reply with a concrete technical rebuttal explaining why no change is needed. Never leave feedback unanswered or silently ignored. **Verify each claim against the code before replying** — reply from what the file actually says, not from what the comment asserts. `.claude/skills/review-specs` is the checklist for what defects look like here, and the enabled `zero-hallucination-coder` skill exists precisely to keep a reply grounded in verified references rather than performative agreement.
 - **Sign replies posted on Adam's behalf.** Replies go out under Adam's GitHub account, so make authorship explicit by ending each one with a plain attribution line (`Co-authored-by:` trailers belong in commit messages, not comments):
@@ -239,7 +239,16 @@ Opening a PR is not the end of the task. Every PR you author, or are actively wo
 
 Reverting a merged PR here needs `git revert -m 1`, because `D-023` makes merge commits the merge strategy.
 
-**This project's Atlassian coordinates**, replacing whatever a policy copied from another repo carries. Both are read from source, not from prose: Jira project **`TO`** (`generate_report.py` line 51, `project = "TO"`); Confluence parent page **`15925249`**, falling back to **`15695959`** (`post_to_confluence.py` lines 18 and 42). There is no Linear board and no `KAN`/`RCP`/`TAS` key in this repo — a PR title carrying one is a policy pasted from elsewhere and not adapted.
+**This project's Atlassian coordinates**, replacing whatever a policy copied from another repo carries. Two Jira projects serve this repo and they are not interchangeable — verified against the site, not inferred from prose:
+
+| Key | Name | Type | Role |
+|---|---|---|---|
+| `PLZG` | 10110 Plaza Delivery | software, company-managed | **Delivery. This is the key that goes in a PR title.** |
+| `TO` | 10110 Tasteslikegood Plaza | business, team-managed | The team's WIP board. What `generate_report.py` reports on (`project = "TO"`, line 51) and the origin of the `feature/TO-1-prototype-initialization` branch name. |
+
+Confluence space **`PLZA`** ("10110 Tasteslikegood Plaza"), parent page **`11075756`** — the space home, `https://tasteslikegood.atlassian.net/wiki/x/rACp`. Until 2026-07-28 `post_to_confluence.py` posted into space **`TLG`** ("Tasteslikegood.org") instead, under `15925249` with a fallback to `15695959` — both of which are the sibling product's sprint-planning pages, not Plaza report parents. The fallback was removed with the fix: a fallback that silently writes into another product's space is how the reports ended up there.
+
+`KAN` (Tasteslikegood-dot-Org) and `RCP` (Tasteslikegood Recipes Delivery) are real projects on the same Atlassian site but belong to the owner's **other** repositories. There is no Linear board and no `TAS` key here. A PR title in this repo carrying `KAN`, `RCP` or `TAS` is a policy pasted from elsewhere and not adapted.
 
 ## When you're asked to add Godot code
 

@@ -48,7 +48,8 @@ pip install flake8 black websockets requests
 # Pulls Jira project TO updates from the last 7 days into report.md
 python generate_report.py
 
-# Renders report.md to HTML and posts it as a child of Confluence page 15925249
+# Renders report.md to HTML and posts it as a child of Confluence page 11075756,
+# the home of space PLZA ("10110 Tasteslikegood Plaza")
 python post_to_confluence.py
 ```
 

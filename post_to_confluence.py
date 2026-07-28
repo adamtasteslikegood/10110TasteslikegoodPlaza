@@ -15,7 +15,13 @@ with open("./.env") as f:
 
 auth_token = env_vars["ATLASSIAN_API_TOKEN_BASE64_USEREMAIL"]
 url_base = f"https://{env_vars['ATLASSIAN_URL']}"
-parent_page_id = "15925249"
+# Space PLZA, "10110 Tasteslikegood Plaza" — this project's own Confluence space.
+# Reports previously landed under two pages in space TLG ("Tasteslikegood.org"),
+# the sibling product's space: 15925249 "Sprint 0 Plan - Agile Operating System"
+# and 15695959 "Scrum Bootstrap And Board Plan". Both are TLG planning documents,
+# not Plaza report parents. There is no fallback now on purpose: a fallback that
+# silently writes into another product's space is how the reports ended up there.
+parent_page_id = "11075756"
 
 
 def confluence_request(method, endpoint, payload=None):
@@ -39,11 +45,8 @@ def confluence_request(method, endpoint, payload=None):
 
 page_data = confluence_request("GET", f"/wiki/api/v2/pages/{parent_page_id}")
 if not page_data:
-    parent_page_id = "15695959"
-    page_data = confluence_request("GET", f"/wiki/api/v2/pages/{parent_page_id}")
-    if not page_data:
-        print("Failed to get both parent pages")
-        sys.exit(1)
+    print(f"Failed to get parent page {parent_page_id} (space PLZA)")
+    sys.exit(1)
 
 space_id = page_data["spaceId"]
 

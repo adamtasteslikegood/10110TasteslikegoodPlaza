@@ -33,10 +33,30 @@ section at release time. PR references in parentheses.
   every PR title, monitor the PR until it merges, answer every comment with either a fix
   or a technical rebuttal, verify claims against the code before replying, sign replies
   made on Adam's behalf. Adapted from the policy used in the owner's other repository:
-  the Jira key is `TO` here (not `KAN`/`RCP`), there is no Linear board and no `TAS`
-  key, no `Backend/` directory, no `.claude/hooks/` backstop, and `superpowers` is not
-  among the four plugins this project enables — so the verify-before-replying rule cites
-  `review-specs` and `zero-hallucination-coder` instead.
+  there is no Linear board and no `TAS` key here, no `Backend/` directory, no
+  `.claude/hooks/` backstop, and `superpowers` is not among the four plugins this
+  project enables — so the verify-before-replying rule cites `review-specs` and
+  `zero-hallucination-coder` instead.
+### Fixed — reports were being published into the sibling product's Confluence space
+
+- **`post_to_confluence.py` posted into space `TLG` ("Tasteslikegood.org"), not this
+  project's space.** Its parent page `15925249` is "Sprint 0 Plan - Agile Operating
+  System" and the fallback `15695959` is "Scrum Bootstrap And Board Plan" — both TLG
+  planning documents. Every generated report has been landing under another product's
+  sprint paperwork. Now posts to `11075756`, the home of space **`PLZA`** ("10110
+  Tasteslikegood Plaza").
+- **The fallback was removed rather than repointed.** A fallback that silently writes
+  into a different space is the mechanism that hid this; the script now exits 1 when the
+  parent page is unreachable.
+
+### Changed — Jira and Confluence coordinates verified against the live site
+
+- **Two Jira projects serve this repo and they are not interchangeable.** `PLZG` —
+  "10110 Plaza Delivery", a company-managed *software* project — is the key that belongs
+  in a PR title. `TO` — "10110 Tasteslikegood Plaza", a team-managed *business* project —
+  is the team's WIP board, and is what `generate_report.py` queries. Both verified
+  against the Atlassian site rather than inferred; `KAN` and `RCP` are real but belong to
+  the owner's other repositories.
 
 ### Added — `grill-with-specs`, the adapter that points a plugin at this repo
 
