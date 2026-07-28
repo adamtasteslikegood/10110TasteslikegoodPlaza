@@ -6,7 +6,7 @@ root `README.md`, so nothing here needs frontmatter or a `doc-registry.json` ent
 ## `settings.json` — enabled skill plugins
 
 Declares the [`alirezarezvani/claude-skills`](https://github.com/alirezarezvani/claude-skills)
-marketplace (as `claude-code-skills`) and enables four skills at **project scope**. The
+marketplace (as `claude-code-skills`) and enables five plugins at **project scope**. The
 marketplace is declared here as well as in the user's own settings so a fresh contributor
 checkout resolves the plugins without extra setup.
 
@@ -16,9 +16,9 @@ checkout resolves the plugins without extra setup.
 | `grill-with-docs` | Interrogates a plan against the docs it claims to follow. Matches the tier ladder and the conflict protocol in `specs/meta/META-SPEC.md`. Invoke it through `skills/grill-with-specs` — see below. |
 | `code-tour` | Persona-targeted walkthroughs — useful for onboarding onto the three autoloads and the `scenes/` layout. |
 | `collab-proof` | Post-session retrospective that calibrates what the agent actually got right. |
-| `pm-skills` | Atlassian administration. Added 2026-07-28 for the Jira/Confluence overhaul — see below. |
+| `pm-skills` | Atlassian administration — nine skills plus an `atlassian` MCP server. Added 2026-07-28 for the Jira/Confluence overhaul. |
 
-### `pm-skills` is the one deliberate exception to the cap
+### `pm-skills` — the largest single addition
 
 It ships **nine** skills (`atlassian-admin`, `atlassian-templates`, `confluence-expert`,
 `jira-expert`, `meeting-analyzer`, `pm-skills`, `scrum-master`, `senior-pm`,
@@ -27,19 +27,27 @@ than doubling this project's skill count on its own. It was enabled anyway becau
 repo really does administer two Jira projects (`PLZG`, `TO`) and a Confluence space
 (`PLZA`), and `atlassian-admin` is the tool for that work.
 
-Checked for name collisions before enabling: none of the nine collide with the four above,
+Checked for name collisions before enabling: none of the nine collide with the other four,
 the user-scope `agent-harness` / `write-a-skill`, or the gstack suite.
 
-**If the Atlassian overhaul finishes and this stops being used, disable it again.** The
-reason for the cap below has not changed; this is a scoped exception, not a new baseline.
+If the Atlassian overhaul finishes and this stops being used, disabling it again is reasonable.
 
-### Why the set is otherwise small
+### Why the set is small — and whose rule that is
 
-The upstream marketplace ships **88 plugins carrying 342 distinct skills** (358 counting the
-skills that appear in both a bundle and a standalone plugin). Enabling all of them was rejected
-deliberately: this machine already had 222 user-scope skills registered with the Gemini CLI, and
-the symptom was an agent that looped without ever committing to an action. Skill-selection quality
-degrades as the catalogue grows, so this project takes a deliberately small, justified set.
+**The owner's actual instruction was: import skills without duplications.** The small
+fixed set was an *agent's* addition on top of that ask, not a policy the owner set. It was
+written up here as though it were project law, which is how a Claude-authored constraint
+ends up being enforced against the person it was invented for. Corrected 2026-07-28.
+
+So: dedupe before adding — that rule stands and comes from the owner. Treat the rest of
+this section as *rationale worth knowing*, not a gate to argue with a request over.
+
+The rationale: the upstream marketplace ships **88 plugins carrying 342 distinct skills**
+(358 counting the skills that appear in both a bundle and a standalone plugin). Enabling
+all of them is a bad idea on evidence — this machine had 222 user-scope skills registered
+with the Gemini CLI, and the symptom was an agent that looped without ever committing to
+an action. Skill-selection quality degrades as the catalogue grows. That is a real cost to
+weigh, not a number to enforce.
 
 Count the skills from `marketplace.json` — resolve each plugin's `source` and glob
 `<source>/skills/*/SKILL.md`. Do **not** count the fork's `.gemini/skills/` mirror: it holds 436
