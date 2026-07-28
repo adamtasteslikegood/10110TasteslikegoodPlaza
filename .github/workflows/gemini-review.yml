@@ -20,13 +20,16 @@ jobs:
   review:
     runs-on: 'ubuntu-latest'
     # 10, down from 20. The comment here previously said 7 was raised to 20
-    # because #19 was "a 48-file diff" -- that was wrong, and it is worth saying
-    # so rather than quietly deleting it, because it sent the next person (me)
-    # down the wrong path.
+    # because #19 was "a 48-file diff" -- wrong twice over, and worth saying so
+    # rather than quietly deleting it, because it sent the next person (me) down
+    # the wrong path. Wrong about the cause, and wrong about the number: #19
+    # changed 54 files, not 48. `gh api .../pulls/19 --jq .changed_files` -> 54.
+    # Caught by the independent Claude review on PR #23, in the very comment
+    # whose purpose was correcting a factual slip.
     #
     # What the evidence actually shows: this job has NEVER completed a review on
     # this repo. It was cancelled at 7m15s on #19 and again at 20m15s on #20 --
-    # 48 files and 2 files respectively. Diff size is ruled out. Both logs stop
+    # 54 files and 2 files respectively. Diff size is ruled out. Both logs stop
     # at the same place, the code-review extension's install consent output, and
     # then go silent until the timeout kills them. The timeout is not the
     # problem; it is the only thing ending a hang.
@@ -35,14 +38,21 @@ jobs:
     # strictly worse than 7. Lowered to 10: still ample for a real review, and it
     # caps the bleed while the actual cause is pinned down.
     #
-    # First thing being tested for that cause: GEMINI_CLI_VERSION is now pinned
-    # to 0.39.0 (repo variable, set 2026-07-28). It was unset, so CI installed
-    # `latest` while a clean-room local run at 0.39.0 completed the same
-    # `echo "Y" | gemini extensions install` without hanging. That difference is
-    # the leading hypothesis, NOT a confirmed diagnosis -- the hang has not been
-    # reproduced locally. If a run still hangs with the version pinned, the pin
-    # is ruled out too and the honest next step is retiring this reviewer rather
-    # than tuning it further.
+    # THE CAUSE, and it is confirmed: GEMINI_CLI_VERSION was unset, so CI
+    # installed `latest`. It is now pinned to 0.39.0 (repo variable, set
+    # 2026-07-28) -- the version a clean-room local run completed the action's
+    # own `echo "Y" | gemini extensions install` on without hanging.
+    #
+    # Proven by the PR that introduced this pin. gemini-dispatch calls this
+    # reusable workflow at the PR merge ref, so the change applied to its own
+    # PR: run on #23 resolved `gemini_cli_version: 0.39.0` and COMPLETED IN
+    # 1m50s, posting an actual review. First successful run of this job in the
+    # repo's history; the two before it were cancelled at 7m15s and 20m15s.
+    #
+    # So: do not unset this variable. `latest` moves, and when it moved it took
+    # the reviewer offline silently -- a red check that looked like a code
+    # problem for two PRs while actually meaning the installer was sitting at a
+    # prompt nobody could answer.
     #
     # A cancelled review reports `fail`, so a red check here says nothing about
     # the code -- the same uninformative signal as a green check that never ran,
