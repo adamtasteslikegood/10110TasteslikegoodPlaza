@@ -92,9 +92,10 @@ repeats:
 without an authority licensed to originate — the check whose absence let the second
 batch through. It is a coarse gate: it asks whether an authority may decide
 *something*, not whether a given decision falls inside that authority's subject
-matter. That second question is still a human one at review time, and §4.9 of
-[`spec-drivers-v0.2.5.md`](spec-drivers-v0.2.5.md) records the one open instance of
-it.
+matter. That second question is still a human one at review time — §4.9 of
+[`spec-drivers-v0.2.5.md`](spec-drivers-v0.2.5.md) recorded the one instance the
+gate could not see, `D-005` originated by tier-0 `META-SPEC`, resolved in v0.2.9
+(issue #18).
 
 When something lands here again, it stays until an entitled document adopts it.
 Reasoning being sound is not the same as being authorised; that distinction is the
