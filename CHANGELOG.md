@@ -103,8 +103,9 @@ section at release time. PR references in parentheses.
   reviewers not to recommend `godot --headless`. The Godot project and that command
   both landed in v0.2.8; only the Node half was still true. Same defect class the
   skill's own §2 exists to catch, and the same one `META-SPEC` §5.4 was corrected for
-  in v0.2.9 — a hard-coded inventory dates faster than the thing it describes. Both
-  now point at `CLAUDE.md` § Repository state rather than restating it.
+  in **v0.2.8** (`ec6d9d3`, 2026-07-26) — a hard-coded inventory dates faster than the
+  thing it describes. Both now point at `CLAUDE.md` § Repository state rather than
+  restating it.
 ### Changed — doc set v0.2.9: `D-005` gets an entitled origin (#18)
 
 - **`D-005` (the bridge never knows the UI exists) moves to `PLATFORM-DECISIONS`.**
