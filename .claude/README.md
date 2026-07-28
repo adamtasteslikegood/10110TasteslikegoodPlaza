@@ -19,10 +19,16 @@ checkout resolves the plugins without extra setup.
 
 ### Why only four
 
-The upstream marketplace ships **88 plugins / 436 skills**. Enabling all of them was rejected
+The upstream marketplace ships **88 plugins carrying 342 distinct skills** (358 counting the
+skills that appear in both a bundle and a standalone plugin). Enabling all of them was rejected
 deliberately: this machine already had 222 user-scope skills registered with the Gemini CLI, and
 the symptom was an agent that looped without ever committing to an action. Skill-selection quality
 degrades as the catalogue grows, so this project takes a deliberately small, justified set.
+
+Count the skills from `marketplace.json` — resolve each plugin's `source` and glob
+`<source>/skills/*/SKILL.md`. Do **not** count the fork's `.gemini/skills/` mirror: it holds 436
+entries because it also contains slash-commands and gemini-only entries, and at least one dangling
+symlink.
 
 ### Widening the set
 
