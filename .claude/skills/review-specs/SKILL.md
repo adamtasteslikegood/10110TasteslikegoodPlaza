@@ -126,5 +126,5 @@ Check open issues first; do not duplicate #11 (meta-layer authority), #12, #13, 
 - Re-status, reword or add a `D-nnn` row as a review fix.
 - Change a storyboard beat — that is a concept change needing human sign-off.
 - Bump `doc_set_version` or the submodule pointer.
-- Recommend commands this repo does not have. `npm test` and the whole Node toolchain are still absent. `godot .`, `godot --headless --import` and `godot --headless tests/smoke_test.tscn` are real as of v0.2.8 — check `CLAUDE.md` § Repository state before asserting either way, and never carry this list forward as settled.
+- Recommend commands this repo does not have — but **check `CLAUDE.md` § Repository state before asserting either way**, and never carry a hard-coded inventory forward as settled. It has now gone stale twice. The Godot commands became real in v0.2.8; `npm test` became real when `package.json` landed, and is a facade over `validate_specs.py` + the Godot gates, not a JavaScript test suite. There is still no JavaScript, no dependency to install, and no build step.
 - Flag `{{rolels}}`-style template artifacts outside the section being edited; they are known upstream leftovers.

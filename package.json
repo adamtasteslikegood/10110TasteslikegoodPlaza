@@ -1,0 +1,19 @@
+{
+  "name": "10110-tasteslikegood-plaza",
+  "private": true,
+  "description": "2.5D top-down office RPG prototype whose NPCs are real Claude Code agents. npm is a task-runner facade over the Godot and Python gates; there is no JavaScript in this repo.",
+  "license": "MIT",
+  "author": "Adam Schoen",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/adamtasteslikegood/10110TasteslikegoodPlaza.git"
+  },
+  "scripts": {
+    "start": "godot .",
+    "import": "godot --headless --import",
+    "smoke": "godot --headless tests/smoke_test.tscn",
+    "validate": "python3 scripts/validate_specs.py",
+    "agents:check": "python3 scripts/generate_agents_json.py --check",
+    "test": "npm run validate && npm run import && npm run smoke"
+  }
+}

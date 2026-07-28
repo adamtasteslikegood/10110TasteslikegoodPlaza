@@ -12,7 +12,20 @@ This repo is **a running Godot prototype**. `project.godot` exists and `godot .`
 - The upstream agent directory wired in as a git submodule at `./claude-code-tresor` (relative URL, not initialized in fresh checkouts — see below).
 - A consolidated documentation layout: `docs/` for design and reference, `specs/` for development-process files. Each folder has its own `README.md` describing what belongs there. The active design is `docs/designs/2.5D-RPG-Prototype.md`; the active work plan is `specs/roadmap.md`.
 
-Godot commands are real now: `godot .` runs it, `godot --headless --import` imports it, `godot --headless tests/smoke_test.tscn` gates it (exits 1 on failure). Node/npm infrastructure still does not exist — don't invent `npm test`. What's actually runnable is described below.
+Godot commands are real now: `godot .` runs it, `godot --headless --import` imports it, `godot --headless tests/smoke_test.tscn` gates it (exits 1 on failure).
+
+`npm test` is real too, as of this change — but read `package.json` before assuming what that buys you. **There is no JavaScript in this repo.** `package.json` is a task-runner facade: `npm test` shells out to `validate_specs.py`, then the Godot import, then the smoke test. There are no dependencies, no `node_modules`, no build step, and nothing to `npm install`. Treat a failure as a failure of the underlying Python or Godot gate, and debug it there.
+
+| Script | Runs |
+|---|---|
+| `npm start` | `godot .` — opens the office |
+| `npm test` | `validate` → `import` → `smoke`, the same order CI uses |
+| `npm run validate` | `python3 scripts/validate_specs.py` |
+| `npm run import` | `godot --headless --import` |
+| `npm run smoke` | `godot --headless tests/smoke_test.tscn` |
+| `npm run agents:check` | `python3 scripts/generate_agents_json.py --check` — **needs the submodule initialised and `pyyaml`**; deliberately left out of `npm test` so a fresh checkout still goes green |
+
+CI does not use these scripts. `.github/workflows/ci.yml` calls the same tools directly, so the facade can never become the only path to a gate. What's actually runnable is described below.
 
 ## Critical architectural reframe (read this before trusting the legacy reference docs)
 
@@ -206,6 +219,27 @@ The intended flow is `feature/* | fix/* | hotfix/* → dev → main` with Conven
 - Task-assigned working branches (e.g. `claude/...`) — develop here, commit, push, open a draft PR. The session-assigned branch is specified in the system prompt.
 
 `specs/branching-strategy.md` describes branch protection rules, required status checks, and CODEOWNERS gating — but the doc still says "ClaudeForge" throughout and references workflows (`pr-into-dev.yml`, `dev-to-main.yml`, `release.yml`) that **don't exist in this repo**. Treat it as intended policy for once code lands, not active rules. The Conventional Commits format (`type(scope): subject`, lowercase, imperative, no trailing period) is worth following now — see `CONTRIBUTING.md` for the everyday flow.
+
+## Commit and push cadence
+
+On feature branches, commit and push after every significant work-run so work is recoverable from the remote if the VM or session dies. Stage only intentional files, keep commits scoped, and push immediately after each local commit unless the user explicitly says not to.
+
+## Pull request lifecycle
+
+Opening a PR is not the end of the task. Every PR you author, or are actively working on or waiting on, is yours until it merges — this applies by default, without being asked.
+
+- **Jira key in the title (REQUIRED).** Every PR title must contain the Jira issue key for this project, which is keyed **`TO`** — e.g. `feat(bridge): synchronous agent invocation with timeout (TO-42)`. Jira's GitHub integration links PRs, branches and commits to an issue by scanning for the key in the PR title, so a PR without one is invisible to the board. Put the key in the branch name and commit messages too where practical — same scanner. Forgot it? Edit the PR title after the fact; Jira picks it up on its next rescan, typically within a couple of minutes. If no Jira issue exists for the work, that is the smell: file one first. `generate_report.py` queries `project = "TO"`, and `feature/TO-1-prototype-initialization` is the existing example of the branch-name form.
+- **Monitor it.** While the PR is open, check for new review comments, inline comments and failing checks (`gh pr view <n> --comments`, `gh api repos/{owner}/{repo}/pulls/<n>/comments`, `gh pr checks <n>`). Re-check whenever you return to the PR and before declaring any related work done — a PR with unaddressed feedback is not finished. Note that `claude-review.yml` is advisory and `continue-on-error`, so **read its job log rather than trusting its check mark**, and remember it cannot review changes to itself.
+- **Answer every comment.** For each piece of reviewer feedback, do one of two things: push a fix commit and reply confirming what changed, or reply with a concrete technical rebuttal explaining why no change is needed. Never leave feedback unanswered or silently ignored. **Verify each claim against the code before replying** — reply from what the file actually says, not from what the comment asserts. `.claude/skills/review-specs` is the checklist for what defects look like here, and the enabled `zero-hallucination-coder` skill exists precisely to keep a reply grounded in verified references rather than performative agreement.
+- **Sign replies posted on Adam's behalf.** Replies go out under Adam's GitHub account, so make authorship explicit by ending each one with a plain attribution line (`Co-authored-by:` trailers belong in commit messages, not comments):
+
+  > _Replied by Claude on Adam's behalf_
+
+- **Loop until merged.** Repeat monitor → fix or rebut → reply until the PR is merged, closed, or Adam says stop. If feedback requires a judgment call only Adam can make — scope changes, product decisions — surface it to him instead of guessing, but still reply on the thread noting it is awaiting his call.
+
+Reverting a merged PR here needs `git revert -m 1`, because `D-023` makes merge commits the merge strategy.
+
+**This project's Atlassian coordinates**, replacing whatever a policy copied from another repo carries. Both are read from source, not from prose: Jira project **`TO`** (`generate_report.py` line 51, `project = "TO"`); Confluence parent page **`15925249`**, falling back to **`15695959`** (`post_to_confluence.py` lines 18 and 42). There is no Linear board and no `KAN`/`RCP`/`TAS` key in this repo — a PR title carrying one is a policy pasted from elsewhere and not adapted.
 
 ## When you're asked to add Godot code
 

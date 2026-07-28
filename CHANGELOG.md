@@ -10,6 +10,34 @@ section at release time. PR references in parentheses.
 
 ## [Unreleased]
 
+### Added — `package.json` as a task-runner facade, and a PR lifecycle policy
+
+- **`npm test` is now real**, and runs `validate_specs.py` → `godot --headless --import`
+  → `godot --headless tests/smoke_test.tscn`, the same order CI uses. Verified end to
+  end: exit 0, 132 agents, all checks passed.
+- **There is still no JavaScript.** No dependencies, no `node_modules`, no build step,
+  nothing to `npm install`. `package.json` is a facade over the gates that already
+  existed, so a failure is a Python or Godot failure and gets debugged there.
+- **`npm init -y` was not left as it landed.** It named the package after the worktree
+  directory, scraped `README.md`'s YAML frontmatter into `description`, pointed `main`
+  at an `index.js` that does not exist, and wrote the standard `"test": "echo \"Error:
+  no test specified\" && exit 1"` stub — a command that exists and always fails, which
+  is worse than no command at all in a repo whose binding rule §5.4 is about invented
+  infrastructure. All four were replaced.
+- **`agents:check` is deliberately outside `npm test`** — `generate_agents_json.py
+  --check` needs the submodule initialised and `pyyaml`, so including it would make a
+  fresh checkout fail its own test command.
+- **CI does not call these scripts.** `ci.yml` invokes the same tools directly, so the
+  facade can never become the only path to a gate.
+- **Added a commit/push cadence and PR lifecycle policy to `CLAUDE.md`** — Jira key in
+  every PR title, monitor the PR until it merges, answer every comment with either a fix
+  or a technical rebuttal, verify claims against the code before replying, sign replies
+  made on Adam's behalf. Adapted from the policy used in the owner's other repository:
+  the Jira key is `TO` here (not `KAN`/`RCP`), there is no Linear board and no `TAS`
+  key, no `Backend/` directory, no `.claude/hooks/` backstop, and `superpowers` is not
+  among the four plugins this project enables — so the verify-before-replying rule cites
+  `review-specs` and `zero-hallucination-coder` instead.
+
 ### Added — `grill-with-specs`, the adapter that points a plugin at this repo
 
 - **`.claude/skills/grill-with-specs`** runs the `grill-with-docs` interview against

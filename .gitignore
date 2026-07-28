@@ -16,3 +16,8 @@ __pycache__/
 # Godot
 .godot/
 *.translation
+
+# node — package.json is a task-runner facade with no dependencies. If real
+# dependencies ever land, commit package-lock.json; only these are ignored.
+node_modules/
+npm-debug.log*
