@@ -16,8 +16,24 @@ checkout resolves the plugins without extra setup.
 | `grill-with-docs` | Interrogates a plan against the docs it claims to follow. Matches the tier ladder and the conflict protocol in `specs/meta/META-SPEC.md`. Invoke it through `skills/grill-with-specs` — see below. |
 | `code-tour` | Persona-targeted walkthroughs — useful for onboarding onto the three autoloads and the `scenes/` layout. |
 | `collab-proof` | Post-session retrospective that calibrates what the agent actually got right. |
+| `pm-skills` | Atlassian administration. Added 2026-07-28 for the Jira/Confluence overhaul — see below. |
 
-### Why only four
+### `pm-skills` is the one deliberate exception to the cap
+
+It ships **nine** skills (`atlassian-admin`, `atlassian-templates`, `confluence-expert`,
+`jira-expert`, `meeting-analyzer`, `pm-skills`, `scrum-master`, `senior-pm`,
+`team-communications`) and three commands (`/cs:pm`, `/cs:pm-loop`, `/cs:grill-pm`) — more
+than doubling this project's skill count on its own. It was enabled anyway because this
+repo really does administer two Jira projects (`PLZG`, `TO`) and a Confluence space
+(`PLZA`), and `atlassian-admin` is the tool for that work.
+
+Checked for name collisions before enabling: none of the nine collide with the four above,
+the user-scope `agent-harness` / `write-a-skill`, or the gstack suite.
+
+**If the Atlassian overhaul finishes and this stops being used, disable it again.** The
+reason for the cap below has not changed; this is a scoped exception, not a new baseline.
+
+### Why the set is otherwise small
 
 The upstream marketplace ships **88 plugins carrying 342 distinct skills** (358 counting the
 skills that appear in both a bundle and a standalone plugin). Enabling all of them was rejected

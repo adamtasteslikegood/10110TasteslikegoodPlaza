@@ -11,6 +11,7 @@
     "zero-hallucination-coder@claude-code-skills": true,
     "grill-with-docs@claude-code-skills": true,
     "code-tour@claude-code-skills": true,
-    "collab-proof@claude-code-skills": true
+    "collab-proof@claude-code-skills": true,
+    "pm-skills@claude-code-skills": true
   }
 }
