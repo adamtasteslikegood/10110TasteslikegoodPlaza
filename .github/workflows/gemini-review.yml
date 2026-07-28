@@ -19,11 +19,35 @@ defaults:
 jobs:
   review:
     runs-on: 'ubuntu-latest'
-    # Raised from 7 on PR #19, which was cancelled at 7m15s reviewing a 48-file
-    # diff. A cancelled review reports `fail`, so the red check said nothing about
-    # the code -- it meant the reviewer ran out of clock. That is the same
-    # uninformative signal as a green check that never ran, just inverted.
-    timeout-minutes: 20
+    # 10, down from 20. The comment here previously said 7 was raised to 20
+    # because #19 was "a 48-file diff" -- that was wrong, and it is worth saying
+    # so rather than quietly deleting it, because it sent the next person (me)
+    # down the wrong path.
+    #
+    # What the evidence actually shows: this job has NEVER completed a review on
+    # this repo. It was cancelled at 7m15s on #19 and again at 20m15s on #20 --
+    # 48 files and 2 files respectively. Diff size is ruled out. Both logs stop
+    # at the same place, the code-review extension's install consent output, and
+    # then go silent until the timeout kills them. The timeout is not the
+    # problem; it is the only thing ending a hang.
+    #
+    # So a longer clock buys nothing but wasted runner minutes, and 20 was
+    # strictly worse than 7. Lowered to 10: still ample for a real review, and it
+    # caps the bleed while the actual cause is pinned down.
+    #
+    # First thing being tested for that cause: GEMINI_CLI_VERSION is now pinned
+    # to 0.39.0 (repo variable, set 2026-07-28). It was unset, so CI installed
+    # `latest` while a clean-room local run at 0.39.0 completed the same
+    # `echo "Y" | gemini extensions install` without hanging. That difference is
+    # the leading hypothesis, NOT a confirmed diagnosis -- the hang has not been
+    # reproduced locally. If a run still hangs with the version pinned, the pin
+    # is ruled out too and the honest next step is retiring this reviewer rather
+    # than tuning it further.
+    #
+    # A cancelled review reports `fail`, so a red check here says nothing about
+    # the code -- the same uninformative signal as a green check that never ran,
+    # just inverted.
+    timeout-minutes: 10
     permissions:
       contents: 'read'
       id-token: 'write'
