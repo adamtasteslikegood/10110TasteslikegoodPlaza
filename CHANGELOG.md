@@ -10,6 +10,30 @@ section at release time. PR references in parentheses.
 
 ## [Unreleased]
 
+### Fixed — the Linear↔Jira sync was pointed at the deprecated board
+
+- **`TO` was declared read-only in prose while an integration still had write
+  access to it.** The two-way Linear leg was wired to Jira `TO`, not `PLZG`, so
+  everything filed in Linear was created on the deprecated board. Ten Plaza
+  issues (`TO-127`–`TO-136`) landed there *after* the 2026-07-28 deprecation —
+  this project's own review findings, including `TO-135` (GitHub #43) and
+  `TO-136` (PR #33). They still need triage into `PLZG`.
+- **Owner corrected the topology 2026-07-29:** Linear `PLZG` ↔ Jira `PLZG`
+  two-way as the default; the `TO` → Linear leg deliberately retained one-way so
+  closures on the existing `TO`-linked Linear issues still propagate rather than
+  orphaning about a dozen of them.
+- **`DELIVERY-COORDINATES` said "there is no Linear board here."** It was wrong,
+  and wrong in this repo's recurring direction — asserting infrastructure is
+  absent is still an unverified claim about state, and here it hid the very
+  integration causing the drift. Same defect class as the "Node is not absent"
+  correction earlier in this release. The sync topology is now recorded as
+  coordinates, because that is what it is.
+- **Rule earned:** a board is read-only only if nothing has write access to it.
+  Renaming or deprecating a project does not close an integration pointed at it.
+  Enumerate a board's writers — syncs, automations, webhooks — before calling it
+  read-only.
+
+
 ### Added — `DELIVERY-COORDINATES`, and one designated home for Atlassian identifiers (`D-026`)
 
 - **New tier-2 `taxonomy` document `docs/delivery-coordinates.md`**, registered and

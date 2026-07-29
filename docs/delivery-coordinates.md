@@ -50,15 +50,22 @@ this project were combined. The other site's service board lives on that `-dev`
 site and has already been renamed there; **this site has no public-facing
 service board at all**, which is why renaming `TO` here was safe.
 
-What it still holds is recipe-app work stranded by that misconfiguration. Of the
-52 issues open on 2026-07-28, 50 were recipe-app; the 2 Plaza strays `TO-125`
-and `TO-126` moved to `PLZG-102` and `PLZG-103`. Plaza's original `TO-19`–`TO-35`
-had already migrated to `PLZG` on 2026-04-27. `TO` is also the origin of the
+What it mostly holds is recipe-app work stranded by that misconfiguration. Of
+the 52 issues open on 2026-07-28, 50 were recipe-app; the 2 Plaza strays
+`TO-125` and `TO-126` moved to `PLZG-102` and `PLZG-103`. Plaza's original
+`TO-19`–`TO-35` had already migrated to `PLZG` on 2026-04-27. **That count is a
+snapshot, not a standing figure** — ten more Plaza issues (`TO-127`–`TO-136`)
+arrived afterwards via the Linear sync described below, so re-query before
+citing a number. `TO` is also the origin of the
 `feature/TO-1-prototype-initialization` branch name, which is not evidence the
 board is live.
 
-Until archival, treat it as **read-only**: no new Plaza issue is ever filed
-there, and anything found there is moved to `PLZG` rather than worked in place.
+Until archival, treat it as **read-only by policy** — file nothing there by
+hand, and move anything found there to `PLZG` rather than working it in place.
+Read that as an instruction to people and agents, **not as a description of the
+board's actual state**: a Linear sync kept writing to `TO` for a day after this
+was first written (see § Linear ↔ Jira sync), and `TO-127`–`TO-136` are the
+result.
 The `[DEPRECATED]` prefix was applied precisely because the old name kept
 attracting Plaza work — that is how `TO-125` and `TO-126` were misfiled. The
 rename used `PUT /rest/api/3/project/TO` with the credential in `.env`; the MCP
@@ -88,9 +95,50 @@ repositories:
 | `RCP` | Tasteslikegood Recipes Delivery | the recipe app |
 | `KAN` | Tasteslikegood-dot-Org | the org site |
 
-There is no Linear board here and no `TAS` key. A PR title in this repo carrying
-`RCP`, `KAN` or `TAS` is a policy pasted from another repo and not adapted —
-treat it as the smell it is, and fix the title rather than the board.
+There is no `TAS` key. A PR title in this repo carrying `RCP`, `KAN` or `TAS` is
+a policy pasted from another repo and not adapted — treat it as the smell it is,
+and fix the title rather than the board.
+
+## Linear ↔ Jira sync
+
+**There is a Linear workspace, and it syncs.** An earlier version of this
+document said there was no Linear board at all; that was wrong, and wrong in the
+direction this repo keeps failing in — asserting infrastructure is absent is
+still a claim about state, and it was the mechanism behind the drift below.
+
+Corrected topology, set by the owner on 2026-07-29:
+
+| Link | Direction | Purpose |
+|---|---|---|
+| Linear `PLZG` ↔ Jira `PLZG` | **two-way, the default** | Live delivery work. |
+| Jira `TO` → Linear | one-way, retained | Lets closures on the ~dozen existing `TO`-linked Linear issues propagate. |
+
+What it was before: Linear `PLZG` ↔ Jira **`TO`** two-way, plus Jira `PLZG` →
+Linear one-way. The two-way leg pointed at the deprecated board, so **anything
+filed in Linear was created in `TO`**.
+
+The `TO` → Linear leg is deliberately **not** deleted. Removing it would orphan
+the existing Linear issues that point at `TO`; keeping it one-way means closing
+them still syncs.
+
+### What this cost, and the rule it corrects
+
+This document previously said `TO` was read-only and that "no new Plaza issue is
+ever filed there." That was the intent, never an enforced fact — the sync kept
+writing to it for a full day afterwards. **`TO-127` through `TO-136` are Plaza
+issues created after the 2026-07-28 deprecation**, the newest at 08:50 on
+2026-07-29. They are not recipe-app strays; they are this project's own review
+findings, including `TO-135` (GitHub issue #43) and `TO-136` (PR #33).
+
+So the earlier stray count is stale: the two originally migrated (`TO-125` →
+`PLZG-102`, `TO-126` → `PLZG-103`) were not the end of it. **`TO-127`–`TO-136`
+still need triage into `PLZG`.**
+
+The general rule this earns: *a board is only read-only if nothing has write
+access to it.* Deprecating a project in prose, or renaming it, does not close
+an integration that is still pointed at it. Before declaring any board
+read-only, enumerate its writers — syncs, automations, webhooks — and repoint
+them first.
 
 ## What derives from this
 
