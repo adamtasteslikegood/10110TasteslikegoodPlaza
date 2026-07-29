@@ -24,10 +24,32 @@ section at release time. PR references in parentheses.
   closed. Same pattern as the `TO-19`–`TO-35` migration of 2026-04-27.
 - **`TO` is now deprecated**, to be sundowned and then archived. It stays reachable only
   to sync during the restructure, which follows an audit of `PLZG`. Treat it as read-only.
-- **Recorded that its name is the hazard.** While the project is still called "10110
-  Tasteslikegood Plaza" it will keep attracting Plaza work — which is precisely how
-  `TO-125` and `TO-126` were misfiled. Renaming it is a Jira UI action; no MCP tool can
-  update a project.
+- **Renamed to `[DEPRECATED] 10110 Tasteslikegood Plaza — see PLZG`.** The old name was
+  the hazard: it is precisely why `TO-125` and `TO-126` were misfiled. Done with
+  `PUT /rest/api/3/project/TO` and the `.env` credential, then verified by reading the
+  project back — the MCP server exposes no project-update tool, but REST does, so this
+  was never UI-only as first recorded. Key and project type unchanged.
+- **Safe to rename because this site has no public-facing service board.** The other
+  site's service board lives on the `tasteslikegood-dev` site and was already renamed
+  there; `TO` on `tasteslikegood.atlassian.net` is purely vestigial.
+
+### Fixed — both Atlassian scripts were broken three different ways
+
+- **The credential variable name never matched.** `.env` carries
+  `ATLASSIAN_API_TOKEN_BASE64`; both scripts required
+  `ATLASSIAN_API_TOKEN_BASE64_USEREMAIL`, so a correctly-populated `.env` still failed.
+  Both now accept either name, and `post_to_confluence.py` gained the missing-config
+  check `generate_report.py` already had instead of raising `KeyError`.
+- **`POST /rest/api/3/search` now answers `410 Gone`.** Atlassian retired it. Replaced
+  with `/rest/api/3/search/jql`, verified against the live site. The response still
+  carries an `issues` array, so the bucketing code is untouched.
+- **The board was hard-coded to `"TO"`.** Now read from `ATLASSIAN_JIRA_PROJECT_KEY`
+  and *required* rather than defaulted, so a missing key fails loudly instead of
+  silently querying the wrong project.
+- **`report.md` regenerated.** The committed copy was April's, from the wrong board —
+  headed "10110 Tasteslikegood Plaza" over nothing but Vegangenius Chef daily statuses.
+  The new one lists real `PLZG` work, and surfaces `PLZG-100` (a security alert for an
+  unrelated repo), which is the filtering question the `PLZG` audit still has to settle.
 
 ### Added — `package.json` as a task-runner facade, and a PR lifecycle policy
 
