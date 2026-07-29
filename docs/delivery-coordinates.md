@@ -150,9 +150,12 @@ them first.
 - **`generate_report.py` holds no Jira key at all.** It reads
   `ATLASSIAN_JIRA_PROJECT_KEY` and exits 1 if unset — the `missing_vars` guard
   (line 27), the `sys.exit(1)` (line 39), and `project_key = env_vars[...]`
-  (line 45). *Cite the symbol, not just the line:* this PR's own `black`
-  reformat shifted all three by +3, and an earlier draft of this document cited
-  the pre-reformat numbers. Resolution order is **real environment first, then
+  (line 45). *Cite the symbol, not just the line:* this PR's own `black` reformat
+  moved all three, and **not by a constant** — expanding one comprehension pushed
+  the guard 25→27 but the other two 35→39 and 41→45. An earlier draft of this
+  document cited the pre-reformat numbers, and the draft after that described the
+  shift as a uniform "+3", which is wrong twice over. Resolution order is **real
+  environment first, then
   `./.env`**: the script seeds from `os.environ` and `.env` only fills names not
   already set, so an exported variable silently wins over the file. **The
   deployed board is therefore in neither this table nor the script** — if a

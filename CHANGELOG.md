@@ -232,10 +232,14 @@ section at release time. PR references in parentheses.
   every PR title, monitor the PR until it merges, answer every comment with either a fix
   or a technical rebuttal, verify claims against the code before replying, sign replies
   made on Adam's behalf. Adapted from the policy used in the owner's other repository:
-  there is no Linear board and no `TAS` key here, no `Backend/` directory, no
-  `.claude/hooks/` backstop, and `superpowers` is not among the four plugins this
-  project enables — so the verify-before-replying rule cites `review-specs` and
-  `zero-hallucination-coder` instead.
+  there is no `TAS` key here, no `Backend/` directory, no `.claude/hooks/` backstop,
+  and `superpowers` is not among the plugins this project enables — so the
+  verify-before-replying rule cites `review-specs` and `zero-hallucination-coder`
+  instead. **Correction:** this bullet originally also said "there is no Linear
+  board" here. There is one, and it syncs — see the retraction earlier in this
+  section. The claim is struck rather than left standing, because an assertion
+  that something does not exist is exactly what this release is about getting
+  wrong repeatedly.
 ### Fixed — reports were being published into the sibling product's Confluence space
 
 - **`post_to_confluence.py` posted into space `TLG` ("Tasteslikegood.org"), not this
