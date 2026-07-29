@@ -66,6 +66,7 @@ Read that as an instruction to people and agents, **not as a description of the
 board's actual state**: a Linear sync kept writing to `TO` for a day after this
 was first written (see § Linear ↔ Jira sync), and `TO-127`–`TO-136` are the
 result.
+
 The `[DEPRECATED]` prefix was applied precisely because the old name kept
 attracting Plaza work — that is how `TO-125` and `TO-126` were misfiled. The
 rename used `PUT /rest/api/3/project/TO` with the credential in `.env`; the MCP
@@ -147,8 +148,11 @@ them first.
   without one is invisible to the board. Fix a missed key by editing the title;
   the rescan picks it up.
 - **`generate_report.py` holds no Jira key at all.** It reads
-  `ATLASSIAN_JIRA_PROJECT_KEY` and exits 1 if unset — verified at
-  `generate_report.py:26,44`. Resolution order is **real environment first, then
+  `ATLASSIAN_JIRA_PROJECT_KEY` and exits 1 if unset — the `missing_vars` guard
+  (line 27), the `sys.exit(1)` (line 39), and `project_key = env_vars[...]`
+  (line 45). *Cite the symbol, not just the line:* this PR's own `black`
+  reformat shifted all three by +3, and an earlier draft of this document cited
+  the pre-reformat numbers. Resolution order is **real environment first, then
   `./.env`**: the script seeds from `os.environ` and `.env` only fills names not
   already set, so an exported variable silently wins over the file. **The
   deployed board is therefore in neither this table nor the script** — if a

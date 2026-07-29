@@ -57,9 +57,16 @@ section at release time. PR references in parentheses.
 
 ### Changed — `CLAUDE.md` trimmed toward its instruction budget (#37)
 
-- The PR lifecycle and commit/push cadence moved to `CONTRIBUTING.md`, where the
-  PR process already lived. The Atlassian block became a pointer to `D-026`.
-  290 → 256 lines after the `dev` merge.
+- The Atlassian block became a pointer to `D-026`, taking the file from 290
+  lines after the `dev` merge down to 256.
+- The PR lifecycle and commit/push cadence were moved to `CONTRIBUTING.md` and
+  then **moved back**, so they ship in `CLAUDE.md` under § "Working a PR —
+  instructions for you, not for contributors". The move out was wrong: that
+  block is agent-directed ("every PR you author is yours until it merges",
+  "sign replies posted on Adam's behalf"), and `CONTRIBUTING.md` is a
+  human-contributor document. `CONTRIBUTING.md` keeps only the generic PR
+  mechanics it already had. This costs some of the line saving above, which is
+  why the file is still over budget.
 - **Fixed a live contradiction:** § Branching still said "squash merges" while
   `D-023` locks merge commits and records that squash is disabled in repository
   settings. Corrected, with the `git revert -m 1` consequence stated.
@@ -97,7 +104,7 @@ section at release time. PR references in parentheses.
   been retargeted; a guide holding a second copy of a project key is the drift it
   keeps having to correct. Also notes that `report.md` is generated output full of
   raw Jira issue titles, so committing it is a disclosure decision.
-- **Back under `META-SPEC` §6.6's ~200-line budget's neighbourhood: 260 → 226.**
+- **Back under `META-SPEC` §6's ~200-line budget's neighbourhood: 260 → 226.**
   The previous entry argued against the `enhance-claude-md` skill's 150-line cap
   and never engaged the repo's *own* rule for this exact file — importing an
   outside tool's convention while ignoring the entitled one (#37). Trimmed by

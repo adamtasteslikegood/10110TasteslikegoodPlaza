@@ -195,7 +195,7 @@ Nine departments map to nine office floors (now "rooms" in 2.5D), each with a fi
 
 ## Document conventions
 
-- **This file is held to `META-SPEC` §6.6's ~200-line instruction budget.** It has drifted past it twice, each time for good per-change reasons — which is how a heuristic quietly stops being followed. If a change would push it well over, cut something or move it behind a pointer instead. Nothing in CI enforces this.
+- **This file is held to the ~200-line instruction budget** — `META-SPEC` §6 "Conventions for AI-consumable specs", item 6. (It is not a `§6.6`; that subsection does not exist, and the mis-citation is propagated in the title of issue #37.) It has drifted past it twice, each time for good per-change reasons — which is how a heuristic quietly stops being followed. If a change would push it well over, cut something or move it behind a pointer instead. Nothing in CI enforces this.
 - Most reference and process docs (under `docs/` and `specs/`) end with `*Last updated: <month> 2026*`. Update that line when editing them.
 - `docs/agent-directory.md` contains unresolved template artifacts (`{{rolels}}`, `{{charactors}}`, `{{roles}}`, etc.) left over from the upstream fork. Don't propagate them into new text; clean up the section you're editing.
 - Attribution: the project is an MIT-licensed adaptation of [alirezarezvani/claude-code-tresor](https://github.com/alirezarezvani/claude-code-tresor), via the [adamtasteslikegood/claude-code-tresor](https://github.com/adamtasteslikegood/claude-code-tresor) fork. Preserve the attribution block at the bottom of `README.md` and `docs/agent-directory.md`.
