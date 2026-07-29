@@ -162,6 +162,7 @@ Root holds the entry points: `README.md` (pitch, 4-layer architecture, departmen
 - `docs/designs/2.5D-RPG-Prototype.md` — **active design**, the 2.5D pivot.
 - `docs/designs/platform-decisions.md` — **platform authority**, nine decisions as of v0.2.9 (`D-003`, `D-005`, `D-015`, `D-016`, `D-018`, `D-021`–`D-024`). Scope test: would the decision survive replacing the whole frontend? If it dies with the 2.5D prototype it belongs in the design doc instead.
 - `docs/agent-directory.md` — **taxonomy authority (`D-017`)**; every other agent count in the repo derives from here.
+- `docs/delivery-coordinates.md` — **taxonomy authority for Atlassian identifiers (`D-026`)**; every Jira key, board role, Confluence space and page id derives from here.
 - `specs/meta/` — **start here**, see the section above.
 - `specs/roadmap.md`, `specs/task-tracker.md` — the milestone structure is authoritative; the 3D node names inside milestone bodies are deprecated.
 - `specs/aligned-spec-v0.2.5.md` — tier-4 research, `SUPERSEDED`. Cite for findings, never as law.
