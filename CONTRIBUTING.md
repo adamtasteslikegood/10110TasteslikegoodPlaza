@@ -52,6 +52,25 @@ Allowed types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `buil
 4. Wait for CI (`Validate Specs`, `Lint Python Bridge`, and the Godot export stub) and any reviewer feedback.
 5. **Merge commit** — squash and rebase merging are disabled on this repo, deliberately (`D-023`). Your commit series survives the merge, so structure it. See [`specs/branching-strategy.md`](specs/branching-strategy.md) §4.
 
+### Commit and push cadence
+
+On feature branches, commit and push after every significant work-run so work is recoverable from the remote if the VM or session dies. Stage only intentional files, keep commits scoped, and push immediately after each local commit unless the user explicitly says not to.
+
+### A PR is yours until it merges
+
+Opening a PR is not the end of the task. Every PR you author, or are actively working on or waiting on, is yours until it merges — this applies by default, without being asked.
+
+- **Jira key in the title (REQUIRED).** Every PR title must contain a Jira issue key — for delivery work that is **`PLZG-###`**, e.g. `feat(bridge): synchronous agent invocation with timeout (PLZG-42)`. Jira's GitHub integration links PRs, branches and commits to an issue by scanning for the key in the PR title, so a PR without one is invisible to the board. Put the key in the branch name and commit messages too where practical — same scanner. Forgot it? Edit the PR title after the fact; Jira picks it up on its next rescan, typically within a couple of minutes. If no Jira issue exists for the work, that is the smell: file one first.
+- **Monitor it.** While the PR is open, check for new review comments, inline comments and failing checks (`gh pr view <n> --comments`, `gh api repos/{owner}/{repo}/pulls/<n>/comments`, `gh pr checks <n>`). Re-check whenever you return to the PR and before declaring any related work done — a PR with unaddressed feedback is not finished. Note that `claude-review.yml` is advisory and `continue-on-error`, so **read its job log rather than trusting its check mark**, and remember it cannot review changes to itself.
+- **Answer every comment.** For each piece of reviewer feedback, do one of two things: push a fix commit and reply confirming what changed, or reply with a concrete technical rebuttal explaining why no change is needed. Never leave feedback unanswered or silently ignored. **Verify each claim against the code before replying** — reply from what the file actually says, not from what the comment asserts. `.claude/skills/review-specs` is the checklist for what defects look like here, and the enabled `zero-hallucination-coder` skill exists precisely to keep a reply grounded in verified references rather than performative agreement.
+- **Sign replies posted on Adam's behalf.** Replies go out under Adam's GitHub account, so make authorship explicit by ending each one with a plain attribution line (`Co-authored-by:` trailers belong in commit messages, not comments):
+
+  > _Replied by Claude on Adam's behalf_
+
+- **Loop until merged.** Repeat monitor → fix or rebut → reply until the PR is merged, closed, or Adam says stop. If feedback requires a judgment call only Adam can make — scope changes, product decisions — surface it to him instead of guessing, but still reply on the thread noting it is awaiting his call.
+
+Reverting a merged PR here needs `git revert -m 1`, because `D-023` makes merge commits the merge strategy.
+
 ## CI expectations
 
 Before you push, run locally what CI runs in [`.github/workflows/ci.yml`](.github/workflows/ci.yml):

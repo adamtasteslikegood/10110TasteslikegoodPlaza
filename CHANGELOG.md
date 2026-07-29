@@ -10,6 +10,38 @@ section at release time. PR references in parentheses.
 
 ## [Unreleased]
 
+### Added — `DELIVERY-COORDINATES`, and one designated home for Atlassian identifiers (`D-026`)
+
+- **New tier-2 `taxonomy` document `docs/delivery-coordinates.md`**, registered and
+  locked as `D-026`. It is now the single origin of every Jira key, board role,
+  Confluence space and page id this repo uses. `CLAUDE.md` and every guide cite
+  it; the two Python scripts are the only other legitimate copy, because they
+  execute the values. **When a script and the table disagree, the script is the
+  fact and the table is the bug.**
+- **Why it was needed.** The absence of this rule produced shipped drift in both
+  directions. `post_to_confluence.py` published Plaza reports into a sibling
+  product's space behind a silent fallback. Then `CLAUDE.md` came to hold,
+  simultaneously, a rule forbidding copies of the project key into that file and
+  a table copying the project key into that file — two agent-authored statements,
+  each defensible alone, in direct contradiction. That contradiction is what the
+  `dev` merge surfaced as a conflict.
+- **Placed at tier 2, not tier 0, deliberately.** A board key is a reference
+  mapping, not a rule about documents, so tier 0 may not originate it —
+  `META-SPEC` §2. Putting it in `specs/meta/` would have repeated the exact trap
+  `D-005` fell into and v0.2.9 fixed. It follows `D-017`/`AGENT-DIRECTORY`
+  instead, which is the existing precedent for a designated reference mapping.
+
+### Changed — `CLAUDE.md` trimmed toward its instruction budget (#37)
+
+- The PR lifecycle and commit/push cadence moved to `CONTRIBUTING.md`, where the
+  PR process already lived. The Atlassian block became a pointer to `D-026`.
+  290 → 256 lines after the `dev` merge.
+- **Fixed a live contradiction:** § Branching still said "squash merges" while
+  `D-023` locks merge commits and records that squash is disabled in repository
+  settings. Corrected, with the `git revert -m 1` consequence stated.
+- `report.md` is untracked and git-ignored. It carries raw Jira issue titles from
+  a cross-project board, so committing it is a disclosure decision.
+
 ### Fixed — `CLAUDE.md` stops asserting things it hasn't checked
 
 - **"Node/npm infrastructure does not exist" was wrong, and wrong in an

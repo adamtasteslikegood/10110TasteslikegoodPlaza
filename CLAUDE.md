@@ -59,7 +59,7 @@ Short version: tier 0 `specs/meta/` governs · tier 1 `docs/storyboard-week1.md`
 
 This has now been got wrong at both ends of the ladder. `README.md` reconciles, it does not decide — yet it declared `authority: derived` while being named as the origin of eight decisions, and the set validated green for two releases before anyone noticed (fixed v0.2.7). `D-005` was the mirror image: it named tier-0 `META-SPEC` §5.1 as its origin, while §2 of that same document says tier 0 originates rules about documents and **never product decisions** (fixed v0.2.9). Both sets now live in `docs/designs/platform-decisions.md`, which owns nine.
 
-The validator fails a build when a doc declares `decides:` without an authority licensed to originate — so never add `decides:` to a `derived`, `summary`, `research` or `historical` doc. But note what it cannot do: that gate asks whether an authority may originate *something*, never whether a given decision falls inside its subject matter. Both violations were caught by a human reading the ladder, not by CI. The same blind spot is why an agent-authored rule in an ungoverned file can be mistaken for policy — see § Doc layout on `.claude/`.
+The validator fails a build when a doc declares `decides:` without an authority licensed to originate — so never add `decides:` to a `derived`, `summary`, `research` or `historical` doc. But note what it cannot do: that gate asks whether an authority may originate *something*, never whether a given decision falls inside its subject matter. Both violations were caught by a human reading the ladder, not by CI.
 
 Every governed doc declares `doc_id`/`tier`/`authority`/`status` in YAML frontmatter, validated against `specs/meta/spec-frontmatter.schema.json` and indexed in `specs/meta/doc-registry.json`. Run `python3 scripts/validate_specs.py` (stdlib only) before pushing; it runs in CI as `Validate Specs`.
 
@@ -169,13 +169,9 @@ Root holds the entry points: `README.md` (pitch, 4-layer architecture, departmen
 
 `Docs/` — **capital D, a different directory.** On a case-sensitive filesystem `docs/` and `Docs/` coexist and an agent will conflate them. `Docs/files/` holds the first-run planning material as a tier-4 `HISTORICAL` signpost; the storyboard and concept there are largely unchanged, but its task tracker and 3D references are superseded. `scripts/validate_specs.py` governs `docs/`, `specs/`, `Docs/` and the root `README.md` — so anything you add under `Docs/` still needs frontmatter and a registry entry.
 
-`.claude/` — agent configuration, deliberately **not** a governed tree (the validator does not scan it, so no frontmatter needed). `.claude/skills/` holds project-local skills; `review-specs` is the governed-document review pass for a PR or branch here.
+`.claude/` — agent configuration. **Not a governed tree** — `scripts/validate_specs.py` only scans `docs/`, `specs/`, `Docs/` and the root `README.md`, so nothing here needs frontmatter or a `doc-registry.json` entry.
 
-**On the enabled-skill set, read `.claude/README.md` — and read it knowing which part is whose.** The owner's instruction was *import skills without duplications*. That rule stands. The fixed cap, the "why only N" framing and the named exclusions were an **agent's** addition written up as project law, which is how a Claude-authored constraint ends up being enforced against the person it was invented for. Corrected 2026-07-28. Treat that material as rationale to weigh against a request, never as a gate to refuse one with. Do not restate the plugin count in this file: it has already gone stale against `.claude/README.md`, and a number that lives in two places is the failure mode the rest of this document is about.
-
-`.claude/` — agent configuration. **Not a governed tree** — `scripts/validate_specs.py` only scans `docs/`, `specs/`, `Docs/` and the root `README.md`, so nothing here needs frontmatter or a `doc-registry.json` entry. See `.claude/README.md`.
-
-- `.claude/settings.json` — declares the `alirezarezvani/claude-skills` marketplace and enables four plugins at project scope. Four out of 88, deliberately: an oversized skill catalogue degrades selection quality. Read `.claude/README.md` § Why only four before widening it.
+- `.claude/settings.json` — declares the `alirezarezvani/claude-skills` marketplace and enables plugins at project scope. `.claude/README.md` describes the set; read it there rather than restating it here.
 - `.claude/skills/` — project-local skills committed to the repo, described below.
 
 Other top-level artifacts:
@@ -205,47 +201,17 @@ Nine departments map to nine office floors (now "rooms" in 2.5D), each with a fi
 
 ## Branching
 
-`feature/* | fix/* | hotfix/* → dev → main`, Conventional Commits (`type(scope): subject` — lowercase, imperative, no trailing period), squash merges. New work targets `dev`; `dev` → `main` on release. `CONTRIBUTING.md` has the everyday flow. `specs/branching-strategy.md` has branch protection, required checks and CODEOWNERS gating — but it says "ClaudeForge" throughout and names workflows this repo doesn't have, so it is intended policy, not active rules.
+`feature/* | fix/* | hotfix/* → dev → main`, Conventional Commits (`type(scope): subject` — lowercase, imperative, no trailing period), **merge commits — squash and rebase are disabled deliberately (`D-023`)**, so reverting needs `git revert -m 1`. New work targets `dev`; `dev` → `main` on release. `CONTRIBUTING.md` has the everyday flow, the commit/push cadence, and the rule that a PR stays yours until it merges. `specs/branching-strategy.md` has branch protection, required checks and CODEOWNERS gating — but it says "ClaudeForge" throughout and names workflows this repo doesn't have, so it is intended policy, not active rules.
 
 `feature/TO-1-prototype-initialization` is a long-lived branch carrying a lot of shell/Python tooling under `scripts/`. Check it before adding a new `scripts/` file — the equivalent may already exist there.
 
 **Keep a PR to one concern.** A branch that carries a skill, a task-runner, a policy change and a bug fix together gets reviewed as four things at once, and the reviewable third drowns in the arguable ones. Split before pushing, not after the review sprawls.
 
-## Commit and push cadence
-
-On feature branches, commit and push after every significant work-run so work is recoverable from the remote if the VM or session dies. Stage only intentional files, keep commits scoped, and push immediately after each local commit unless the user explicitly says not to.
-
-## Pull request lifecycle
-
-Opening a PR is not the end of the task. Every PR you author, or are actively working on or waiting on, is yours until it merges — this applies by default, without being asked.
-
-- **Jira key in the title (REQUIRED).** Every PR title must contain a Jira issue key — for delivery work that is **`PLZG-###`**, e.g. `feat(bridge): synchronous agent invocation with timeout (PLZG-42)`. Jira's GitHub integration links PRs, branches and commits to an issue by scanning for the key in the PR title, so a PR without one is invisible to the board. Put the key in the branch name and commit messages too where practical — same scanner. Forgot it? Edit the PR title after the fact; Jira picks it up on its next rescan, typically within a couple of minutes. If no Jira issue exists for the work, that is the smell: file one first.
-- **Monitor it.** While the PR is open, check for new review comments, inline comments and failing checks (`gh pr view <n> --comments`, `gh api repos/{owner}/{repo}/pulls/<n>/comments`, `gh pr checks <n>`). Re-check whenever you return to the PR and before declaring any related work done — a PR with unaddressed feedback is not finished. Note that `claude-review.yml` is advisory and `continue-on-error`, so **read its job log rather than trusting its check mark**, and remember it cannot review changes to itself.
-- **Answer every comment.** For each piece of reviewer feedback, do one of two things: push a fix commit and reply confirming what changed, or reply with a concrete technical rebuttal explaining why no change is needed. Never leave feedback unanswered or silently ignored. **Verify each claim against the code before replying** — reply from what the file actually says, not from what the comment asserts. `.claude/skills/review-specs` is the checklist for what defects look like here, and the enabled `zero-hallucination-coder` skill exists precisely to keep a reply grounded in verified references rather than performative agreement.
-- **Sign replies posted on Adam's behalf.** Replies go out under Adam's GitHub account, so make authorship explicit by ending each one with a plain attribution line (`Co-authored-by:` trailers belong in commit messages, not comments):
-
-  > _Replied by Claude on Adam's behalf_
-
-- **Loop until merged.** Repeat monitor → fix or rebut → reply until the PR is merged, closed, or Adam says stop. If feedback requires a judgment call only Adam can make — scope changes, product decisions — surface it to him instead of guessing, but still reply on the thread noting it is awaiting his call.
-
-Reverting a merged PR here needs `git revert -m 1`, because `D-023` makes merge commits the merge strategy.
-
 ## Atlassian coordinates
 
-**This is the single in-repo copy of these values** — the scripts are the other. Nothing else in this file, in `docs/`, or in `specs/` restates a project key, space key or page id; they point here. A second copy of a project key in a guide is precisely the drift that put Plaza reports in another product's space. Two Jira projects serve this repo and they are not interchangeable — verified against the site, not inferred from prose:
+**`docs/delivery-coordinates.md` is the source of truth** — Jira keys, board roles, the Confluence space and parent page id, and the keys that belong to the owner's *other* repos. `D-026` designates it. Do not restate a key here or in any guide; cite it. The two Python scripts are the only other legitimate copy, because they execute the values, and when a script and the table disagree the script is the fact.
 
-| Key | Name | Type | Role |
-|---|---|---|---|
-| `PLZG` | 10110 Plaza Delivery | software, company-managed | **Delivery. This is the key that goes in a PR title.** |
-| `TO` | `[DEPRECATED] 10110 Tasteslikegood Plaza — see PLZG` | business, team-managed | **DEPRECATED — do not file here.** See below. |
-
-`TO` is **deprecated as of 2026-07-28** and will be sundowned, then archived. It is vestigial: a leftover of a misconfigured `tasteslikegood-dev` site where the recipe app and this project were combined. The service board for the other site lives on that `-dev` site and has already been renamed there; **this site (`tasteslikegood.atlassian.net`) has no public-facing service board at all**, which is why renaming `TO` here was safe. What it still holds is recipe-app work stranded by the misconfiguration — of the 52 issues open on 2026-07-28, 50 were recipe-app, and the 2 Plaza strays (`TO-125`, `TO-126`) moved to `PLZG-102` and `PLZG-103`. Plaza's original tickets `TO-19`–`TO-35` had already migrated to `PLZG` on 2026-04-27. It is also the origin of the `feature/TO-1-prototype-initialization` branch name.
-
-It stays reachable **only to sync during the restructure**, which follows an audit of `PLZG`. Until it is archived, treat it as read-only: no new Plaza issue is ever filed there, and anything found there is moved to `PLZG` rather than worked in place. The `[DEPRECATED]` prefix was applied precisely because the old name kept attracting Plaza work — that is how `TO-125` and `TO-126` were misfiled. Renaming was done with `PUT /rest/api/3/project/TO` and the credential in `.env`; the MCP server exposes no project-update tool, but REST does, so this is not a UI-only operation.
-
-Confluence space **`PLZA`** ("10110 Tasteslikegood Plaza"), parent page **`11075756`** — the space home, `https://tasteslikegood.atlassian.net/wiki/x/rACp`. Until 2026-07-28 `post_to_confluence.py` posted into space **`TLG`** ("Tasteslikegood.org") instead, under `15925249` with a fallback to `15695959` — both of which are the sibling product's sprint-planning pages, not Plaza report parents. The fallback was removed with the fix: a fallback that silently writes into another product's space is how the reports ended up there.
-
-`KAN` (Tasteslikegood-dot-Org) and `RCP` (Tasteslikegood Recipes Delivery) are real projects on the same Atlassian site but belong to the owner's **other** repositories. There is no Linear board and no `TAS` key here. A PR title in this repo carrying `KAN`, `RCP` or `TAS` is a policy pasted from elsewhere and not adapted.
+Two things you need often enough to state as rules rather than lookups: every PR title carries a **`PLZG-###`** key, or the board never sees it; and `TO` is **deprecated** — read-only until archival, never filed into.
 
 ## When you're asked to add Godot code
 
@@ -284,7 +250,7 @@ Working principles, each with the form it takes in this repo:
 - **Think before coding.** Find the entitled document before writing anything — `specs/meta/` says which one wins. Cite the `D-nnn` or `SB-nn` you're acting on.
 - **Simplicity first.** Don't invent infrastructure — run the command before you recommend it. Note the shape of the failure this replaces: saying "there is no Node here" is also inventing infrastructure, just in the negative direction, and it was wrong.
 - **Surgical changes.** Never silently reconcile two disagreeing documents — record it in the open-conflict register and raise it. Don't duplicate state: agent facts live in `data/agents.json`, feel values live in the scene, project keys live in the scripts, and the test derives its bounds from the scene rather than copying them.
-- **Know whose rule it is.** Before enforcing a constraint against a request, check who set it. An agent's suggestion written up in a repo file is not policy, and this repo has already had one Claude-authored rule enforced against the owner it was invented for. Owner decisions and `D-nnn` bind; everything else is rationale to weigh.
+- **Know whose rule it is.** Before enforcing a constraint against a request, check who set it. Owner decisions and `D-nnn` bind; an agent's suggestion written up in a repo file is rationale to weigh, not a gate to refuse with.
 - **Goal-driven execution.** M8 is the goal; `tests/smoke_test.tscn` is the evidence. `META-SPEC` §5.8 requires acceptance criteria to be machine-checkable, so "done" means a gate went green, not that the work looked finished.
 
 If the user-level `karpathy-guidelines` skill is installed (`~/.claude/skills/karpathy-guidelines/SKILL.md`) it expands on these; it is a per-machine convenience, not a dependency of this repo.
