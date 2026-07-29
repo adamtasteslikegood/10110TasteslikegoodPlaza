@@ -33,6 +33,30 @@ section at release time. PR references in parentheses.
   site's service board lives on the `tasteslikegood-dev` site and was already renamed
   there; `TO` on `tasteslikegood.atlassian.net` is purely vestigial.
 
+### Changed — `PLZG` restructured to match the repo (2026-07-28)
+
+- **Sprint 1 closed.** It had been active 77 days past its 2026-05-12 end date with
+  nothing resolved in it. The four unfinished items (`PLZG-3`, `-13`, `-30`, `-35`)
+  carried back to the backlog.
+- **Three milestones closed as delivered, with the repo cited as evidence** — `PLZG-8`
+  (M1), `PLZG-19` (M3), `PLZG-24` (M4, the `[CRITICAL PATH]` item). Each closure notes
+  what actually shipped differs from the ticket: `CharacterBody2D` not `CharacterBody3D`,
+  `Area2D` not `Area3D`, 132 agents not 137. `PLZG-67` and `PLZG-71` closed likewise —
+  `agents.json` is generated and CI-gated.
+- **Four live duplicate pairs closed** — `PLZG-88/62`, `-89/54`, `-90/67`, `-91/63`. The
+  2026-04-28 dedup pass closed one copy of many milestones but left these open twice.
+- **The epic and Phase 1 story rewritten for 2.5D.** `PLZG-4` described "a first-person
+  3D office game… 9-floor building"; `PLZG-13` prescribed `CSGBox3D`, `Area3D` and
+  `NavigationRegion3D`. All now match `D-001`, and record that 3D is deferred under
+  `D-004` rather than cancelled.
+- **Two boards collapsed to one, and a duplicate sprint deleted.** `PLZG` carried boards
+  167 ("PLZG board") and 169 ("PLZG Scrum Board") over the same `project = PLZG` filter,
+  plus two sprints both named "PLZG Sprint 1" — the active one and an empty `future` one.
+  The empty sprint and board 167 are gone; 169 survives because it owns the real sprint
+  history. Renaming it is UI-only (`PUT /rest/agile/1.0/board/169` answers 405).
+- **`PLZG Sprint 2` opened** for planning. Net: 41 done / 32 open, of which 30 carry
+  `project:plaza`.
+
 ### Fixed — both Atlassian scripts were broken three different ways
 
 - **The credential variable name never matched.** `.env` carries
