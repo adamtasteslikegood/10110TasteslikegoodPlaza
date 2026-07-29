@@ -15,8 +15,9 @@ If you cloned without `--recurse-submodules`:
 git submodule update --init --recursive
 ```
 
-The `claude-code-tresor/` submodule holds the 137+ agent definitions under `subagents/` (by department) and `agents/` (**the eight production-ready cores**). This repo tracks a fork of [alirezarezavani/claude-code-tressor](https://github.com/alirezarezvani/claude-code-tresor) the author of the agents, skills, commands, sub-agents and agent-skills for Claude Code and other AI/coding agents. 
+The `claude-code-tresor/` submodule holds the 137+ agent definitions under `subagents/` (by department) and `agents/` (**the eight production-ready cores**). This repo tracks [adamtasteslikegood/claude-code-tressor](https://github.com/adamtasteslikegood/claude-code-tresor) - a fork of the original repo by the samne name by Alireza Rezvani, the author of the agents, skills, commands, sub-agents and agent-skills for Claude Code and other AI/coding agents. ***See links below*** 
 
+   - [alirezarezavani/claude-code-tressor](https://github.com/alirezarezvani/claude-code-tresor)  <—- submodule _is_ fork of
 ### **Be sure to check out:**
    - [alirezarezvani/claude-skills](https://github.com/alirezarezvani/claude-skills) 23.4k GitHub Stars
    - ***Other open source projects:***
