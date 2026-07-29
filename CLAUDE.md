@@ -216,7 +216,11 @@ Nine departments map to nine office floors (now "rooms" in 2.5D), each with a fi
 - **A `PLZG-###` key in the title is required.** Jira's GitHub integration links PRs, branches and commits by scanning the title, so a PR without one is invisible to the board. Put it in the branch name and commit messages too. Forgot it? Edit the title; the rescan picks it up. **If no issue exists for the work, file one first — never invent a key.**
 - **Monitor it.** `gh pr view <n> --comments`, `gh api repos/{owner}/{repo}/pulls/<n>/comments`, `gh pr checks <n>`. Re-check whenever you return, and before declaring related work done. `claude-review.yml` is advisory and `continue-on-error`, so read its job log rather than its check mark — and it cannot review changes to itself.
 - **Answer every comment**, with either a fix commit plus a reply saying what changed, or a concrete technical rebuttal. Never leave feedback silently unaddressed. **Verify each claim against the file before replying** — reply from what the code says, not what the comment asserts.
-- **Sign replies posted on Adam's behalf** — they go out under his account, so end each with `_Replied by Claude on Adam's behalf_`. (`Co-authored-by:` trailers belong in commits, not comments.)
+- **Sign replies posted on Adam's behalf.** They go out under his account, so end each with an attribution line naming *which* Claude wrote it — model and session:
+
+  > `_Replied by Claude on Adam's behalf — <model> · session <id>_`
+
+  Get `<id>` from **`$CLAUDE_CODE_SESSION_ID`**, first 8 characters. That is the only value that distinguishes parallel sessions running in the same terminal tab list: each gets its own UUID, and it names that session's transcript at `~/.claude/projects/<slug>/<id>.jsonl`, so a reply can be traced back to the conversation that produced it. Do not substitute `$CLAUDE_JOB_DIR` (background jobs only), `$CLAUDE_CODE_BRIDGE_SESSION_ID` (the claude.ai session, absent in a plain terminal), the branch, or the worktree name — none of those are unique per session. (`Co-authored-by:` trailers belong in commits, not comments.)
 - **Loop until merged.** Monitor → fix or rebut → reply, until it merges, closes, or Adam says stop. Judgment calls only he can make — scope, product — go to him rather than a guess, but still reply on the thread noting it awaits his call.
 
 **Keep a PR to one concern.** A branch carrying a skill, a task-runner, a policy change and a bug fix gets reviewed as four arguments at once, and the mergeable part drowns in the arguable ones. Split before pushing.
