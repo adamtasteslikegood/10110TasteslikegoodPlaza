@@ -13,7 +13,19 @@ with open("./.env") as f:
             key, val = line.strip().split("=", 1)
             env_vars[key] = val
 
-auth_token = env_vars["ATLASSIAN_API_TOKEN_BASE64_USEREMAIL"]
+# See generate_report.py: .env carries ATLASSIAN_API_TOKEN_BASE64, while this
+# script required the longer ..._USEREMAIL name until 2026-07-28 and so raised a
+# KeyError against a correctly-populated .env. Accept either name.
+TOKEN_VARS = ("ATLASSIAN_API_TOKEN_BASE64", "ATLASSIAN_API_TOKEN_BASE64_USEREMAIL")
+auth_token = next((env_vars[k] for k in TOKEN_VARS if env_vars.get(k)), None)
+if not auth_token or not env_vars.get("ATLASSIAN_URL"):
+    print(
+        "Missing required configuration: "
+        + " or ".join(TOKEN_VARS)
+        + ", ATLASSIAN_URL. Set them as environment variables or in ./.env."
+    )
+    sys.exit(1)
+
 url_base = f"https://{env_vars['ATLASSIAN_URL']}"
 # Space PLZA, "10110 Tasteslikegood Plaza" — this project's own Confluence space.
 # Reports previously landed under two pages in space TLG ("Tasteslikegood.org"),
