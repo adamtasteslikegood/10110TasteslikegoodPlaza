@@ -15,9 +15,17 @@ If you cloned without `--recurse-submodules`:
 git submodule update --init --recursive
 ```
 
-The `claude-code-tresor/` submodule holds the 137+ agent definitions under `subagents/` (by department) and `agents/` (the eight production-ready cores). This repo tracks a fork of [alirezarezavani/claude-code-tressor](https://github.com/alirezarezvani/claude-code-tresor) the author of the agents, skills, commands, sub-agents and agent-skills for Claude Code and other AI/coding agents. Be sure to check out [alirezarezvani/claude-skills](https://github.com/alirezarezvani/claude-skills) 23.4k GitHub Stars and other open source projects: [Alireza Rezvani GitHub](https://github.com/alirezarezvani)  Articles about [AI engineering and agentic development](https://alirezarezvani.medium.com/) on [Medium](https://alirezarezvani.medium.com/) and [https://alirezarezvani.com/](https://alirezarezvani.com/).
+The `claude-code-tresor/` submodule holds the 137+ agent definitions under `subagents/` (by department) and `agents/` (**the eight production-ready cores**). This repo tracks a fork of [alirezarezavani/claude-code-tressor](https://github.com/alirezarezvani/claude-code-tresor) the author of the agents, skills, commands, sub-agents and agent-skills for Claude Code and other AI/coding agents. 
 
-These will become `data/agents.json` once M3 ships. 
+### **Be sure to check out:**
+   - [alirezarezvani/claude-skills](https://github.com/alirezarezvani/claude-skills) 23.4k GitHub Stars
+   - ***Other open source projects:***
+   - [Claude Forge - CLAUDE.md](https://github.com/alirezarezvani/ClaudeForge) generator + 'best practices'
+   - [Alireza Rezvani - GitHub](https://github.com/alirezarezvani)
+   - Articles about [AI engineering and agentic development](https://alirezarezvani.medium.com/) on [Medium](https://alirezarezvani.medium.com/)
+   - [https://alirezarezvani.com/](https://alirezarezvani.com/)
+
+**These will become** `data/agents.json` once M3 ships. 
 
 
 ## 2. Set up the `.env` (only if you want to run the Atlassian scripts)
@@ -51,8 +59,8 @@ pip install flake8 black websockets requests
 # Pulls Jira project updates from the last 7 days into report.md
 python generate_report.py
 
-# Renders report.md to HTML and posts it as a child of Confluence page 11075756,
-# the home of space PLZA ("10110 Tasteslikegood Plaza")
+# Renders report.md to HTML and posts it as a child of Confluence page <confluence_page_id>,
+# the home of space ____ ("Your Confluence Home Page goes Here")
 python post_to_confluence.py
 ```
 
