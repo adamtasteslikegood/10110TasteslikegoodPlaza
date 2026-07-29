@@ -17,7 +17,7 @@ This repo is **a running Godot prototype**. `project.godot` exists and `godot .`
 
 ## Commands
 
-Godot commands are real. Node/npm infrastructure does not exist — never invent `npm test`, `npm run build`, or a `package.json` script. This table is everything that actually runs:
+Every row below was executed against a real checkout. The rule this table exists to enforce is **don't hand anyone a command you haven't run** — which is not the same as "this ecosystem is absent", and earlier versions of this file confused the two. `node`, `npm` and `npx` are installed on dev machines, and a `package.json` wrapping these same Godot and Python gates has been proposed, so check the tree before telling anyone `npm test` isn't a thing. Verified today:
 
 | Command | What it does |
 |---|---|
@@ -53,19 +53,15 @@ Deferred: true WebSocket streaming, unique sprites per agent, 3D first-person.
 
 Short version: tier 0 `specs/meta/` governs · tier 1 `docs/storyboard-week1.md` owns concept · tier 2 `docs/designs/*` owns implementation and `README.md` reconciles both · tier 3 `specs/roadmap.md` + `specs/task-tracker.md` sequence · tier 4 summaries and research are authoritative over nothing. **Lower tier wins.** Never silently reconcile two disagreeing docs — record it in the open-conflict register and raise it.
 
-`README.md` reconciles; it does not decide. It declared `authority: derived` while being named as the origin of eight decisions, and the set validated green for two releases before anyone noticed. Fixed in v0.2.7 — the eight moved to `docs/designs/platform-decisions.md`, and the validator now fails the build when a document declares `decides:` without an authority licensed to originate. Don't add a `decides:` list to a `derived`, `summary`, `research`, or `historical` document; it will not pass CI.
+This has now been got wrong at both ends of the ladder. `README.md` reconciles, it does not decide — yet it declared `authority: derived` while being named as the origin of eight decisions, and the set validated green for two releases before anyone noticed (fixed v0.2.7). `D-005` was the mirror image: it named tier-0 `META-SPEC` §5.1 as its origin, while §2 of that same document says tier 0 originates rules about documents and **never product decisions** (fixed v0.2.9). Both sets now live in `docs/designs/platform-decisions.md`, which owns nine.
 
-`D-005` joined them in v0.2.9 for the mirror-image reason at the other end of the ladder: it named tier-0 `META-SPEC` §5.1 as its origin, and §2 of that same document says tier 0 originates rules about documents and **never product decisions**. `platform-decisions.md` now owns nine. Note what this class costs — no validator catches it. The §4.8 gate asks whether an authority may originate *something*; it cannot ask whether a given decision falls inside that authority's subject matter. Both were found by a human reading the ladder, not by CI.
+The validator fails a build when a doc declares `decides:` without an authority licensed to originate — so never add `decides:` to a `derived`, `summary`, `research` or `historical` doc. But note what it cannot do: that gate asks whether an authority may originate *something*, never whether a given decision falls inside its subject matter. Both violations were caught by a human reading the ladder, not by CI. The same blind spot is why an agent-authored rule in an ungoverned file can be mistaken for policy — see § Doc layout on `.claude/`.
 
 Every governed doc declares `doc_id`/`tier`/`authority`/`status` in YAML frontmatter, validated against `specs/meta/spec-frontmatter.schema.json` and indexed in `specs/meta/doc-registry.json`. Run `python3 scripts/validate_specs.py` (stdlib only) before pushing; it runs in CI as `Validate Specs`.
 
 `specs/aligned-spec-v0.2.5.md` is **no longer the source of truth** — it is a tier-4 research input (`status: SUPERSEDED`). Its normative content was promoted into `specs/meta/`; its §01.3 fabricated a 14-scene spine that contradicts the real storyboard. Cite it for findings and rationale, not as law.
 
-The older reference docs still contain 3D first-person specifics:
-- `specs/roadmap.md`, `specs/task-tracker.md` — 3D-specific node names (CharacterBody3D, FPS demo, CSGBox3D, Area3D, NavigationRegion3D) are deprecated. Treat as 2D equivalents (CharacterBody2D, TileMap, Area2D, NavigationRegion2D). Milestone structure (M1/M4/M8) still stands.
-- `docs/quick-reference.md` — pitch line updated; the rest still directionally correct.
-- `docs/storyboard-week1.md` — the storyboard/concept is **authoritative** (tier 1, `authority: concept`); only occasional visual descriptions (e.g. a "3D flyover" beat) are stylistic legacy. Adding structure is fine; changing a beat is a concept change needing human sign-off.
-- `README.md` pitch has been rewritten to 2.5D-first.
+Legacy 3D first-person node names (CharacterBody3D, CSGBox3D, Area3D, NavigationRegion3D) survive inside `specs/roadmap.md` and `specs/task-tracker.md`; read them as their 2D equivalents, and note the milestone structure itself still stands. `docs/storyboard-week1.md` is **authoritative** (tier 1, `authority: concept`) even where a beat is described in stylistically legacy 3D terms — adding structure is fine, changing a beat needs human sign-off.
 
 ## Architecture: the 4 layers
 
@@ -73,9 +69,9 @@ Every planning doc assumes this model, regardless of 2D/3D:
 
 ```
 Layer 4 — Real agent execution    (EXISTS) claude-code, gemini-cli, MCP, SSH
-Layer 3 — UI-agnostic bridge       (TODO, Phase 2) Python WebSocket → spawns agent CLI, synchronous w/ timeout
-Layer 2 — Current frontend         (TODO, Phase 1) — today 2.5D Godot; one of several swappable frontends
-Layer 1 — Data + config            (EXISTS upstream as submodule) 133 agent .md files → agents.json
+Layer 3 — UI-agnostic bridge      (TODO, M5–M8) Python WebSocket → spawns agent CLI, synchronous w/ timeout
+Layer 2 — Current frontend        (PARTIAL) 2.5D Godot walkable, M1+M4 done; one of several swappable frontends
+Layer 1 — Data + config           (EXISTS) submodule → 133 agent .md files → agents.json
 ```
 
 Layer 2 is deliberately named for the **role, not the implementation** (`D-020`). A CLI harness, a web UI, or the eventual 3D world are peers of 2.5D Godot, not replacements for the layer. That is what makes `D-005` — the bridge has zero UI awareness — architecture rather than aspiration. **Swap test:** if replacing Godot with the CLI harness would require any bridge change, the boundary is broken and the change fails review.
@@ -104,13 +100,9 @@ Two of the three legs are standing, so the risk profile has shifted: the thing t
 
 ## The `claude-code-tresor` submodule
 
-`.gitmodules` registers `claude-code-tresor` pointing at `https://github.com/adamtasteslikegood/claude-code-tresor.git`, pinned to commit `b7ec149…` (head of the fork's `10110TLGP/dev`, which is its default branch). **It is empty in fresh checkouts** — initialize it before reading the agent `.md` files:
+`.gitmodules` registers `claude-code-tresor` against the `adamtasteslikegood` fork, pinned to a commit on its default branch `10110TLGP/dev`. **It is empty in fresh checkouts** — `git submodule update --init --recursive` before reading any agent `.md`.
 
-```bash
-git submodule update --init --recursive
-```
-
-This fork is the **agent layer for this project** — treat it as the canonical source, not as a derivative of `alirezarezvani/claude-code-tresor`. Don't add an `upstream` remote pointing at the parent project inside the submodule; this project's agent definitions evolve independently. Bumps to the pinned commit happen by working in the fork directly, pushing to its `origin`, then back in the parent repo:
+This fork is the **agent layer for this project** — canonical, not a derivative of `alirezarezvani/claude-code-tresor`. Don't add an `upstream` remote inside it; these definitions evolve independently. Bump the pin by working in the fork directly, pushing to its `origin`, then in the parent repo:
 
 ```bash
 cd claude-code-tresor
@@ -118,12 +110,9 @@ cd claude-code-tresor
 cd .. && git add claude-code-tresor && git commit -m "build: bump claude-code-tresor submodule"
 ```
 
-This submodule is the source of truth for the agent definitions that need to become `data/agents.json` for M3. Don't duplicate that data into this repo's tree. Layout inside the submodule:
+It is the source of truth for the agent definitions behind `data/agents.json`. Don't copy that data into this repo's tree. Inside: `subagents/` holds 133 definitions nested `<dept>/<subcat>/<name>/agent.md` across ten categories, and `agents/` holds the same 8 core roles in Claude Code's **runtime** format — not 8 extra roles.
 
-- `subagents/` — 133 agent definitions nested `<dept>/<subcat>/<name>/agent.md` across ten categories (`engineering/`, `design/`, `marketing/`, `product/`, `leadership/`, `operations/`, `research/`, `ai-automation/`, `account-customer-success/`, `core/`), plus an `AGENT-INDEX.md`.
-- `agents/` — the same 8 core roles (`systems-architect`, `config-safety-reviewer`, `root-cause-analyzer`, `security-auditor`, `test-engineer`, `performance-tuner`, `refactor-expert`, `docs-writer`) in Claude Code's **runtime** format, not 8 additional roles.
-
-**141 files = 8 + 133, spanning 133 distinct roles.** Both numbers are right; say which you mean. Upstream v2.7.0 made `subagents/` PRIMARY and left `agents/` as a backward-compat shim (symlinks plus stale pre-v2.7.0 flat files), so the generator reads `subagents/` only. Separately, those 133 files carry just **130 distinct slugs** — three cross-department collisions, curated in `scripts/generate_agents_json.py`, leaving **132 entries** in `data/agents.json`. See `docs/agent-directory.md` § Agent counts.
+**141 files = 8 + 133, spanning 133 distinct roles.** Both numbers are right; say which you mean. Upstream v2.7.0 made `subagents/` PRIMARY and left `agents/` a backward-compat shim, so the generator reads `subagents/` only. Those 133 files carry just **130 distinct slugs** — three cross-department collisions, curated in the generator, leaving **132 entries** in `data/agents.json`. `docs/agent-directory.md` § Agent counts is the authority; don't re-derive these numbers here.
 
 ## CI workflows
 
@@ -146,49 +135,29 @@ The `gemini-*.yml` suite that used to sit here was removed on 2026-07-28. It nev
 
 ## Python scripts (Atlassian glue)
 
-Both top-level Python scripts depend on a `.env` file (gitignored) with:
+`generate_report.py` queries Jira for the last 7 days, buckets by status, and writes `report.md`; `post_to_confluence.py` converts that to HTML and posts it under a parent page. Both read `./.env` directly (no python-dotenv) for `ATLASSIAN_API_TOKEN_BASE64_USEREMAIL` (base64 of `email:token`) and `ATLASSIAN_URL` (host, no scheme), and `KeyError` out if either is missing.
 
-```
-ATLASSIAN_API_TOKEN_BASE64_USEREMAIL=<base64(email:token)>
-ATLASSIAN_URL=<host, no scheme>
-```
-
-- `generate_report.py` — queries Jira project `TO` for issues updated in the last 7 days, buckets them by status (done / in progress / blocked / todo), and writes `report.md`.
-- `post_to_confluence.py` — converts `report.md` to HTML and posts it as a child of Confluence page `15925249` (fallback `15695959`).
-
-These read `./.env` directly (no python-dotenv); they'll crash with a `KeyError` if either var is missing. The lint job tolerates them as-is.
+**Read the scripts for the Jira project key and the Confluence page id — do not trust a copy of them here or anywhere else.** Both have been retargeted, and a second copy of a project key in a guide is precisely the drift this document keeps having to correct. Note also that `report.md` is generated output containing raw Jira issue titles: committing it publishes whatever those titles say, so treat committing it as a disclosure decision, not a formatting one.
 
 ## Doc layout — what's where
 
-Top level holds the entry-point docs every contributor (human or agent) is expected to read first:
+Root holds the entry points: `README.md` (pitch, 4-layer architecture, department/color table, attribution), `QUICKSTART.md`, `CONTRIBUTING.md`, `CHANGELOG.md` ([Keep a Changelog](https://keepachangelog.com/en/1.1.0/) — add under `## [Unreleased]`), `LICENSE` (MIT), and this file.
 
-- `README.md` — project pitch, 4-layer architecture, department/color table, attribution. The canonical project overview.
-- `QUICKSTART.md` — clone, init the submodule, set up `.env`, run the Atlassian scripts, where to go from there.
-- `CONTRIBUTING.md` — branching flow, Conventional Commits, PR workflow. Points at `specs/branching-strategy.md` for the full policy.
-- `CHANGELOG.md` — project changelog in [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format. Add entries under `## [Unreleased]` as work lands; promote to a versioned section at release time.
-- `CLAUDE.md` — this file. Agent-facing repo guide.
-- `LICENSE` — MIT.
+`docs/` is design and reference; `specs/` is development process. Both carry their own `README.md` folder index — use those instead of maintaining a third inventory here. What those indexes won't tell you:
 
-`docs/` — design and reference (the *what* and *why*, slow-changing). See `docs/README.md` for the folder index.
-
-- `docs/designs/2.5D-RPG-Prototype.md` — **active design.** The 2.5D top-down pivot.
-- `docs/designs/platform-decisions.md` — **platform authority.** Engine, bridge transport, agent data layer, licence, submodule and merge policy (`D-003`, `D-005`, `D-015`, `D-016`, `D-018`, `D-021`–`D-024` — nine as of v0.2.9). Scope test: would the decision survive replacing the whole frontend? If it dies with the 2.5D prototype it belongs in the design doc instead.
-- `docs/storyboard-week1.md` — Day 0 / Day 1 / Day 2 tutorial narrative beats.
-- `docs/quick-reference.md` — one-page summary: build order, autoloads, department table.
-- `docs/agent-directory.md` — taxonomy of the 133 agent roles across nine departments plus Core. **Taxonomy authority (`D-017`)** — every other count in the repo derives from here.
-- `docs/assets/` — `plaza_build_steps.html`, `plaza_godot_architecture.svg`.
-
-`specs/` — development process (the *how* and *when*, action-oriented). See `specs/README.md` for the folder index.
-
-- `specs/meta/` — **start here.** The constitution, the frontmatter schema, the doc registry, the concept driver, the decision register, and the v0.2.5 driver doc. See the section above.
-- `specs/aligned-spec-v0.2.5.md` — tier-4 research input, `SUPERSEDED`. Retained for its findings, the Document A bridge architecture, and the Document B taxonomy.
-- `specs/roadmap.md` — M1 → M8 milestone structure (still authoritative); 3D-specific node names inside milestone bodies are deprecated.
-- `specs/task-tracker.md` — working checklist across all phases; same 3D-deprecation caveat as `roadmap.md`.
-- `specs/branching-strategy.md` — branch protection, status checks, CODEOWNERS gating. Still says "ClaudeForge" and references workflows that don't exist here; treat as intended policy until those land.
+- `docs/designs/2.5D-RPG-Prototype.md` — **active design**, the 2.5D pivot.
+- `docs/designs/platform-decisions.md` — **platform authority**, nine decisions as of v0.2.9 (`D-003`, `D-005`, `D-015`, `D-016`, `D-018`, `D-021`–`D-024`). Scope test: would the decision survive replacing the whole frontend? If it dies with the 2.5D prototype it belongs in the design doc instead.
+- `docs/agent-directory.md` — **taxonomy authority (`D-017`)**; every other agent count in the repo derives from here.
+- `specs/meta/` — **start here**, see the section above.
+- `specs/roadmap.md`, `specs/task-tracker.md` — the milestone structure is authoritative; the 3D node names inside milestone bodies are deprecated.
+- `specs/aligned-spec-v0.2.5.md` — tier-4 research, `SUPERSEDED`. Cite for findings, never as law.
+- `specs/branching-strategy.md` — intended policy only; still says "ClaudeForge" and names workflows this repo doesn't have.
 
 `Docs/` — **capital D, a different directory.** On a case-sensitive filesystem `docs/` and `Docs/` coexist and an agent will conflate them. `Docs/files/` holds the first-run planning material as a tier-4 `HISTORICAL` signpost; the storyboard and concept there are largely unchanged, but its task tracker and 3D references are superseded. `scripts/validate_specs.py` governs `docs/`, `specs/`, `Docs/` and the root `README.md` — so anything you add under `Docs/` still needs frontmatter and a registry entry.
 
-`.claude/` — agent configuration, deliberately **not** a governed tree (the validator does not scan it, so no frontmatter needed). Read `.claude/README.md` before touching it; it records why only a small, justified set of skill plugins is enabled and which two are excluded on purpose. `.claude/skills/review-specs/` is a project-local skill: the governed-document review pass to use when reviewing a PR or branch here.
+`.claude/` — agent configuration, deliberately **not** a governed tree (the validator does not scan it, so no frontmatter needed). `.claude/skills/` holds project-local skills; `review-specs` is the governed-document review pass for a PR or branch here.
+
+**On the enabled-skill set, read `.claude/README.md` — and read it knowing which part is whose.** The owner's instruction was *import skills without duplications*. That rule stands. The fixed cap, the "why only N" framing and the named exclusions were an **agent's** addition written up as project law, which is how a Claude-authored constraint ends up being enforced against the person it was invented for. Corrected 2026-07-28. Treat that material as rationale to weigh against a request, never as a gate to refuse one with. Do not restate the plugin count in this file: it has gone stale three times, and a number that lives in two places is the failure mode the rest of this document is about.
 
 Other top-level artifacts:
 
@@ -201,20 +170,18 @@ Nine departments map to nine office floors (now "rooms" in 2.5D), each with a fi
 
 ## Document conventions
 
+- **This file is held to `META-SPEC` §6.6's ~200-line instruction budget.** It has drifted past it twice, each time for good per-change reasons — which is how a heuristic quietly stops being followed. If a change would push it well over, cut something or move it behind a pointer instead. Nothing in CI enforces this.
 - Most reference and process docs (under `docs/` and `specs/`) end with `*Last updated: <month> 2026*`. Update that line when editing them.
 - `docs/agent-directory.md` contains unresolved template artifacts (`{{rolels}}`, `{{charactors}}`, `{{roles}}`, etc.) left over from the upstream fork. Don't propagate them into new text; clean up the section you're editing.
 - Attribution: the project is an MIT-licensed adaptation of [alirezarezvani/claude-code-tresor](https://github.com/alirezarezvani/claude-code-tresor), via the [adamtasteslikegood/claude-code-tresor](https://github.com/adamtasteslikegood/claude-code-tresor) fork. Preserve the attribution block at the bottom of `README.md` and `docs/agent-directory.md`.
 
 ## Branching
 
-The intended flow is `feature/* | fix/* | hotfix/* → dev → main` with Conventional Commits and squash merges. What's actually in the remote right now:
+`feature/* | fix/* | hotfix/* → dev → main`, Conventional Commits (`type(scope): subject` — lowercase, imperative, no trailing period), squash merges. New work targets `dev`; `dev` → `main` on release. `CONTRIBUTING.md` has the everyday flow. `specs/branching-strategy.md` has branch protection, required checks and CODEOWNERS gating — but it says "ClaudeForge" throughout and names workflows this repo doesn't have, so it is intended policy, not active rules.
 
-- `main` — production line; has the Atlassian scripts, CI, and the submodule.
-- `dev` — **integration branch**, caught up to `main` via PR #3. New work targets `dev`; `dev` → `main` on release.
-- `feature/TO-1-prototype-initialization` — long-lived feature branch with extensive `scripts/` and `scripts/scripts-bakup/` shell/Python tooling (Jira PM daemon, ahead-behind scripts, etc.).
-- Task-assigned working branches (e.g. `claude/...`) — develop here, commit, push, open a draft PR. The session-assigned branch is specified in the system prompt.
+`feature/TO-1-prototype-initialization` is a long-lived branch carrying a lot of shell/Python tooling under `scripts/`. Check it before adding a new `scripts/` file — the equivalent may already exist there.
 
-`specs/branching-strategy.md` describes branch protection rules, required status checks, and CODEOWNERS gating — but the doc still says "ClaudeForge" throughout and references workflows (`pr-into-dev.yml`, `dev-to-main.yml`, `release.yml`) that **don't exist in this repo**. Treat it as intended policy for once code lands, not active rules. The Conventional Commits format (`type(scope): subject`, lowercase, imperative, no trailing period) is worth following now — see `CONTRIBUTING.md` for the everyday flow.
+**Keep a PR to one concern.** A branch that carries a skill, a task-runner, a policy change and a bug fix together gets reviewed as four things at once, and the reviewable third drowns in the arguable ones. Split before pushing, not after the review sprawls.
 
 ## When you're asked to add Godot code
 
@@ -246,15 +213,14 @@ Godot rewrites `.tscn` files wholesale when a scene is saved in the editor, so a
 
 The next code task is the bridge (M5–M8). `D-005` is the hard gate there: the bridge must not learn that Godot, scenes, or dialogue panels exist. If swapping the frontend for a CLI harness would require a bridge change, the boundary is broken.
 
-Note that there is already a `scripts/` directory worth of bash/Python tooling on the `feature/TO-1-prototype-initialization` branch. Before adding new `scripts/` files on `main`, check whether something equivalent already exists on that branch.
-
 ## Behavioral Guidelines
 
-Four working principles, each with the form it takes in this repo:
+Working principles, each with the form it takes in this repo:
 
 - **Think before coding.** Find the entitled document before writing anything — `specs/meta/` says which one wins. Cite the `D-nnn` or `SB-nn` you're acting on.
-- **Simplicity first.** Don't invent infrastructure. There is no `npm test` here; the Commands table above is the complete list of what runs. A command that isn't in it needs to be verified, not assumed.
-- **Surgical changes.** Never silently reconcile two disagreeing documents — record it in the open-conflict register and raise it. Don't duplicate state: agent facts live in `data/agents.json`, feel values live in the scene, and the test derives its bounds from the scene rather than copying them.
+- **Simplicity first.** Don't invent infrastructure — run the command before you recommend it. Note the shape of the failure this replaces: saying "there is no Node here" is also inventing infrastructure, just in the negative direction, and it was wrong.
+- **Surgical changes.** Never silently reconcile two disagreeing documents — record it in the open-conflict register and raise it. Don't duplicate state: agent facts live in `data/agents.json`, feel values live in the scene, project keys live in the scripts, and the test derives its bounds from the scene rather than copying them.
+- **Know whose rule it is.** Before enforcing a constraint against a request, check who set it. An agent's suggestion written up in a repo file is not policy, and this repo has already had one Claude-authored rule enforced against the owner it was invented for. Owner decisions and `D-nnn` bind; everything else is rationale to weigh.
 - **Goal-driven execution.** M8 is the goal; `tests/smoke_test.tscn` is the evidence. `META-SPEC` §5.8 requires acceptance criteria to be machine-checkable, so "done" means a gate went green, not that the work looked finished.
 
 If the user-level `karpathy-guidelines` skill is installed (`~/.claude/skills/karpathy-guidelines/SKILL.md`) it expands on these; it is a per-machine convenience, not a dependency of this repo.

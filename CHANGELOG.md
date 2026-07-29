@@ -10,6 +10,48 @@ section at release time. PR references in parentheses.
 
 ## [Unreleased]
 
+### Fixed — `CLAUDE.md` stops asserting things it hasn't checked
+
+- **"Node/npm infrastructure does not exist" was wrong, and wrong in an
+  instructive direction.** `node`, `npm` and `npx` are installed on dev machines,
+  and a `package.json` task-runner facade over the same Godot/Python gates is
+  proposed on #28. The rule the Commands table exists to enforce is *don't hand
+  anyone a command you haven't run* — declaring an ecosystem absent is the same
+  error wearing a minus sign, and this file had been making it confidently.
+- **The enabled-skill "cap" is named as an agent's rule, not the owner's.** The
+  owner's instruction was *import skills without duplications*; the fixed set, the
+  "why only N" framing and the named exclusions were an agent's addition written
+  up as project law. `CLAUDE.md` now says so, tells agents to weigh that material
+  rather than refuse a request with it, and **forbids restating the plugin count
+  here** — the number has gone stale three times (four → five → six), which is
+  what a value living in two places does. Propagates `491553c` from #28 so the
+  correction isn't stuck behind that PR.
+- **A new working principle: know whose rule it is.** Before enforcing a
+  constraint against a request, check who set it. Owner decisions and `D-nnn`
+  bind; an agent's suggestion written into a repo file does not.
+- **The authority blind spot is now stated once, covering both directions.** The
+  `README.md`/eight and `D-005`/tier-0 violations were the same mistake at
+  opposite ends of the ladder, and the `decides:` gate structurally cannot catch
+  either — it asks whether an authority may originate *something*, never whether
+  a decision falls inside its subject matter. That is also why an agent-authored
+  rule in an ungoverned file reads as policy.
+- **Layer 2 was still marked `TODO, Phase 1`** in the 4-layer diagram after M1 and
+  M4 shipped. Now `PARTIAL`.
+- **Jira project key and Confluence page id removed from this file.** Both have
+  been retargeted; a guide holding a second copy of a project key is the drift it
+  keeps having to correct. Also notes that `report.md` is generated output full of
+  raw Jira issue titles, so committing it is a disclosure decision.
+- **Back under `META-SPEC` §6.6's ~200-line budget's neighbourhood: 260 → 226.**
+  The previous entry argued against the `enhance-claude-md` skill's 150-line cap
+  and never engaged the repo's *own* rule for this exact file — importing an
+  outside tool's convention while ignoring the entitled one (#37). Trimmed by
+  routing to `docs/README.md` and `specs/README.md` instead of keeping a third
+  file inventory. A standing note in § Document conventions records the budget,
+  since nothing in CI enforces it.
+- **Added: keep a PR to one concern.** Recorded under § Branching after #28 —
+  a skill, a task-runner, a policy change and a bug fix on one branch draw four
+  parallel argument threads and the mergeable part drowns.
+
 ### Fixed — `CLAUDE.md` caught up to the running prototype
 
 - **`black --check .` was documented as advisory. It is not.** The CI step carries
