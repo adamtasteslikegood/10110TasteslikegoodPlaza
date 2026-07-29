@@ -10,6 +10,140 @@ section at release time. PR references in parentheses.
 
 ## [Unreleased]
 
+### Fixed — the Linear↔Jira sync was pointed at the deprecated board
+
+- **`TO` was declared read-only in prose while an integration still had write
+  access to it.** The two-way Linear leg was wired to Jira `TO`, not `PLZG`, so
+  everything filed in Linear was created on the deprecated board. Ten Plaza
+  issues (`TO-127`–`TO-136`) landed there *after* the 2026-07-28 deprecation —
+  this project's own review findings, including `TO-135` (GitHub #43) and
+  `TO-136` (PR #33). They still need triage into `PLZG`.
+- **Owner corrected the topology 2026-07-29:** Linear `PLZG` ↔ Jira `PLZG`
+  two-way as the default; the `TO` → Linear leg deliberately retained one-way so
+  closures on the existing `TO`-linked Linear issues still propagate rather than
+  orphaning about a dozen of them.
+- **`DELIVERY-COORDINATES` said "there is no Linear board here."** It was wrong,
+  and wrong in this repo's recurring direction — asserting infrastructure is
+  absent is still an unverified claim about state, and here it hid the very
+  integration causing the drift. Same defect class as the "Node is not absent"
+  correction earlier in this release. The sync topology is now recorded as
+  coordinates, because that is what it is.
+- **Rule earned:** a board is read-only only if nothing has write access to it.
+  Renaming or deprecating a project does not close an integration pointed at it.
+  Enumerate a board's writers — syncs, automations, webhooks — before calling it
+  read-only.
+
+
+### Added — `DELIVERY-COORDINATES`, and one designated home for Atlassian identifiers (`D-026`)
+
+- **New tier-2 `taxonomy` document `docs/delivery-coordinates.md`**, registered and
+  locked as `D-026`. It is now the single origin of every Jira key, board role,
+  Confluence space and page id this repo uses. `CLAUDE.md` and every guide cite
+  it; the two Python scripts are the only other legitimate copy, because they
+  execute the values. **When a script and the table disagree, the script is the
+  fact and the table is the bug.**
+- **Why it was needed.** The absence of this rule produced shipped drift in both
+  directions. `post_to_confluence.py` published Plaza reports into a sibling
+  product's space behind a silent fallback. Then `CLAUDE.md` came to hold,
+  simultaneously, a rule forbidding copies of the project key into that file and
+  a table copying the project key into that file — two agent-authored statements,
+  each defensible alone, in direct contradiction. That contradiction is what the
+  `dev` merge surfaced as a conflict.
+- **Placed at tier 2, not tier 0, deliberately.** A board key is a reference
+  mapping, not a rule about documents, so tier 0 may not originate it —
+  `META-SPEC` §2. Putting it in `specs/meta/` would have repeated the exact trap
+  `D-005` fell into and v0.2.9 fixed. It follows `D-017`/`AGENT-DIRECTORY`
+  instead, which is the existing precedent for a designated reference mapping.
+
+### Changed — `CLAUDE.md` trimmed toward its instruction budget (#37)
+
+- The Atlassian block became a pointer to `D-026`, taking the file from 290
+  lines after the `dev` merge down to 256.
+- The PR lifecycle and commit/push cadence were moved to `CONTRIBUTING.md` and
+  then **moved back**, so they ship in `CLAUDE.md` under § "Working a PR —
+  instructions for you, not for contributors". The move out was wrong: that
+  block is agent-directed ("every PR you author is yours until it merges",
+  "sign replies posted on Adam's behalf"), and `CONTRIBUTING.md` is a
+  human-contributor document. `CONTRIBUTING.md` keeps only the generic PR
+  mechanics it already had. This costs some of the line saving above, which is
+  why the file is still over budget.
+- **Fixed a live contradiction:** § Branching still said "squash merges" while
+  `D-023` locks merge commits and records that squash is disabled in repository
+  settings. Corrected, with the `git revert -m 1` consequence stated.
+- `report.md` is untracked and git-ignored. It carries raw Jira issue titles from
+  a cross-project board, so committing it is a disclosure decision.
+
+### Fixed — `CLAUDE.md` stops asserting things it hasn't checked
+
+- **"Node/npm infrastructure does not exist" was wrong, and wrong in an
+  instructive direction.** `node`, `npm` and `npx` are installed on dev machines,
+  and a `package.json` task-runner facade over the same Godot/Python gates
+  landed in #28. The rule the Commands table exists to enforce is *don't hand
+  anyone a command you haven't run* — declaring an ecosystem absent is the same
+  error wearing a minus sign, and this file had been making it confidently.
+- **The enabled-skill "cap" is named as an agent's rule, not the owner's.** The
+  owner's instruction was *import skills without duplications*; the fixed set, the
+  "why only N" framing and the named exclusions were an agent's addition written
+  up as project law. `CLAUDE.md` now says so, tells agents to weigh that material
+  rather than refuse a request with it, and **forbids restating the plugin count
+  here** — the number has already gone stale against `.claude/README.md` more
+  than once, which is what a value living in two places does. Propagates `491553c` from #28 so the
+  correction isn't stuck behind that PR.
+- **A new working principle: know whose rule it is.** Before enforcing a
+  constraint against a request, check who set it. Owner decisions and `D-nnn`
+  bind; an agent's suggestion written into a repo file does not.
+- **The authority blind spot is now stated once, covering both directions.** The
+  `README.md`/eight and `D-005`/tier-0 violations were the same mistake at
+  opposite ends of the ladder, and the `decides:` gate structurally cannot catch
+  either — it asks whether an authority may originate *something*, never whether
+  a decision falls inside its subject matter. That is also why an agent-authored
+  rule in an ungoverned file reads as policy.
+- **Layer 2 was still marked `TODO, Phase 1`** in the 4-layer diagram after M1 and
+  M4 shipped. Now `PARTIAL`.
+- **Jira project key and Confluence page id removed from this file.** Both have
+  been retargeted; a guide holding a second copy of a project key is the drift it
+  keeps having to correct. Also notes that `report.md` is generated output full of
+  raw Jira issue titles, so committing it is a disclosure decision.
+- **Back under `META-SPEC` §6's ~200-line budget's neighbourhood: 260 → 226.**
+  The previous entry argued against the `enhance-claude-md` skill's 150-line cap
+  and never engaged the repo's *own* rule for this exact file — importing an
+  outside tool's convention while ignoring the entitled one (#37). Trimmed by
+  routing to `docs/README.md` and `specs/README.md` instead of keeping a third
+  file inventory. A standing note in § Document conventions records the budget,
+  since nothing in CI enforces it.
+- **Added: keep a PR to one concern.** Recorded under § Branching after #28 —
+  a skill, a task-runner, a policy change and a bug fix on one branch draw four
+  parallel argument threads and the mergeable part drowns.
+
+### Fixed — `CLAUDE.md` caught up to the running prototype
+
+- **`black --check .` was documented as advisory. It is not.** The CI step carries
+  no `continue-on-error` and no `|| true`, so unformatted Python reddens the build.
+  An agent trusting the old line would have pushed and been surprised. `dev` is
+  green today, so nothing was actually broken — only the guidance was.
+- **The two "when Godot code arrives" sections were still written in the future
+  tense** while `autoload/`, `scenes/` and `tests/` had already shipped. The layout
+  block now shows what exists, marks `bridge/` as the one `TODO`, and names the
+  real scene files.
+- **Milestone status corrected.** The file claimed only M3 was done; M1 and M4
+  landed in v0.2.8. The critical-path section said so as if all three legs were
+  pending, which is the most misleading thing an agent could read here. It now
+  points at `specs/task-tracker.md` as the status of record rather than becoming a
+  second copy of it.
+- **`D-005` added to the `platform-decisions.md` decision list** — it moved there
+  in v0.2.9 and the list had not been updated. The reasoning for *why* the move
+  happened is now stated where an agent will hit it, including the part no
+  validator can check.
+- **A `Commands` table replaces the commands scattered through the prose.** Every
+  row was executed against this checkout: `validate_specs.py`, the agents
+  `--check`, `godot --headless --import` and the smoke test all pass.
+- **`Docs/` (capital D) and `.claude/` documented for the first time.** `Docs/` is
+  a governed tree the validator scans and is trivially confused with `docs/` on a
+  case-sensitive filesystem. `.claude/` deliberately is not governed, and the
+  reasoning behind its small enabled-skill set lives in `.claude/README.md`.
+- Added `docs/.gdignore` and the Godot `.uid`/`.tscn`-rewrite facts, both of which
+  are invisible until you trip over them.
+
 ### Changed — `TO` is deprecated; Plaza work consolidates on `PLZG`
 
 - **`TO` is not a Plaza board and never should have been treated as one.** It is the
@@ -98,10 +232,14 @@ section at release time. PR references in parentheses.
   every PR title, monitor the PR until it merges, answer every comment with either a fix
   or a technical rebuttal, verify claims against the code before replying, sign replies
   made on Adam's behalf. Adapted from the policy used in the owner's other repository:
-  there is no Linear board and no `TAS` key here, no `Backend/` directory, no
-  `.claude/hooks/` backstop, and `superpowers` is not among the four plugins this
-  project enables — so the verify-before-replying rule cites `review-specs` and
-  `zero-hallucination-coder` instead.
+  there is no `TAS` key here, no `Backend/` directory, no `.claude/hooks/` backstop,
+  and `superpowers` is not among the plugins this project enables — so the
+  verify-before-replying rule cites `review-specs` and `zero-hallucination-coder`
+  instead. **Correction:** this bullet originally also said "there is no Linear
+  board" here. There is one, and it syncs — see the retraction earlier in this
+  section. The claim is struck rather than left standing, because an assertion
+  that something does not exist is exactly what this release is about getting
+  wrong repeatedly.
 ### Fixed — reports were being published into the sibling product's Confluence space
 
 - **`post_to_confluence.py` posted into space `TLG` ("Tasteslikegood.org"), not this
