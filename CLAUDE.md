@@ -220,7 +220,15 @@ Nine departments map to nine office floors (now "rooms" in 2.5D), each with a fi
 
   > `_Replied by Claude on Adam's behalf — <model> · session <id>_`
 
-  Get `<id>` from **`$CLAUDE_CODE_SESSION_ID`**, first 8 characters. That is the only value that distinguishes parallel sessions running in the same terminal tab list: each gets its own UUID, and it names that session's transcript at `~/.claude/projects/<slug>/<id>.jsonl`, so a reply can be traced back to the conversation that produced it. Do not substitute `$CLAUDE_JOB_DIR` (background jobs only), `$CLAUDE_CODE_BRIDGE_SESSION_ID` (the claude.ai session, absent in a plain terminal), the branch, or the worktree name — none of those are unique per session. (`Co-authored-by:` trailers belong in commits, not comments.)
+  `<id>` is **`${CLAUDE_CODE_SESSION_ID:0:7}`** — seven characters, the `git --short` convention. That is the only value distinguishing parallel sessions in the same terminal tab list; two sessions opened a minute apart on the same branch are otherwise indistinguishable in a thread. Seven is comfortable: across every transcript in this project, four characters already collide zero times.
+
+  It also names that session's own transcript, so a reply leads back to the conversation that wrote it — but **the directory is derived from `cwd`**, so a session running in a worktree lands under the worktree's slug, not the repo's:
+
+  ```
+  ~/.claude/projects/<cwd-slug>/$CLAUDE_CODE_SESSION_ID.jsonl
+  ```
+
+  Do not substitute `$CLAUDE_JOB_DIR` (background jobs only), `$CLAUDE_CODE_BRIDGE_SESSION_ID` (the claude.ai session — absent in a plain terminal), the branch, or the worktree name. None are unique per session. (`Co-authored-by:` trailers belong in commits, not comments.)
 - **Loop until merged.** Monitor → fix or rebut → reply, until it merges, closes, or Adam says stop. Judgment calls only he can make — scope, product — go to him rather than a guess, but still reply on the thread noting it awaits his call.
 
 **Keep a PR to one concern.** A branch carrying a skill, a task-runner, a policy change and a bug fix gets reviewed as four arguments at once, and the mergeable part drowns in the arguable ones. Split before pushing.
