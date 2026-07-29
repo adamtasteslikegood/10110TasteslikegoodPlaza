@@ -122,6 +122,23 @@ The `TO` → Linear leg is deliberately **not** deleted. Removing it would orpha
 the existing Linear issues that point at `TO`; keeping it one-way means closing
 them still syncs.
 
+### What "one-way" actually governs
+
+**Creation, not the whole lifecycle.** A one-way `Jira → Linear` link stops
+Linear-born items from minting Jira issues. It does **not** sever items that
+were created in Jira or already carry a Jira link — those keep back-updating,
+which is why the `TO` leg still propagates closures instead of orphaning a dozen
+Linear issues.
+
+Worth stating explicitly because the obvious reading of "one-way" is wrong, and
+re-deriving it from the name produces the conclusion that a one-way link forces
+manual status reconciliation. It does not.
+
+The practical consequence: one-way costs you only the *automatic minting* of
+delivery tickets from upstream noise. Promoting an item into `PLZG` becomes a
+deliberate act — which is the difference between "observed" and "committed to",
+and is the distinction a board named *Delivery* should be making.
+
 ### What this cost, and the rule it corrects
 
 This document previously said `TO` was read-only and that "no new Plaza issue is
