@@ -26,3 +26,8 @@ npm-debug.log*
 # Committing it is a disclosure decision, not a formatting one. Regenerate with
 # generate_report.py; post it with post_to_confluence.py.
 report.md
+
+# gbrain source pin — names this machine's local semantic index for this
+# worktree. Per-worktree machine state, not project config; see CLAUDE.md
+# § GBrain semantic search.
+.gbrain-source
