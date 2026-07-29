@@ -1,7 +1,7 @@
 # Quick start
 
-A fast path from `git clone` to "running what's runnable today". This repo is **between planning and prototype** — there's no Godot project yet, but the Atlassian integration scripts and the agent submodule both work right now.
-
+   This repo is still in **early planning and prototype stages** — .godot prototype status, existence, instructions for testing and development are subject to change. Same goes for the agent bridge.  
+   
 ## 1. Clone with submodules
 
 ```bash
@@ -15,7 +15,19 @@ If you cloned without `--recurse-submodules`:
 git submodule update --init --recursive
 ```
 
-The `claude-code-tresor/` submodule holds the 137+ agent definitions under `subagents/` (by department) and `agents/` (the eight production-ready cores). These will become `data/agents.json` once M3 ships.
+The `claude-code-tresor/` submodule holds the 137+ agent definitions under `subagents/` (by department) and `agents/` (**the eight production-ready cores**). This repo tracks [adamtasteslikegood/claude-code-tressor](https://github.com/adamtasteslikegood/claude-code-tresor) - a fork of the original repo by the samne name by Alireza Rezvani, the author of the agents, skills, commands, sub-agents and agent-skills for Claude Code and other AI/coding agents. ***See links below*** 
+
+   - [alirezarezavani/claude-code-tressor](https://github.com/alirezarezvani/claude-code-tresor)  <—- submodule _is_ fork of
+### **Be sure to check out:**
+   - [alirezarezvani/claude-skills](https://github.com/alirezarezvani/claude-skills) 23.4k GitHub Stars
+   - ***Other open source projects:***
+   - [Claude Forge - CLAUDE.md](https://github.com/alirezarezvani/ClaudeForge) generator + 'best practices'
+   - [Alireza Rezvani - GitHub](https://github.com/alirezarezvani)
+   - Articles about [AI engineering and agentic development](https://alirezarezvani.medium.com/) on [Medium](https://alirezarezvani.medium.com/)
+   - [https://alirezarezvani.com/](https://alirezarezvani.com/)
+
+**These will become** `data/agents.json` once M3 ships. 
+
 
 ## 2. Set up the `.env` (only if you want to run the Atlassian scripts)
 
@@ -45,10 +57,11 @@ pip install flake8 black websockets requests
 ## 4. Generate and post a status report
 
 ```bash
-# Pulls Jira project TO updates from the last 7 days into report.md
+# Pulls Jira project updates from the last 7 days into report.md
 python generate_report.py
 
-# Renders report.md to HTML and posts it as a child of Confluence page 15925249
+# Renders report.md to HTML and posts it as a child of Confluence page <confluence_page_id>,
+# the home of space ____ ("Your Confluence Home Page goes Here")
 python post_to_confluence.py
 ```
 
@@ -77,4 +90,4 @@ flake8 . --exit-zero --max-complexity=10 --max-line-length=127   # advisory
 
 The first real prototype task is **M1** — initialize a Godot 4 project for the 2.5D top-down prototype and implement basic `CharacterBody2D` player movement. See [`specs/roadmap.md`](specs/roadmap.md) and [`docs/designs/2.5D-RPG-Prototype.md`](docs/designs/2.5D-RPG-Prototype.md).
 
-*Last updated: May 2026*
+*Last updated: July 2026*

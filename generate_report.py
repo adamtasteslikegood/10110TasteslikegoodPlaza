@@ -15,8 +15,16 @@ if os.path.exists(env_file):
                 if key not in env_vars:
                     env_vars[key] = val
 
-required_vars = ["ATLASSIAN_API_TOKEN_BASE64_USEREMAIL", "ATLASSIAN_URL"]
-missing_vars = [key for key in required_vars if not env_vars.get(key)]
+# The credential is base64("email:token"). Two names for it are in circulation:
+# ATLASSIAN_API_TOKEN_BASE64 is what .env actually carries; the longer
+# ..._USEREMAIL name is what this script required until 2026-07-28, which meant
+# a correctly-populated .env still failed with a KeyError. Accept either.
+TOKEN_VARS = ("ATLASSIAN_API_TOKEN_BASE64", "ATLASSIAN_API_TOKEN_BASE64_USEREMAIL")
+auth_token = next((env_vars[k] for k in TOKEN_VARS if env_vars.get(k)), None)
+
+missing_vars = [key for key in ("ATLASSIAN_URL", "ATLASSIAN_JIRA_PROJECT_KEY") if not env_vars.get(key)]
+if not auth_token:
+    missing_vars.insert(0, " or ".join(TOKEN_VARS))
 if missing_vars:
     print(
         "Missing required configuration: "
@@ -26,8 +34,11 @@ if missing_vars:
     )
     sys.exit(1)
 
-auth_token = env_vars["ATLASSIAN_API_TOKEN_BASE64_USEREMAIL"]
 url_base = f"https://{env_vars['ATLASSIAN_URL']}"
+# Read the board from config rather than hard-coding it. This was pinned to "TO"
+# until 2026-07-28 -- the other site's service board -- so the report was headed
+# "10110 Tasteslikegood Plaza" while every row in it was recipe-app work.
+project_key = env_vars["ATLASSIAN_JIRA_PROJECT_KEY"]
 
 
 def jira_request(method, endpoint, payload=None):
@@ -48,7 +59,7 @@ def jira_request(method, endpoint, payload=None):
 
 
 # Get issues
-jql = 'project = "TO" AND updated >= -7d ORDER BY status, priority DESC'
+jql = f'project = "{project_key}" AND updated >= -7d ORDER BY status, priority DESC'
 payload = {
     "jql": jql,
     "maxResults": 100,
@@ -62,7 +73,11 @@ payload = {
         "resolutiondate",
     ],
 }
-issues_data = jira_request("POST", "/rest/api/3/search", payload)
+# /rest/api/3/search was retired by Atlassian and now answers 410 Gone; the
+# replacement is /rest/api/3/search/jql. It still returns an "issues" array, so
+# nothing below changes -- it drops "total"/"startAt" for "isLast"/"nextPageToken",
+# neither of which this script reads. Verified against the live site 2026-07-28.
+issues_data = jira_request("POST", "/rest/api/3/search/jql", payload)
 
 if not issues_data or "issues" not in issues_data:
     print("No issues found or error occurred.")

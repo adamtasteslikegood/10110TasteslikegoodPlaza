@@ -9,7 +9,7 @@ This repo is **a running Godot prototype**. `project.godot` exists and `godot .`
 - Three autoloads in `autoload/`, registered in `project.godot`, plus `scenes/` for the world, player, NPC and dialogue panel — see the two architecture sections below.
 - `data/agents.json` — **132 agents**, generated from the submodule by `scripts/generate_agents_json.py` (`D-024`). Never hand-edit it; regenerate.
 - A working CI pipeline (`.github/workflows/ci.yml`) — four jobs, all of them real gates since v0.2.8.
-- Two Atlassian integration scripts (`generate_report.py`, `post_to_confluence.py`) wired to a Jira project keyed `TO` and a Confluence parent page.
+- Two Atlassian integration scripts (`generate_report.py`, `post_to_confluence.py`). For which Jira project and Confluence space they target, see § Atlassian coordinates.
 - The upstream agent directory wired in as a git submodule at `./claude-code-tresor` (relative URL, not initialized in fresh checkouts — see below).
 - A consolidated documentation layout: `docs/` for design and reference, `specs/` for development-process files. Each folder has its own `README.md` describing what belongs there. The active design is `docs/designs/2.5D-RPG-Prototype.md`; the active work plan is `specs/roadmap.md`.
 
@@ -17,7 +17,7 @@ This repo is **a running Godot prototype**. `project.godot` exists and `godot .`
 
 ## Commands
 
-Every row below was executed against a real checkout. The rule this table exists to enforce is **don't hand anyone a command you haven't run** — which is not the same as "this ecosystem is absent", and earlier versions of this file confused the two. `node`, `npm` and `npx` are installed on dev machines, and a `package.json` wrapping these same Godot and Python gates has been proposed, so check the tree before telling anyone `npm test` isn't a thing. Verified today:
+Every row below was executed against a real checkout. The rule this table exists to enforce is **don't hand anyone a command you haven't run** — which is not the same as "this ecosystem is absent", and earlier versions of this file confused the two by declaring Node absent. `package.json` now exists.
 
 | Command | What it does |
 |---|---|
@@ -29,6 +29,10 @@ Every row below was executed against a real checkout. The rule this table exists
 | `python3 scripts/generate_agents_json.py --check` | Fails if `data/agents.json` drifted from the submodule. Drop `--check` to regenerate. Needs `pyyaml`. |
 | `black --check .` | Formatting gate. **Hard-fails CI** — run `black .` before pushing Python. |
 | `flake8 . --select=E9,F63,F7,F82` | Syntax errors and undefined names. Also hard-fails; the wider `--max-complexity` pass is advisory. |
+
+`npm test` is real too — but read `package.json` before assuming what that buys you. **There is no JavaScript in this repo.** `package.json` is a task-runner facade over the same gates: `npm start` → `godot .`; `npm test` → `validate` → `import` → `smoke`, the order CI uses; `npm run validate` / `import` / `smoke` → the single rows above; `npm run agents:check` → the generator check, deliberately left out of `npm test` so a fresh checkout without the submodule or `pyyaml` still goes green. There are no dependencies, no `node_modules`, no build step, and nothing to `npm install`. Treat a failure as a failure of the underlying Python or Godot gate, and debug it there.
+
+CI does not use these scripts. `.github/workflows/ci.yml` calls the same tools directly, so the facade can never become the only path to a gate.
 
 ## Critical architectural reframe (read this before trusting the legacy reference docs)
 
@@ -137,7 +141,17 @@ The `gemini-*.yml` suite that used to sit here was removed on 2026-07-28. It nev
 
 `generate_report.py` queries Jira for the last 7 days, buckets by status, and writes `report.md`; `post_to_confluence.py` converts that to HTML and posts it under a parent page. Both read `./.env` directly (no python-dotenv) for `ATLASSIAN_API_TOKEN_BASE64_USEREMAIL` (base64 of `email:token`) and `ATLASSIAN_URL` (host, no scheme), and `KeyError` out if either is missing.
 
-**Read the scripts for the Jira project key and the Confluence page id — do not trust a copy of them here or anywhere else.** Both have been retargeted, and a second copy of a project key in a guide is precisely the drift this document keeps having to correct. Note also that `report.md` is generated output containing raw Jira issue titles: committing it publishes whatever those titles say, so treat committing it as a disclosure decision, not a formatting one.
+```
+ATLASSIAN_API_TOKEN_BASE64_USEREMAIL=<base64(email:token)>
+ATLASSIAN_URL=<host, no scheme>
+```
+
+**Which project and space each script targets is stated once, in § Atlassian coordinates — read that, or read the scripts. Do not add a third copy here.** What belongs in this section is behaviour, not coordinates:
+
+- `generate_report.py` — buckets the last 7 days of Jira issues by status (done / in progress / blocked / todo) and writes `report.md`. **Its Jira target is stale and will break.** It still queries the deprecated board, so the committed `report.md` is headed "Status Report - 10110 Tasteslikegood Plaza" while every line under it is a Vegangenius Chef daily status. Retargeting is pending the `PLZG` audit — a naive switch to `project = "PLZG"` would pull in the seven security alerts filed there for unrelated repos (`gbrain`, `gstack`, `alirez-claude-skills`).
+- `post_to_confluence.py` — converts `report.md` to HTML and posts it as a child of the space home page. No fallback: if that page is unreachable the script exits 1 rather than writing somewhere else. The removed fallback used to write into a sibling product's space, which is how reports ended up there.
+
+`report.md` is generated output carrying raw Jira issue titles, so committing it publishes whatever those titles say — a disclosure decision, not a formatting one. See § Atlassian coordinates for why it is no longer tracked.
 
 ## Doc layout — what's where
 
@@ -157,12 +171,26 @@ Root holds the entry points: `README.md` (pitch, 4-layer architecture, departmen
 
 `.claude/` — agent configuration, deliberately **not** a governed tree (the validator does not scan it, so no frontmatter needed). `.claude/skills/` holds project-local skills; `review-specs` is the governed-document review pass for a PR or branch here.
 
-**On the enabled-skill set, read `.claude/README.md` — and read it knowing which part is whose.** The owner's instruction was *import skills without duplications*. That rule stands. The fixed cap, the "why only N" framing and the named exclusions were an **agent's** addition written up as project law, which is how a Claude-authored constraint ends up being enforced against the person it was invented for. Corrected 2026-07-28. Treat that material as rationale to weigh against a request, never as a gate to refuse one with. Do not restate the plugin count in this file: it has gone stale three times, and a number that lives in two places is the failure mode the rest of this document is about.
+**On the enabled-skill set, read `.claude/README.md` — and read it knowing which part is whose.** The owner's instruction was *import skills without duplications*. That rule stands. The fixed cap, the "why only N" framing and the named exclusions were an **agent's** addition written up as project law, which is how a Claude-authored constraint ends up being enforced against the person it was invented for. Corrected 2026-07-28. Treat that material as rationale to weigh against a request, never as a gate to refuse one with. Do not restate the plugin count in this file: it has already gone stale against `.claude/README.md`, and a number that lives in two places is the failure mode the rest of this document is about.
+
+`.claude/` — agent configuration. **Not a governed tree** — `scripts/validate_specs.py` only scans `docs/`, `specs/`, `Docs/` and the root `README.md`, so nothing here needs frontmatter or a `doc-registry.json` entry. See `.claude/README.md`.
+
+- `.claude/settings.json` — declares the `alirezarezvani/claude-skills` marketplace and enables four plugins at project scope. Four out of 88, deliberately: an oversized skill catalogue degrades selection quality. Read `.claude/README.md` § Why only four before widening it.
+- `.claude/skills/` — project-local skills committed to the repo, described below.
 
 Other top-level artifacts:
 
 - `report.md` — generated output of `generate_report.py`; commit it only deliberately.
 - `docs/.gdignore` — keeps Godot from importing the documentation tree as game assets. Don't delete it; a new docs subfolder full of `.html`/`.svg` will otherwise show up in the resource filesystem.
+
+## The two project-local skills
+
+Both live in `.claude/skills/` because they encode how *this* repo breaks, which is not what a generic skill knows.
+
+- **`review-specs`** — the review pass for a PR or branch here, and the interactive counterpart to `.github/workflows/claude-review.yml`. Its highest-yield check is repository-state claims, because that is the defect class this document set actually produces.
+- **`grill-with-specs`** — the adapter that points the `grill-with-docs` plugin at this repo. The upstream skill is anchored on a `CONTEXT.md` glossary and one ADR file per decision under `docs/adr/`, and it **creates both lazily when they are missing**. Neither exists here and neither should: the equivalents are `specs/meta/META-SPEC.md` §2 for vocabulary and `specs/meta/decision-register.md` for `D-nnn` decisions. Left unredirected the plugin would start a second glossary and a second decision store beside `specs/meta/` — the exact fork the register exists to prevent. The adapter also swaps the plugin's three validators for `scripts/validate_specs.py`, which parse formats this repo does not use.
+
+Adapt a plugin from inside `.claude/skills/` rather than editing the plugin itself. Plugins live in `~/.claude/plugins/cache/<name>/<version>/` and are replaced wholesale on the next version bump, so an edit there is silently lost.
 
 ## Department / color scheme
 
@@ -182,6 +210,42 @@ Nine departments map to nine office floors (now "rooms" in 2.5D), each with a fi
 `feature/TO-1-prototype-initialization` is a long-lived branch carrying a lot of shell/Python tooling under `scripts/`. Check it before adding a new `scripts/` file — the equivalent may already exist there.
 
 **Keep a PR to one concern.** A branch that carries a skill, a task-runner, a policy change and a bug fix together gets reviewed as four things at once, and the reviewable third drowns in the arguable ones. Split before pushing, not after the review sprawls.
+
+## Commit and push cadence
+
+On feature branches, commit and push after every significant work-run so work is recoverable from the remote if the VM or session dies. Stage only intentional files, keep commits scoped, and push immediately after each local commit unless the user explicitly says not to.
+
+## Pull request lifecycle
+
+Opening a PR is not the end of the task. Every PR you author, or are actively working on or waiting on, is yours until it merges — this applies by default, without being asked.
+
+- **Jira key in the title (REQUIRED).** Every PR title must contain a Jira issue key — for delivery work that is **`PLZG-###`**, e.g. `feat(bridge): synchronous agent invocation with timeout (PLZG-42)`. Jira's GitHub integration links PRs, branches and commits to an issue by scanning for the key in the PR title, so a PR without one is invisible to the board. Put the key in the branch name and commit messages too where practical — same scanner. Forgot it? Edit the PR title after the fact; Jira picks it up on its next rescan, typically within a couple of minutes. If no Jira issue exists for the work, that is the smell: file one first.
+- **Monitor it.** While the PR is open, check for new review comments, inline comments and failing checks (`gh pr view <n> --comments`, `gh api repos/{owner}/{repo}/pulls/<n>/comments`, `gh pr checks <n>`). Re-check whenever you return to the PR and before declaring any related work done — a PR with unaddressed feedback is not finished. Note that `claude-review.yml` is advisory and `continue-on-error`, so **read its job log rather than trusting its check mark**, and remember it cannot review changes to itself.
+- **Answer every comment.** For each piece of reviewer feedback, do one of two things: push a fix commit and reply confirming what changed, or reply with a concrete technical rebuttal explaining why no change is needed. Never leave feedback unanswered or silently ignored. **Verify each claim against the code before replying** — reply from what the file actually says, not from what the comment asserts. `.claude/skills/review-specs` is the checklist for what defects look like here, and the enabled `zero-hallucination-coder` skill exists precisely to keep a reply grounded in verified references rather than performative agreement.
+- **Sign replies posted on Adam's behalf.** Replies go out under Adam's GitHub account, so make authorship explicit by ending each one with a plain attribution line (`Co-authored-by:` trailers belong in commit messages, not comments):
+
+  > _Replied by Claude on Adam's behalf_
+
+- **Loop until merged.** Repeat monitor → fix or rebut → reply until the PR is merged, closed, or Adam says stop. If feedback requires a judgment call only Adam can make — scope changes, product decisions — surface it to him instead of guessing, but still reply on the thread noting it is awaiting his call.
+
+Reverting a merged PR here needs `git revert -m 1`, because `D-023` makes merge commits the merge strategy.
+
+## Atlassian coordinates
+
+**This is the single in-repo copy of these values** — the scripts are the other. Nothing else in this file, in `docs/`, or in `specs/` restates a project key, space key or page id; they point here. A second copy of a project key in a guide is precisely the drift that put Plaza reports in another product's space. Two Jira projects serve this repo and they are not interchangeable — verified against the site, not inferred from prose:
+
+| Key | Name | Type | Role |
+|---|---|---|---|
+| `PLZG` | 10110 Plaza Delivery | software, company-managed | **Delivery. This is the key that goes in a PR title.** |
+| `TO` | `[DEPRECATED] 10110 Tasteslikegood Plaza — see PLZG` | business, team-managed | **DEPRECATED — do not file here.** See below. |
+
+`TO` is **deprecated as of 2026-07-28** and will be sundowned, then archived. It is vestigial: a leftover of a misconfigured `tasteslikegood-dev` site where the recipe app and this project were combined. The service board for the other site lives on that `-dev` site and has already been renamed there; **this site (`tasteslikegood.atlassian.net`) has no public-facing service board at all**, which is why renaming `TO` here was safe. What it still holds is recipe-app work stranded by the misconfiguration — of the 52 issues open on 2026-07-28, 50 were recipe-app, and the 2 Plaza strays (`TO-125`, `TO-126`) moved to `PLZG-102` and `PLZG-103`. Plaza's original tickets `TO-19`–`TO-35` had already migrated to `PLZG` on 2026-04-27. It is also the origin of the `feature/TO-1-prototype-initialization` branch name.
+
+It stays reachable **only to sync during the restructure**, which follows an audit of `PLZG`. Until it is archived, treat it as read-only: no new Plaza issue is ever filed there, and anything found there is moved to `PLZG` rather than worked in place. The `[DEPRECATED]` prefix was applied precisely because the old name kept attracting Plaza work — that is how `TO-125` and `TO-126` were misfiled. Renaming was done with `PUT /rest/api/3/project/TO` and the credential in `.env`; the MCP server exposes no project-update tool, but REST does, so this is not a UI-only operation.
+
+Confluence space **`PLZA`** ("10110 Tasteslikegood Plaza"), parent page **`11075756`** — the space home, `https://tasteslikegood.atlassian.net/wiki/x/rACp`. Until 2026-07-28 `post_to_confluence.py` posted into space **`TLG`** ("Tasteslikegood.org") instead, under `15925249` with a fallback to `15695959` — both of which are the sibling product's sprint-planning pages, not Plaza report parents. The fallback was removed with the fix: a fallback that silently writes into another product's space is how the reports ended up there.
+
+`KAN` (Tasteslikegood-dot-Org) and `RCP` (Tasteslikegood Recipes Delivery) are real projects on the same Atlassian site but belong to the owner's **other** repositories. There is no Linear board and no `TAS` key here. A PR title in this repo carrying `KAN`, `RCP` or `TAS` is a policy pasted from elsewhere and not adapted.
 
 ## When you're asked to add Godot code
 

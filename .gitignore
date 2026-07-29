@@ -16,3 +16,13 @@ __pycache__/
 # Godot
 .godot/
 *.translation
+
+# node — package.json is a task-runner facade with no dependencies. If real
+# dependencies ever land, commit package-lock.json; only these are ignored.
+node_modules/
+npm-debug.log*
+
+# generated status report — raw Jira issue titles from a cross-project board.
+# Committing it is a disclosure decision, not a formatting one. Regenerate with
+# generate_report.py; post it with post_to_confluence.py.
+report.md
