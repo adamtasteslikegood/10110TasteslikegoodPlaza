@@ -22,7 +22,11 @@ if os.path.exists(env_file):
 TOKEN_VARS = ("ATLASSIAN_API_TOKEN_BASE64", "ATLASSIAN_API_TOKEN_BASE64_USEREMAIL")
 auth_token = next((env_vars[k] for k in TOKEN_VARS if env_vars.get(k)), None)
 
-missing_vars = [key for key in ("ATLASSIAN_URL", "ATLASSIAN_JIRA_PROJECT_KEY") if not env_vars.get(key)]
+missing_vars = [
+    key
+    for key in ("ATLASSIAN_URL", "ATLASSIAN_JIRA_PROJECT_KEY")
+    if not env_vars.get(key)
+]
 if not auth_token:
     missing_vars.insert(0, " or ".join(TOKEN_VARS))
 if missing_vars:

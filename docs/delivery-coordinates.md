@@ -98,10 +98,15 @@ treat it as the smell it is, and fix the title rather than the board.
   integration links PRs, branches and commits by scanning the title, so a PR
   without one is invisible to the board. Fix a missed key by editing the title;
   the rescan picks it up.
-- **`generate_report.py`.** Still queries the deprecated board, so its output is
-  wrong today — see the caveat in `CLAUDE.md` § Python scripts. Retargeting to
-  `PLZG` is pending an audit, because a naive switch pulls in security alerts
-  filed there for unrelated repos.
+- **`generate_report.py`.** Reads its board from `ATLASSIAN_JIRA_PROJECT_KEY` in
+  `./.env` rather than hard-coding one, so **the deployed value is in that file,
+  not in this table and not in the script.** If a report comes out wrong, read
+  `.env` first. The value it was pinned to was `TO`, which is why the committed
+  reports carried a Plaza heading over another product's issues. Retargeting to
+  `PLZG` is pending an audit, because `PLZG` also holds security alerts filed for
+  unrelated repos.
+- **`post_to_confluence.py`.** Still hard-codes the parent page id, so that one
+  value genuinely lives in the script and must match this document.
 - **`report.md`.** Generated output carrying raw Jira issue titles from a
   cross-project board. Untracked and git-ignored: committing it is a disclosure
   decision, not a formatting one.
