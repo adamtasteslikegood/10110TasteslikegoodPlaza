@@ -8,11 +8,24 @@ This repo is **a running Godot prototype**. `project.godot` exists and `godot .`
 
 - `data/agents.json` — **132 agents**, generated from the submodule by `scripts/generate_agents_json.py` (`D-024`). Never hand-edit it; regenerate. M3 is done.
 - A working CI pipeline (`.github/workflows/ci.yml`) that already lints Python on every push/PR.
-- Two Atlassian integration scripts (`generate_report.py`, `post_to_confluence.py`) wired to a Jira project keyed `TO` and a Confluence parent page.
+- Two Atlassian integration scripts (`generate_report.py`, `post_to_confluence.py`) wired to Jira project `TO` and the `PLZA` Confluence space. Delivery work is tracked in Jira `PLZG` — see § Pull request lifecycle for which key goes where.
 - The upstream agent directory wired in as a git submodule at `./claude-code-tresor` (relative URL, not initialized in fresh checkouts — see below).
 - A consolidated documentation layout: `docs/` for design and reference, `specs/` for development-process files. Each folder has its own `README.md` describing what belongs there. The active design is `docs/designs/2.5D-RPG-Prototype.md`; the active work plan is `specs/roadmap.md`.
 
-Godot commands are real now: `godot .` runs it, `godot --headless --import` imports it, `godot --headless tests/smoke_test.tscn` gates it (exits 1 on failure). Node/npm infrastructure still does not exist — don't invent `npm test`. What's actually runnable is described below.
+Godot commands are real now: `godot .` runs it, `godot --headless --import` imports it, `godot --headless tests/smoke_test.tscn` gates it (exits 1 on failure).
+
+`npm test` is real too, as of this change — but read `package.json` before assuming what that buys you. **There is no JavaScript in this repo.** `package.json` is a task-runner facade: `npm test` shells out to `validate_specs.py`, then the Godot import, then the smoke test. There are no dependencies, no `node_modules`, no build step, and nothing to `npm install`. Treat a failure as a failure of the underlying Python or Godot gate, and debug it there.
+
+| Script | Runs |
+|---|---|
+| `npm start` | `godot .` — opens the office |
+| `npm test` | `validate` → `import` → `smoke`, the same order CI uses |
+| `npm run validate` | `python3 scripts/validate_specs.py` |
+| `npm run import` | `godot --headless --import` |
+| `npm run smoke` | `godot --headless tests/smoke_test.tscn` |
+| `npm run agents:check` | `python3 scripts/generate_agents_json.py --check` — **needs the submodule initialised and `pyyaml`**; deliberately left out of `npm test` so a fresh checkout still goes green |
+
+CI does not use these scripts. `.github/workflows/ci.yml` calls the same tools directly, so the facade can never become the only path to a gate. What's actually runnable is described below.
 
 ## Critical architectural reframe (read this before trusting the legacy reference docs)
 
@@ -135,8 +148,8 @@ ATLASSIAN_API_TOKEN_BASE64_USEREMAIL=<base64(email:token)>
 ATLASSIAN_URL=<host, no scheme>
 ```
 
-- `generate_report.py` — queries Jira project `TO` for issues updated in the last 7 days, buckets them by status (done / in progress / blocked / todo), and writes `report.md`.
-- `post_to_confluence.py` — converts `report.md` to HTML and posts it as a child of Confluence page `15925249` (fallback `15695959`).
+- `generate_report.py` — queries Jira project `TO` for issues updated in the last 7 days, buckets them by status (done / in progress / blocked / todo), and writes `report.md`. **The `TO` target is stale and will break.** `TO` is the other site's service board, so the committed `report.md` is headed "Status Report - 10110 Tasteslikegood Plaza" while every line under it is a Vegangenius Chef daily status. `TO` is now deprecated and scheduled for archival, at which point this script stops returning anything meaningful. Plaza delivery lives in `PLZG`. Retargeting is pending the `PLZG` audit — a naive switch to `project = "PLZG"` would pull in the seven security alerts filed there for unrelated repos (`gbrain`, `gstack`, `alirez-claude-skills`).
+- `post_to_confluence.py` — converts `report.md` to HTML and posts it as a child of Confluence page `11075756`, the home of space `PLZA` ("10110 Tasteslikegood Plaza"). No fallback: if that page is unreachable the script exits 1 rather than writing somewhere else.
 
 These read `./.env` directly (no python-dotenv); they'll crash with a `KeyError` if either var is missing. The lint job tolerates them as-is.
 
@@ -168,9 +181,23 @@ Top level holds the entry-point docs every contributor (human or agent) is expec
 - `specs/task-tracker.md` — working checklist across all phases; same 3D-deprecation caveat as `roadmap.md`.
 - `specs/branching-strategy.md` — branch protection, status checks, CODEOWNERS gating. Still says "ClaudeForge" and references workflows that don't exist here; treat as intended policy until those land.
 
+`.claude/` — agent configuration. **Not a governed tree** — `scripts/validate_specs.py` only scans `docs/`, `specs/`, `Docs/` and the root `README.md`, so nothing here needs frontmatter or a `doc-registry.json` entry. See `.claude/README.md`.
+
+- `.claude/settings.json` — declares the `alirezarezvani/claude-skills` marketplace and enables four plugins at project scope. Four out of 88, deliberately: an oversized skill catalogue degrades selection quality. Read `.claude/README.md` § Why only four before widening it.
+- `.claude/skills/` — project-local skills committed to the repo, described below.
+
 Other top-level artifacts:
 
 - `report.md` — generated output of `generate_report.py`; commit it only deliberately.
+
+## The two project-local skills
+
+Both live in `.claude/skills/` because they encode how *this* repo breaks, which is not what a generic skill knows.
+
+- **`review-specs`** — the review pass for a PR or branch here, and the interactive counterpart to `.github/workflows/claude-review.yml`. Its highest-yield check is repository-state claims, because that is the defect class this document set actually produces.
+- **`grill-with-specs`** — the adapter that points the `grill-with-docs` plugin at this repo. The upstream skill is anchored on a `CONTEXT.md` glossary and one ADR file per decision under `docs/adr/`, and it **creates both lazily when they are missing**. Neither exists here and neither should: the equivalents are `specs/meta/META-SPEC.md` §2 for vocabulary and `specs/meta/decision-register.md` for `D-nnn` decisions. Left unredirected the plugin would start a second glossary and a second decision store beside `specs/meta/` — the exact fork the register exists to prevent. The adapter also swaps the plugin's three validators for `scripts/validate_specs.py`, which parse formats this repo does not use.
+
+Adapt a plugin from inside `.claude/skills/` rather than editing the plugin itself. Plugins live in `~/.claude/plugins/cache/<name>/<version>/` and are replaced wholesale on the next version bump, so an edit there is silently lost.
 
 ## Department / color scheme
 
@@ -192,6 +219,40 @@ The intended flow is `feature/* | fix/* | hotfix/* → dev → main` with Conven
 - Task-assigned working branches (e.g. `claude/...`) — develop here, commit, push, open a draft PR. The session-assigned branch is specified in the system prompt.
 
 `specs/branching-strategy.md` describes branch protection rules, required status checks, and CODEOWNERS gating — but the doc still says "ClaudeForge" throughout and references workflows (`pr-into-dev.yml`, `dev-to-main.yml`, `release.yml`) that **don't exist in this repo**. Treat it as intended policy for once code lands, not active rules. The Conventional Commits format (`type(scope): subject`, lowercase, imperative, no trailing period) is worth following now — see `CONTRIBUTING.md` for the everyday flow.
+
+## Commit and push cadence
+
+On feature branches, commit and push after every significant work-run so work is recoverable from the remote if the VM or session dies. Stage only intentional files, keep commits scoped, and push immediately after each local commit unless the user explicitly says not to.
+
+## Pull request lifecycle
+
+Opening a PR is not the end of the task. Every PR you author, or are actively working on or waiting on, is yours until it merges — this applies by default, without being asked.
+
+- **Jira key in the title (REQUIRED).** Every PR title must contain a Jira issue key — for delivery work that is **`PLZG-###`**, e.g. `feat(bridge): synchronous agent invocation with timeout (PLZG-42)`. Jira's GitHub integration links PRs, branches and commits to an issue by scanning for the key in the PR title, so a PR without one is invisible to the board. Put the key in the branch name and commit messages too where practical — same scanner. Forgot it? Edit the PR title after the fact; Jira picks it up on its next rescan, typically within a couple of minutes. If no Jira issue exists for the work, that is the smell: file one first.
+- **Monitor it.** While the PR is open, check for new review comments, inline comments and failing checks (`gh pr view <n> --comments`, `gh api repos/{owner}/{repo}/pulls/<n>/comments`, `gh pr checks <n>`). Re-check whenever you return to the PR and before declaring any related work done — a PR with unaddressed feedback is not finished. Note that `claude-review.yml` is advisory and `continue-on-error`, so **read its job log rather than trusting its check mark**, and remember it cannot review changes to itself.
+- **Answer every comment.** For each piece of reviewer feedback, do one of two things: push a fix commit and reply confirming what changed, or reply with a concrete technical rebuttal explaining why no change is needed. Never leave feedback unanswered or silently ignored. **Verify each claim against the code before replying** — reply from what the file actually says, not from what the comment asserts. `.claude/skills/review-specs` is the checklist for what defects look like here, and the enabled `zero-hallucination-coder` skill exists precisely to keep a reply grounded in verified references rather than performative agreement.
+- **Sign replies posted on Adam's behalf.** Replies go out under Adam's GitHub account, so make authorship explicit by ending each one with a plain attribution line (`Co-authored-by:` trailers belong in commit messages, not comments):
+
+  > _Replied by Claude on Adam's behalf_
+
+- **Loop until merged.** Repeat monitor → fix or rebut → reply until the PR is merged, closed, or Adam says stop. If feedback requires a judgment call only Adam can make — scope changes, product decisions — surface it to him instead of guessing, but still reply on the thread noting it is awaiting his call.
+
+Reverting a merged PR here needs `git revert -m 1`, because `D-023` makes merge commits the merge strategy.
+
+**This project's Atlassian coordinates**, replacing whatever a policy copied from another repo carries. Two Jira projects serve this repo and they are not interchangeable — verified against the site, not inferred from prose:
+
+| Key | Name | Type | Role |
+|---|---|---|---|
+| `PLZG` | 10110 Plaza Delivery | software, company-managed | **Delivery. This is the key that goes in a PR title.** |
+| `TO` | `[DEPRECATED] 10110 Tasteslikegood Plaza — see PLZG` | business, team-managed | **DEPRECATED — do not file here.** See below. |
+
+`TO` is **deprecated as of 2026-07-28** and will be sundowned, then archived. It is vestigial: a leftover of a misconfigured `tasteslikegood-dev` site where the recipe app and this project were combined. The service board for the other site lives on that `-dev` site and has already been renamed there; **this site (`tasteslikegood.atlassian.net`) has no public-facing service board at all**, which is why renaming `TO` here was safe. What it still holds is recipe-app work stranded by the misconfiguration — of the 52 issues open on 2026-07-28, 50 were recipe-app, and the 2 Plaza strays (`TO-125`, `TO-126`) moved to `PLZG-102` and `PLZG-103`. Plaza's original tickets `TO-19`–`TO-35` had already migrated to `PLZG` on 2026-04-27. It is also the origin of the `feature/TO-1-prototype-initialization` branch name.
+
+It stays reachable **only to sync during the restructure**, which follows an audit of `PLZG`. Until it is archived, treat it as read-only: no new Plaza issue is ever filed there, and anything found there is moved to `PLZG` rather than worked in place. The `[DEPRECATED]` prefix was applied precisely because the old name kept attracting Plaza work — that is how `TO-125` and `TO-126` were misfiled. Renaming was done with `PUT /rest/api/3/project/TO` and the credential in `.env`; the MCP server exposes no project-update tool, but REST does, so this is not a UI-only operation.
+
+Confluence space **`PLZA`** ("10110 Tasteslikegood Plaza"), parent page **`11075756`** — the space home, `https://tasteslikegood.atlassian.net/wiki/x/rACp`. Until 2026-07-28 `post_to_confluence.py` posted into space **`TLG`** ("Tasteslikegood.org") instead, under `15925249` with a fallback to `15695959` — both of which are the sibling product's sprint-planning pages, not Plaza report parents. The fallback was removed with the fix: a fallback that silently writes into another product's space is how the reports ended up there.
+
+`KAN` (Tasteslikegood-dot-Org) and `RCP` (Tasteslikegood Recipes Delivery) are real projects on the same Atlassian site but belong to the owner's **other** repositories. There is no Linear board and no `TAS` key here. A PR title in this repo carrying `KAN`, `RCP` or `TAS` is a policy pasted from elsewhere and not adapted.
 
 ## When you're asked to add Godot code
 

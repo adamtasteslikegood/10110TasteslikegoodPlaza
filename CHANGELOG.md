@@ -10,6 +10,148 @@ section at release time. PR references in parentheses.
 
 ## [Unreleased]
 
+### Changed — `TO` is deprecated; Plaza work consolidates on `PLZG`
+
+- **`TO` is not a Plaza board and never should have been treated as one.** It is the
+  service board for the other site's user-facing issues; the "10110 Tasteslikegood Plaza"
+  project name survives from a misconfigured `tasteslikegood-dev` site where the recipe
+  app and this project were combined. Triaged 2026-07-28: of 52 issues, 34 are
+  `[repo-status]` daily reports for Vegangenius Chef, 15 are recipe-app engineering, 1 is
+  cookbook-repo housekeeping, and 2 were Plaza strays.
+- **The 2 strays moved** — `TO-125` → `PLZG-102`, `TO-126` → `PLZG-103`. Jira cannot move
+  an issue between a team-managed and a company-managed project, so they were recloned
+  with descriptions carried over verbatim, linked to the originals, and the originals
+  closed. Same pattern as the `TO-19`–`TO-35` migration of 2026-04-27.
+- **`TO` is now deprecated**, to be sundowned and then archived. It stays reachable only
+  to sync during the restructure, which follows an audit of `PLZG`. Treat it as read-only.
+- **Renamed to `[DEPRECATED] 10110 Tasteslikegood Plaza — see PLZG`.** The old name was
+  the hazard: it is precisely why `TO-125` and `TO-126` were misfiled. Done with
+  `PUT /rest/api/3/project/TO` and the `.env` credential, then verified by reading the
+  project back — the MCP server exposes no project-update tool, but REST does, so this
+  was never UI-only as first recorded. Key and project type unchanged.
+- **Safe to rename because this site has no public-facing service board.** The other
+  site's service board lives on the `tasteslikegood-dev` site and was already renamed
+  there; `TO` on `tasteslikegood.atlassian.net` is purely vestigial.
+
+### Changed — `PLZG` restructured to match the repo (2026-07-28)
+
+- **Sprint 1 closed.** It had been active 77 days past its 2026-05-12 end date with
+  nothing resolved in it. The four unfinished items (`PLZG-3`, `-13`, `-30`, `-35`)
+  carried back to the backlog.
+- **Three milestones closed as delivered, with the repo cited as evidence** — `PLZG-8`
+  (M1), `PLZG-19` (M3), `PLZG-24` (M4, the `[CRITICAL PATH]` item). Each closure notes
+  what actually shipped differs from the ticket: `CharacterBody2D` not `CharacterBody3D`,
+  `Area2D` not `Area3D`, 132 agents not 137. `PLZG-67` and `PLZG-71` closed likewise —
+  `agents.json` is generated and CI-gated.
+- **Four live duplicate pairs closed** — `PLZG-88/62`, `-89/54`, `-90/67`, `-91/63`. The
+  2026-04-28 dedup pass closed one copy of many milestones but left these open twice.
+- **The epic and Phase 1 story rewritten for 2.5D.** `PLZG-4` described "a first-person
+  3D office game… 9-floor building"; `PLZG-13` prescribed `CSGBox3D`, `Area3D` and
+  `NavigationRegion3D`. All now match `D-001`, and record that 3D is deferred under
+  `D-004` rather than cancelled.
+- **Two boards collapsed to one, and a duplicate sprint deleted.** `PLZG` carried boards
+  167 ("PLZG board") and 169 ("PLZG Scrum Board") over the same `project = PLZG` filter,
+  plus two sprints both named "PLZG Sprint 1" — the active one and an empty `future` one.
+  The empty sprint and board 167 are gone; 169 survives because it owns the real sprint
+  history. Renaming it is UI-only (`PUT /rest/agile/1.0/board/169` answers 405).
+- **`PLZG Sprint 2` opened** for planning. Net: 41 done / 32 open, of which 30 carry
+  `project:plaza`.
+
+### Fixed — both Atlassian scripts were broken three different ways
+
+- **The credential variable name never matched.** `.env` carries
+  `ATLASSIAN_API_TOKEN_BASE64`; both scripts required
+  `ATLASSIAN_API_TOKEN_BASE64_USEREMAIL`, so a correctly-populated `.env` still failed.
+  Both now accept either name, and `post_to_confluence.py` gained the missing-config
+  check `generate_report.py` already had instead of raising `KeyError`.
+- **`POST /rest/api/3/search` now answers `410 Gone`.** Atlassian retired it. Replaced
+  with `/rest/api/3/search/jql`, verified against the live site. The response still
+  carries an `issues` array, so the bucketing code is untouched.
+- **The board was hard-coded to `"TO"`.** Now read from `ATLASSIAN_JIRA_PROJECT_KEY`
+  and *required* rather than defaulted, so a missing key fails loudly instead of
+  silently querying the wrong project.
+- **`report.md` regenerated.** The committed copy was April's, from the wrong board —
+  headed "10110 Tasteslikegood Plaza" over nothing but Vegangenius Chef daily statuses.
+  The new one lists real `PLZG` work, and surfaces `PLZG-100` (a security alert for an
+  unrelated repo), which is the filtering question the `PLZG` audit still has to settle.
+
+### Added — `package.json` as a task-runner facade, and a PR lifecycle policy
+
+- **`npm test` is now real**, and runs `validate_specs.py` → `godot --headless --import`
+  → `godot --headless tests/smoke_test.tscn`, the same order CI uses. Verified end to
+  end: exit 0, 132 agents, all checks passed.
+- **There is still no JavaScript.** No dependencies, no `node_modules`, no build step,
+  nothing to `npm install`. `package.json` is a facade over the gates that already
+  existed, so a failure is a Python or Godot failure and gets debugged there.
+- **`npm init -y` was not left as it landed.** It named the package after the worktree
+  directory, scraped `README.md`'s YAML frontmatter into `description`, pointed `main`
+  at an `index.js` that does not exist, and wrote the standard `"test": "echo \"Error:
+  no test specified\" && exit 1"` stub — a command that exists and always fails, which
+  is worse than no command at all in a repo whose binding rule §5.4 is about invented
+  infrastructure. All four were replaced.
+- **`agents:check` is deliberately outside `npm test`** — `generate_agents_json.py
+  --check` needs the submodule initialised and `pyyaml`, so including it would make a
+  fresh checkout fail its own test command.
+- **CI does not call these scripts.** `ci.yml` invokes the same tools directly, so the
+  facade can never become the only path to a gate.
+- **Added a commit/push cadence and PR lifecycle policy to `CLAUDE.md`** — Jira key in
+  every PR title, monitor the PR until it merges, answer every comment with either a fix
+  or a technical rebuttal, verify claims against the code before replying, sign replies
+  made on Adam's behalf. Adapted from the policy used in the owner's other repository:
+  there is no Linear board and no `TAS` key here, no `Backend/` directory, no
+  `.claude/hooks/` backstop, and `superpowers` is not among the four plugins this
+  project enables — so the verify-before-replying rule cites `review-specs` and
+  `zero-hallucination-coder` instead.
+### Fixed — reports were being published into the sibling product's Confluence space
+
+- **`post_to_confluence.py` posted into space `TLG` ("Tasteslikegood.org"), not this
+  project's space.** Its parent page `15925249` is "Sprint 0 Plan - Agile Operating
+  System" and the fallback `15695959` is "Scrum Bootstrap And Board Plan" — both TLG
+  planning documents. Every generated report has been landing under another product's
+  sprint paperwork. Now posts to `11075756`, the home of space **`PLZA`** ("10110
+  Tasteslikegood Plaza").
+- **The fallback was removed rather than repointed.** A fallback that silently writes
+  into a different space is the mechanism that hid this; the script now exits 1 when the
+  parent page is unreachable.
+
+### Changed — Jira and Confluence coordinates verified against the live site
+
+- **Two Jira projects serve this repo and they are not interchangeable.** `PLZG` —
+  "10110 Plaza Delivery", a company-managed *software* project — is the key that belongs
+  in a PR title. `TO` — "10110 Tasteslikegood Plaza", a team-managed *business* project —
+  is the team's WIP board, and is what `generate_report.py` queries. Both verified
+  against the Atlassian site rather than inferred; `KAN` and `RCP` are real but belong to
+  the owner's other repositories.
+
+### Added — `grill-with-specs`, the adapter that points a plugin at this repo
+
+- **`.claude/skills/grill-with-specs`** runs the `grill-with-docs` interview against
+  `specs/meta/` instead of the layout the plugin assumes. Upstream is anchored on a
+  `CONTEXT.md` glossary and one ADR file per decision under `docs/adr/`, and it
+  creates both lazily when they are missing. Neither exists here, so left
+  unredirected the plugin would have started a second glossary and a second decision
+  store beside `specs/meta/` — the fork the register exists to prevent.
+- **The plugin's three validators are replaced, not repointed.** `adr_scanner.py`
+  expects one file per decision; the register is a single table. They parse formats
+  this repo does not use, so the adapter runs `scripts/validate_specs.py` instead.
+- **Adds the questions a register row needs answered** — which tier owns it, which
+  `doc_id` is entitled to originate it — and records that the validator's authority
+  check is coarse by design: it gates whether an authority *may* originate anything,
+  never whether a decision falls inside its subject matter. `D-005` sat in that gap
+  through two green releases until issue #18 closed it in v0.2.9 — the skill cites it
+  as a resolved worked example, not a live one (`TO-126`).
+- Written as a separate in-repo skill rather than an edit to the plugin, which lives
+  in `~/.claude/plugins/cache/` and is replaced wholesale on the next version bump.
+
+### Fixed — two stale infrastructure claims in `review-specs`
+
+- The review skill opened with "There is no Godot project and no Node here" and told
+  reviewers not to recommend `godot --headless`. The Godot project and that command
+  both landed in v0.2.8; only the Node half was still true. Same defect class the
+  skill's own §2 exists to catch, and the same one `META-SPEC` §5.4 was corrected for
+  in **v0.2.8** (`ec6d9d3`, 2026-07-26) — a hard-coded inventory dates faster than the
+  thing it describes. Both now point at `CLAUDE.md` § Repository state rather than
+  restating it.
 ### Changed — doc set v0.2.9: `D-005` gets an entitled origin (#18)
 
 - **`D-005` (the bridge never knows the UI exists) moves to `PLATFORM-DECISIONS`.**
