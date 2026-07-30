@@ -107,3 +107,21 @@ Project-local skills committed to the repo.
 
 The adapter is a separate skill rather than an edit to the plugin because the plugin lives in
 `~/.claude/plugins/cache/` and is replaced wholesale on the next install or version bump.
+
+## Reference files split out of `CLAUDE.md`
+
+`CLAUDE.md` is held to `META-SPEC` §6's ~200-line instruction budget. It had drifted to
+374 lines, so `PLZG-107` moved three blocks of reference material here and left pointers
+behind. None of it is a governed document — `scripts/validate_specs.py` does not scan
+`.claude/`, so nothing here carries frontmatter or a `doc-registry.json` entry.
+
+- **`gbrain.md`** — the whole GBrain contract: coverage, the one-source-per-path-subtree
+  rule, the `--strategy auto` bookmark trap, and why `report.md` must stay untracked.
+  Per-machine; nothing in CI touches it.
+- **`godot-conventions.md`** — the tree layout, the three autoloads and their interaction
+  pattern, and the `bridge/` plan. Read before adding Godot code.
+- **`pr-workflow.md`** — what the agent does with a PR it owns: the `PLZG-###` title rule,
+  monitoring, answering every comment, and the reply signature format.
+
+A pointer in `CLAUDE.md` is not a summary you can rely on — it names the rules most often
+skipped and defers the rest. Read the file itself before acting in its area.
