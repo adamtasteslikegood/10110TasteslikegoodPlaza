@@ -35,7 +35,10 @@ for arg in "$@"; do
         --strict)   STRICT=1 ;;
         --no-fetch) FETCH=0 ;;
         -h|--help)
-            sed -n '2,28p' "$0" | sed 's/^# \{0,1\}//'
+            # Print the header block, stopping at the first non-comment line.
+            # A hardcoded line range was used here and leaked `set -u` into the
+            # output when the header grew; deriving the end is drift-proof.
+            awk 'NR==1 {next} /^#/ {sub(/^# ?/, ""); print; next} {exit}' "$0"
             exit 0
             ;;
         *)
@@ -72,12 +75,26 @@ if ! git remote get-url origin >/dev/null 2>&1; then
     finish 1
 fi
 
-# Pick what to compare against: an explicit override, else the branch's own
-# upstream, else origin/dev (this repo's integration branch), else origin's HEAD.
+# Pick what to compare against: the branch this checkout INTEGRATES INTO, which
+# is not the same as the branch's own upstream.
+#
+# Do not reach for @{upstream} first. On any pushed feature branch it resolves to
+# that branch's own remote copy, so the script would compare the branch with
+# itself and report "in sync" while origin/dev raced ahead — a no-op in exactly
+# the case this tool exists to catch. That shipped in the first revision of this
+# script and was caught in review of PR #70; the local tests missed it because
+# they only ran on dev and on a detached worktree, the two states where
+# @{upstream} is absent or happens to equal origin/dev.
+#
+# Only when HEAD *is* an integration branch does its own upstream become the
+# right answer — otherwise sitting on main would be measured against dev.
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+
 if [ -n "${PLZG_BASE_REF:-}" ]; then
     BASE="$PLZG_BASE_REF"
-elif BASE_UPSTREAM=$(git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null); then
-    BASE="$BASE_UPSTREAM"
+elif [ "$CURRENT_BRANCH" = "dev" ] || [ "$CURRENT_BRANCH" = "main" ]; then
+    BASE=$(git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null) \
+        || BASE="origin/$CURRENT_BRANCH"
 elif git rev-parse --verify --quiet origin/dev >/dev/null 2>&1; then
     BASE="origin/dev"
 else
