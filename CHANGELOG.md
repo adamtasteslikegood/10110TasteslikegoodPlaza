@@ -924,7 +924,7 @@ twenty-two, because the pre-pivot history is six commits and one PR.
 
 | Tag | Commit | Date | What it marks |
 |---|---|---|---|
-| `v0.0.0` | `8204ec4` | 2026-04-24 | Repo genesis, 3D era. Includes PR `#1` (*Added Readme.md*), the only PR merged before the pivot. |
+| `v0.0.0` | `da65887` | 2026-04-24 | End of the pre-2.5D era: the merge of PR `#1` (*Added Readme.md*), the only PR merged before the pivot. Repo genesis `8204ec4` is its parent, so the whole 3D-era history is this tag's ancestry. |
 | `v0.1.0` | `a08d3df` | 2026-04-28 | The 2.5D line opens — `docs/designs/2.5D-RPG-Prototype.md` first lands, alongside `generate_report.py` and `post_to_confluence.py`. A direct commit, not a PR, which is why the boundary is a date rather than a merge. |
 
 ### The 2.5D line — `v0.1.1` … `v0.1.22`
