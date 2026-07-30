@@ -27,5 +27,10 @@ npm-debug.log*
 # generate_report.py; post it with post_to_confluence.py.
 report.md
 
+# gbrain source pin — names this machine's local semantic index for this
+# worktree. Per-worktree machine state, not project config; see CLAUDE.md
+# § GBrain semantic search.
+.gbrain-source
+
 # git worktrees
 .claude/worktrees/

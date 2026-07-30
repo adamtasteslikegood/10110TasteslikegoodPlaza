@@ -10,6 +10,41 @@ section at release time. PR references in parentheses.
 
 ## [Unreleased]
 
+### Added — the governed doc set is in the gbrain semantic index (`PLZG-113`)
+
+- **Only code was indexed.** The machine-local gbrain source walked
+  `.py`/`.json`/`.yml`/`.html`, so `specs/meta/`, `docs/designs/`, the
+  storyboard, the decision register and `CLAUDE.md` were all absent. Searching
+  for a `D-nnn` returned nothing, which reads as *the decision does not exist*
+  rather than *this was never indexed* — the repo's recurring defect direction,
+  an unverified claim of absence.
+- **Now 39 file-backed pages** — 26 markdown + 13 code — synced with
+  `--strategy auto`. Verified by running searches rather than reading the
+  stage summary: `docs/storyboard-week1` scores 0.89 and
+  `docs/designs/platform-decisions` 0.88 on a `D-005` query.
+- **`report.md` was poisoning results.** While still tracked it was the top hit
+  at **0.92** for any Plaza status question and answered with Vegangenius Chef
+  recipe-app rows. Page deleted; the file is untracked and gitignored on `dev`,
+  so the git-tracked walker now skips it.
+- **Three gbrain traps documented in `CLAUDE.md`**, all confirmed by reading the
+  tool's source, not inferred: `last_commit` is a *single* per-source bookmark
+  shared by every strategy, so the `--strategy code` run that `/sync-gbrain`
+  issues advances it past markdown-only commits and skips those doc edits
+  permanently; `sources add` rejects overlapping paths in either direction, so a
+  separate `docs/` source cannot be registered while the root is claimed; and an
+  out-of-quota embed provider reports every stage `OK` while writing zero
+  searchable chunks.
+- **Decided against indexing the agent and skill repositories.**
+  `data/agents.json` already carries every agent's `name`, `role`, `dept`,
+  `description` and `tools` and answers agent-selection queries as the top hit,
+  so `claude-code-tresor`'s 342 prompt bodies would add text no consumer here
+  reads. Claude Code selects skills from `SKILL.md` frontmatter in the plugin
+  cache — a different mechanism from semantic search — so indexing the
+  2,717-file marketplace buys retrieval dilution and no better selection.
+  Reasoning recorded in `CLAUDE.md` so it is not re-litigated.
+- **No CI impact.** gbrain is per-machine; no gate depends on it, and a
+  contributor without it loses nothing.
+
 ### Added — Sprint 2 is chartered, and the delivery decisions are written down
 
 - **`specs/sprint-2-charter.md`** (`SPRINT-2-CHARTER`, tier 3, `derived`) — the complete
