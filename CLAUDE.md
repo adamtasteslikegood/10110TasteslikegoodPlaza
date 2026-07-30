@@ -148,12 +148,7 @@ The `gemini-*.yml` suite that used to sit here was removed on 2026-07-28. It nev
 
 ## Python scripts (Atlassian glue)
 
-`generate_report.py` queries Jira for the last 7 days, buckets by status, and writes `report.md`; `post_to_confluence.py` converts that to HTML and posts it under a parent page. Both read `./.env` directly (no python-dotenv) for `ATLASSIAN_API_TOKEN_BASE64_USEREMAIL` (base64 of `email:token`) and `ATLASSIAN_URL` (host, no scheme), and `KeyError` out if either is missing.
-
-```
-ATLASSIAN_API_TOKEN_BASE64_USEREMAIL=<base64(email:token)>
-ATLASSIAN_URL=<host, no scheme>
-```
+`generate_report.py` queries Jira for the last 7 days, buckets by status, and writes `report.md`; `post_to_confluence.py` converts that to HTML and posts it under a parent page. Both read `./.env` directly (no python-dotenv). **`.env.example` documents every variable they read and which ones nothing reads — copy it, don't retype it here.** Neither raises `KeyError` any more: since 2026-07-28 both name the missing variables and exit 1.
 
 **Which project and space each script targets is stated once, in § Atlassian coordinates — read that, or read the scripts. Do not add a third copy here.** What belongs in this section is behaviour, not coordinates:
 
