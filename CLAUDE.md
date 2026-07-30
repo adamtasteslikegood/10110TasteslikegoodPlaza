@@ -2,6 +2,14 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Sync the environment before anything else
+
+**Run `git fetch origin && git status` before reading state, planning, or editing — in every checkout, worktree and sandbox.** Nothing below this line is trustworthy from a stale tree, and this repo's whole failure mode is confident claims about state that was true somewhere else.
+
+This is not hypothetical. A `/cs:grill-pm` session on 2026-07-30 planned a "sundown Jira TO" sprint from a checkout **31 commits behind `origin/dev`** and produced three findings that were already fixed upstream — including "`generate_report.py` hardcodes `project = "TO"`", which had already been changed to read `ATLASSIAN_JIRA_PROJECT_KEY`. The board was stale in the other direction: tickets still open for work already merged. Three states had diverged — local tree, `origin/dev`, and the Jira board — and each looked authoritative on its own.
+
+The general rule, which generalises the one `docs/delivery-coordinates.md` earned about boards: **verify the state you are about to assert, against the system that owns it.** A checkout does not own upstream state; a ticket does not own whether code is fixed.
+
 ## Repository state
 
 This repo is **a running Godot prototype**. `project.godot` exists and `godot .` opens a walkable office:
@@ -21,6 +29,7 @@ Every row below was executed against a real checkout. The rule this table exists
 
 | Command | What it does |
 |---|---|
+| `git fetch origin && git status` | **Run first, every session.** See § Sync the environment. `git rev-list --left-right --count HEAD...origin/dev` gives the ahead/behind counts directly. |
 | `git submodule update --init --recursive` | Populates `claude-code-tresor/`. Empty in fresh checkouts; the generator needs it. |
 | `godot .` | Opens the prototype — lobby, corridor, server room; arrows or WASD. |
 | `godot --headless --import` | Imports assets. Needed once on a fresh clone before the headless test. |
@@ -195,7 +204,7 @@ Nine departments map to nine office floors (now "rooms" in 2.5D), each with a fi
 
 ## Document conventions
 
-- **This file is held to the ~200-line instruction budget** — `META-SPEC` §6 "Conventions for AI-consumable specs", item 6. (It is not a `§6.6`; that subsection does not exist, and the mis-citation is propagated in the title of issue #37.) It has drifted past it twice, each time for good per-change reasons — which is how a heuristic quietly stops being followed. If a change would push it well over, cut something or move it behind a pointer instead. Nothing in CI enforces this.
+- **This file is held to the ~200-line instruction budget** — `META-SPEC` §6 "Conventions for AI-consumable specs", item 6. (It is not a `§6.6`; that subsection does not exist, and the mis-citation is propagated in the title of issue #37.) It has drifted past it **three times**, each time for good per-change reasons — which is how a heuristic quietly stops being followed. If a change would push it well over, cut something or move it behind a pointer instead. Nothing in CI enforces this. **Drift #3 was § *Sync the environment before anything else*, added 2026-07-30: 283 → 292 lines, purely additive with no compensating cut.** It was added anyway because the rule it states would have prevented the drift that produced it, and taken knowingly rather than by omission — which is the distinction this bullet exists to preserve. The compensating cut is owed, tracked as `PLZG-107` / issues #47 and #37.
 - Most reference and process docs (under `docs/` and `specs/`) end with `*Last updated: <month> 2026*`. Update that line when editing them.
 - `docs/agent-directory.md` contains unresolved template artifacts (`{{rolels}}`, `{{charactors}}`, `{{roles}}`, etc.) left over from the upstream fork. Don't propagate them into new text; clean up the section you're editing.
 - Attribution: the project is an MIT-licensed adaptation of [alirezarezvani/claude-code-tresor](https://github.com/alirezarezvani/claude-code-tresor), via the [adamtasteslikegood/claude-code-tresor](https://github.com/adamtasteslikegood/claude-code-tresor) fork. Preserve the attribution block at the bottom of `README.md` and `docs/agent-directory.md`.

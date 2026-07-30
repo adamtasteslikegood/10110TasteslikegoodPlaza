@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agile — the working version</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Inter+Tight:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --wall:#E7EAE6;
+  --panel:#FFFFFF;
+  --ink:#10171A;
+  --pine:#0F4C42;
+  --teal:#2A8C7A;
+  --marker:#E0512B;
+  --highlight:#F5D142;
+  --slate:#6B7A7F;
+  --hair:#CDD5D2;
+  --mint:#DCEAE5;
+
+  --display:"Bricolage Grotesque","Trebuchet MS",system-ui,sans-serif;
+  --body:"Inter Tight","Helvetica Neue",Arial,sans-serif;
+  --mono:"JetBrains Mono","Courier New",monospace;
+
+  --gut:clamp(1.1rem,3.2vw,2.6rem);
+  --maxw:1180px;
+}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--wall);color:var(--ink);
+  font-family:var(--body);font-size:17px;line-height:1.62;
+  -webkit-font-smoothing:antialiased;
+}
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{animation-duration:.001ms!important;transition-duration:.001ms!important}
+}
+
+/* ---------- type ---------- */
+h1,h2,h3,h4{font-family:var(--display);font-weight:800;letter-spacing:-.02em;margin:0;line-height:1.05}
+h2{font-size:clamp(1.9rem,4vw,3.1rem)}
+h3{font-size:clamp(1.15rem,2vw,1.5rem);letter-spacing:-.01em}
+h4{font-size:1.02rem;font-weight:600;letter-spacing:0}
+p{margin:0 0 1rem}
+a{color:var(--pine)}
+
+.eyebrow{
+  font-family:var(--mono);font-size:.71rem;font-weight:700;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--marker);margin:0 0 .8rem;display:block;
+}
+.lede{font-size:clamp(1.02rem,1.6vw,1.22rem);color:#3B474B;max-width:64ch}
+.mono{font-family:var(--mono)}
+.muted{color:var(--slate)}
+
+/* the signature: a hand-swiped highlighter mark */
+.mark{position:relative;z-index:0;white-space:nowrap}
+.mark::before{
+  content:"";position:absolute;left:-.14em;right:-.14em;top:.44em;bottom:.02em;
+  background:var(--highlight);z-index:-1;transform:skewX(-11deg) rotate(-.5deg);
+  border-radius:.08em .3em .12em .24em;
+}
+.mark--pine::before{background:var(--mint)}
+
+/* ---------- shell ---------- */
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 var(--gut)}
+section{padding:clamp(3.4rem,7vw,6.2rem) 0;border-top:1px solid var(--hair)}
+section:first-of-type{border-top:0}
+
+/* left rail */
+.rail{
+  position:fixed;left:1.5rem;top:50%;transform:translateY(-50%);z-index:40;
+  display:none;flex-direction:column;gap:.55rem;
+}
+@media(min-width:1340px){.rail{display:flex}}
+.rail a{
+  font-family:var(--mono);font-size:.66rem;letter-spacing:.1em;color:var(--slate);
+  text-decoration:none;display:flex;align-items:center;gap:.5rem;opacity:.62;
+  transition:opacity .2s,color .2s;
+}
+.rail a .bar{width:14px;height:2px;background:currentColor;transition:width .22s}
+.rail a:hover,.rail a:focus-visible{opacity:1;color:var(--ink)}
+.rail a.on{opacity:1;color:var(--marker)}
+.rail a.on .bar{width:30px}
+
+/* ---------- hero ---------- */
+.hero{
+  min-height:min(94vh,860px);display:flex;align-items:center;position:relative;
+  overflow:hidden;background:var(--ink);color:#EDF1F0;border-top:0;padding:0;
+}
+.hero .wrap{width:100%;position:relative;z-index:2;padding-top:5rem;padding-bottom:4rem}
+.hero h1{
+  font-size:clamp(4.6rem,17vw,13rem);line-height:.82;color:#fff;
+  letter-spacing:-.045em;margin:.6rem 0 1.4rem;
+}
+.hero .eyebrow{color:var(--highlight)}
+.hero .lede{color:#AFC0C3;max-width:46ch}
+.hero-ring{
+  position:absolute;right:-11vw;top:50%;transform:translateY(-50%);
+  width:min(66vh,600px);height:min(66vh,600px);opacity:.5;z-index:1;
+}
+.hero-ring circle.track{fill:none;stroke:#22333B;stroke-width:1.4}
+.hero-ring .orbit{transform-origin:100px 100px;animation:spin 28s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.loopstrip{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;margin-top:2.4rem}
+.loopstrip .step{
+  font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;padding:.55rem .95rem;
+  border:1px solid #2C3F47;border-radius:3px;color:#8CA2A7;transition:.35s;
+}
+.loopstrip .step.hot{background:var(--pine);border-color:var(--pine);color:#fff}
+.loopstrip .step.hot.last{background:var(--marker);border-color:var(--marker)}
+.loopstrip .arrow{color:#3A4E56;font-family:var(--mono)}
+.hero-note{font-family:var(--mono);font-size:.72rem;color:#6D8188;margin-top:1rem}
+
+/* ---------- panels & grids ---------- */
+.panel{background:var(--panel);border:1px solid var(--hair);border-radius:4px;padding:1.5rem}
+.panel--dark{background:var(--ink);color:#DDE6E5;border-color:var(--ink)}
+.panel--pine{background:var(--pine);color:#E3F0EC;border-color:var(--pine)}
+.panel--mark{background:var(--mint);border-color:#BFD6CE}
+.grid{display:grid;gap:1rem}
+.g2{grid-template-columns:repeat(2,1fr)}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g4{grid-template-columns:repeat(4,1fr)}
+@media(max-width:900px){.g3,.g4{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:620px){.g2,.g3,.g4{grid-template-columns:1fr}}
+.stack{display:grid;gap:1rem}
+.head{margin-bottom:2.2rem}
+.head h2{margin-bottom:.9rem}
+
+/* ---------- 01 latency ---------- */
+.lane{margin:1.6rem 0}
+.lane-label{font-family:var(--mono);font-size:.7rem;letter-spacing:.16em;color:var(--slate);margin-bottom:.6rem}
+.phases{display:flex;gap:.4rem;flex-wrap:wrap}
+.ph{
+  flex:1 1 120px;background:var(--panel);border:1px solid var(--hair);
+  padding:.7rem .5rem;text-align:center;font-size:.86rem;border-radius:3px;
+}
+.ph.it{background:var(--pine);color:#fff;border-color:var(--pine)}
+.ph.it small{display:block;font-family:var(--mono);font-size:.6rem;color:#9CC0B8;letter-spacing:.08em;margin-top:.2rem}
+.fb{display:flex;align-items:center;gap:.6rem;margin-top:.7rem;font-family:var(--mono);font-size:.72rem}
+.fb .line{height:2px;flex:1;background:currentColor;position:relative}
+.fb .line::before{content:"";position:absolute;left:0;top:-4px;border:5px solid transparent;border-right-color:currentColor}
+.fb.slow{color:var(--marker)}
+.fb.fast{color:var(--teal)}
+
+/* ---------- manifesto ---------- */
+.value{
+  display:grid;grid-template-columns:1fr auto 1fr;gap:1rem;align-items:center;
+  padding:.9rem 0;border-bottom:1px solid var(--hair);
+}
+.value:last-child{border-bottom:0}
+.value .l{font-weight:600;font-size:1.06rem}
+.value .o{font-family:var(--mono);font-size:.72rem;color:var(--marker);letter-spacing:.1em}
+.value .r{color:var(--slate);transition:opacity .25s}
+.value:hover .r{opacity:.42}
+@media(max-width:620px){.value{grid-template-columns:1fr;gap:.2rem}.value .o{text-align:left}}
+
+/* ---------- role / practice cards ---------- */
+.card-t{display:flex;align-items:baseline;gap:.6rem;margin-bottom:.5rem;flex-wrap:wrap}
+.tag{
+  font-family:var(--mono);font-size:.63rem;letter-spacing:.12em;text-transform:uppercase;
+  padding:.22rem .5rem;border-radius:2px;background:var(--mint);color:var(--pine);
+}
+.tag--m{background:#FBE0D6;color:#A83818}
+.tag--d{background:#22333B;color:var(--highlight)}
+.card p{font-size:.94rem;color:#424F53;margin:0}
+.panel--dark p{color:#AFC0C3}
+.panel--pine p{color:#C6DED7}
+
+/* ---------- sprint loop ---------- */
+.loop-wrap{display:grid;grid-template-columns:minmax(280px,1fr) 1.15fr;gap:2rem;align-items:center}
+@media(max-width:860px){.loop-wrap{grid-template-columns:1fr}}
+.loop svg{width:100%;height:auto;max-width:420px;display:block;margin:0 auto}
+.loop .node{cursor:pointer}
+.loop .node circle{fill:var(--panel);stroke:var(--hair);stroke-width:2;transition:.22s}
+.loop .node text{font-family:var(--mono);font-size:9.5px;fill:var(--slate);text-anchor:middle;letter-spacing:.06em;transition:.22s}
+.loop .node.on circle{fill:var(--pine);stroke:var(--pine)}
+.loop .node.on text{fill:#fff;font-weight:700}
+.loop .node:hover circle{stroke:var(--teal)}
+.loop-detail{min-height:190px}
+.loop-detail h3{margin-bottom:.5rem}
+.loop-detail .box{font-family:var(--mono);font-size:.7rem;color:var(--marker);letter-spacing:.12em;margin-bottom:.8rem}
+
+/* ---------- table ---------- */
+.tbl{width:100%;border-collapse:collapse;font-size:.94rem}
+.tbl th,.tbl td{text-align:left;padding:.78rem .9rem;border-bottom:1px solid var(--hair);vertical-align:top}
+.tbl th{font-family:var(--mono);font-size:.68rem;letter-spacing:.13em;text-transform:uppercase;color:var(--slate)}
+.tbl tr td:first-child{font-weight:600;width:24%}
+.tbl .time{font-family:var(--mono);font-size:.8rem;background:var(--highlight);padding:.1rem .45rem;border-radius:2px;white-space:nowrap}
+.scroller{overflow-x:auto}
+
+/* ---------- hierarchy ---------- */
+.hier{display:grid;gap:.55rem}
+.hbar{display:grid;grid-template-columns:auto 1fr;gap:1rem;align-items:center}
+.hbar .b{color:#fff;padding:.72rem 1rem;border-radius:3px;font-weight:600;font-size:.97rem;display:flex;justify-content:space-between;gap:1.4rem;align-items:center}
+.hbar .b .t{font-family:var(--mono);font-size:.68rem;opacity:.8;font-weight:400}
+.hbar p{font-size:.9rem;color:#4A585C;margin:0}
+@media(max-width:760px){.hbar{grid-template-columns:1fr;gap:.3rem}.hbar .b{width:100%!important}}
+
+/* ---------- story / invest ---------- */
+.story{font-family:var(--mono);font-size:1rem;line-height:2;color:#8CA2A7}
+.story b{color:var(--teal);font-weight:500}
+.invest{display:grid;gap:.35rem}
+.iv{display:grid;grid-template-columns:2rem 8rem 1fr;gap:.7rem;align-items:baseline;padding:.4rem 0;border-bottom:1px solid var(--hair)}
+.iv:last-child{border-bottom:0}
+.iv .k{font-family:var(--mono);font-weight:700;color:#fff;background:var(--pine);width:1.7rem;height:1.7rem;display:grid;place-items:center;border-radius:3px;font-size:.85rem}
+.iv .n{font-weight:600}
+.iv .d{color:var(--slate);font-size:.9rem}
+@media(max-width:620px){.iv{grid-template-columns:2rem 1fr}.iv .d{grid-column:2}}
+
+/* ---------- lifecycle ---------- */
+.flow{display:flex;flex-wrap:wrap;gap:.35rem;align-items:center}
+.st{background:var(--panel);border:1px solid var(--hair);padding:.5rem .8rem;font-size:.85rem;border-radius:3px}
+.st.done{background:var(--pine);color:#fff;border-color:var(--pine);font-weight:600}
+.st.blocked{background:var(--marker);color:#fff;border-color:var(--marker);font-weight:600}
+.flow .sep{color:var(--hair);font-family:var(--mono)}
+
+/* ---------- kanban board + simulator ---------- */
+.board{display:grid;grid-template-columns:repeat(3,1fr);gap:.8rem;margin-top:1.2rem}
+@media(max-width:700px){.board{grid-template-columns:1fr}}
+.col{background:#DDE3DF;border:1px solid var(--hair);border-radius:4px;padding:.7rem;min-height:230px}
+.col.full{background:#F6DFD7;border-color:#E3B3A3}
+.col-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem}
+.col-h .nm{font-weight:600;font-size:.9rem}
+.col-h .wip{font-family:var(--mono);font-size:.66rem;background:var(--ink);color:#fff;padding:.15rem .45rem;border-radius:2px}
+.col.full .wip{background:var(--marker)}
+.tk{
+  background:#fff;border:1px solid var(--hair);border-radius:3px;padding:.42rem .55rem;
+  margin-bottom:.4rem;font-family:var(--mono);font-size:.66rem;color:var(--slate);
+  display:flex;flex-direction:column;gap:.35rem;
+  animation:pop .25s ease-out;
+}
+@keyframes pop{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:none}}
+.tk .prog{height:3px;background:#E4E9E7;border-radius:2px;overflow:hidden}
+.tk .prog i{display:block;height:100%;background:var(--teal);transition:width .28s linear}
+.tk.done-tk{opacity:.55}
+.tk.done-tk .prog i{background:var(--pine)}
+
+.sim{display:grid;grid-template-columns:1fr 300px;gap:1.6rem;align-items:start}
+@media(max-width:980px){.sim{grid-template-columns:1fr}}
+.readout{display:grid;gap:.75rem}
+.ro{background:var(--ink);color:#fff;border-radius:4px;padding:.9rem 1rem}
+.ro .lb{font-family:var(--mono);font-size:.63rem;letter-spacing:.14em;color:#7E939A;text-transform:uppercase}
+.ro .vl{font-family:var(--display);font-size:2.1rem;font-weight:800;line-height:1.1}
+.ro .vl small{font-size:.85rem;font-weight:400;color:#8CA2A7;font-family:var(--mono)}
+.ro.accent .vl{color:var(--highlight)}
+.slider-row{display:flex;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:.4rem}
+.slider-row label{font-family:var(--mono);font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--slate)}
+input[type=range]{accent-color:var(--marker);flex:1;min-width:180px;height:22px}
+.btn{
+  font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;
+  background:var(--ink);color:#fff;border:1px solid var(--ink);padding:.5rem .8rem;
+  border-radius:3px;cursor:pointer;transition:.18s;
+}
+.btn:hover{background:var(--pine);border-color:var(--pine)}
+.btn.ghost{background:transparent;color:var(--ink)}
+.btn.ghost:hover{background:var(--ink);color:#fff}
+.btn.on{background:var(--marker);border-color:var(--marker)}
+.law{font-family:var(--mono);font-size:.86rem;background:var(--mint);border:1px solid #BFD6CE;padding:.9rem 1rem;border-radius:4px;margin-top:1rem}
+.law b{color:var(--pine)}
+
+/* ---------- poker ---------- */
+.pokerdeck{display:flex;gap:.5rem;flex-wrap:wrap;margin:1rem 0 1.3rem}
+.pk{
+  font-family:var(--mono);font-weight:700;font-size:1.15rem;width:3.1rem;height:4.2rem;
+  background:var(--panel);border:1px solid var(--hair);border-radius:4px;cursor:pointer;
+  transition:.16s;color:var(--ink);
+}
+.pk:hover{transform:translateY(-4px);border-color:var(--pine)}
+.pk.picked{background:var(--pine);color:#fff;border-color:var(--pine);transform:translateY(-6px)}
+.reveal{display:grid;gap:.45rem;min-height:150px}
+.rv{display:grid;grid-template-columns:5.4rem 1fr 2.4rem;gap:.7rem;align-items:center;font-size:.88rem}
+.rv .who{font-family:var(--mono);font-size:.72rem;color:var(--slate)}
+.rv .barw{background:#DDE3DF;height:.62rem;border-radius:3px;overflow:hidden}
+.rv .barw i{display:block;height:100%;background:var(--teal);width:0;transition:width .5s cubic-bezier(.2,.8,.2,1)}
+.rv.you .barw i{background:var(--marker)}
+.rv .nm{font-family:var(--mono);font-weight:700;text-align:right}
+.verdict{margin-top:1rem;font-size:.94rem;padding:.85rem 1rem;border-left:3px solid var(--marker);background:var(--panel)}
+
+/* ---------- charts ---------- */
+.chartbox{background:var(--panel);border:1px solid var(--hair);border-radius:4px;padding:1.2rem}
+.chartbox svg{width:100%;height:auto;display:block}
+.legend{display:flex;gap:1.1rem;flex-wrap:wrap;font-family:var(--mono);font-size:.68rem;color:var(--slate);margin-top:.7rem}
+.legend i{display:inline-block;width:14px;height:3px;margin-right:.4rem;vertical-align:middle}
+.toggles{display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:1rem}
+
+/* ---------- anti-patterns ---------- */
+.ap{
+  background:#1A252A;color:#D9E4E4;border:1px solid #263238;border-radius:4px;padding:1.1rem;
+  cursor:pointer;transition:.2s;text-align:left;font:inherit;width:100%;
+}
+.ap:hover{border-color:var(--marker)}
+.ap h4{color:var(--highlight);margin-bottom:.4rem}
+.ap p{font-size:.86rem;color:#9DB0B3;margin:0}
+.ap .why{
+  max-height:0;overflow:hidden;transition:max-height .3s ease,margin .3s;
+  font-family:var(--mono);font-size:.74rem;color:var(--marker);line-height:1.6;
+}
+.ap.open .why{max-height:9rem;margin-top:.7rem}
+.ap .hint{font-family:var(--mono);font-size:.6rem;color:#5B7076;letter-spacing:.12em;margin-top:.6rem;display:block}
+
+/* ---------- close ---------- */
+.close{background:var(--ink);color:#fff;border-top:0}
+.close h2{font-size:clamp(1.7rem,3.6vw,2.9rem);max-width:22ch;line-height:1.14}
+.close .eyebrow{color:var(--highlight)}
+
+:focus-visible{outline:2.5px solid var(--marker);outline-offset:3px}
+footer{padding:2.2rem 0;font-family:var(--mono);font-size:.7rem;color:var(--slate)}
+</style>
+</head>
+<body>
+
+<nav class="rail" aria-label="Sections">
+  <a href="#why"><span class="bar"></span>01 why</a>
+  <a href="#manifesto"><span class="bar"></span>02 values</a>
+  <a href="#scrum"><span class="bar"></span>03 scrum</a>
+  <a href="#work"><span class="bar"></span>04 the work</a>
+  <a href="#kanban"><span class="bar"></span>05 flow</a>
+  <a href="#estimate"><span class="bar"></span>06 estimating</a>
+  <a href="#practices"><span class="bar"></span>07 practices</a>
+  <a href="#failure"><span class="bar"></span>08 failure</a>
+  <a href="#limits"><span class="bar"></span>09 limits</a>
+</nav>
+
+<!-- ============ HERO ============ -->
+<header class="hero" id="top">
+  <svg class="hero-ring" viewBox="0 0 200 200" aria-hidden="true">
+    <circle class="track" cx="100" cy="100" r="88"/>
+    <circle class="track" cx="100" cy="100" r="64"/>
+    <circle class="track" cx="100" cy="100" r="40"/>
+    <g class="orbit">
+      <circle cx="100" cy="12" r="5" fill="#F5D142"/>
+      <circle cx="188" cy="100" r="3.5" fill="#2A8C7A"/>
+      <circle cx="100" cy="164" r="3" fill="#E0512B"/>
+    </g>
+  </svg>
+  <div class="wrap">
+    <span class="eyebrow">Project management for software development</span>
+    <h1>Agile</h1>
+    <p class="lede">You cannot fully specify software before you build it. So you stop making one long bet, and start making many short ones.</p>
+    <div class="loopstrip" id="loopstrip">
+      <span class="step" data-i="0">PLAN</span><span class="arrow">→</span>
+      <span class="step" data-i="1">BUILD</span><span class="arrow">→</span>
+      <span class="step" data-i="2">SHIP</span><span class="arrow">→</span>
+      <span class="step last" data-i="3">LEARN</span><span class="arrow">↺</span>
+    </div>
+    <p class="hero-note">every 1–2 weeks the loop closes and the plan changes</p>
+  </div>
+</header>
+
+<!-- ============ 01 WHY ============ -->
+<section id="why">
+  <div class="wrap">
+    <div class="head">
+      <span class="eyebrow">01 — the structural difference</span>
+      <h2>The whole thing is about <span class="mark">feedback latency</span></h2>
+      <p class="lede">Waterfall and Agile build the same software with the same people. What differs is how long you go before finding out you were wrong — and therefore how much it costs to fix.</p>
+    </div>
+
+    <div class="lane">
+      <div class="lane-label">WATERFALL — ONE LONG BET</div>
+      <div class="phases">
+        <div class="ph">Requirements</div><div class="ph">Design</div><div class="ph">Build</div><div class="ph">Test</div><div class="ph">Release</div>
+      </div>
+      <div class="fb slow"><span class="line"></span><span>feedback after months — correction is expensive</span></div>
+    </div>
+
+    <div class="lane">
+      <div class="lane-label">AGILE — MANY SHORT BETS</div>
+      <div class="phases">
+        <div class="ph it">Iteration 1<small>plan·build·test·ship</small></div>
+        <div class="ph it">Iteration 2<small>plan·build·test·ship</small></div>
+        <div class="ph it">Iteration 3<small>plan·build·test·ship</small></div>
+        <div class="ph it">Iteration N<small>plan·build·test·ship</small></div>
+      </div>
+      <div class="fb fast"><span class="line"></span><span>feedback every 1–2 weeks — correction is cheap</span></div>
+    </div>
+
+    <div class="grid g2" style="margin-top:2rem">
+      <div class="panel">
+        <h3>The premise</h3>
+        <p>Requirements change, users discover what they want by using things, and estimates degrade the further out you look. None of that is a discipline problem — it is the nature of the work.</p>
+      </div>
+      <div class="panel panel--mark">
+        <h3>The consequence</h3>
+        <p>If you cannot know the answer in advance, optimise for finding out fast. Every practice in Agile is downstream of that single move.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 02 MANIFESTO ============ -->
+<section id="manifesto">
+  <div class="wrap">
+    <div class="head">
+      <span class="eyebrow">02 — the manifesto, 2001</span>
+      <h2>Four values, each the same shape</h2>
+      <p class="lede">Seventeen practitioners, one ski lodge, four sentences. Hover a row to see what gets de-prioritised.</p>
+    </div>
+    <div class="panel">
+      <div class="value"><span class="l">Individuals and interactions</span><span class="o">over</span><span class="r">Processes and tools</span></div>
+      <div class="value"><span class="l">Working software</span><span class="o">over</span><span class="r">Comprehensive documentation</span></div>
+      <div class="value"><span class="l">Customer collaboration</span><span class="o">over</span><span class="r">Contract negotiation</span></div>
+      <div class="value"><span class="l">Responding to change</span><span class="o">over</span><span class="r">Following a plan</span></div>
+    </div>
+    <p class="lede" style="margin-top:1.2rem"><strong>The right column still has value.</strong> The left column has <em>more</em> value. That nuance gets lost constantly — usually by someone using the manifesto to argue against writing anything down.</p>
+  </div>
+</section>
+
+<!-- ============ 03 SCRUM ============ -->
+<section id="scrum">
+  <div class="wrap">
+    <div class="head">
+      <span class="eyebrow">03 — scrum</span>
+      <h2>Three roles, three artifacts, one loop</h2>
+      <p class="lede">Scrum is a time-boxed implementation of the values. Work happens in fixed-length Sprints, usually one or two weeks.</p>
+    </div>
+
+    <div class="grid g3">
+      <div class="panel card">
+        <div class="card-t"><h3>Product Owner</h3><span class="tag">what &amp; why</span></div>
+        <p>Owns and orders the backlog. Single wringable neck for value delivered. A PO without real decision authority is the most common way Scrum quietly fails.</p>
+      </div>
+      <div class="panel card">
+        <div class="card-t"><h3>Scrum Master</h3><span class="tag">process</span></div>
+        <p>Removes blockers and protects the sprint from mid-flight scope injection. Not a manager, not a secretary, not a status collector.</p>
+      </div>
+      <div class="panel card">
+        <div class="card-t"><h3>Development Team</h3><span class="tag tag--m">how</span></div>
+        <p>Self-organising and cross-functional, ideally 3–9 people. Decides how work gets built and commits to what fits in the sprint.</p>
+      </div>
+    </div>
+
+    <div class="grid g3" style="margin-top:1rem">
+      <div class="panel card"><h4>Product Backlog</h4><p>Everything that might get built, ordered by value. Living — always re-prioritised, never frozen.</p></div>
+      <div class="panel card"><h4>Sprint Backlog</h4><p>The slice committed to this sprint. Frozen once the sprint starts.</p></div>
+      <div class="panel card"><h4>Increment</h4><p>The shippable output at sprint end. Must meet the Definition of Done.</p></div>
+    </div>
+
+    <h3 style="margin:3rem 0 1.4rem">The sprint loop</h3>
+    <div class="loop-wrap">
+      <div class="loop">
+        <svg viewBox="0 0 220 220" role="img" aria-label="Sprint loop diagram with five stages">
+          <circle cx="110" cy="110" r="70" fill="none" stroke="#DCEAE5" stroke-width="12"/>
+          <g id="loopnodes"></g>
+        </svg>
+      </div>
+      <div class="loop-detail panel" id="loopDetail" aria-live="polite"></div>
+    </div>
+
+    <h3 style="margin:3rem 0 1.2rem">Four ceremonies, four timeboxes</h3>
+    <div class="panel scroller">
+      <table class="tbl">
+        <thead><tr><th>Ceremony</th><th>When</th><th>Timebox</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>Sprint Planning</td><td class="muted">Start of sprint</td><td><span class="time">2–4 hrs</span></td><td>Decide what is in, break it into tasks, agree a sprint goal.</td></tr>
+          <tr><td>Daily Standup</td><td class="muted">Every day</td><td><span class="time">15 min</span></td><td>Sync and surface blockers. Not a status report to a manager.</td></tr>
+          <tr><td>Sprint Review</td><td class="muted">End of sprint</td><td><span class="time">1–2 hrs</span></td><td>Demo working software, gather feedback from real stakeholders.</td></tr>
+          <tr><td>Retrospective</td><td class="muted">End of sprint</td><td><span class="time">1 hr</span></td><td>Improve how the team works — process, not product.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 04 THE WORK ============ -->
+<section id="work">
+  <div class="wrap">
+    <div class="head">
+      <span class="eyebrow">04 — the work</span>
+      <h2>Big things decompose into shippable things</h2>
+      <p class="lede">Each level exists so the level below it can be estimated. If a story cannot be sized, it is still an epic.</p>
+    </div>
+
+    <div class="hier">
+      <div class="hbar"><div class="b" style="background:var(--pine);width:min(100%,360px)"><span>Initiative</span><span class="t">quarters</span></div><p>Strategic outcome. Never built directly — it gives epics a reason to exist.</p></div>
+      <div class="hbar"><div class="b" style="background:var(--teal);width:min(100%,290px)"><span>Epic</span><span class="t">weeks–months</span></div><p>A body of work too big to finish inside one sprint.</p></div>
+      <div class="hbar"><div class="b" style="background:var(--highlight);color:#4A3708;width:min(100%,215px)"><span>User Story</span><span class="t">days</span></div><p>A slice of user-visible value — sized, testable, shippable on its own.</p></div>
+      <div class="hbar"><div class="b" style="background:var(--marker);width:min(100%,145px)"><span>Task</span><span class="t">hours</span></div><p>How a story gets built. Written and owned by the developers.</p></div>
+    </div>
+
+    <div class="grid g2" style="margin-top:2.6rem">
+      <div class="panel panel--dark">
+        <span class="eyebrow" style="color:var(--highlight)">Template</span>
+        <p class="story">As a <b>&lt;type of user&gt;</b><br>I want <b>&lt;some capability&gt;</b><br>So that <b>&lt;some benefit&gt;</b></p>
+        <p style="margin-top:1.2rem">Plus <strong style="color:#fff">acceptance criteria</strong> — the testable conditions that define done. Without AC, a story is a wish, and "done" becomes a matter of opinion at review time.</p>
+      </div>
+      <div class="panel">
+        <h3 style="margin-bottom:1rem">INVEST — the story checklist</h3>
+        <div class="invest">
+          <div class="iv"><span class="k">I</span><span class="n">Independent</span><span class="d">Ships without waiting on another story.</span></div>
+          <div class="iv"><span class="k">N</span><span class="n">Negotiable</span><span class="d">Describes intent, not implementation.</span></div>
+          <div class="iv"><span class="k">V</span><span class="n">Valuable</span><span class="d">A user or the business gains something.</span></div>
+          <div class="iv"><span class="k">E</span><span class="n">Estimable</span><span class="d">The team can size it.</span></div>
+          <div class="iv"><span class="k">S</span><span class="n">Small</span><span class="d">Fits comfortably inside one sprint.</span></div>
+          <div class="iv"><span class="k">T</span><span class="n">Testable</span><span class="d">You can prove it works.</span></div>
+        </div>
+      </div>
+    </div>
+
+    <h3 style="margin:2.8rem 0 1rem">How a story actually moves</h3>
+    <div class="flow">
+      <span class="st">Backlog</span><span class="sep">→</span>
+      <span class="st">Refined</span><span class="sep">→</span>
+      <span class="st">Committed</span><span class="sep">→</span>
+      <span class="st">In Progress</span><span class="sep">→</span>
+      <span class="st">In Review</span><span class="sep">→</span>
+      <span class="st">Testing</span><span class="sep">→</span>
+      <span class="st done">Done</span>
+      <span class="sep">·</span><span class="st blocked">Blocked</span>
+    </div>
+    <div class="grid g2" style="margin-top:1.2rem">
+      <div class="panel">
+        <p class="muted mono" style="font-size:.72rem;letter-spacing:.12em">REWORK LOOPS</p>
+        <p>In Review sends work back on changes requested. Testing sends it back on bugs found. Both loops are normal; both are invisible on a plan that only counts forward motion.</p>
+      </div>
+      <div class="panel panel--pine">
+        <h3 style="color:#fff">Blocked is the state that matters</h3>
+        <p>A story sitting in Blocked is the single most useful signal a standup produces. If nothing is ever blocked, people are working around problems silently.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 05 KANBAN + SIMULATOR ============ -->
+<section id="kanban">
+  <div class="wrap">
+    <div class="head">
+      <span class="eyebrow">05 — kanban &amp; flow</span>
+      <h2>Try it: <span class="mark">halve your WIP, halve your cycle time</span></h2>
+      <p class="lede">Kanban drops sprints entirely. Work is pulled continuously and the only control is a WIP limit — a hard cap on how many items may sit in a column. Drag the limit below and watch what happens to a team whose capacity never changes.</p>
+    </div>
+
+    <div class="sim">
+      <div>
+        <div class="slider-row">
+          <label for="wip">WIP limit</label>
+          <input type="range" id="wip" min="1" max="10" value="6" aria-describedby="wipval">
+          <span id="wipval" class="mono" style="font-weight:700;min-width:2ch">6</span>
+          <button class="btn ghost" id="simReset">Reset stats</button>
+          <button class="btn" id="simPause">Pause</button>
+        </div>
+        <div class="board">
+          <div class="col" id="colReady">
+            <div class="col-h"><span class="nm">Ready</span><span class="wip">∞</span></div>
+            <div class="tks" id="tksReady"></div>
+          </div>
+          <div class="col" id="colWip">
+            <div class="col-h"><span class="nm">In Progress</span><span class="wip" id="wipBadge">WIP 6</span></div>
+            <div class="tks" id="tksWip"></div>
+          </div>
+          <div class="col" id="colDone">
+            <div class="col-h"><span class="nm">Done</span><span class="wip">∞</span></div>
+            <div class="tks" id="tksDone"></div>
+          </div>
+        </div>
+        <div class="law">
+          Little's Law &nbsp;·&nbsp; <b>Cycle Time = Work In Progress ÷ Throughput</b><br>
+          <span class="muted">Throughput is fixed by team capacity. The only lever you actually control is how much work is open at once.</span>
+        </div>
+      </div>
+
+      <div class="readout">
+        <div class="ro"><div class="lb">Work in progress</div><div class="vl" id="roWip">6 <small>items</small></div></div>
+        <div class="ro"><div class="lb">Throughput</div><div class="vl" id="roTp">— <small>items/day</small></div></div>
+        <div class="ro accent"><div class="lb">Avg cycle time</div><div class="vl" id="roCt">— <small>days</small></div></div>
+        <div class="panel" style="font-size:.85rem">
+          <p style="margin:0;color:#4A585C">Capacity is held constant at 2 items/day of effort, with a small context-switching penalty above one active item. Nothing else changes when you move the slider.</p>
+        </div>
+      </div>
+    </div>
+
+    <h3 style="margin:3rem 0 1rem">Scrum or Kanban — pick by inflow, not fashion</h3>
+    <div class="panel scroller">
+      <table class="tbl">
+        <thead><tr><th></th><th>Scrum</th><th>Kanban</th></tr></thead>
+        <tbody>
+          <tr><td>Cadence</td><td>Fixed sprints</td><td>Continuous flow</td></tr>
+          <tr><td>Commitment</td><td>A sprint goal</td><td>None — pull as capacity frees</td></tr>
+          <tr><td>Change mid-cycle</td><td>Discouraged</td><td>Fine, just re-prioritise</td></tr>
+          <tr><td>Key metric</td><td>Velocity</td><td>Cycle time / throughput</td></tr>
+          <tr><td>Roles</td><td>Three, prescribed</td><td>None prescribed</td></tr>
+          <tr><td>Best for</td><td>Feature work needing planning</td><td>Support, ops, unpredictable inflow</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="lede" style="margin-top:1rem">Many teams run <strong>Scrumban</strong>: sprints for planning cadence, WIP limits for flow control. That is a legitimate answer, not a cop-out.</p>
+  </div>
+</section>
+
+<!-- ============ 06 ESTIMATION ============ -->
+<section id="estimate">
+  <div class="wrap">
+    <div class="head">
+      <span class="eyebrow">06 — estimating</span>
+      <h2>Points measure size, not hours</h2>
+      <p class="lede">Points bundle complexity, uncertainty and effort into one relative number. Humans are bad at absolute duration estimates and reliably good at comparative ones.</p>
+    </div>
+
+    <div class="grid g2">
+      <div class="panel">
+        <h3>Planning poker</h3>
+        <p class="muted" style="font-size:.92rem">Estimate this story privately, then reveal with the team: <em>"Let users reset their password by email link."</em></p>
+        <div class="pokerdeck" id="deck" role="group" aria-label="Story point cards"></div>
+        <div class="reveal" id="reveal"><p class="muted mono" style="font-size:.75rem">Pick a card to reveal the team.</p></div>
+        <div class="verdict" id="verdict" hidden></div>
+      </div>
+
+      <div class="stack">
+        <div class="panel">
+          <div class="toggles">
+            <button class="btn on" data-chart="velocity">Velocity</button>
+            <button class="btn ghost" data-chart="burndown">Burndown</button>
+          </div>
+          <div class="chartbox" id="chartbox"></div>
+          <div class="legend" id="chartlegend"></div>
+        </div>
+        <div class="panel panel--dark">
+          <h3 style="color:var(--highlight)">Velocity is not a performance metric</h3>
+          <p>It is a forecasting tool the team uses on itself. The moment velocity becomes a target, estimates inflate and the number stops meaning anything. This is Goodhart's Law, and it happens with near-total reliability.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 07 PRACTICES ============ -->
+<section id="practices">
+  <div class="wrap">
+    <div class="head">
+      <span class="eyebrow">07 — engineering practices</span>
+      <h2>Without these, Agile is just <span class="mark">short waterfalls with more meetings</span></h2>
+      <p class="lede">Most of these come from Extreme Programming. They are what make a two-week feedback loop physically possible rather than aspirational.</p>
+    </div>
+    <div class="grid g3">
+      <div class="panel card"><h4>Continuous integration</h4><p>Merge to main frequently. Automated build and test on every push, and a red pipeline stops the line.</p></div>
+      <div class="panel card"><h4>Automated testing</h4><p>You cannot iterate quickly on code you are afraid to change. Tests buy the courage to refactor.</p></div>
+      <div class="panel card"><h4>Continuous refactoring</h4><p>Small, safe, constant — not a "refactoring sprint" scheduled for never.</p></div>
+      <div class="panel card"><h4>Short-lived branches</h4><p>Long branches recreate the integration problem Agile was invented to solve.</p></div>
+      <div class="panel card"><h4>Feature flags</h4><p>Decouple deploy from release so unfinished work can ship dark and be switched on later.</p></div>
+      <div class="panel card"><h4>Definition of Done</h4><p>Explicit and shared: reviewed, tested, merged, deployable. Otherwise done is an opinion.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 08 FAILURE ============ -->
+<section id="failure">
+  <div class="wrap">
+    <div class="head">
+      <span class="eyebrow">08 — what goes wrong</span>
+      <h2>Eight ways Agile turns into theatre</h2>
+      <p class="lede">Click any card for the underlying cause. They are mostly the same cause.</p>
+    </div>
+    <div class="grid g4" id="antipatterns"></div>
+    <div class="panel" style="margin-top:1.2rem;background:var(--marker);color:#fff;border-color:var(--marker)">
+      <span class="eyebrow" style="color:#FFD9CD">The common root cause</span>
+      <p style="color:#fff;font-size:1.05rem;margin:0">Almost every item above is one failure wearing a different hat: the organisation kept its old decision-making structure and asked only the development team to change. Agile is a change to <em>who decides what, and when</em> — if that does not move, nothing does.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 09 LIMITS ============ -->
+<section id="limits">
+  <div class="wrap">
+    <div class="head">
+      <span class="eyebrow">09 — limits</span>
+      <h2>When Agile is the wrong choice</h2>
+      <p class="lede">Agile assumes requirements are uncertain and iteration is cheap. Where neither holds, it fits badly — and saying so is not heresy.</p>
+    </div>
+    <div class="grid g2">
+      <div class="panel card"><div class="card-t"><h3>Safety-critical &amp; regulated</h3><span class="tag tag--m">avoid</span></div><p>Avionics, medical devices, anything where upfront verification is a legal requirement rather than a preference.</p></div>
+      <div class="panel card"><div class="card-t"><h3>Fixed-scope fixed-price</h3><span class="tag tag--m">avoid</span></div><p>The contract structure fights the methodology. You cannot welcome changing requirements when scope is the payment term.</p></div>
+      <div class="panel card"><div class="card-t"><h3>Genuinely understood work</h3><span class="tag tag--m">avoid</span></div><p>A migration with a known destination does not need iterative discovery. It needs a plan and execution.</p></div>
+      <div class="panel card"><div class="card-t"><h3>Solo or two-person work</h3><span class="tag tag--m">avoid</span></div><p>Most of the ceremony is overhead for coordination you do not actually have.</p></div>
+    </div>
+    <p class="lede" style="margin-top:1.4rem">On scaling: <strong>LeSS</strong> and <strong>Nexus</strong> add little to Scrum beyond a shared backlog and joint planning. <strong>SAFe</strong> is heavyweight and widely criticised for reintroducing the bureaucracy Agile was reacting against — though it is sometimes what a 500-person org genuinely needs. The <strong>Spotify model</strong> was a snapshot of one moment; Spotify itself does not run it as described. Scaling frameworks solve coordination. If the real problem is unclear ownership or bad architecture, no framework fixes it — Conway's Law wins either way.</p>
+  </div>
+</section>
+
+<!-- ============ CLOSE ============ -->
+<section class="close">
+  <div class="wrap">
+    <span class="eyebrow">In one sentence</span>
+    <h2>Ship small slices of working software frequently, show them to real users, and let what you learn reorder what you build next.</h2>
+    <div class="grid g2" style="margin-top:2.4rem">
+      <div class="panel" style="background:var(--marker);border-color:var(--marker);color:#fff">
+        <h4 style="color:#FFD9CD;font-family:var(--mono);font-size:.68rem;letter-spacing:.14em;text-transform:uppercase">What most teams get wrong</h4>
+        <p style="color:#fff;margin:.5rem 0 0;font-size:1.02rem">They adopt the ceremonies and skip the engineering practices, then wonder why iterating still hurts.</p>
+      </div>
+      <div class="panel" style="background:#1A252A;border-color:#263238">
+        <h4 style="color:var(--teal);font-family:var(--mono);font-size:.68rem;letter-spacing:.14em;text-transform:uppercase">What to do on Monday</h4>
+        <p style="color:#AFC0C3;margin:.5rem 0 0">Pick one loop and shorten it. Cut WIP, or write acceptance criteria before work starts, or make the retro produce exactly one owned action. One change, measured.</p>
+      </div>
+    </div>
+    <footer>Agile — an interactive explainer · scroll back to <a href="#top" style="color:var(--highlight)">the top</a></footer>
+  </div>
+</section>
+
+<script>
+"use strict";
+const RM = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/* ---------- hero loop strip ---------- */
+(function(){
+  const steps = [...document.querySelectorAll("#loopstrip .step")];
+  let i = 0;
+  function tick(){
+    steps.forEach((s,k)=>s.classList.toggle("hot", k===i));
+    i = (i+1) % steps.length;
+  }
+  tick();
+  if(!RM) setInterval(tick, 1100);
+  else steps.forEach(s=>s.classList.add("hot"));
+})();
+
+/* ---------- scroll rail ---------- */
+(function(){
+  const links = [...document.querySelectorAll(".rail a")];
+  const secs = links.map(a=>document.querySelector(a.getAttribute("href"))).filter(Boolean);
+  const io = new IntersectionObserver(es=>{
+    es.forEach(e=>{
+      if(e.isIntersecting){
+        links.forEach(l=>l.classList.toggle("on", l.getAttribute("href")==="#"+e.target.id));
+      }
+    });
+  },{rootMargin:"-45% 0px -50% 0px"});
+  secs.forEach(s=>io.observe(s));
+})();
+
+/* ---------- sprint loop diagram ---------- */
+(function(){
+  const stages = [
+    {k:"Refine", box:"CONTINUOUS", h:"Backlog refinement",
+     d:"Runs continuously through the sprint: size items, write acceptance criteria, split anything too big to finish. The work that makes planning possible happens here, not in planning."},
+    {k:"Plan", box:"2–4 HOURS", h:"Sprint planning",
+     d:"Pick the slice and break it into tasks. Output is a sprint goal and a sprint backlog that is then frozen. If the goal cannot be said in one sentence, the sprint has no goal."},
+    {k:"Build", box:"THE SPRINT", h:"Build, with a daily sync",
+     d:"The team builds. A 15-minute standup syncs and surfaces blockers — it is coordination between peers, not a status report to a manager. Anything needing discussion moves to after."},
+    {k:"Review", box:"1–2 HOURS", h:"Sprint review",
+     d:"Demo working software to real stakeholders. This is where genuine feedback enters and reorders the product backlog. A review with no outside attendees is not a review."},
+    {k:"Retro", box:"1 HOUR", h:"Retrospective",
+     d:"Improve how the team works, not what it built. Every action item needs an owner and a next sprint. Without those, the same three issues get raised forever."}
+  ];
+  const g = document.getElementById("loopnodes");
+  const detail = document.getElementById("loopDetail");
+  const cx=110, cy=110, R=70, NR=26;
+  const nodes = [];
+
+  stages.forEach((s,i)=>{
+    const a = (i/stages.length) * Math.PI*2 - Math.PI/2;
+    const x = cx + R*Math.cos(a), y = cy + R*Math.sin(a);
+    const grp = document.createElementNS("http://www.w3.org/2000/svg","g");
+    grp.setAttribute("class","node");
+    grp.setAttribute("tabindex","0");
+    grp.setAttribute("role","button");
+    grp.setAttribute("aria-label", s.k + " stage");
+    grp.innerHTML =
+      '<circle cx="'+x+'" cy="'+y+'" r="'+NR+'"></circle>' +
+      '<text x="'+x+'" y="'+(y+3.5)+'">'+s.k.toUpperCase()+'</text>';
+    const pick = ()=>show(i);
+    grp.addEventListener("click", pick);
+    grp.addEventListener("keydown", e=>{ if(e.key==="Enter"||e.key===" "){e.preventDefault();pick();} });
+    g.appendChild(grp);
+    nodes.push(grp);
+  });
+
+  function show(i){
+    nodes.forEach((n,k)=>n.classList.toggle("on", k===i));
+    const s = stages[i];
+    detail.innerHTML = '<div class="box">'+s.box+'</div><h3>'+s.h+'</h3><p>'+s.d+'</p>';
+  }
+  show(0);
+  if(!RM){
+    let i=0;
+    const auto = setInterval(()=>{ i=(i+1)%stages.length; show(i); }, 5200);
+    document.querySelector(".loop").addEventListener("click", ()=>clearInterval(auto), {once:true});
+  }
+})();
+
+/* ---------- WIP simulator (Little's Law) ---------- */
+(function(){
+  const WORK = 4;              // effort units per item
+  const CAPACITY = 2 * WORK;   // effort units per day (=2 items/day at zero switching cost)
+  const TICKS_PER_DAY = 4;     // simulation resolution
+
+  const els = {
+    ready: document.getElementById("tksReady"),
+    wip:   document.getElementById("tksWip"),
+    done:  document.getElementById("tksDone"),
+    colWip:document.getElementById("colWip"),
+    badge: document.getElementById("wipBadge"),
+    slider:document.getElementById("wip"),
+    sVal:  document.getElementById("wipval"),
+    roWip: document.getElementById("roWip"),
+    roTp:  document.getElementById("roTp"),
+    roCt:  document.getElementById("roCt"),
+    reset: document.getElementById("simReset"),
+    pause: document.getElementById("simPause")
+  };
+
+  let limit = +els.slider.value;
+  let seq = 101;
+  let active = [], done = [], ticks = 0, completed = 0, ctSum = 0, ctN = 0;
+  let running = !RM;
+
+  function reset(){ active=[]; done=[]; ticks=0; completed=0; ctSum=0; ctN=0; render(); }
+
+  function step(){
+    ticks++;
+    while(active.length < limit) active.push({id:seq++, p:0, born:ticks});
+    const n = active.length;
+    const eff = 1 / (1 + 0.07*(n-1));          // context-switching penalty
+    const per = (CAPACITY*eff/TICKS_PER_DAY) / n;
+    for(const c of active) c.p += per;
+    const finished = active.filter(c=>c.p >= WORK);
+    active = active.filter(c=>c.p < WORK);
+    for(const f of finished){
+      completed++;
+      ctSum += (ticks - f.born)/TICKS_PER_DAY; ctN++;
+      done.unshift(f);
+    }
+    if(done.length > 4) done.length = 4;
+  }
+
+  function tk(c, isDone){
+    const pct = Math.min(100, (c.p/WORK)*100);
+    return '<div class="tk'+(isDone?" done-tk":"")+'"><span>STORY-'+c.id+'</span>'+
+           '<span class="prog"><i style="width:'+pct+'%"></i></span></div>';
+  }
+
+  function render(){
+    let readyHTML = "";
+    for(let i=0;i<4;i++) readyHTML += '<div class="tk"><span>STORY-'+(seq+i)+'</span><span class="prog"><i style="width:0%"></i></span></div>';
+    els.ready.innerHTML = readyHTML;
+    els.wip.innerHTML = active.map(c=>tk(c,false)).join("");
+    els.done.innerHTML = done.map(c=>tk(c,true)).join("");
+    els.colWip.classList.toggle("full", active.length >= limit);
+    els.badge.textContent = "WIP " + limit;
+    els.roWip.innerHTML = limit + ' <small>items</small>';
+
+    const days = ticks / TICKS_PER_DAY;
+    if(days > 1.5 && completed > 0){
+      const tp = completed / days;
+      els.roTp.innerHTML = tp.toFixed(2) + ' <small>items/day</small>';
+      els.roCt.innerHTML = (ctSum/ctN).toFixed(1) + ' <small>days</small>';
+    } else {
+      els.roTp.innerHTML = '… <small>warming up</small>';
+      els.roCt.innerHTML = '… <small>warming up</small>';
+    }
+  }
+
+  els.slider.addEventListener("input", ()=>{
+    limit = +els.slider.value;
+    els.sVal.textContent = limit;
+    if(active.length > limit) active.length = limit;
+    reset();
+  });
+  els.reset.addEventListener("click", reset);
+  els.pause.addEventListener("click", ()=>{
+    running = !running;
+    els.pause.textContent = running ? "Pause" : "Play";
+    els.pause.classList.toggle("on", !running);
+  });
+
+  if(RM){ els.pause.textContent = "Play"; els.pause.classList.add("on"); }
+  reset();
+  setInterval(()=>{ if(running){ step(); render(); } }, 260);
+})();
+
+/* ---------- planning poker ---------- */
+(function(){
+  const CARDS = [1,2,3,5,8,13,21];
+  const deck = document.getElementById("deck");
+  const reveal = document.getElementById("reveal");
+  const verdict = document.getElementById("verdict");
+  const team = [
+    {who:"Priya (BE)", v:8,  note:"knows the mail service is undocumented"},
+    {who:"Marco (FE)", v:3,  note:"only sees the form"},
+    {who:"Ada (QA)",   v:8,  note:"counts the expiry and reuse cases"},
+    {who:"Sam (BE)",   v:5,  note:"assumes the token helper exists"}
+  ];
+  const MAXV = 21;
+
+  CARDS.forEach(v=>{
+    const b = document.createElement("button");
+    b.className = "pk"; b.textContent = v; b.setAttribute("aria-label", v + " points");
+    b.addEventListener("click", ()=>{
+      [...deck.children].forEach(c=>c.classList.remove("picked"));
+      b.classList.add("picked");
+      showTeam(v);
+    });
+    deck.appendChild(b);
+  });
+
+  function showTeam(you){
+    const all = [{who:"You", v:you, note:"", you:true}, ...team];
+    reveal.innerHTML = all.map(m=>
+      '<div class="rv'+(m.you?" you":"")+'"><span class="who">'+m.who+'</span>'+
+      '<span class="barw"><i data-w="'+((m.v/MAXV)*100)+'"></i></span>'+
+      '<span class="nm">'+m.v+'</span></div>'
+    ).join("");
+    requestAnimationFrame(()=>{
+      reveal.querySelectorAll(".barw i").forEach(i=>{ i.style.width = i.dataset.w + "%"; });
+    });
+    const vals = all.map(m=>m.v);
+    const spread = Math.max(...vals) - Math.min(...vals);
+    verdict.hidden = false;
+    verdict.innerHTML = spread >= 5
+      ? '<strong>Spread of ' + spread + ' points.</strong> That gap is the whole point of the exercise — Priya and Ada are estimating a different story than Marco is. The number is a by-product; the conversation that closes the gap is the value.'
+      : '<strong>Tight spread (' + spread + ').</strong> Shared understanding. Take the number and move on — do not average it, and do not spend twenty minutes choosing between a 3 and a 5.';
+  }
+})();
+
+/* ---------- charts ---------- */
+(function(){
+  const box = document.getElementById("chartbox");
+  const legend = document.getElementById("chartlegend");
+  const btns = [...document.querySelectorAll("[data-chart]")];
+  const W=520,H=300,P={t:22,r:16,b:34,l:38};
+
+  function axes(maxY, labels){
+    const iw=W-P.l-P.r, ih=H-P.t-P.b;
+    let s="";
+    for(let i=0;i<=4;i++){
+      const y=P.t+ih*(i/4), val=Math.round(maxY*(1-i/4));
+      s+='<line x1="'+P.l+'" y1="'+y+'" x2="'+(W-P.r)+'" y2="'+y+'" stroke="#E4EAE8" stroke-width="1"/>';
+      s+='<text x="'+(P.l-8)+'" y="'+(y+4)+'" text-anchor="end" font-family="JetBrains Mono,monospace" font-size="10" fill="#6B7A7F">'+val+'</text>';
+    }
+    labels.forEach((l,i)=>{
+      const x=P.l+(iw/labels.length)*(i+.5);
+      s+='<text x="'+x+'" y="'+(H-10)+'" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="10" fill="#6B7A7F">'+l+'</text>';
+    });
+    return s;
+  }
+
+  function velocity(){
+    const data=[22,31,27,35,33,38,36,37], labels=["S1","S2","S3","S4","S5","S6","S7","S8"], maxY=45;
+    const iw=W-P.l-P.r, ih=H-P.t-P.b, bw=iw/data.length*0.56;
+    let s='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Velocity per sprint">'+axes(maxY,labels);
+    data.forEach((d,i)=>{
+      const x=P.l+(iw/data.length)*(i+.5)-bw/2, h=ih*(d/maxY), y=P.t+ih-h;
+      s+='<rect x="'+x+'" y="'+y+'" width="'+bw+'" height="'+h+'" rx="2" fill="#0F4C42"><animate attributeName="height" from="0" to="'+h+'" dur="0.5s" fill="freeze"/><animate attributeName="y" from="'+(P.t+ih)+'" to="'+y+'" dur="0.5s" fill="freeze"/></rect>';
+      s+='<text x="'+(x+bw/2)+'" y="'+(y-6)+'" text-anchor="middle" font-family="JetBrains Mono,monospace" font-size="10" fill="#6B7A7F">'+d+'</text>';
+    });
+    s+='</svg>';
+    box.innerHTML=s;
+    legend.innerHTML='<span><i style="background:#0F4C42"></i>points completed</span><span>forecast with the last 3–5 sprints as a band (33–38), not a single average</span>';
+  }
+
+  function burndown(){
+    const labels=["D1","D2","D3","D4","D5","D6","D7","D8","D9","D10"], maxY=40;
+    const series=[
+      {n:"ideal", c:"#CDD5D2", d:[36,32,28,25,21,18,14,10,5,0], dash:"4 4"},
+      {n:"healthy actual", c:"#0F4C42", d:[36,34,30,29,24,22,16,11,5,0]},
+      {n:"late integration", c:"#E0512B", d:[36,36,35,35,34,33,31,26,14,0]}
+    ];
+    const iw=W-P.l-P.r, ih=H-P.t-P.b;
+    const px=i=>P.l+(iw/(labels.length-1))*i, py=v=>P.t+ih*(1-v/maxY);
+    let s='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Sprint burndown shapes">'+axes(maxY,labels);
+    series.forEach(se=>{
+      const pts=se.d.map((v,i)=>px(i)+","+py(v)).join(" ");
+      s+='<polyline points="'+pts+'" fill="none" stroke="'+se.c+'" stroke-width="2.5" stroke-linejoin="round"'+(se.dash?' stroke-dasharray="'+se.dash+'"':'')+'/>';
+      se.d.forEach((v,i)=>{ if(!se.dash) s+='<circle cx="'+px(i)+'" cy="'+py(v)+'" r="3" fill="'+se.c+'"/>'; });
+    });
+    s+='</svg>';
+    box.innerHTML=s;
+    legend.innerHTML=series.map(se=>'<span><i style="background:'+se.c+'"></i>'+se.n+'</span>').join("")+
+      '<span>flat then vertical = parallel work, late integration</span>';
+  }
+
+  btns.forEach(b=>b.addEventListener("click",()=>{
+    btns.forEach(o=>{o.classList.remove("on");o.classList.add("ghost");});
+    b.classList.add("on"); b.classList.remove("ghost");
+    (b.dataset.chart==="velocity"?velocity:burndown)();
+  }));
+  velocity();
+})();
+
+/* ---------- anti-patterns ---------- */
+(function(){
+  const items=[
+    ["Water-Scrum-Fall","Big upfront requirements, sprints in the middle, one release at the end.","The org never changed — only the dev team did."],
+    ["Zombie standups","Round-robin status reports delivered to the Scrum Master.","Standup treated as reporting, not coordination."],
+    ["Velocity as a KPI","Management tracks points per person. Estimates inflate immediately.","A metric turned into a target."],
+    ["No Definition of Done","\"Done\" means merged; QA finds the truth three sprints later.","No shared quality bar."],
+    ["Retro theatre","Same issues raised every sprint, nothing ever changes.","Action items without owners."],
+    ["Backlog as a landfill","800 items, nothing pruned, priority order meaningless.","Nobody owns grooming."],
+    ["Scope injection","The PO adds work mid-sprint and nobody stops them.","Scrum Master not protecting the sprint."],
+    ["Absentee Product Owner","Devs guess at requirements and build the wrong thing politely.","PO role given to someone with no time or authority."]
+  ];
+  const host=document.getElementById("antipatterns");
+  host.innerHTML=items.map(i=>
+    '<button class="ap" aria-expanded="false"><h4>'+i[0]+'</h4><p>'+i[1]+'</p>'+
+    '<div class="why">↳ '+i[2]+'</div><span class="hint">click for cause</span></button>'
+  ).join("");
+  host.querySelectorAll(".ap").forEach(b=>b.addEventListener("click",()=>{
+    const open=b.classList.toggle("open");
+    b.setAttribute("aria-expanded", String(open));
+  }));
+})();
+</script>
+</body>
+</html>

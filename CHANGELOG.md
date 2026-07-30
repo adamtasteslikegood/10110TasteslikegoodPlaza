@@ -10,6 +10,63 @@ section at release time. PR references in parentheses.
 
 ## [Unreleased]
 
+### Added — Sprint 2 is chartered, and the delivery decisions are written down
+
+- **`specs/sprint-2-charter.md`** (`SPRINT-2-CHARTER`, tier 3, `derived`) — the complete
+  executable context for `PLZG Sprint 2` (board `169`, sprint `44`,
+  2026-07-30 → 2026-08-13, nine items). Definition of done and the command that proves
+  it; the flow measurements the sprint starts from; a forecast blackout with the
+  condition that lifts it; ownership, budgets, three owned risks from a pre-mortem; and
+  a corrections log of what the interrogation that produced it got wrong. Written
+  because the decisions were reached in a `/cs:grill-pm` session, and **a decision that
+  lives only in a transcript is not a decision** — a fresh session must be able to
+  execute from files alone.
+- **`specs/sprint-2-loop-plan.json`** — the same decisions in the shape
+  `delivery_loop_gate.py` consumes. Every task carries `acceptance.cmd`, never
+  `acceptance.criterion`: with a single maintainer `owner == reviewer`, and machine
+  verification is what keeps self-review non-circular. Gate reports `PLAN-OK`.
+- **Three reference documents registered**, taking the set from 21 to **23 governed
+  documents** (`exempt[]` 7 → 5): `GOVERNANCE-TREE`
+  (`docs/reference/meta_spec_governance_tree.md`, tier 4 `summary`), and the two agile
+  guides `AGILE-EXPLAINED` / `AGILE-LIKE-IM-5` (tier 4 `research`). The guides were
+  first added to `exempt[]` and then promoted — "foundational reading" is a claim about
+  standing, and `exempt[]` records the opposite. Tier 4 `research` is authoritative over
+  nothing; each carries a header saying so, so the standing survives being read out of
+  context. Fixes the `validate_specs.py` failure these three files caused.
+- **`CLAUDE.md` § "Sync the environment before anything else"** — run
+  `git fetch origin && git status` before reading state, planning or editing, in every
+  checkout, worktree and sandbox. This pushes the file 283 → 292 lines, a *third*
+  drift past the ~200-line budget, taken knowingly; see § Document conventions there.
+
+### Added — open conflict `§4.10`: the ladder has no home for delivery policy
+
+- The register moves from **nine resolved, none open** to **nine resolved, one open**.
+  `SPRINT-2-CHARTER` declares `authority: derived` — licensed to originate nothing —
+  while fixing a WIP limit, retry budgets and a review gate that nothing else fixes.
+  Raised by the independent PR reviewer and **deliberately not resolved**: registering
+  them as `D-nnn` is wrong because those bind the *product* and never expire, while a
+  WIP limit should expire with its sprint; and there is nowhere to cite the policy from,
+  because no tier owns *how delivery is run while the product is built*. Recorded per
+  `META-SPEC` §4 rather than papered over. Two candidate resolutions are written down,
+  neither adopted — that is a constitution change and a human call.
+
+### Fixed — two more assertions-of-absence that outlived their subject
+
+- **`CHANGELOG` claimed `superpowers` is not enabled.** It is, since 2026-07-29. That
+  makes three struck absence-claims in a single bullet, which is the finding: a list of
+  what does *not* exist has no mechanism for noticing when one starts to.
+- **`.claude/README.md` said five plugins** and "the other four". Six and five.
+- **Recorded the marketplace ruling.** `claude-plugins-official` is Anthropic's official
+  marketplace — it ships with Claude Desktop, Cowork and Claude Code and needs no
+  `extraKnownMarketplaces` entry, unlike the third-party `claude-code-skills`. The
+  asymmetry is correct; do not "fix" it. Verified by the owner against a live install
+  after a sandboxed reviewer, correctly unable to check it, drew the wrong conclusion.
+- **Deleted a stale "✗ currently failing" block** from the governance tree rather than
+  correcting it. Every line was wrong by the time it was read. It is replaced by a
+  pointer to `python3 scripts/validate_specs.py`, which reads the registry and cannot go
+  stale — **a snapshot of transient state does not belong in a document**, because the
+  document cannot notice when it stops being true.
+
 ### Fixed — the Linear↔Jira sync was pointed at the deprecated board
 
 - **`TO` was declared read-only in prose while an integration still had write
@@ -232,14 +289,19 @@ section at release time. PR references in parentheses.
   every PR title, monitor the PR until it merges, answer every comment with either a fix
   or a technical rebuttal, verify claims against the code before replying, sign replies
   made on Adam's behalf. Adapted from the policy used in the owner's other repository:
-  there is no `TAS` key here, no `Backend/` directory, no `.claude/hooks/` backstop,
-  and `superpowers` is not among the plugins this project enables — so the
-  verify-before-replying rule cites `review-specs` and `zero-hallucination-coder`
-  instead. **Correction:** this bullet originally also said "there is no Linear
-  board" here. There is one, and it syncs — see the retraction earlier in this
-  section. The claim is struck rather than left standing, because an assertion
-  that something does not exist is exactly what this release is about getting
+  there is no `TAS` key here, no `Backend/` directory, and no `.claude/hooks/` backstop
+  — so the verify-before-replying rule cites `review-specs` and
+  `zero-hallucination-coder` instead. **Correction:** this bullet originally also said
+  "there is no Linear board" here. There is one, and it syncs — see the retraction
+  earlier in this section. The claim is struck rather than left standing, because an
+  assertion that something does not exist is exactly what this release is about getting
   wrong repeatedly.
+  **Second correction, same shape:** it also said "`superpowers` is not among the plugins
+  this project enables." It is, since 2026-07-29 — `superpowers@claude-plugins-official`
+  in `.claude/settings.json`. That makes three assertions-of-absence in one bullet that
+  outlived their subject, which is itself the finding: a bullet listing what *does not*
+  exist has no mechanism for noticing when one starts to. Prefer citing the file that
+  owns the fact — here `.claude/README.md` — over restating its contents.
 ### Fixed — reports were being published into the sibling product's Confluence space
 
 - **`post_to_confluence.py` posted into space `TLG` ("Tasteslikegood.org"), not this
