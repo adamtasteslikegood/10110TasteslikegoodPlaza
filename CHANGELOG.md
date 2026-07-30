@@ -31,9 +31,17 @@ spec-set versions, and no application release existed before `v0.1.22`.
 - **Per-worktree, not per-repo.** It resolves `git rev-parse --show-toplevel`, so a
   linked worktree checks itself. The 31-commits-behind incident happened in a
   primary checkout, but worktrees drift identically.
-- Base branch resolves as `PLZG_BASE_REF` → the branch's own upstream →
-  `origin/dev` → `origin/HEAD`, so it stays correct on a release branch without
-  hardcoding `dev`.
+- **It compares against the branch you integrate into, not the branch's own
+  upstream.** Resolution is `PLZG_BASE_REF` → the branch's own upstream *only when
+  `HEAD` is itself `dev` or `main`* → `origin/dev` → `origin/HEAD`. Consulting
+  `@{upstream}` first is the obvious implementation and is wrong: on any pushed
+  feature branch it compares the branch with its own remote copy and always
+  reports "in sync". That shipped in the first revision and was caught in review
+  of PR #70.
+- **A release branch needs `PLZG_BASE_REF`.** A branch like `release/1.0` is
+  measured against `origin/dev` by default, which is not what a release branch
+  integrates into. Set `PLZG_BASE_REF=origin/main` for those; the script does not
+  infer it, and does not pretend to.
 
 ## [0.1.22] - 2026-07-30
 
