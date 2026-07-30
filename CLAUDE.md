@@ -2,6 +2,14 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Sync the environment before anything else
+
+**Run `git fetch origin && git status` before reading state, planning, or editing — in every checkout, worktree and sandbox.** Nothing below this line is trustworthy from a stale tree, and this repo's whole failure mode is confident claims about state that was true somewhere else.
+
+This is not hypothetical. A `/cs:grill-pm` session on 2026-07-30 planned a "sundown Jira TO" sprint from a checkout **31 commits behind `origin/dev`** and produced three findings that were already fixed upstream — including "`generate_report.py` hardcodes `project = "TO"`", which had already been changed to read `ATLASSIAN_JIRA_PROJECT_KEY`. The board was stale in the other direction: tickets still open for work already merged. Three states had diverged — local tree, `origin/dev`, and the Jira board — and each looked authoritative on its own.
+
+The general rule, which generalises the one `docs/delivery-coordinates.md` earned about boards: **verify the state you are about to assert, against the system that owns it.** A checkout does not own upstream state; a ticket does not own whether code is fixed.
+
 ## Repository state
 
 This repo is **a running Godot prototype**. `project.godot` exists and `godot .` opens a walkable office:
@@ -21,6 +29,7 @@ Every row below was executed against a real checkout. The rule this table exists
 
 | Command | What it does |
 |---|---|
+| `git fetch origin && git status` | **Run first, every session.** See § Sync the environment. `git rev-list --left-right --count HEAD...origin/dev` gives the ahead/behind counts directly. |
 | `git submodule update --init --recursive` | Populates `claude-code-tresor/`. Empty in fresh checkouts; the generator needs it. |
 | `godot .` | Opens the prototype — lobby, corridor, server room; arrows or WASD. |
 | `godot --headless --import` | Imports assets. Needed once on a fresh clone before the headless test. |

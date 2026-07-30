@@ -1,4 +1,20 @@
-# Meta-specs - 101100 Tasteslikegood Plaza 
+---
+doc_id: GOVERNANCE-TREE
+title: Meta-specs — the governed tree
+tier: 4
+authority: summary
+status: ACTIVE
+doc_set_version: 0.2.9
+last_updated: 2026-07
+owner: adamtasteslikegood
+derives_from: [META-SPEC]
+---
+
+# Meta-specs — the governed tree
+
+> **Authority: none.** This is a visual restatement of the tier ladder that
+> `specs/meta/META-SPEC.md` owns. Where this diagram and META-SPEC disagree,
+> META-SPEC wins and this file is the bug.
 
 ## The governed tree:
 

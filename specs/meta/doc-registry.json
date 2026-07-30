@@ -153,6 +153,22 @@
       "authority": "historical",
       "status": "HISTORICAL",
       "note": "Migration signpost left behind when Docs/files/00-04 were relocated in PR #5. Retained so old links land somewhere useful."
+    },
+    {
+      "doc_id": "SPRINT-2-CHARTER",
+      "path": "specs/sprint-2-charter.md",
+      "tier": 3,
+      "authority": "derived",
+      "status": "ACTIVE",
+      "note": "Executable context for PLZG Sprint 2 (board 169, sprint 44, 2026-07-30 to 2026-08-13). Locks the delivery decisions reached in the 2026-07-30 grill so they survive the session that produced them. Derives from ROADMAP and DELIVERY-COORDINATES; originates nothing."
+    },
+    {
+      "doc_id": "GOVERNANCE-TREE",
+      "path": "docs/reference/meta_spec_governance_tree.md",
+      "tier": 4,
+      "authority": "summary",
+      "status": "ACTIVE",
+      "note": "Visual restatement of the tier ladder META-SPEC owns. Authoritative over nothing; if it disagrees with META-SPEC it is the bug."
     }
   ],
   "exempt": [
@@ -175,6 +191,14 @@
     {
       "path": "report.md",
       "reason": "Generated output of generate_report.py. Machine-written, not authored."
+    },
+    {
+      "path": "docs/reference/agile/Agile_Expaiined.md",
+      "reason": "Educational reference on agile practice, adopted as onboarding reading. Explains a general methodology rather than specifying anything about this project, so it originates nothing and carries no authority."
+    },
+    {
+      "path": "docs/reference/agile/Agile_like_im_5.md",
+      "reason": "Plain-language companion to Agile_Expaiined.md. Same rationale: general methodology, not project specification."
     }
   ]
 }
