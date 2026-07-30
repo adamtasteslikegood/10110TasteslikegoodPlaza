@@ -38,6 +38,24 @@ jobs:
       - name: Validate governed document set
         run: python3 scripts/validate_specs.py
 
+  validate-delivery-coordinates:
+    name: Validate Delivery Coordinates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # Sibling of Validate Specs: standard library only, no pip install step.
+      # Enforces the Sprint 2 definition of done (specs/sprint-2-charter.md
+      # section 1) -- nothing live routes to the deprecated Jira board, and the
+      # committed PLZG snapshot still reports measurable flow.
+      - name: Validate delivery coordinates
+        run: python3 scripts/validate_delivery_coordinates.py
+
   validate-agent-data:
     name: Validate Agent Data
     runs-on: ubuntu-latest

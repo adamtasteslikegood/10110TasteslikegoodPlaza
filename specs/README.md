@@ -58,7 +58,7 @@ If the doc is reference material that doesn't expire when the work ships — put
 ## Conventions
 
 - Track status inline with `[ ]` / `[~]` / `[x]` checkboxes so the file is grep-friendly.
-- Cross-link Jira issues with the full key (`TO-27`, not `27`). The integration scripts at the repo root (`generate_report.py`, `post_to_confluence.py`) pull these.
+- Cross-link Jira issues with the full key (`PLZG-27`, not `27`). `PLZG` is the delivery board — the older key it replaced is deprecated and must not be filed into. [`docs/delivery-coordinates.md`](../docs/delivery-coordinates.md) (`D-026`) owns every Atlassian identifier this repo uses; cite it rather than restating one here.
 - Date-stamp the bottom of each file with `*Last updated: <month> <year>*`.
 - When a milestone is done, leave the spec in place as historical record — don't delete it. Mark it `[x] Done`.
 
