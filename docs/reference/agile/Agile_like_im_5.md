@@ -1,4 +1,19 @@
+---
+doc_id: AGILE-LIKE-IM-5
+title: Explain "Agile" to a 5yr old
+tier: 4
+authority: research
+status: ACTIVE
+doc_set_version: 0.2.9
+last_updated: 2026-07
+owner: adamtasteslikegood
+derives_from: [AGILE-EXPLAINED]
+---
+
 # Explain "Agile" to a 5yr old:
+
+> **Authority: none.** Tier 4 `research`, the plain-language companion to
+> [`Agile_Expaiined.md`](Agile_Expaiined.md). Authoritative over nothing.
 
 Imagine you want to build a giant LEGO castle.
 

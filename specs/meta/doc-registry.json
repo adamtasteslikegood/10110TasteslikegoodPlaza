@@ -169,6 +169,22 @@
       "authority": "summary",
       "status": "ACTIVE",
       "note": "Visual restatement of the tier ladder META-SPEC owns. Authoritative over nothing; if it disagrees with META-SPEC it is the bug."
+    },
+    {
+      "doc_id": "AGILE-EXPLAINED",
+      "path": "docs/reference/agile/Agile_Expaiined.md",
+      "tier": 4,
+      "authority": "research",
+      "status": "ACTIVE",
+      "note": "Foundational onboarding reading on agile practice, for humans and agents. Explains a general methodology; specifies nothing about Plaza and originates nothing. Cite for rationale, never as law -- same standing as ALIGNED-SPEC-025."
+    },
+    {
+      "doc_id": "AGILE-LIKE-IM-5",
+      "path": "docs/reference/agile/Agile_like_im_5.md",
+      "tier": 4,
+      "authority": "research",
+      "status": "ACTIVE",
+      "note": "Plain-language companion to AGILE-EXPLAINED. Same standing: authoritative over nothing."
     }
   ],
   "exempt": [
@@ -191,14 +207,6 @@
     {
       "path": "report.md",
       "reason": "Generated output of generate_report.py. Machine-written, not authored."
-    },
-    {
-      "path": "docs/reference/agile/Agile_Expaiined.md",
-      "reason": "Educational reference on agile practice, adopted as onboarding reading. Explains a general methodology rather than specifying anything about this project, so it originates nothing and carries no authority."
-    },
-    {
-      "path": "docs/reference/agile/Agile_like_im_5.md",
-      "reason": "Plain-language companion to Agile_Expaiined.md. Same rationale: general methodology, not project specification."
     }
   ]
 }

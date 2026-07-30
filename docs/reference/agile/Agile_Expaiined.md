@@ -1,4 +1,23 @@
+---
+doc_id: AGILE-EXPLAINED
+title: Agile — A Practical Explanation
+tier: 4
+authority: research
+status: ACTIVE
+doc_set_version: 0.2.9
+last_updated: 2026-07
+owner: adamtasteslikegood
+---
+
 # Agile — A Practical Explanation
+
+> **Authority: none.** Tier 4 `research` is authoritative over nothing. This
+> explains general agile practice; it does not specify anything about Plaza.
+> Where it and a governed doc disagree, the governed doc wins. Cite it for
+> rationale, never as law — the same standing as
+> [`aligned-spec-v0.2.5.md`](../../../specs/aligned-spec-v0.2.5.md).
+>
+> Adopted as foundational onboarding reading for humans and agents alike.
 
 ## 1. What Agile Actually Is
 
