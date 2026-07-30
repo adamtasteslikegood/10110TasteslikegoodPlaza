@@ -17,6 +17,32 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
 
+### Added — Sprint 2's definition of done is a gate, not a sentence (`PLZG-125`)
+
+- **`scripts/validate_delivery_coordinates.py`**, stdlib-only and wired into CI as
+  `Validate Delivery Coordinates`, a sibling of `Validate Specs`. It asserts both clauses
+  of `specs/sprint-2-charter.md` §1: no live script or `ACTIVE` governed doc routes to
+  the deprecated board, **and** the committed PLZG snapshot reports `wip > 0` with a
+  non-empty `work_item_age`.
+- **Clause (b) is the one that matters.** Without it a rename-only sundown passes green
+  while flow stays unmeasurable — the board reports zero WIP and an empty age list, and
+  nobody notices because clause (a) is satisfied by a rename.
+- **Clause (a) checks entitlement, not text.** A blanket search flags precisely the
+  documents doing the right thing, so four files are entitled to name the board and say
+  why — `CHANGELOG.md` as history, `docs/delivery-coordinates.md` as the `D-026`
+  authority, the sprint charter, and the checker itself. `SUPERSEDED`/`HISTORICAL` docs
+  are exempt by frontmatter status, and the git ref `feature/TO-1-…` is stripped before
+  matching because a branch name cannot be renamed without orphaning its history.
+- **It found a real one on its first run:** `specs/README.md` instructed contributors to
+  cross-link Jira issues using a deprecated-board key. Fixed to `PLZG` and pointed at
+  `D-026`.
+- **`data/plzg-flow-snapshot.json`** is the committed snapshot, shaped like the
+  `jira_snapshot_bridge.py --to flow` output. It says outright that it is a snapshot and
+  not a live reading, and that Jira must be re-queried before any number in it is cited.
+- Every failure mode was exercised rather than assumed: `wip = 0`, empty `work_item_age`,
+  a missing snapshot, and a new `ACTIVE` doc naming the board all fail; a `SUPERSEDED`
+  doc naming it passes.
+
 ### Changed — `CLAUDE.md` is back inside its instruction budget (`PLZG-107`)
 
 - **374 lines → exactly 200**, against `META-SPEC` §6's ~200-line budget. The debt was

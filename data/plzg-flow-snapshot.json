@@ -1,0 +1,48 @@
+{
+  "$comment": "Committed PLZG flow snapshot. Clause (b) of the Sprint 2 definition of done (specs/sprint-2-charter.md section 1) requires this file to report wip > 0 and a non-empty work_item_age; scripts/validate_delivery_coordinates.py asserts exactly that. Shape matches the pm-skills jira_snapshot_bridge.py '--to flow' output so the two are interchangeable. THIS IS A SNAPSHOT, NOT A LIVE READING: it is true as of the as_of timestamp and nowhere else. Re-query Jira before citing any number here -- the board owns these facts, this file does not. That rule is the whole reason Sprint 2 existed.",
+  "mode": "flow",
+  "project": "PLZG",
+  "as_of": "2026-07-30T14:20:00-07:00",
+  "source": "Atlassian MCP searchJiraIssuesUsingJql against tasteslikegood.atlassian.net, cloudId 029decc8-e09a-4d55-92f8-20d9ca64ca13",
+  "regenerate": "project = PLZG (total) / statusCategory = Done (done) / statusCategory = \"In Progress\" (wip), then recompute work_item_age from each WIP item's created date",
+  "counts": {
+    "total": 95,
+    "done": 56,
+    "open": 39,
+    "wip": 1
+  },
+  "work_item_age": [
+    {
+      "key": "PLZG-125",
+      "summary": "Sprint 2 definition of done: scripts/validate_delivery_coordinates.py",
+      "status": "In Progress",
+      "assignee": "Adam Schoen",
+      "created": "2026-07-30T14:14:18-07:00",
+      "age_days": 0
+    }
+  ],
+  "aging_wip_alerts": [],
+  "wip_limit": 3,
+  "sprint": {
+    "name": "PLZG Sprint 2",
+    "board": 169,
+    "id": 44,
+    "start": "2026-07-30",
+    "end": "2026-08-13",
+    "goal": "Make every doc claim about state match the system that owns it, and automate the sync check that catches the next drift."
+  },
+  "at_sprint_start": {
+    "as_of": "2026-07-29",
+    "total": 83,
+    "done": 42,
+    "wip": 0,
+    "work_item_age": [],
+    "note": "WIP was 0 and work_item_age empty because the board used only 'To Do' and 'Done' -- nobody used the In Progress transition, which already existed (status id 3, transition id 21). The fix was behavioural, not structural; no Jira admin change was required."
+  },
+  "forecast": null,
+  "forecast_blackout": {
+    "in_force": true,
+    "reason": "Sample is large enough (56 completions) but non-stationary: an 11-week zero-throughput gap sits inside it, so Monte Carlo cannot distinguish 'team paused' from 'team is slow' and silently prices dormancy into every forecast. See specs/sprint-2-charter.md section 3.",
+    "lift_condition": "10+ completions carrying real started->resolved timestamps, drawn from a window containing no zero-throughput weeks."
+  }
+}
