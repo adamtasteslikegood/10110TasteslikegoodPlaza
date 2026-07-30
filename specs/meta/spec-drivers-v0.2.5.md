@@ -129,8 +129,8 @@ now; neither is started.
 ## 4. Open-conflict register
 
 Per [`META-SPEC.md`](META-SPEC.md) §4, conflicts are recorded rather than silently
-resolved. **Nine resolved, none open** as of v0.2.9. Resolved entries are kept, not
-deleted — the record of *how* a conflict was settled is what stops it reopening.
+resolved. **Nine resolved, one open** (§4.10) as of v0.2.9. Resolved entries are kept,
+not deleted — the record of *how* a conflict was settled is what stops it reopening.
 
 ### 4.1 `ALIGNED-SPEC-025` §01.3 versus `STORYBOARD-W1` — **RESOLVED**
 
@@ -329,6 +329,49 @@ decision falls inside that authority's subject matter. It was found by a human
 asking what the new check deliberately could not cover. Worth repeating whenever a
 gate ships — the question "what does this deliberately not catch?" is where the
 next §4.9 lives.
+
+### 4.10 The ladder has no home for delivery policy — **OPEN**
+
+Raised 2026-07-30 by the independent PR reviewer against `SPRINT-2-CHARTER`
+(`specs/sprint-2-charter.md`), rated CRITICAL, and **not resolved in that PR.**
+
+The finding: the charter declares `authority: derived`, which is licensed to
+originate nothing, while its content *does* fix things nothing else fixes — a WIP
+limit of 3, retry and iteration budgets, a mandatory `acceptance.cmd` review gate,
+a forecast blackout and the condition that lifts it. None of that is sourced from
+its `derives_from`, and none is registered as a `D-nnn`.
+
+The reviewer is right that this is the §4.8 / §4.9 shape. But neither available fix
+is correct:
+
+- **Register the decisions as `D-nnn` and raise the charter's authority.** The
+  register is for decisions binding on the *product* — engine, transport, data
+  layer, taxonomy. A WIP limit is not that. It binds how the team works this
+  fortnight and should expire with the sprint; `D-nnn` entries do not expire.
+- **Strip the policy out and cite it from elsewhere.** There is nowhere to cite.
+  No tier owns "how delivery is run", which is precisely the gap.
+
+**The gap:** the ladder models *what the product is* (tiers 1–2) and *what order it
+gets built in* (tier 3), with no authority for *how the work is governed while it is
+built*. `derived` is the closest available label and it is a poor fit — the charter
+does not derive its budgets from anything, it sets them.
+
+Recorded rather than papered over, per META-SPEC §4. The charter stays `derived` and
+carries no `decides:` — the conservative reading, which understates its standing
+rather than claiming one it has not been granted. **Resolving this needs a
+META-SPEC change, not a frontmatter edit**, and that is a human call about the
+constitution rather than something to settle inside a sprint's own charter.
+
+Two candidate resolutions, neither adopted:
+
+1. Add a `delivery` authority to the tier-3 vocabulary, licensed to originate
+   time-boxed operational policy that expires with its artifact.
+2. Add an expiring decision class (`P-nnn`, "policy") alongside `D-nnn`, so the
+   register can carry sprint-scoped commitments without them becoming permanent.
+
+Until then, treat the reviewer's finding as **standing and correct**. It should keep
+being raised on every sprint charter, and that recurrence is the signal that the
+constitution — not the charter — is what needs the edit.
 
 ## 5. Exit criteria to v1.0.0
 

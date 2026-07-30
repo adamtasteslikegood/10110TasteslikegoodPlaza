@@ -232,14 +232,19 @@ section at release time. PR references in parentheses.
   every PR title, monitor the PR until it merges, answer every comment with either a fix
   or a technical rebuttal, verify claims against the code before replying, sign replies
   made on Adam's behalf. Adapted from the policy used in the owner's other repository:
-  there is no `TAS` key here, no `Backend/` directory, no `.claude/hooks/` backstop,
-  and `superpowers` is not among the plugins this project enables — so the
-  verify-before-replying rule cites `review-specs` and `zero-hallucination-coder`
-  instead. **Correction:** this bullet originally also said "there is no Linear
-  board" here. There is one, and it syncs — see the retraction earlier in this
-  section. The claim is struck rather than left standing, because an assertion
-  that something does not exist is exactly what this release is about getting
+  there is no `TAS` key here, no `Backend/` directory, and no `.claude/hooks/` backstop
+  — so the verify-before-replying rule cites `review-specs` and
+  `zero-hallucination-coder` instead. **Correction:** this bullet originally also said
+  "there is no Linear board" here. There is one, and it syncs — see the retraction
+  earlier in this section. The claim is struck rather than left standing, because an
+  assertion that something does not exist is exactly what this release is about getting
   wrong repeatedly.
+  **Second correction, same shape:** it also said "`superpowers` is not among the plugins
+  this project enables." It is, since 2026-07-29 — `superpowers@claude-plugins-official`
+  in `.claude/settings.json`. That makes three assertions-of-absence in one bullet that
+  outlived their subject, which is itself the finding: a bullet listing what *does not*
+  exist has no mechanism for noticing when one starts to. Prefer citing the file that
+  owns the fact — here `.claude/README.md` — over restating its contents.
 ### Fixed — reports were being published into the sibling product's Confluence space
 
 - **`post_to_confluence.py` posted into space `TLG` ("Tasteslikegood.org"), not this
