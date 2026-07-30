@@ -895,7 +895,10 @@ locked decisions (`D-014`, `D-020`) moved the doc set version per `META-SPEC` §
 - `dev` was fast-forwarded to match `main` via PR #3 (`sync-main-to-dev` →
   `dev`). `dev` is once again the integration branch per
   `specs/branching-strategy.md`.
-- **`v0.1.22` is the first tagged release**, cut 2026-07-30 at `6aad464`. An
+- **`v0.1.22` is the first tagged release**, cut 2026-07-30 against the `dev`
+  commit that carries this entry — deliberately not pinned to a hash here, since
+  the tag cannot point at a commit that predates the changelog section
+  describing it. An
   earlier note here said the first tag would wait until the M1 → M4 → M8
   critical path was demonstrable in-engine; M1 and M4 are done and M8 is not, so
   the tag was cut against merged history instead of a milestone gate. `y = 22` is
