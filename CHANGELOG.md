@@ -67,6 +67,19 @@ section at release time. PR references in parentheses.
   stale — **a snapshot of transient state does not belong in a document**, because the
   document cannot notice when it stops being true.
 
+### Fixed — the charter cited tooling that existed only in the session that wrote it (PLZG-117, #60)
+
+- **`specs/sprint-2-charter.md` § 9 invoked `$PM/scripts/delivery_loop_gate.py`.** `$PM`
+  appeared exactly once in the tracked tree — that line — and was defined nowhere. The
+  charter's opening promise is that *a session that has read this file needs nothing from
+  the conversation that produced it*; that promise was false about the charter's own
+  proving command. `delivery_loop_gate.py` and `jira_snapshot_bridge.py` ship with the
+  `pm-skills` plugin, not this repo, and § 9 now says so, resolves the path rather than
+  hardcoding a versioned cache dir, and records an empty result as a real blocker rather
+  than an invitation to reimplement the gate — `META-SPEC`'s don't-invent-infrastructure
+  rule. The same command had **three different spellings** across § 2, § 9 and the loop
+  plan's `$comment`; now one.
+
 ### Fixed — the Linear↔Jira sync was pointed at the deprecated board
 
 - **`TO` was declared read-only in prose while an integration still had write
