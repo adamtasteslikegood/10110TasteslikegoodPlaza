@@ -202,19 +202,15 @@ def check_clause_b() -> list[Failure]:
             Failure("b", str(rel), "work_item_age is missing or not a list")
         )
     elif not age:
+        # This also covers "wip > 0 but no items named", which is the case that
+        # matters: a snapshot claiming WIP without naming the items is not
+        # evidence. An earlier revision guarded that separately and only ever
+        # produced a duplicate message, since this branch fires first.
         failures.append(
             Failure(
                 "b",
                 str(rel),
                 "work_item_age is empty; the board cannot report item age",
-            )
-        )
-
-    # A snapshot claiming WIP without naming the items is not evidence.
-    if isinstance(wip, int) and isinstance(age, list) and wip > 0 and len(age) < 1:
-        failures.append(
-            Failure(
-                "b", str(rel), f"counts.wip is {wip} but work_item_age names no items"
             )
         )
 
