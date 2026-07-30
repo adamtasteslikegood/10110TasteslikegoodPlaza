@@ -65,7 +65,9 @@ new dependency or a new language to do this.
 ## 2. Flow measurement — the state this sprint starts from
 
 Measured 2026-07-29 via `jira_snapshot_bridge.py --to flow`, before any planning.
-Kanban Guide (May 2025) makes four measures mandatory; **two were unreportable.**
+That script is plugin-provided, not in this repo — see § 9 for how to resolve its
+path. Kanban Guide (May 2025) makes four measures mandatory; **two were
+unreportable.**
 
 | Measure | Value at sprint start |
 |---|---|
@@ -331,14 +333,42 @@ print(base64.b64encode(f\"{env['ATLASSIAN_EMAIL'].strip()}:{env['ATLASSIAN_API_T
 ")
 ```
 
-### The machine-readable plan
+### The machine-readable plan, and where its tooling lives
+
+**`delivery_loop_gate.py` and `jira_snapshot_bridge.py` are not in this repo, and
+must not be vendored into it.** They ship with the `pm-skills` plugin, which
+`.claude/settings.json` enables at project scope — so a fresh checkout resolves
+them through the plugin, not through `scripts/`. Nothing under `scripts/` here is
+theirs; that directory is this repo's own Python tooling (`validate_specs.py`,
+`generate_agents_json.py`).
+
+Resolve the path rather than hardcoding it — the plugin lives under a versioned
+cache directory whose exact location varies by install:
+
+```bash
+PM_SCRIPTS=$(find ~/.claude/plugins -path '*/pm-skills/scripts' -type d -print -quit)
+```
 
 `specs/sprint-2-loop-plan.json` carries the same decisions in the shape
 `delivery_loop_gate.py` consumes. Verify before executing:
 
 ```bash
-python3 "$PM/scripts/delivery_loop_gate.py" --plan specs/sprint-2-loop-plan.json --mode plan --output human
+python3 "$PM_SCRIPTS/delivery_loop_gate.py" \
+  --plan specs/sprint-2-loop-plan.json --mode plan --output human
+# -> Verdict: PLAN-OK   (exit 0)
 ```
+
+**If `PM_SCRIPTS` comes back empty, the plugin is not installed** — that is a real
+blocker for verifying the plan, not something to work around by reimplementing the
+gate. Enable `pm-skills` (see `.claude/README.md`) and re-run.
+
+An earlier revision of this section wrote `"$PM/scripts/delivery_loop_gate.py"`
+with `$PM` defined nowhere in the tree — it existed only in the session that wrote
+the charter. Caught by the independent reviewer as `PLZG-117`. That is precisely
+the failure § 8 and the opening line of this document are about, reproduced inside
+the document making the claim: **"a session that has read this file needs nothing
+from the conversation that produced it"** was false for one command, in a file
+whose whole purpose is that sentence.
 
 ## 10. Outstanding, and not this sprint's
 
