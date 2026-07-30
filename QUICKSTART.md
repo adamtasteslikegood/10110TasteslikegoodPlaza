@@ -1,7 +1,9 @@
 # Quick start
 
-   This repo is still in **early planning and prototype stages** — .godot prototype status, existence, instructions for testing and development are subject to change. Same goes for the agent bridge.  
-   
+This repo is **a running Godot prototype**. `project.godot` exists, `godot .` opens a walkable office, and `tests/smoke_test.tscn` gates it in CI. The agent bridge is the part that is not built yet.
+
+For what has actually shipped, read [`specs/task-tracker.md`](specs/task-tracker.md) — it is the status of record. This page deliberately does not restate milestone state, because restating it is how this line drifted into claiming the prototype might not exist.
+
 ## 1. Clone with submodules
 
 ```bash
@@ -15,9 +17,11 @@ If you cloned without `--recurse-submodules`:
 git submodule update --init --recursive
 ```
 
-The `claude-code-tresor/` submodule holds the 137+ agent definitions under `subagents/` (by department) and `agents/` (**the eight production-ready cores**). This repo tracks [adamtasteslikegood/claude-code-tressor](https://github.com/adamtasteslikegood/claude-code-tresor) - a fork of the original repo by the samne name by Alireza Rezvani, the author of the agents, skills, commands, sub-agents and agent-skills for Claude Code and other AI/coding agents. ***See links below*** 
+The `claude-code-tresor/` submodule holds the agent definitions under `subagents/` (nested by department) and `agents/` (the same core roles in Claude Code's runtime format — a backward-compat shim, not extra roles). For the counts and what each one means, see [`docs/agent-directory.md`](docs/agent-directory.md) — `D-017` makes it the authority, and every other count in the repo derives from it rather than restating one here.
 
-   - [alirezarezavani/claude-code-tressor](https://github.com/alirezarezvani/claude-code-tresor)  <—- submodule _is_ fork of
+This repo tracks [adamtasteslikegood/claude-code-tresor](https://github.com/adamtasteslikegood/claude-code-tresor) — a fork of the original repo of the same name by Alireza Rezvani, the author of the agents, skills, commands, sub-agents and agent-skills for Claude Code and other AI/coding agents. ***See links below***
+
+   - [alirezarezvani/claude-code-tresor](https://github.com/alirezarezvani/claude-code-tresor)  <—- submodule _is_ fork of
 ### **Be sure to check out:**
    - [alirezarezvani/claude-skills](https://github.com/alirezarezvani/claude-skills) 23.4k GitHub Stars
    - ***Other open source projects:***
@@ -26,7 +30,7 @@ The `claude-code-tresor/` submodule holds the 137+ agent definitions under `suba
    - Articles about [AI engineering and agentic development](https://alirezarezvani.medium.com/) on [Medium](https://alirezarezvani.medium.com/)
    - [https://alirezarezvani.com/](https://alirezarezvani.com/)
 
-**These will become** `data/agents.json` once M3 ships. 
+These definitions are what [`data/agents.json`](data/agents.json) is built from — `scripts/generate_agents_json.py` generates it from the submodule (`D-024`). It already exists; never hand-edit it, regenerate. `python3 scripts/generate_agents_json.py --check` fails if the two have drifted apart, and CI runs that check.
 
 
 ## 2. Set up the `.env` (only if you want to run the Atlassian scripts)
@@ -65,10 +69,11 @@ pip install flake8 black websockets requests
 # Pulls Jira project updates from the last 7 days into report.md
 python generate_report.py
 
-# Renders report.md to HTML and posts it as a child of Confluence page <confluence_page_id>,
-# the home of space ____ ("Your Confluence Home Page goes Here")
+# Renders report.md to HTML and posts it as a child of the space home page
 python post_to_confluence.py
 ```
+
+Which space and which parent page is not a secret and is not restated here — [`docs/delivery-coordinates.md`](docs/delivery-coordinates.md) (`D-026`) is the source of truth for every Atlassian identifier this repo uses, and `post_to_confluence.py` is the only other place the value legitimately appears, because it executes it. There is no fallback: if the parent page is unreachable the script exits 1 rather than publishing somewhere else.
 
 Neither crashes on a missing variable any more. Both name what is absent and exit 1 — verified against the unfilled template:
 
@@ -103,6 +108,6 @@ flake8 . --exit-zero --max-complexity=10 --max-line-length=127   # advisory
 | Track current work | [`specs/task-tracker.md`](specs/task-tracker.md) |
 | Follow the contribution flow | [`CONTRIBUTING.md`](CONTRIBUTING.md) |
 
-The first real prototype task is **M1** — initialize a Godot 4 project for the 2.5D top-down prototype and implement basic `CharacterBody2D` player movement. See [`specs/roadmap.md`](specs/roadmap.md) and [`docs/designs/2.5D-RPG-Prototype.md`](docs/designs/2.5D-RPG-Prototype.md).
+To run what is already here: `godot --headless --import` once on a fresh clone, then `godot .` to walk the office, or `godot --headless tests/smoke_test.tscn` for the build gate. Which milestone is next is tracked in [`specs/task-tracker.md`](specs/task-tracker.md), sequenced by [`specs/roadmap.md`](specs/roadmap.md), and designed in [`docs/designs/2.5D-RPG-Prototype.md`](docs/designs/2.5D-RPG-Prototype.md) — read those rather than a milestone name pinned here.
 
 *Last updated: July 2026*
