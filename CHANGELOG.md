@@ -44,6 +44,7 @@ section at release time. PR references in parentheses.
   Reasoning recorded in `CLAUDE.md` so it is not re-litigated.
 - **No CI impact.** gbrain is per-machine; no gate depends on it, and a
   contributor without it loses nothing.
+
 ### Added — Sprint 2 is chartered, and the delivery decisions are written down
 
 - **`specs/sprint-2-charter.md`** (`SPRINT-2-CHARTER`, tier 3, `derived`) — the complete

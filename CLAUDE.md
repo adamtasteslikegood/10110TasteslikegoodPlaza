@@ -363,8 +363,9 @@ The agent `.md` bodies in `claude-code-tresor` are **not** indexed and do not
 need to be: `data/agents.json` already carries every agent's `name`, `role`,
 `dept`, `description` and `tools`, and answers agent-selection queries as the top
 hit. Index the submodule only if you are authoring agent prompts in the fork, and
-then as an *isolated* source (`--no-federated`), so 342 generic agent files
-cannot outrank this project's 39 pages on Plaza questions. The same reasoning
+then as an *isolated* source (`--no-federated`), so the submodule's 342
+markdown files — of which 133 are actual `agent.md` bodies — cannot outrank
+this project's 39 pages on Plaza questions. The same reasoning
 rules out indexing the `alirezarezvani/claude-skills` marketplace: Claude Code
 selects skills from SKILL.md frontmatter in the plugin cache, a different
 mechanism from semantic search, so indexing 2,717 files would buy dilution and
