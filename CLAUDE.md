@@ -184,7 +184,7 @@ bridge change, the boundary is broken.
 - **Simplicity first.** Don't invent infrastructure — run the command before recommending it. Saying "there is no Node here" is also inventing infrastructure, in the negative direction, and it was wrong.
 - **Surgical changes.** Never silently reconcile two disagreeing documents — record it in the open-conflict register and raise it. Don't duplicate state: agent facts live in `data/agents.json`, feel values in the scene, project keys in the scripts, and the test derives its bounds from the scene rather than copying them.
 - **Know whose rule it is.** Before enforcing a constraint against a request, check who set it. Owner decisions and `D-nnn` bind; an agent's suggestion written up in a repo file is rationale to weigh, not a gate to refuse with.
-- **Goal-driven execution.** M8 is the goal, `tests/smoke_test.tscn` the evidence. `META-SPEC` §5.8 requires machine-checkable acceptance, so "done" means a gate went green, not that the work looked finished.
+- **Goal-driven execution.** M8 is the goal, `tests/smoke_test.tscn` the evidence. `META-SPEC` §5.8 requires machine-checkable acceptance, so "done" means a gate went green, not that the work looked finished. The user-level `karpathy-guidelines` skill expands on these principles if installed — a per-machine convenience, not a dependency of this repo.
 
 ## GBrain semantic search
 
