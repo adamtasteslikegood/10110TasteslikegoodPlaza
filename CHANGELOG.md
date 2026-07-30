@@ -8,7 +8,16 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Entries land under `[Unreleased]` as work is merged and graduate to a numbered
 section at release time. PR references in parentheses.
 
+**Two version axes, deliberately separate.** This file and the tags track the
+**application**: the 3D era was `0.0.x`, and the 2.5D line is `0.1.y`. The
+`doc_set_version:` in every governed document's frontmatter is the **document
+set's** number and is unrelated — it reached `0.2.9` on its own axis. Prose that
+cites `v0.2.7` or `v0.2.8` as software releases is conflating the two; those were
+spec-set versions, and no application release existed before `v0.1.22`.
+
 ## [Unreleased]
+
+## [0.1.22] - 2026-07-30
 
 ### Added — the governed doc set is in the gbrain semantic index (`PLZG-113`)
 
@@ -886,8 +895,14 @@ locked decisions (`D-014`, `D-020`) moved the doc set version per `META-SPEC` §
 - `dev` was fast-forwarded to match `main` via PR #3 (`sync-main-to-dev` →
   `dev`). `dev` is once again the integration branch per
   `specs/branching-strategy.md`.
-- No tagged releases yet. First tag will follow once the M1 → M4 → M8
-  critical-path prototype is demonstrable in-engine.
+- **`v0.1.22` is the first tagged release**, cut 2026-07-30 against the `dev`
+  commit that carries this entry — deliberately not pinned to a hash here, since
+  the tag cannot point at a commit that predates the changelog section
+  describing it. An
+  earlier note here said the first tag would wait until the M1 → M4 → M8
+  critical path was demonstrable in-engine; M1 and M4 are done and M8 is not, so
+  the tag was cut against merged history instead of a milestone gate. `y = 22` is
+  the count of PRs merged since the 2.5D pivot (`#3`–`#63`); `#1` predates it.
 
 ## Pull request history
 
