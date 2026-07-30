@@ -6,9 +6,26 @@ root `README.md`, so nothing here needs frontmatter or a `doc-registry.json` ent
 ## `settings.json` — enabled skill plugins
 
 Declares the [`alirezarezvani/claude-skills`](https://github.com/alirezarezvani/claude-skills)
-marketplace (as `claude-code-skills`) and enables five plugins at **project scope**. The
+marketplace (as `claude-code-skills`) and enables **six** plugins at **project scope**. The
 marketplace is declared here as well as in the user's own settings so a fresh contributor
 checkout resolves the plugins without extra setup.
+
+### Two marketplaces, and why only one is declared
+
+`extraKnownMarketplaces` lists `claude-code-skills` and **not** `claude-plugins-official`.
+That asymmetry is correct and deliberate — do not "fix" it by adding the second.
+
+| Marketplace | Origin | Declared here? |
+|---|---|---|
+| `claude-plugins-official` | **Anthropic's official marketplace.** Ships with Claude Desktop, Cowork and Claude Code; appears under its own tab in the plugin UI, separate from personal marketplaces. | **No** — it is built in and resolves without registration. |
+| `claude-code-skills` | Third-party (`alirezarezvani/claude-skills`). A personal marketplace, which must be added explicitly before its plugins resolve. | **Yes** — a fresh checkout cannot resolve it otherwise. |
+
+Verified by the repository owner against a live install (2026-07-30). Recorded here
+because an automated PR review flagged `superpowers@claude-plugins-official` as
+unverifiable from a sandboxed runner with no network — a correct statement about that
+runner, and the wrong conclusion about the marketplace. Provenance of a built-in
+marketplace is not checkable from inside CI; it is checkable by the owner, and this
+table is that check.
 
 | Skill | Why it's here |
 |---|---|
@@ -17,6 +34,7 @@ checkout resolves the plugins without extra setup.
 | `code-tour` | Persona-targeted walkthroughs — useful for onboarding onto the three autoloads and the `scenes/` layout. |
 | `collab-proof` | Post-session retrospective that calibrates what the agent actually got right. |
 | `pm-skills` | Atlassian administration — nine skills plus an `atlassian` MCP server. Added 2026-07-28 for the Jira/Confluence overhaul. |
+| `superpowers` | Process discipline — brainstorming, systematic-debugging, TDD, plan execution. From the **official** marketplace, hence `@claude-plugins-official` rather than `@claude-code-skills`. Enabled 2026-07-29. |
 
 ### `pm-skills` — the largest single addition
 
@@ -27,8 +45,15 @@ than doubling this project's skill count on its own. It was enabled anyway becau
 repo really does administer two Jira projects (`PLZG`, `TO`) and a Confluence space
 (`PLZA`), and `atlassian-admin` is the tool for that work.
 
-Checked for name collisions before enabling: none of the nine collide with the other four,
+Checked for name collisions before enabling: none of the nine collide with the other five,
 the user-scope `agent-harness` / `write-a-skill`, or the gstack suite.
+
+**Known issue — `pm-skills` bundles a deprecated MCP endpoint.** Its `.mcp.json` pins
+`https://mcp.atlassian.com/v1/sse`, which Atlassian deprecated on 2026-06-30; every call
+through it emits a deprecation banner. The official `atlassian` plugin uses
+`https://mcp.atlassian.com/v1/mcp/authv2`. **Prefer `mcp__plugin_atlassian_atlassian__*`
+tools.** Editing the vendored marketplace file is futile — it is clobbered on plugin
+update — so the fix belongs upstream at `alirezarezvani/claude-skills`.
 
 If the Atlassian overhaul finishes and this stops being used, disabling it again is reasonable.
 

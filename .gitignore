@@ -31,3 +31,6 @@ report.md
 # worktree. Per-worktree machine state, not project config; see CLAUDE.md
 # § GBrain semantic search.
 .gbrain-source
+
+# git worktrees
+.claude/worktrees/

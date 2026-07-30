@@ -1,0 +1,141 @@
+{
+  "$comment": "Machine-readable Sprint 2 plan. Prose rationale lives in specs/sprint-2-charter.md; this file is the shape delivery_loop_gate.py consumes. That script is NOT in this repo and must not be vendored here -- it ships with the pm-skills plugin, enabled at project scope in .claude/settings.json. Resolve it, do not hardcode: PM_SCRIPTS=$(find ~/.claude/plugins -path '*/pm-skills/scripts' -type d -print -quit) then python3 \"$PM_SCRIPTS/delivery_loop_gate.py\" --plan specs/sprint-2-loop-plan.json --mode plan --output human. See charter section 9. Every task carries acceptance.cmd rather than acceptance.criterion -- with a single human, owner == reviewer, and machine verification is what makes that non-circular (charter section 4).",
+  "goal": "Make every doc claim about state match the system that owns it, and automate the sync check that catches the next drift. PLZG Sprint 2, board 169, sprint 44, 2026-07-30 to 2026-08-13.",
+  "budgets": {
+    "max_attempts_per_task": 3,
+    "max_loop_iterations": 12
+  },
+  "iteration": 1,
+  "tasks": [
+    {
+      "id": "T0",
+      "title": "Reconcile the checkout against origin/dev before any other task (EXEMPT from the attempt cap; blocks every task below)",
+      "owner": "adam schoen",
+      "executor": "agent",
+      "reviewer": "adam schoen",
+      "acceptance": {
+        "cmd": "git fetch origin && test \"$(git rev-list --count HEAD..origin/dev)\" -eq 0"
+      },
+      "status": "todo",
+      "evidence": "",
+      "attempts": 0
+    },
+    {
+      "id": "T1",
+      "title": "PLZG-115 -- register the three unregistered reference docs so validate_specs.py exits 0",
+      "owner": "adam schoen",
+      "executor": "agent",
+      "reviewer": "adam schoen",
+      "acceptance": {
+        "cmd": "python3 scripts/validate_specs.py"
+      },
+      "status": "todo",
+      "evidence": "",
+      "attempts": 0
+    },
+    {
+      "id": "T2",
+      "title": "PLZG-114 -- SessionStart hook plus scripts/check_sync.sh enforcing the environment sync, with a --strict mode CI can consume",
+      "owner": "adam schoen",
+      "executor": "agent",
+      "reviewer": "adam schoen",
+      "acceptance": {
+        "cmd": "test -x scripts/check_sync.sh && scripts/check_sync.sh && python3 -c \"import json,sys; h=json.load(open('.claude/settings.json')).get('hooks',{}); sys.exit(0 if 'SessionStart' in h else 1)\""
+      },
+      "status": "todo",
+      "evidence": "",
+      "attempts": 0
+    },
+    {
+      "id": "T3",
+      "title": "PLZG-110 -- QUICKSTART .env template must carry ATLASSIAN_JIRA_PROJECT_KEY and drop the stale KeyError claim, since generate_report.py now exits 1 via a guard",
+      "owner": "adam schoen",
+      "executor": "agent",
+      "reviewer": "adam schoen",
+      "acceptance": {
+        "cmd": "grep -q 'ATLASSIAN_JIRA_PROJECT_KEY' QUICKSTART.md && ! grep -q 'crash with a `KeyError`' QUICKSTART.md"
+      },
+      "status": "todo",
+      "evidence": "",
+      "attempts": 0
+    },
+    {
+      "id": "T4",
+      "title": "PLZG-108 -- QUICKSTART must not cast doubt on whether the Godot prototype exists; CLAUDE.md and task-tracker.md are the status of record",
+      "owner": "adam schoen",
+      "executor": "agent",
+      "reviewer": "adam schoen",
+      "acceptance": {
+        "cmd": "! grep -qiE 'prototype status, existence|existence, instructions' QUICKSTART.md"
+      },
+      "status": "todo",
+      "evidence": "",
+      "attempts": 0
+    },
+    {
+      "id": "T5",
+      "title": "PLZG-109 -- resolve the Confluence coordinate split: QUICKSTART placeholders vs the parent_page_id post_to_confluence.py publishes. Cite DELIVERY-COORDINATES rather than restating ids.",
+      "owner": "adam schoen",
+      "executor": "agent",
+      "reviewer": "adam schoen",
+      "acceptance": {
+        "cmd": "! grep -q 'Your Confluence Home Page goes Here' QUICKSTART.md && grep -q 'delivery-coordinates' QUICKSTART.md"
+      },
+      "status": "todo",
+      "evidence": "",
+      "attempts": 0
+    },
+    {
+      "id": "T6",
+      "title": "PLZG-111 and PLZG-112 -- strike the stale 'TO-127 to TO-136 still need triage' claim from CHANGELOG.md and docs/delivery-coordinates.md; they were closed 2026-07-29 and exist as PLZG-104 to PLZG-113",
+      "owner": "adam schoen",
+      "executor": "agent",
+      "reviewer": "adam schoen",
+      "acceptance": {
+        "cmd": "! grep -rq 'still need triage' CHANGELOG.md docs/delivery-coordinates.md"
+      },
+      "status": "todo",
+      "evidence": "",
+      "attempts": 0
+    },
+    {
+      "id": "T7",
+      "title": "PLZG-106 -- CHANGELOG [Unreleased] must name one board for generate_report.py, consistent with the script reading ATLASSIAN_JIRA_PROJECT_KEY",
+      "owner": "adam schoen",
+      "executor": "agent",
+      "reviewer": "adam schoen",
+      "acceptance": {
+        "cmd": "python3 scripts/validate_specs.py && ! grep -nE 'generate_report\\.py.*\\bTO\\b' CHANGELOG.md"
+      },
+      "status": "todo",
+      "evidence": "",
+      "attempts": 0
+    },
+    {
+      "id": "T8",
+      "title": "PLZG-107 -- bring CLAUDE.md back within META-SPEC section 6's ~200-line instruction budget by splitting, not by deleting the sync section",
+      "owner": "adam schoen",
+      "executor": "agent",
+      "reviewer": "adam schoen",
+      "acceptance": {
+        "cmd": "test \"$(wc -l < CLAUDE.md)\" -le 200 && grep -q 'Sync the environment before anything else' CLAUDE.md"
+      },
+      "status": "todo",
+      "evidence": "",
+      "attempts": 0
+    },
+    {
+      "id": "T9",
+      "title": "Sprint definition of done -- scripts/validate_delivery_coordinates.py exits 0: no live TO reference outside history, and PLZG reports wip > 0 with a non-empty work_item_age",
+      "owner": "adam schoen",
+      "executor": "agent",
+      "reviewer": "adam schoen",
+      "acceptance": {
+        "cmd": "python3 scripts/validate_delivery_coordinates.py"
+      },
+      "status": "todo",
+      "evidence": "",
+      "attempts": 0
+    }
+  ]
+}

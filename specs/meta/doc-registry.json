@@ -153,6 +153,38 @@
       "authority": "historical",
       "status": "HISTORICAL",
       "note": "Migration signpost left behind when Docs/files/00-04 were relocated in PR #5. Retained so old links land somewhere useful."
+    },
+    {
+      "doc_id": "SPRINT-2-CHARTER",
+      "path": "specs/sprint-2-charter.md",
+      "tier": 3,
+      "authority": "derived",
+      "status": "ACTIVE",
+      "note": "Executable context for PLZG Sprint 2 (board 169, sprint 44, 2026-07-30 to 2026-08-13). Locks the delivery decisions reached in the 2026-07-30 grill so they survive the session that produced them. Derives from ROADMAP and DELIVERY-COORDINATES; originates nothing."
+    },
+    {
+      "doc_id": "GOVERNANCE-TREE",
+      "path": "docs/reference/meta_spec_governance_tree.md",
+      "tier": 4,
+      "authority": "summary",
+      "status": "ACTIVE",
+      "note": "Visual restatement of the tier ladder META-SPEC owns. Authoritative over nothing; if it disagrees with META-SPEC it is the bug."
+    },
+    {
+      "doc_id": "AGILE-EXPLAINED",
+      "path": "docs/reference/agile/Agile_Expaiined.md",
+      "tier": 4,
+      "authority": "research",
+      "status": "ACTIVE",
+      "note": "Foundational onboarding reading on agile practice, for humans and agents. Explains a general methodology; specifies nothing about Plaza and originates nothing. Cite for rationale, never as law -- same standing as ALIGNED-SPEC-025."
+    },
+    {
+      "doc_id": "AGILE-LIKE-IM-5",
+      "path": "docs/reference/agile/Agile_like_im_5.md",
+      "tier": 4,
+      "authority": "research",
+      "status": "ACTIVE",
+      "note": "Plain-language companion to AGILE-EXPLAINED. Same standing: authoritative over nothing."
     }
   ],
   "exempt": [
