@@ -17,6 +17,27 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
 
+### Changed — `CLAUDE.md` is back inside its instruction budget (`PLZG-107`)
+
+- **374 lines → exactly 200**, against `META-SPEC` §6's ~200-line budget. The debt was
+  roughly double what the ticket filed (it described 260–292), because the file had
+  drifted again since that count was taken.
+- **Split, not deleted.** Three blocks of reference material moved to `.claude/`, which
+  `validate_specs.py` does not scan, so none of it needs frontmatter or a registry entry:
+  `gbrain.md` (90 lines), `godot-conventions.md` (45), `pr-workflow.md` (31). Each leaves
+  a pointer carrying the rules most often skipped rather than a summary that could be
+  mistaken for sufficient.
+- **§ *Sync the environment before anything else* is kept verbatim** — the acceptance
+  command checks for it by name, precisely so the budget can never be paid down by
+  deleting the rule that earned its own drift.
+- **Fixed a stale claim found while compressing.** The Python-scripts section said
+  `generate_report.py` "still queries the deprecated board". It does not, and has not
+  since the env-var change — it reads `ATLASSIAN_JIRA_PROJECT_KEY` and builds the JQL
+  from it. A false state claim inside the file whose sprint is about false state claims.
+- **The budget bullet now records payment, not debt**, and says outright that nothing in
+  CI enforces the limit and that the answer to future pressure is to cut or point —
+  never to raise the number.
+
 ### Added — the sync rule is enforced, not just written down (`PLZG-114`)
 
 - **`scripts/check_sync.sh` plus a `SessionStart` hook** in `.claude/settings.json`.
