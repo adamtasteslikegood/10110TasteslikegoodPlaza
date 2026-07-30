@@ -131,7 +131,10 @@ spec-set versions, and no application release existed before `v0.1.22`.
   everything filed in Linear was created on the deprecated board. Ten Plaza
   issues (`TO-127`–`TO-136`) landed there *after* the 2026-07-28 deprecation —
   this project's own review findings, including `TO-135` (GitHub #43) and
-  `TO-136` (PR #33). They still need triage into `PLZG`.
+  `TO-136` (PR #33). **All ten were triaged and closed on 2026-07-29** between
+  10:09:50 and 10:10:57, and carry on as `PLZG-104`–`PLZG-113`. Verified against
+  Jira on 2026-07-30, not inferred from this entry; an earlier revision asserted
+  they were awaiting triage and went on saying so after they were closed.
 - **Owner corrected the topology 2026-07-29:** Linear `PLZG` ↔ Jira `PLZG`
   two-way as the default; the `TO` → Linear leg deliberately retained one-way so
   closures on the existing `TO`-linked Linear issues still propagate rather than
@@ -834,11 +837,18 @@ locked decisions (`D-014`, `D-020`) moved the doc set version per `META-SPEC` §
   `gemini-scheduled-triage` workflows with matching `.toml` command prompts
   under `.github/commands/` and `.gemini/commands/`. Triggered by
   `@gemini-cli` mentions and a schedule. (PR #3)
-- Atlassian glue scripts — `generate_report.py` queries Jira project `TO`
-  for issues updated in the last 7 days, buckets by status, and writes
-  `report.md`; `post_to_confluence.py` converts that to HTML and posts it
+- Atlassian glue scripts — `generate_report.py` queried a hardcoded Jira project
+  key for issues updated in the last 7 days, bucketed by status, and wrote
+  `report.md`; `post_to_confluence.py` converted that to HTML and posted it
   as a child of Confluence page `15925249` (fallback `15695959`). Both read
   `./.env` directly. (PR #3)
+  **Correction, 2026-07-30:** the key hardcoded then was the since-deprecated
+  `TO` board, and that fallback pointed into a sibling product's Confluence
+  space. Neither survives — the script reads `ATLASSIAN_JIRA_PROJECT_KEY` and
+  exits 1 when it is unset, and the fallback was removed. The bullet is left
+  describing what PR #3 shipped, because a changelog records what was true when
+  written; the correction is appended rather than the line rewritten. Current
+  coordinates live in `docs/delivery-coordinates.md` (`D-026`).
 - `claude-code-tresor` git submodule — canonical agent layer with 137+
   agent `.md` files across nine departments plus 8 production-ready core
   agents. (PR #3)
