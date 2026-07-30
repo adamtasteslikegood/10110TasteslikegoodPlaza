@@ -17,6 +17,24 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
 
+### Added — the sync rule is enforced, not just written down (`PLZG-114`)
+
+- **`scripts/check_sync.sh` plus a `SessionStart` hook** in `.claude/settings.json`.
+  `CLAUDE.md` has opened with "Sync the environment before anything else" since
+  2026-07-30; prose does not enforce itself. The hook fetches and reports
+  ahead/behind against the branch this checkout integrates into, before any agent
+  reads or asserts repository state.
+- **It warns and exits 0 by design.** A detached worktree, an offline laptop or a
+  sandbox with no remote must not hard-fail a session — a hook that blocks work
+  gets removed, and then nothing is enforced at all. `--strict` exits 1 when
+  behind, so CI can consume the same logic.
+- **Per-worktree, not per-repo.** It resolves `git rev-parse --show-toplevel`, so a
+  linked worktree checks itself. The 31-commits-behind incident happened in a
+  primary checkout, but worktrees drift identically.
+- Base branch resolves as `PLZG_BASE_REF` → the branch's own upstream →
+  `origin/dev` → `origin/HEAD`, so it stays correct on a release branch without
+  hardcoding `dev`.
+
 ## [0.1.22] - 2026-07-30
 
 ### Added — the governed doc set is in the gbrain semantic index (`PLZG-113`)

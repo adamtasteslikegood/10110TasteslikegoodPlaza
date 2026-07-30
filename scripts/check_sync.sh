@@ -1,0 +1,131 @@
+#!/usr/bin/env sh
+#
+# check_sync.sh — is this checkout in sync with the branch it integrates into?
+#
+# Why this exists: on 2026-07-30 a planning session ran from a checkout 31
+# commits behind origin/dev and produced three findings that were already fixed
+# upstream. CLAUDE.md § "Sync the environment before anything else" states the
+# rule; documentation alone does not enforce it. This script does, and the
+# SessionStart hook in .claude/settings.json runs it (PLZG-114).
+#
+# Failure mode is deliberate. Default is WARN AND CONTINUE — always exit 0.
+# A detached worktree, an offline laptop, or a sandbox without a remote must not
+# hard-fail a session; a hook that blocks work gets removed, and then nothing is
+# enforced at all. Use --strict where a non-zero exit is wanted (CI).
+#
+# Usage:
+#   scripts/check_sync.sh              # warn, always exit 0
+#   scripts/check_sync.sh --strict     # exit 1 if behind, or if state is unknowable
+#   scripts/check_sync.sh --no-fetch   # skip the network call
+#
+# Environment:
+#   PLZG_SKIP_FETCH=1                  # same as --no-fetch
+#   PLZG_BASE_REF=origin/main          # override the branch compared against
+#
+# POSIX sh only — no bashisms, no dependencies beyond git. Consistent with the
+# repo's stdlib-only tooling rule.
+
+set -u
+
+STRICT=0
+FETCH=1
+
+for arg in "$@"; do
+    case "$arg" in
+        --strict)   STRICT=1 ;;
+        --no-fetch) FETCH=0 ;;
+        -h|--help)
+            sed -n '2,28p' "$0" | sed 's/^# \{0,1\}//'
+            exit 0
+            ;;
+        *)
+            echo "check_sync: unknown argument: $arg" >&2
+            echo "check_sync: try --help" >&2
+            exit 2
+            ;;
+    esac
+done
+
+[ "${PLZG_SKIP_FETCH:-0}" = "1" ] && FETCH=0
+
+# Exit according to mode. Warn mode always succeeds; strict propagates.
+finish() {
+    if [ "$STRICT" = "1" ]; then
+        exit "$1"
+    fi
+    exit 0
+}
+
+if ! git rev-parse --git-dir >/dev/null 2>&1; then
+    echo "check_sync: not a git repository — skipping sync check." >&2
+    finish 1
+fi
+
+# Run from the top of *this* worktree. git rev-parse --show-toplevel resolves
+# per-worktree, so a linked worktree checks itself rather than the main
+# checkout. That matters: worktrees drift exactly the same way.
+TOPLEVEL=$(git rev-parse --show-toplevel 2>/dev/null) || finish 1
+cd "$TOPLEVEL" || finish 1
+
+if ! git remote get-url origin >/dev/null 2>&1; then
+    echo "check_sync: no 'origin' remote — cannot determine upstream state." >&2
+    finish 1
+fi
+
+# Pick what to compare against: an explicit override, else the branch's own
+# upstream, else origin/dev (this repo's integration branch), else origin's HEAD.
+if [ -n "${PLZG_BASE_REF:-}" ]; then
+    BASE="$PLZG_BASE_REF"
+elif BASE_UPSTREAM=$(git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null); then
+    BASE="$BASE_UPSTREAM"
+elif git rev-parse --verify --quiet origin/dev >/dev/null 2>&1; then
+    BASE="origin/dev"
+else
+    BASE=$(git rev-parse --abbrev-ref origin/HEAD 2>/dev/null) || BASE=""
+fi
+
+if [ -z "$BASE" ]; then
+    echo "check_sync: no upstream branch to compare against." >&2
+    finish 1
+fi
+
+if [ "$FETCH" = "1" ]; then
+    if ! git fetch origin --quiet 2>/dev/null; then
+        echo "check_sync: git fetch failed (offline?) — counts below may be stale." >&2
+        # Not fatal even in strict mode's spirit, but strict callers want to know
+        # they are reasoning from unrefreshed data.
+        [ "$STRICT" = "1" ] && exit 1
+    fi
+fi
+
+if ! git rev-parse --verify --quiet "$BASE" >/dev/null 2>&1; then
+    echo "check_sync: base ref '$BASE' does not exist locally." >&2
+    finish 1
+fi
+
+COUNTS=$(git rev-list --left-right --count "HEAD...$BASE" 2>/dev/null) || {
+    echo "check_sync: could not compare HEAD with $BASE (unrelated histories?)." >&2
+    finish 1
+}
+
+AHEAD=$(printf '%s\n' "$COUNTS" | cut -f1)
+BEHIND=$(printf '%s\n' "$COUNTS" | cut -f2)
+
+BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+[ "$BRANCH" = "HEAD" ] && BRANCH="(detached at $(git rev-parse --short HEAD))"
+
+DIRTY=""
+if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
+    DIRTY=" · uncommitted changes present"
+fi
+
+if [ "$BEHIND" -gt 0 ]; then
+    echo "check_sync: $BRANCH is $BEHIND commit(s) BEHIND $BASE (ahead $AHEAD)$DIRTY"
+    echo "check_sync: this checkout does not reflect upstream. Anything you assert"
+    echo "check_sync: about repository state may already be wrong. Reconcile first:"
+    echo "check_sync:     git pull --ff-only origin ${BASE#origin/}"
+    finish 1
+fi
+
+echo "check_sync: $BRANCH is in sync with $BASE (ahead $AHEAD, behind 0)$DIRTY"
+exit 0
