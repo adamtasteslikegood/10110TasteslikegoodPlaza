@@ -150,7 +150,15 @@ findings, including `TO-135` (GitHub issue #43) and `TO-136` (PR #33).
 
 So the earlier stray count is stale: the two originally migrated (`TO-125` →
 `PLZG-102`, `TO-126` → `PLZG-103`) were not the end of it. **`TO-127`–`TO-136`
-still need triage into `PLZG`.**
+were triaged and closed on 2026-07-29**, between 10:09:50 and 10:10:57, and
+continue as `PLZG-104`–`PLZG-113`.
+
+That last sentence is the second thing this passage has got wrong, in the same
+direction both times. It previously asserted those ten issues were still awaiting
+triage, and stayed that way after they were closed — a status snapshot in a
+document that has no way to notice when it stops being true. **Re-query Jira
+before citing any count or status from this file**; the board owns those facts
+and this table does not.
 
 The general rule this earns: *a board is only read-only if nothing has write
 access to it.* Deprecating a project in prose, or renaming it, does not close
