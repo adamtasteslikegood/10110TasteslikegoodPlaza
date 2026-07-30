@@ -31,16 +31,21 @@ The `claude-code-tresor/` submodule holds the 137+ agent definitions under `suba
 
 ## 2. Set up the `.env` (only if you want to run the Atlassian scripts)
 
-The two Python scripts at the repo root post status reports from Jira to Confluence. They both read `./.env` directly — no `python-dotenv` involved. Create it with:
+The two Python scripts at the repo root post status reports from Jira to Confluence. They both read `./.env` directly — no `python-dotenv` involved. Copy the template and fill it in:
 
 ```bash
-cat > .env <<'EOF'
-ATLASSIAN_API_TOKEN_BASE64_USEREMAIL=<base64-encoded "email:api_token">
-ATLASSIAN_URL=<your-site>.atlassian.net
-EOF
+cp .env.example .env
 ```
 
-`.env` is gitignored. Don't commit it.
+[`.env.example`](.env.example) is the source of truth for what those scripts read. It documents all three required variables, how to build the base64 credential, and which variables that turn up in real `.env` files here are read by *nothing* in this repo — so their absence is not mistaken for a missing requirement. Three are required:
+
+| Variable | Notes |
+|---|---|
+| `ATLASSIAN_URL` | Host only — no scheme, no trailing slash |
+| `ATLASSIAN_API_TOKEN_BASE64` | base64 of `email:api_token`, not the raw token |
+| `ATLASSIAN_JIRA_PROJECT_KEY` | Which board the report is built from — see [`docs/delivery-coordinates.md`](docs/delivery-coordinates.md) (`D-026`), don't guess it |
+
+`.env` is gitignored; `.env.example` is committed and must never carry a real value. If a token is ever exposed, rotate it — deleting the commit does not revoke it.
 
 ## 3. Install Python deps
 
@@ -65,7 +70,17 @@ python generate_report.py
 python post_to_confluence.py
 ```
 
-Both will crash with a `KeyError` if either `.env` var is missing — that's intentional.
+Neither crashes on a missing variable any more. Both name what is absent and exit 1 — verified against the unfilled template:
+
+```
+$ python3 generate_report.py
+Missing required configuration: ATLASSIAN_API_TOKEN_BASE64 or
+ATLASSIAN_API_TOKEN_BASE64_USEREMAIL, ATLASSIAN_JIRA_PROJECT_KEY. ...
+$ echo $?
+1
+```
+
+They raised `KeyError` until 2026-07-28, which this page went on describing as intentional afterwards.
 
 ## 5. Lint before pushing
 
