@@ -895,14 +895,75 @@ locked decisions (`D-014`, `D-020`) moved the doc set version per `META-SPEC` §
 - `dev` was fast-forwarded to match `main` via PR #3 (`sync-main-to-dev` →
   `dev`). `dev` is once again the integration branch per
   `specs/branching-strategy.md`.
-- **`v0.1.22` is the first tagged release**, cut 2026-07-30 against the `dev`
-  commit that carries this entry — deliberately not pinned to a hash here, since
-  the tag cannot point at a commit that predates the changelog section
-  describing it. An
+- **`v0.1.22` is the head of the tagged line**, and the whole line — `v0.0.0`
+  through `v0.1.22` — was backfilled on 2026-07-30. See § *Release tags* for the
+  commit each one points at. An
   earlier note here said the first tag would wait until the M1 → M4 → M8
   critical path was demonstrable in-engine; M1 and M4 are done and M8 is not, so
   the tag was cut against merged history instead of a milestone gate. `y = 22` is
   the count of PRs merged since the 2.5D pivot (`#3`–`#63`); `#1` predates it.
+
+## Release tags
+
+Every tag below points at a real commit — the merge commit of the PR it marks,
+or for the two pre-list entries, the commit that ended that era. **All of them
+were backfilled on 2026-07-30** under `PLZG-119`, so a tag does not contain the
+changelog section describing it; that section was written afterwards. Nothing
+here is inferred: the mapping is `gh pr list --state merged` joined to
+`mergeCommit`, and it can be re-derived rather than trusted.
+
+The versioning rule: the 3D era is `0.0.x`, the 2.5D line is `0.1.y`, and `y`
+counts PRs merged since the pivot. This is the **application** axis and is
+unrelated to `doc_set_version:` in the governed docs, which reached `0.2.9` on
+its own.
+
+### Before the list — `v0.0.0` … `v0.1.0`
+
+Everything preceding `v0.1.1` belongs to this range. It is two tags, not
+twenty-two, because the pre-pivot history is six commits and one PR.
+
+| Tag | Commit | Date | What it marks |
+|---|---|---|---|
+| `v0.0.0` | `da65887` | 2026-04-24 | End of the pre-2.5D era: the merge of PR `#1` (*Added Readme.md*), the only PR merged before the pivot. Repo genesis `8204ec4` is its parent, so the whole 3D-era history is this tag's ancestry. |
+| `v0.1.0` | `a08d3df` | 2026-04-28 | The 2.5D line opens — `docs/designs/2.5D-RPG-Prototype.md` first lands, alongside `generate_report.py` and `post_to_confluence.py`. A direct commit, not a PR, which is why the boundary is a date rather than a merge. |
+
+### The 2.5D line — `v0.1.1` … `v0.1.22`
+
+One patch version per merged PR, in merge order.
+
+| Tag | Commit | Date | PR | Title |
+|---|---|---|---|---|
+| `v0.1.1` | `7f2298d4` | 2026-05-14 | `#3` | chore: Sync latest progress (Docs & CI) from main to dev |
+| `v0.1.2` | `adf32e6c` | 2026-05-14 | `#4` | docs: add CLAUDE.md guide for future Claude Code sessions |
+| `v0.1.3` | `66d1a488` | 2026-07-25 | `#5` | docs: consolidate Docs/ into docs/ + specs/, add contributor guides |
+| `v0.1.4` | `c1167f02` | 2026-07-25 | `#6` | Create TastesLike Plaza v0_2_5_ Aligned Specification Set for a 2.5D prototype |
+| `v0.1.5` | `49b6f8d2` | 2026-07-25 | `#7` | docs: align reader-facing docs to the promoted 2.5D pivot |
+| `v0.1.6` | `65f3f08c` | 2026-07-26 | `#9` | docs(meta): charter a meta-spec source of truth for the doc set |
+| `v0.1.7` | `f7af6975` | 2026-07-26 | `#10` | docs(specs): record merge commits as a chosen policy (`D-023`) |
+| `v0.1.8` | `1d75f891` | 2026-07-26 | `#16` | ci: add advisory independent Claude review workflow |
+| `v0.1.9` | `0f2669a7` | 2026-07-27 | `#17` | feat(data): generate `data/agents.json` from the submodule (M3) |
+| `v0.1.10` | `cd60deef` | 2026-07-27 | `#19` | feat(godot): the office is walkable — M1 + M4 |
+| `v0.1.11` | `59efe602` | 2026-07-28 | `#25` | chore(claude): enable four curated skill plugins at project scope |
+| `v0.1.12` | `e2f02d53` | 2026-07-28 | `#27` | chore(ci): remove the gemini-cli workflow suite |
+| `v0.1.13` | `4c696fe5` | 2026-07-28 | `#22` | ci(review): review every push, not just the first |
+| `v0.1.14` | `5cf60e7f` | 2026-07-28 | `#20` | test(godot): guard the two feel values as bands, not fixed numbers |
+| `v0.1.15` | `67b8079c` | 2026-07-28 | `#24` | docs(meta): move `D-005`'s origin to `PLATFORM-DECISIONS` |
+| `v0.1.16` | `464239a4` | 2026-07-29 | `#28` | feat(tooling): grill-with-specs adapter, npm task facade, PR policy (`PLZG-101`) |
+| `v0.1.17` | `5ec76da9` | 2026-07-29 | `#33` | docs(claude): designate a delivery-coordinates authority (`PLZG-104`) |
+| `v0.1.18` | `5800495e` | 2026-07-30 | `#57` | docs: Sprint 2 charter + register reference docs (`PLZG-115`) |
+| `v0.1.19` | `cfc1e146` | 2026-07-30 | `#60` | docs: define where the charter's external tooling lives (`PLZG-117`) |
+| `v0.1.20` | `2d749acd` | 2026-07-30 | `#54` | docs(claude): index the governed doc set into gbrain (`PLZG-113`) |
+| `v0.1.21` | `bfd1c64f` | 2026-07-30 | `#62` | docs: add `.env.example` and point the docs at it (`PLZG-110`) |
+| `v0.1.22` | `6aad464f` | 2026-07-30 | `#63` | docs: state what QUICKSTART's reader actually gets (`PLZG-108`, `PLZG-109`) |
+
+Ordering is by merge time, not PR number — `#25` and `#27` merged before `#22`
+and `#20`, and `#57`/`#60` before `#54`. The tag order follows what actually
+happened rather than what was numbered first.
+
+**Dates are UTC merge dates**, taken from GitHub's `mergedAt`. `git log` renders
+author dates in local time, which puts `v0.1.9` and `v0.1.10` on 2026-07-26
+instead of 2026-07-27 — they merged at `00:56Z` and `03:07Z`, just past midnight
+UTC. Same commits, different clock; do not "correct" one to the other.
 
 ## Pull request history
 
