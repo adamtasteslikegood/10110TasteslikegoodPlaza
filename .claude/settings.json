@@ -14,5 +14,18 @@
     "collab-proof@claude-code-skills": true,
     "pm-skills@claude-code-skills": true,
     "superpowers@claude-plugins-official": true
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh \"$CLAUDE_PROJECT_DIR/scripts/check_sync.sh\"",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
   }
 }

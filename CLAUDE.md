@@ -29,7 +29,7 @@ Every row below was executed against a real checkout. The rule this table exists
 
 | Command | What it does |
 |---|---|
-| `git fetch origin && git status` | **Run first, every session.** See § Sync the environment. `git rev-list --left-right --count HEAD...origin/dev` gives the ahead/behind counts directly. |
+| `scripts/check_sync.sh` | **Run first, every session** — a `SessionStart` hook already does. Fetches and prints ahead/behind vs the branch you integrate into. Warns and exits 0 by design; `--strict` exits 1 when behind, for CI. Equivalent to `git fetch origin && git rev-list --left-right --count HEAD...origin/dev`. |
 | `git submodule update --init --recursive` | Populates `claude-code-tresor/`. Empty in fresh checkouts; the generator needs it. |
 | `godot .` | Opens the prototype — lobby, corridor, server room; arrows or WASD. |
 | `godot --headless --import` | Imports assets. Needed once on a fresh clone before the headless test. |
