@@ -80,8 +80,14 @@ fi
 # remote yet, so on a fresh clone the answer is no and the script concludes there
 # is nothing to compare against — silently, in warn mode. That shipped and was
 # caught in review of PR #70 (PLZG-124).
+# FETCH_OK records whether the remote was actually REACHED, which is not the
+# same as whether a fetch was requested. Guarding later decisions on "$FETCH"
+# alone treats an offline failure as a successful look at the remote.
+FETCH_OK=0
 if [ "$FETCH" = "1" ]; then
-    if ! git fetch origin --quiet 2>/dev/null; then
+    if git fetch origin --quiet 2>/dev/null; then
+        FETCH_OK=1
+    else
         echo "check_sync: git fetch failed (offline?) — counts below may be stale." >&2
         # Strict callers must know they are reasoning from unrefreshed data.
         [ "$STRICT" = "1" ] && exit 1
@@ -146,7 +152,7 @@ BASE=$(resolve_ref "$BASE_LABEL") || BASE=""
 # clone run with --no-fetch reported "in sync with origin/main" while sitting
 # five commits behind dev. Reporting the wrong branch cheerfully is the failure
 # this script exists to prevent, so offline now yields UNKNOWN instead.
-if [ -z "$BASE" ] && [ "$FETCH" = "1" ] && [ "$BASE_LABEL" != "origin/HEAD" ]; then
+if [ -z "$BASE" ] && [ "$FETCH_OK" = "1" ] && [ "$BASE_LABEL" != "origin/HEAD" ]; then
     FALLBACK=$(git rev-parse --abbrev-ref origin/HEAD 2>/dev/null) || FALLBACK=""
     if [ -n "$FALLBACK" ] && [ "$FALLBACK" != "$BASE_LABEL" ]; then
         BASE=$(resolve_ref "$FALLBACK") || BASE=""

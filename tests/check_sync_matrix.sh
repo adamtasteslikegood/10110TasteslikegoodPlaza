@@ -137,6 +137,26 @@ expect_output "PLZG_BASE_REF overrides the base"  "origin/main"            "$FUL
 unset PLZG_BASE_REF
 
 echo
+echo "unreachable remote must not be mistaken for a successful look"
+# The reviewer's scenario for PR #77: origin/main is cached, origin/dev is not,
+# and the remote cannot be reached. A guard on "was a fetch requested?" rather
+# than "did the fetch succeed?" lets the origin/HEAD fallback fire here and
+# report a clean "in sync with origin/main" while behind dev.
+BROKEN="$WORK/broken"
+git_q clone -q "$ORIGIN" "$BROKEN"
+( cd "$BROKEN" && git_q checkout -q -b feature/offline origin/main )
+# Simulate a clone taken before `dev` existed on the remote: origin/HEAD and
+# origin/main are cached, origin/dev is not. A --single-branch clone will not do
+# here -- it has no origin/HEAD at all, so the fallback could never fire and the
+# test would pass against the buggy code too. It did, which is why this fixture
+# is shaped this way rather than the obvious way.
+( cd "$BROKEN" && git_q update-ref -d refs/remotes/origin/dev )
+( cd "$BROKEN" && git_q remote set-url origin "$WORK/does-not-exist.git" )
+expect_output "unreachable remote reports UNKNOWN" "UNKNOWN" "$BROKEN"
+expect_exit   "unreachable remote, warn exits 0" 0 "$BROKEN"
+expect_exit   "unreachable remote, strict exits 1" 1 "$BROKEN" --strict
+
+echo
 echo "degraded environments must warn, never hard-fail a session"
 NOREPO="$WORK/norepo"
 mkdir -p "$NOREPO"
