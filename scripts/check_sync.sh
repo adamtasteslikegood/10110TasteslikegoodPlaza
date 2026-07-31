@@ -137,12 +137,23 @@ fi
 
 BASE=$(resolve_ref "$BASE_LABEL") || BASE=""
 
-# Last resort: whatever the remote calls its default branch.
-if [ -z "$BASE" ] && [ "$BASE_LABEL" != "origin/HEAD" ]; then
+# Last resort: whatever the remote calls its default branch — but ONLY when we
+# were able to reach the remote and it genuinely has no such branch.
+#
+# Offline, an unresolvable base means "we could not look", not "it is not
+# there", and substituting a different branch turns that into a confident
+# "in sync" against something the caller never asked about. A restricted-refspec
+# clone run with --no-fetch reported "in sync with origin/main" while sitting
+# five commits behind dev. Reporting the wrong branch cheerfully is the failure
+# this script exists to prevent, so offline now yields UNKNOWN instead.
+if [ -z "$BASE" ] && [ "$FETCH" = "1" ] && [ "$BASE_LABEL" != "origin/HEAD" ]; then
     FALLBACK=$(git rev-parse --abbrev-ref origin/HEAD 2>/dev/null) || FALLBACK=""
-    if [ -n "$FALLBACK" ]; then
+    if [ -n "$FALLBACK" ] && [ "$FALLBACK" != "$BASE_LABEL" ]; then
         BASE=$(resolve_ref "$FALLBACK") || BASE=""
-        [ -n "$BASE" ] && BASE_LABEL="$FALLBACK"
+        if [ -n "$BASE" ]; then
+            echo "check_sync: '$BASE_LABEL' is not on origin; falling back to $FALLBACK." >&2
+            BASE_LABEL="$FALLBACK"
+        fi
     fi
 fi
 

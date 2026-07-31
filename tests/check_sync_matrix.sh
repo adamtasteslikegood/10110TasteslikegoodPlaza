@@ -81,6 +81,14 @@ while [ "$i" -le 5 ]; do
 done
 ( cd "$SEED" && git_q push -q -u origin dev )
 
+# Point the bare repo's HEAD at a branch that exists. `git init --bare` picks a
+# default branch name from the runner's git version and init.defaultBranch, so
+# on a machine defaulting to `master` the origin HEAD dangles, clones warn
+# "remote HEAD refers to nonexistent ref, unable to checkout", and nothing is
+# checked out. Setting it explicitly makes the fixture identical everywhere --
+# found by CI, which defaulted differently from this developer's machine.
+git_q --git-dir="$ORIGIN" symbolic-ref HEAD refs/heads/main
+
 FULL="$WORK/full"
 git_q clone -q "$ORIGIN" "$FULL"
 
@@ -108,7 +116,7 @@ expect_exit   "offline strict exits 1"            1 "$SINGLE" --no-fetch --stric
 # ------------------------------------------------------- PLZG-122 cases ---
 echo
 echo "base-ref priority (the PLZG-122 regression)"
-( cd "$FULL" && git_q checkout -q -b feature/pushed dev~3 )
+( cd "$FULL" && git_q checkout -q -b feature/pushed origin/dev~3 )
 ( cd "$FULL" && git_q push -q -u origin feature/pushed )
 # Its own upstream is origin/feature/pushed; comparing against that would
 # always report "in sync". It must compare against origin/dev instead.
@@ -117,11 +125,11 @@ expect_output "and reports the real gap"             "BEHIND"     "$FULL" --no-f
 
 echo
 echo "integration branches and overrides"
-( cd "$FULL" && git_q checkout -q dev )
+( cd "$FULL" && git_q checkout -q -B dev origin/dev && git_q branch -q --set-upstream-to=origin/dev dev )
 expect_output "on dev, compares vs origin/dev"  "in sync with origin/dev" "$FULL" --no-fetch
-( cd "$FULL" && git_q checkout -q main )
+( cd "$FULL" && git_q checkout -q -B main origin/main && git_q branch -q --set-upstream-to=origin/main main )
 expect_output "on main, compares vs origin/main" "origin/main"            "$FULL" --no-fetch
-( cd "$FULL" && git_q checkout -q -b release/9.9 dev~2 )
+( cd "$FULL" && git_q checkout -q -b release/9.9 origin/dev~2 )
 expect_output "release branch defaults to dev"   "origin/dev"             "$FULL" --no-fetch
 PLZG_BASE_REF=origin/main
 export PLZG_BASE_REF
