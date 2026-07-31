@@ -17,6 +17,20 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
 
+### Fixed — the loop plan said Sprint 2 never started (`PLZG-128`)
+
+- `specs/sprint-2-loop-plan.json` recorded **all ten tasks as `todo`, `iteration: 1`,
+  zero evidence** — after the sprint closed with `CLOSE-OK`. The close-gate runs during
+  the sprint went against a scratch copy in `/tmp`, so nothing in the repository recorded
+  that the loop had run at all.
+- A stale state claim in the machine-readable plan of the sprint whose goal was *"make
+  every doc claim about state match the system that owns it."* The plan file is the
+  loop's system of record and it disagreed with the loop's own verdict.
+- Statuses were produced by **re-running every acceptance command against `dev`**, not
+  transcribed from the session that ran them — the distinction the sprint exists to
+  enforce. Each task now carries evidence naming its command and exit code, and the file
+  records the `CLOSE-OK` verdict and why `owner == reviewer` stays non-circular.
+
 ### Fixed — `check_sync.sh` was silent on a fresh clone (`PLZG-124`)
 
 - **The base ref was resolved before the fetch.** So `does origin/dev exist?` was asked
