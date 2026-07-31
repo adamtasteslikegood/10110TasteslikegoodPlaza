@@ -61,8 +61,17 @@ Three charter claims did not survive a live check. Recorded because the sprint's
 own goal was *"make every doc claim about state match the system that owns it."*
 
 They are numbered subsections rather than a list so that `§1.1`–`§1.3` elsewhere
-in this document resolve to something real — per `META-SPEC` §6.2, a section an
-agent can be pointed at without loading the file.
+in this document resolve to something real — per `META-SPEC` §6, item 2, a
+section an agent can be pointed at without loading the file.
+
+That cite is written `§6, item 2` and not `§6.2` deliberately. `META-SPEC` §6 is
+a flat numbered list with no `### 6.x` headings, so a decimal cite would resolve
+to nothing — the very defect the subsections above exist to fix, reproduced in
+the sentence explaining the fix. `CLAUDE.md` already records this trap against
+the same section: *"item 6. (Not a `§6.6`; that subsection does not exist)"*.
+Section 5 is cited as `§5.5` elsewhere in this file because that form has repo-
+wide precedent — `CLAUDE.md` and `decision-register.md` both use it — and is not
+the same case.
 
 ### 1.1 The definition-of-done gate is green on a claim that is now false
 
