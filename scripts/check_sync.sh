@@ -75,6 +75,39 @@ if ! git remote get-url origin >/dev/null 2>&1; then
     finish 1
 fi
 
+# Fetch BEFORE deciding what to compare against. Resolving the base ref first
+# asks "does origin/dev exist locally?" of a checkout that has not talked to the
+# remote yet, so on a fresh clone the answer is no and the script concludes there
+# is nothing to compare against — silently, in warn mode. That shipped and was
+# caught in review of PR #70 (PLZG-124).
+if [ "$FETCH" = "1" ]; then
+    if ! git fetch origin --quiet 2>/dev/null; then
+        echo "check_sync: git fetch failed (offline?) — counts below may be stale." >&2
+        # Strict callers must know they are reasoning from unrefreshed data.
+        [ "$STRICT" = "1" ] && exit 1
+    fi
+fi
+
+# Make a remote-tracking ref available even when the clone's refspec excludes it.
+# `git clone --single-branch` (and actions/checkout@v4 by default) writes a
+# refspec covering exactly one branch, so no amount of bare `git fetch origin`
+# will ever produce origin/dev. Fetching the branch by name works regardless,
+# leaving it in FETCH_HEAD.
+resolve_ref() {
+    candidate="$1"
+    if git rev-parse --verify --quiet "$candidate" >/dev/null 2>&1; then
+        printf '%s' "$candidate"
+        return 0
+    fi
+    [ "$FETCH" = "1" ] || return 1
+    if git fetch origin --quiet "${candidate#origin/}" 2>/dev/null &&
+        git rev-parse --verify --quiet FETCH_HEAD >/dev/null 2>&1; then
+        printf 'FETCH_HEAD'
+        return 0
+    fi
+    return 1
+}
+
 # Pick what to compare against: the branch this checkout INTEGRATES INTO, which
 # is not the same as the branch's own upstream.
 #
@@ -90,38 +123,38 @@ fi
 # right answer — otherwise sitting on main would be measured against dev.
 CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
 
+# BASE is what git compares against; BASE_LABEL is what the human is told. They
+# differ when a ref had to be fetched by name into FETCH_HEAD, and reporting
+# "FETCH_HEAD" would be useless.
 if [ -n "${PLZG_BASE_REF:-}" ]; then
-    BASE="$PLZG_BASE_REF"
+    BASE_LABEL="$PLZG_BASE_REF"
 elif [ "$CURRENT_BRANCH" = "dev" ] || [ "$CURRENT_BRANCH" = "main" ]; then
-    BASE=$(git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null) \
-        || BASE="origin/$CURRENT_BRANCH"
-elif git rev-parse --verify --quiet origin/dev >/dev/null 2>&1; then
-    BASE="origin/dev"
+    BASE_LABEL=$(git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null) \
+        || BASE_LABEL="origin/$CURRENT_BRANCH"
 else
-    BASE=$(git rev-parse --abbrev-ref origin/HEAD 2>/dev/null) || BASE=""
+    BASE_LABEL="origin/dev"
 fi
 
-if [ -z "$BASE" ]; then
-    echo "check_sync: no upstream branch to compare against." >&2
-    finish 1
-fi
+BASE=$(resolve_ref "$BASE_LABEL") || BASE=""
 
-if [ "$FETCH" = "1" ]; then
-    if ! git fetch origin --quiet 2>/dev/null; then
-        echo "check_sync: git fetch failed (offline?) — counts below may be stale." >&2
-        # Not fatal even in strict mode's spirit, but strict callers want to know
-        # they are reasoning from unrefreshed data.
-        [ "$STRICT" = "1" ] && exit 1
+# Last resort: whatever the remote calls its default branch.
+if [ -z "$BASE" ] && [ "$BASE_LABEL" != "origin/HEAD" ]; then
+    FALLBACK=$(git rev-parse --abbrev-ref origin/HEAD 2>/dev/null) || FALLBACK=""
+    if [ -n "$FALLBACK" ]; then
+        BASE=$(resolve_ref "$FALLBACK") || BASE=""
+        [ -n "$BASE" ] && BASE_LABEL="$FALLBACK"
     fi
 fi
 
-if ! git rev-parse --verify --quiet "$BASE" >/dev/null 2>&1; then
-    echo "check_sync: base ref '$BASE' does not exist locally." >&2
+if [ -z "$BASE" ]; then
+    echo "check_sync: cannot resolve '$BASE_LABEL' — not present locally and not" >&2
+    echo "check_sync: fetchable from origin. This checkout's sync state is UNKNOWN," >&2
+    echo "check_sync: which is not the same as being in sync." >&2
     finish 1
 fi
 
 COUNTS=$(git rev-list --left-right --count "HEAD...$BASE" 2>/dev/null) || {
-    echo "check_sync: could not compare HEAD with $BASE (unrelated histories?)." >&2
+    echo "check_sync: could not compare HEAD with $BASE_LABEL (unrelated histories?)." >&2
     finish 1
 }
 
@@ -137,12 +170,12 @@ if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
 fi
 
 if [ "$BEHIND" -gt 0 ]; then
-    echo "check_sync: $BRANCH is $BEHIND commit(s) BEHIND $BASE (ahead $AHEAD)$DIRTY"
+    echo "check_sync: $BRANCH is $BEHIND commit(s) BEHIND $BASE_LABEL (ahead $AHEAD)$DIRTY"
     echo "check_sync: this checkout does not reflect upstream. Anything you assert"
     echo "check_sync: about repository state may already be wrong. Reconcile first:"
-    echo "check_sync:     git pull --ff-only origin ${BASE#origin/}"
+    echo "check_sync:     git pull --ff-only origin ${BASE_LABEL#origin/}"
     finish 1
 fi
 
-echo "check_sync: $BRANCH is in sync with $BASE (ahead $AHEAD, behind 0)$DIRTY"
+echo "check_sync: $BRANCH is in sync with $BASE_LABEL (ahead $AHEAD, behind 0)$DIRTY"
 exit 0
