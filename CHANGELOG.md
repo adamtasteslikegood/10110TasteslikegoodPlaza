@@ -17,6 +17,36 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
 
+### Fixed — `check_sync.sh` was silent on a fresh clone (`PLZG-124`)
+
+- **The base ref was resolved before the fetch.** So `does origin/dev exist?` was asked
+  of a checkout that had not yet talked to the remote. On a fresh clone the answer is no,
+  and the script concluded there was nothing to compare against — **exiting 0 in warn
+  mode**, which is silence in exactly the situation the tool exists for. Measured on a
+  `--single-branch` clone that was **143 commits behind `dev`**: it reported *"no upstream
+  branch to compare against"* and passed.
+- **Fetching earlier is necessary but not sufficient.** `git clone --single-branch` — and
+  `actions/checkout@v4` by default — writes a refspec covering exactly one branch, so no
+  amount of bare `git fetch origin` will ever produce `origin/dev`. The fix also fetches
+  the branch **by name** when the ref is missing, which works regardless of refspec.
+- **"Unknown" is now distinguished from "in sync."** When a base genuinely cannot be
+  resolved, the script says the sync state is unknown and that this is *not* the same as
+  being in sync, rather than reporting a clean bill of health.
+- Human-facing output reports the branch it compared against rather than the internal
+  `FETCH_HEAD` it may have used to get there.
+- **`tests/check_sync_matrix.sh`, wired into CI as `Check Sync Matrix`** — 20 assertions
+  covering the restricted-refspec clone, base-ref priority, integration branches,
+  `PLZG_BASE_REF`, degraded environments and argument handling. It builds its own bare
+  origin and clones, so it needs no network and does not depend on the CI checkout's
+  refspec, which is one of the things it tests.
+- Third defect found in this script by review rather than by its own tests — the first
+  two were fallback *priority* and a stale CHANGELOG claim, this one *ordering*, all
+  three within the same dozen lines. That is why the matrix is a committed test rather
+  than a paragraph: an earlier draft of this entry claimed a matrix "now run against it"
+  when it had only ever been run by hand once, which is the same unbacked
+  state-claim this repository keeps producing. Verified the test can fail — against the
+  pre-fix script it reports 3 failures and exits 1.
+
 ### Added — Sprint 2's definition of done is a gate, not a sentence (`PLZG-125`)
 
 - **`scripts/validate_delivery_coordinates.py`**, stdlib-only and wired into CI as
