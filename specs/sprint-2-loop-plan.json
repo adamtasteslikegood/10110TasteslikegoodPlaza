@@ -5,7 +5,7 @@
     "max_attempts_per_task": 3,
     "max_loop_iterations": 12
   },
-  "iteration": 1,
+  "iteration": 10,
   "tasks": [
     {
       "id": "T0",
@@ -16,9 +16,9 @@
       "acceptance": {
         "cmd": "git fetch origin && test \"$(git rev-list --count HEAD..origin/dev)\" -eq 0"
       },
-      "status": "todo",
-      "evidence": "",
-      "attempts": 0
+      "status": "done",
+      "evidence": "acceptance command exited 0, re-run against dev on 2026-07-30",
+      "attempts": 1
     },
     {
       "id": "T1",
@@ -29,9 +29,9 @@
       "acceptance": {
         "cmd": "python3 scripts/validate_specs.py"
       },
-      "status": "todo",
-      "evidence": "",
-      "attempts": 0
+      "status": "done",
+      "evidence": "acceptance command exited 0, re-run against dev on 2026-07-30",
+      "attempts": 1
     },
     {
       "id": "T2",
@@ -42,9 +42,9 @@
       "acceptance": {
         "cmd": "test -x scripts/check_sync.sh && scripts/check_sync.sh && python3 -c \"import json,sys; h=json.load(open('.claude/settings.json')).get('hooks',{}); sys.exit(0 if 'SessionStart' in h else 1)\""
       },
-      "status": "todo",
-      "evidence": "",
-      "attempts": 0
+      "status": "done",
+      "evidence": "acceptance command exited 0, re-run against dev on 2026-07-30",
+      "attempts": 1
     },
     {
       "id": "T3",
@@ -55,9 +55,9 @@
       "acceptance": {
         "cmd": "grep -q 'ATLASSIAN_JIRA_PROJECT_KEY' QUICKSTART.md && ! grep -q 'crash with a `KeyError`' QUICKSTART.md"
       },
-      "status": "todo",
-      "evidence": "",
-      "attempts": 0
+      "status": "done",
+      "evidence": "acceptance command exited 0, re-run against dev on 2026-07-30",
+      "attempts": 1
     },
     {
       "id": "T4",
@@ -68,9 +68,9 @@
       "acceptance": {
         "cmd": "! grep -qiE 'prototype status, existence|existence, instructions' QUICKSTART.md"
       },
-      "status": "todo",
-      "evidence": "",
-      "attempts": 0
+      "status": "done",
+      "evidence": "acceptance command exited 0, re-run against dev on 2026-07-30",
+      "attempts": 1
     },
     {
       "id": "T5",
@@ -81,9 +81,9 @@
       "acceptance": {
         "cmd": "! grep -q 'Your Confluence Home Page goes Here' QUICKSTART.md && grep -q 'delivery-coordinates' QUICKSTART.md"
       },
-      "status": "todo",
-      "evidence": "",
-      "attempts": 0
+      "status": "done",
+      "evidence": "acceptance command exited 0, re-run against dev on 2026-07-30",
+      "attempts": 1
     },
     {
       "id": "T6",
@@ -94,9 +94,9 @@
       "acceptance": {
         "cmd": "! grep -rq 'still need triage' CHANGELOG.md docs/delivery-coordinates.md"
       },
-      "status": "todo",
-      "evidence": "",
-      "attempts": 0
+      "status": "done",
+      "evidence": "acceptance command exited 0, re-run against dev on 2026-07-30",
+      "attempts": 1
     },
     {
       "id": "T7",
@@ -107,9 +107,9 @@
       "acceptance": {
         "cmd": "python3 scripts/validate_specs.py && ! grep -nE 'generate_report\\.py.*\\bTO\\b' CHANGELOG.md"
       },
-      "status": "todo",
-      "evidence": "",
-      "attempts": 0
+      "status": "done",
+      "evidence": "acceptance command exited 0, re-run against dev on 2026-07-30",
+      "attempts": 1
     },
     {
       "id": "T8",
@@ -120,9 +120,9 @@
       "acceptance": {
         "cmd": "test \"$(wc -l < CLAUDE.md)\" -le 200 && grep -q 'Sync the environment before anything else' CLAUDE.md"
       },
-      "status": "todo",
-      "evidence": "",
-      "attempts": 0
+      "status": "done",
+      "evidence": "acceptance command exited 0, re-run against dev on 2026-07-30",
+      "attempts": 1
     },
     {
       "id": "T9",
@@ -133,9 +133,15 @@
       "acceptance": {
         "cmd": "python3 scripts/validate_delivery_coordinates.py"
       },
-      "status": "todo",
-      "evidence": "",
-      "attempts": 0
+      "status": "done",
+      "evidence": "acceptance command exited 0, re-run against dev on 2026-07-30",
+      "attempts": 1
     }
-  ]
+  ],
+  "closed": {
+    "verdict": "CLOSE-OK",
+    "gate": "delivery_loop_gate.py --mode close",
+    "closed_at": "2026-07-30",
+    "note": "Every task carries acceptance.cmd rather than acceptance.criterion, so owner == reviewer stays non-circular: adam reviewing adam's prose is self-attestation, adam reviewing an exit code is not (charter section 4). Statuses here were produced by re-running each command against dev, not by transcribing them from a session."
+  }
 }
