@@ -52,10 +52,10 @@ The CI workflow uses just `flake8 black websockets`. You can match it:
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-pip install flake8 black websockets requests
+pip install flake8 black websockets
 ```
 
-(`requests` is only used by the two Atlassian scripts in §2; the rest is what CI runs.)
+Nothing here needs `requests`. Both scripts in §2 make their HTTP calls with stdlib `urllib.request`, and the repo's other Python — `validate_specs.py`, `validate_delivery_coordinates.py` — is stdlib-only by design. `pyyaml` is the one exception, needed only by `scripts/generate_agents_json.py`.
 
 ## 4. Lint before pushing
 
