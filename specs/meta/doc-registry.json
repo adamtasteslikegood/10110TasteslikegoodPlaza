@@ -163,6 +163,14 @@
       "note": "Executable context for PLZG Sprint 2 (board 169, sprint 44, 2026-07-30 to 2026-08-13). Locks the delivery decisions reached in the 2026-07-30 grill so they survive the session that produced them. Derives from ROADMAP and DELIVERY-COORDINATES; originates nothing."
     },
     {
+      "doc_id": "SPRINT-3-CHARTER",
+      "path": "specs/sprint-3-charter.md",
+      "tier": 3,
+      "authority": "derived",
+      "status": "ACTIVE",
+      "note": "Executable context for Sprint 3. Follows up Sprint 2's close and plans the enforcement-axis amendment (D-027) plus the delivery authority that closes open conflict 4.10 (D-028). Declares 'derived' only because 'delivery' does not exist until the sprint creates it -- see its section 7. Originates nothing yet."
+    },
+    {
       "doc_id": "GOVERNANCE-TREE",
       "path": "docs/reference/meta_spec_governance_tree.md",
       "tier": 4,
