@@ -57,27 +57,34 @@ planned fortnight. Verified against Jira, not against the charter.
 | Correctly out of scope | `PLZG-113` (still `To Do`) |
 | Loop tasks | 10, **1 attempt each** — the 3-attempt and 12-iteration budgets never bound |
 
-### Three charter claims that did not survive a live check
+Three charter claims did not survive a live check. Recorded because the sprint's
+own goal was *"make every doc claim about state match the system that owns it."*
 
-Recorded because the sprint's own goal was *"make every doc claim about state
-match the system that owns it."*
+They are numbered subsections rather than a list so that `§1.1`–`§1.3` elsewhere
+in this document resolve to something real — per `META-SPEC` §6.2, a section an
+agent can be pointed at without loading the file.
 
-1. **The definition-of-done gate is green on a claim that is now false.**
-   `scripts/validate_delivery_coordinates.py` exits 0 reporting `wip=1`. Every
-   open PLZG issue is `To Do` today: **live WIP is 0.** The gate reads
-   `data/plzg-flow-snapshot.json`, frozen at 14:20 on 2026-07-30. `as_of` is read
-   only to print it — there is no staleness check, so the gate will still pass in
-   2027 reporting a July 2026 board.
+### 1.1 The definition-of-done gate is green on a claim that is now false
 
-2. **The `In Progress` fix did not take.** The single WIP item was `PLZG-125`,
-   created 14:14 and snapshotted 14:20 — six minutes, one ticket, the one whose
-   subject was the gate itself. The other 13 completions went `To Do` → `Done`.
+`scripts/validate_delivery_coordinates.py` exits 0 reporting `wip=1`. Every open
+PLZG issue is `To Do` today: **live WIP is 0.** The gate reads
+`data/plzg-flow-snapshot.json`, frozen at 14:20 on 2026-07-30. `as_of` is read
+only to print it — there is no staleness check, so the gate will still pass in
+2027 reporting a July 2026 board.
 
-3. **The forecast blackout cannot lift, despite 14 completions.** §3 of the
-   Sprint 2 charter requires *"10+ completions carrying real `started→resolved`
-   timestamps, drawn from a window containing no zero-throughput weeks."* Thirteen
-   of fourteen have no `started` at all, and all landed inside one day — the
-   window is a single point. The condition reads satisfiable-on-count; it is not.
+### 1.2 The `In Progress` fix did not take
+
+The single WIP item was `PLZG-125`, created 14:14 and snapshotted 14:20 — six
+minutes, one ticket, the one whose subject was the gate itself. The other 13
+completions went `To Do` → `Done`.
+
+### 1.3 The forecast blackout cannot lift, despite 14 completions
+
+§3 of the Sprint 2 charter requires *"10+ completions carrying real
+`started→resolved` timestamps, drawn from a window containing no zero-throughput
+weeks."* Thirteen of fourteen have no `started` at all, and all landed inside one
+day — the window is a single point. The condition reads satisfiable-on-count; it
+is not.
 
 **The blackout therefore stays in force.** Sprint 3 carries no date commitment.
 
@@ -229,8 +236,8 @@ declare its own authority (see §7).
 | `T3` | Extend `validate_specs.py` — DoD checks 1–5, reading permitted values **from the schema**, never restated in the script. | `tests/spec_enforcement_matrix.sh` |
 | `T4` | `tests/spec_enforcement_matrix.sh` + a `Spec Enforcement Matrix` CI job. | the matrix, exit 0 |
 | `T5` | Snapshot staleness check in `validate_delivery_coordinates.py` — **`PLZG-130`**. | `validate_delivery_coordinates.py` |
-| `T6` | Migrate 23 documents — assign `enforcement`, `gates`, `weakest_claim`; registry entries; `n/a` reasons. | `validate_specs.py` |
-| `T7` | Re-point `SPRINT-2-CHARTER` to `authority: delivery`; close §4.10 with the resolved-by-amendment note; register `D-027`/`D-028`. | `validate_specs.py` |
+| `T6` | Migrate **all 24** governed documents — assign `enforcement`, `gates`, `weakest_claim`; registry entries; `n/a` reasons. **24 includes this charter**; it is not exempt from the axis it introduces. | `validate_specs.py` |
+| `T7` | Re-point **both** `SPRINT-2-CHARTER` **and this charter** to `authority: delivery` (§7); close §4.10 with the resolved-by-amendment note; register `D-027`/`D-028`. | `validate_specs.py` |
 | `T8` | Bump `doc_set_version` 0.2.9 → 0.2.10 across the set; CHANGELOG under `[Unreleased]`. | `validate_specs.py` |
 
 ### Absorbed doc-truth defect
@@ -273,7 +280,7 @@ honest substitute is an exit code.
 
 Carried risks, both materialised in Sprint 2 rather than hypothesised:
 
-- **R1 — the migration is self-attested.** 23 documents get a value and the
+- **R1 — the migration is self-attested.** 24 documents get a value and the
   validator cannot check the values are honest. *Mitigation:* `weakest_claim`
   verbatim-match (DoD check 5) makes each value falsifiable in ten seconds. This
   reduces the risk; it does not remove it (§4).
