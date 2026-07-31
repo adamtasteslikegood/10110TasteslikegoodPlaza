@@ -17,6 +17,33 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
 
+### Added — Sprint 3 charter, and what Sprint 2 actually delivered (`PLZG-131`)
+
+- `specs/sprint-3-charter.md`, a new tier-3 governed document, plus its
+  `doc-registry.json` entry. **Plans work; decides nothing yet.**
+- Records Sprint 2's real outcome, measured against Jira rather than read off its
+  charter: opened and closed **2026-07-30, 09:43–18:08** — one day, not the planned
+  fortnight — nine committed items `Done` plus five unplanned, and ten loop tasks at
+  **one attempt each**, so the 3-attempt and 12-iteration budgets never bound.
+- **Three of the Sprint 2 charter's own claims did not survive a live check.**
+  `validate_delivery_coordinates.py` exits 0 reporting `wip=1` while the live board
+  is `0` — it reads a snapshot frozen at 14:20 and parses `as_of` only to print it
+  (`PLZG-130`). The `In Progress` fix held for six minutes on one ticket. The
+  forecast blackout cannot lift despite 14 completions, because 13 carry no
+  `started` timestamp and all landed inside one day.
+- Specifies two decisions for `META-SPEC` to originate, **neither registered yet** —
+  the entitled tier has to make them first. `D-027`, an `enforcement` axis
+  (`enforced`/`asserted`/`intended`/`n/a`, weakest claim wins, state claims only, and
+  a snapshot gate is not enforcement). `D-028`, a `delivery` authority, which closes
+  open conflict §4.10.
+- `doc_set_version` is deliberately **not** bumped, and the amendment's own
+  CHANGELOG entry lands with it under `T8`. This entry covers the charter as a
+  shipped artifact, per `CONTRIBUTING.md` — the gap issue #58 raised against the
+  Sprint 2 charter PR, not repeated here. Whether plan-only docs are exempt in
+  general is still #58's question to settle.
+- Board: `PLZG-121` and `PLZG-103` verified already fixed and closed; `PLZG-130`
+  filed; `PLZG Sprint 3` created (board `169`, sprint `45`).
+
 ### Fixed — the loop plan said Sprint 2 never started (`PLZG-128`)
 
 - `specs/sprint-2-loop-plan.json` recorded **all ten tasks as `todo`, `iteration: 1`,
