@@ -56,6 +56,18 @@ jobs:
       - name: Validate delivery coordinates
         run: python3 scripts/validate_delivery_coordinates.py
 
+  check-sync-matrix:
+    name: Check Sync Matrix
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Builds its own bare origin and clones, so it needs no network and does
+      # not depend on this checkout's refspec -- which is itself one of the
+      # things it tests (PLZG-124).
+      - name: Run the check_sync regression matrix
+        run: tests/check_sync_matrix.sh
+
   validate-agent-data:
     name: Validate Agent Data
     runs-on: ubuntu-latest

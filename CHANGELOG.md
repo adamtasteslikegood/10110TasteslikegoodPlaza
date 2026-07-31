@@ -34,11 +34,18 @@ spec-set versions, and no application release existed before `v0.1.22`.
   being in sync, rather than reporting a clean bill of health.
 - Human-facing output reports the branch it compared against rather than the internal
   `FETCH_HEAD` it may have used to get there.
-- Third defect found in this script by review rather than by its own tests. The first two
-  were fallback *priority* and a stale CHANGELOG claim; this one is *ordering*. All three
-  were in the same dozen lines, which is the argument for the regression matrix now run
-  against it: fresh clone, restricted refspec, feature branch, `dev`, release branch,
-  detached worktree, no remote, offline, and outside a repository.
+- **`tests/check_sync_matrix.sh`, wired into CI as `Check Sync Matrix`** — 20 assertions
+  covering the restricted-refspec clone, base-ref priority, integration branches,
+  `PLZG_BASE_REF`, degraded environments and argument handling. It builds its own bare
+  origin and clones, so it needs no network and does not depend on the CI checkout's
+  refspec, which is one of the things it tests.
+- Third defect found in this script by review rather than by its own tests — the first
+  two were fallback *priority* and a stale CHANGELOG claim, this one *ordering*, all
+  three within the same dozen lines. That is why the matrix is a committed test rather
+  than a paragraph: an earlier draft of this entry claimed a matrix "now run against it"
+  when it had only ever been run by hand once, which is the same unbacked
+  state-claim this repository keeps producing. Verified the test can fail — against the
+  pre-fix script it reports 3 failures and exits 1.
 
 ### Added — Sprint 2's definition of done is a gate, not a sentence (`PLZG-125`)
 
