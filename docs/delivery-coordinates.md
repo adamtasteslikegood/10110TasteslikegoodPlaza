@@ -188,10 +188,14 @@ them first.
   `TO` until 2026-07-28, which is why committed reports carried a Plaza heading
   over another product's issues. Moving it to `PLZG` is pending an audit, because
   `PLZG` also holds security alerts filed for unrelated repos.
-- **`post_to_confluence.py` does hard-code the parent page id** —
-  `parent_page_id = "11075756"` at line 36. That single value genuinely lives in
-  the script and must match this document; the space key appears only in a
-  comment.
+- **`post_to_confluence.py` no longer hard-codes the parent page id.** It reads
+  `ATLASSIAN_CONFLUENCE_PARENT_PAGE_ID` and resolves the space from whatever page
+  that names, so the space needs no variable of its own. Changed 2026-07-31
+  (`PLZG-109`); it was `parent_page_id = "11075756"` in the script until then.
+  **Both scripts are now configured the same way**, so neither holds a
+  coordinate: the deployed value is in the environment, and this table records
+  the one this project uses. The no-fallback rule is unchanged — an unreachable
+  page exits 1 rather than posting somewhere else.
 - **`report.md`.** Generated output carrying raw Jira issue titles from a
   cross-project board. Untracked and git-ignored: committing it is a disclosure
   decision, not a formatting one.

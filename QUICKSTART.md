@@ -33,17 +33,9 @@ This repo tracks [adamtasteslikegood/claude-code-tresor](https://github.com/adam
 These definitions are what [`data/agents.json`](data/agents.json) is built from — `scripts/generate_agents_json.py` generates it from the submodule (`D-024`). It already exists; never hand-edit it, regenerate. `python3 scripts/generate_agents_json.py --check` fails if the two have drifted apart, and CI runs that check.
 
 
-## 2. What the two root Python scripts are — and why they are not a step here
+## 2. Optional: the Atlassian scripts
 
-`generate_report.py` and `post_to_confluence.py` are **maintainer tooling**, not part of getting started. They build a status report from this project's Jira board and publish it into this project's own Confluence space.
-
-**They are not runnable against a space of your own.** `post_to_confluence.py` targets a fixed parent page in code, deliberately and with no fallback — an earlier fallback silently published into a sibling product's space, which is how reports ended up there. So there is nothing to configure that would point them at your own Confluence.
-
-You do not need them to run the prototype, read the specs, or contribute.
-
-If you are working *on* those scripts: `cp .env.example .env` and fill it in. [`.env.example`](.env.example) is the source of truth for what they read — every required variable, how to build the base64 credential, and which variables that appear in real `.env` files here are read by nothing. Both scripts name what is missing and exit 1 rather than raising.
-
-`.env` is gitignored; `.env.example` is committed and must never carry a real value. If a token is ever exposed, rotate it — deleting the commit does not revoke it.
+`generate_report.py` and `post_to_confluence.py` build a status report from a Jira board and post it to a Confluence page. Both read `./.env` — `cp .env.example .env` and fill in the four variables it documents, including your own board and page. Nothing else in the repo needs them.
 
 ## 3. Install Python deps
 

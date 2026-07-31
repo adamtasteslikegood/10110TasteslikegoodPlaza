@@ -106,7 +106,7 @@ The `gemini-*.yml` suite was removed 2026-07-28 having never completed a review 
 
 `generate_report.py` queries Jira for the last 7 days, buckets by status, and writes `report.md`; `post_to_confluence.py` converts that to HTML and posts it under a parent page. Both read `./.env` directly (no python-dotenv). **`.env.example` documents every variable they read and which ones nothing reads — copy it, don't retype it here.** Neither raises `KeyError` any more: since 2026-07-28 both name the missing variables and exit 1.
 
-**Which project and space each script targets is stated once, in § Atlassian coordinates — read that, or read the scripts. Do not add a third copy here.** `generate_report.py` hardcodes no board: it reads `ATLASSIAN_JIRA_PROJECT_KEY` and builds `project = "<key>" AND updated >= -7d` from it, so the target is whatever the environment says. (This section previously claimed it "still queries the deprecated board" — false since the env-var change, and exactly the drift this repo keeps producing.) `post_to_confluence.py` posts as a child of the space home page with **no fallback**; the removed fallback used to write into a sibling product's space, which is how reports ended up there.
+**Which project and space each script targets is stated once, in § Atlassian coordinates — read that. Do not add a third copy here.** **Neither script hardcodes a coordinate any more:** `generate_report.py` reads `ATLASSIAN_JIRA_PROJECT_KEY` and builds `project = "<key>" AND updated >= -7d`; since `PLZG-109` `post_to_confluence.py` reads `ATLASSIAN_CONFLUENCE_PARENT_PAGE_ID` and resolves the space from that page. The target is whatever the environment says, so a wrong report means checking the environment, not the source. There is **no fallback** — an unreachable parent exits 1; the removed fallback used to write into a sibling product's space, which is how reports ended up there.
 
 The committed `report.md` is still headed "Status Report - 10110 Tasteslikegood Plaza" over Vegangenius Chef rows, because it was generated before that change. It carries raw Jira issue titles, so committing it is a disclosure decision, not a formatting one — see § Atlassian coordinates for why it is untracked.
 
@@ -167,7 +167,7 @@ Keep a PR to one concern.
 
 ## Atlassian coordinates
 
-**`docs/delivery-coordinates.md` is the source of truth** (`D-026`) — Jira keys, board roles, the Confluence space and parent page id, and the keys belonging to the owner's *other* repos. Do not restate a key here or in any guide; cite it. The two Python scripts are the only other legitimate copy because they execute the values, and when a script and the table disagree **the script is the fact**. Two rules you need too often to look up: every PR title carries a **`PLZG-###`** key or the board never sees it, and `TO` is **deprecated** — read-only until archival, never filed into.
+**`docs/delivery-coordinates.md` is the source of truth** (`D-026`) — Jira keys, board roles, the Confluence space and parent page id, and the keys belonging to the owner's *other* repos. Do not restate a key here or in any guide; cite it. Since `PLZG-109` **neither script holds a coordinate** — both read the environment — so the table is the only copy in the tree, and the deployed value is whatever `.env` says. Two rules you need too often to look up: every PR title carries a **`PLZG-###`** key or the board never sees it, and `TO` is **deprecated** — read-only until archival, never filed into.
 
 ## When you're asked to add Godot code
 
