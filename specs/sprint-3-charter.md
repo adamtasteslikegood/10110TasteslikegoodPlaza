@@ -225,9 +225,15 @@ correction** — the reviewer was right, and the charter was not always fine.
 
 1. Every governed document declares `enforcement` from the enum. Absence fails —
    no default.
-2. `enforced` / `asserted` declare a non-empty `gates:` list, each entry naming a
-   job that **exists in `.github/workflows/ci.yml`**, each typed `live` or
-   `snapshot`. Encoded as **`job:type` strings** — `[Validate Specs:live]` —
+2. `enforced` / `asserted` declare a non-empty `gates:` list. **Any** declared
+   gate, on **any** enforcement value, names a job that **exists in
+   `.github/workflows/ci.yml`** and is typed `live` or `snapshot`. The two
+   halves are scoped differently on purpose, widened in `PLZG-134` after review:
+   *requiring* gates is about what the value claims, so it applies only to
+   values claiming CI backing; requiring a named job to *exist* is about the
+   claim being checkable, and a nonexistent job is equally false on an
+   `intended` or `n/a` document. Scoping both halves together left a hole
+   nothing would have reported. Encoded as **`job:type` strings** — `[Validate Specs:live]` —
    not as `{job, type}` objects. Corrected in `PLZG-133` under `META-SPEC` §4
    rule 1: `parse_frontmatter()` accepts only `key: scalar` and `key: [a, b]`,
    so the object form **silently misparses** to `['{job: X', 'type: live}']`

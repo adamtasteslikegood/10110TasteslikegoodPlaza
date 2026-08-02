@@ -572,10 +572,13 @@ def check_enforcement(
     on the enforcement value), cross-file (a job name lives in ci.yml, a reason
     lives in the registry), or cross-layer (a quote must appear in the body).
 
-    Check 1 is why this task had to run AFTER the migration. `enforcement` is
-    optional in the schema so T6 could populate all 24 documents first; absence
-    becomes fatal here. You do not switch on a required field before populating
-    it.
+    Check 1 is why this task had to run AFTER the migration. `enforcement` was
+    published OPTIONAL so T6 could populate all 24 documents first, and is
+    `required` in the schema now that they carry it -- publish optional,
+    populate, then require. You do not switch on a required field before
+    populating it. Absence therefore fails twice over: once against the schema,
+    once here. The duplication is deliberate, since the schema binds consumers
+    other than this script.
 
     WHAT THESE CANNOT SEE, stated so it is not rediscovered as a defect: check 5
     proves a `weakest_claim` quote is real, never that it is the WEAKEST. During
