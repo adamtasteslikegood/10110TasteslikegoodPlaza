@@ -10,7 +10,7 @@ owner: adamtasteslikegood
 derives_from: [PROJECT-OVERVIEW, DESIGN-25D, SPEC-DRIVERS-025]
 enforcement: asserted
 gates: [Validate Specs:live, Export Godot 4 Prototype:live]
-weakest_claim: (M1 → M8, critical path M1 → M4 → M8) is still correct.
+weakest_claim: For now it returns scripted/hardcoded responses.
 ---
 
 # 10110 TastesLike Plaza — Prototype Build Roadmap
