@@ -34,7 +34,7 @@ Most branching docs describe an aspiration. This section is the honest split.
 | `ci.yml` — `Validate Specs`, `Lint Python Bridge`, `Export Godot 4 Prototype` | **Runs on every push and PR to `main` and `dev`** |
 | CodeQL (`Analyze (python)`, `Analyze (actions)`), GitGuardian | **Runs on PRs** |
 | `claude-review.yml` — independent review | **Runs on PRs to `main` and `dev`**; see its `on:` block for the exact trigger set. Advisory, never a required check |
-| Branch protection on `dev` | **Active** — ruleset `18798438`: PR required, deletion and force-push blocked, code scanning gates merge. See §5 |
+| Branch protection on `dev` | **Active** — ruleset `18798438`: PR required, deletion and force-push blocked, code scanning gates merge, and **`Spec Enforcement Matrix` is a required status check**. See §5 |
 | Branch protection on `main` | **Not configured.** §5 "Still to apply" |
 | Required status checks by name | **Not configured** — `dev`'s ruleset gates `code_scanning` but does not require `Validate Specs` or `Lint Python Bridge` by name |
 | CODEOWNERS gating | **No `CODEOWNERS` file exists** |
@@ -136,7 +136,7 @@ are not duplicated here. The policy points:
 
 `dev` **is** protected — by a **repository ruleset**, not a classic branch-protection
 rule. Ruleset `dev` (id `18798438`, `enforcement: active`) targets `~DEFAULT_BRANCH`,
-which resolves to `dev`. Verified 2026-07-26:
+which resolves to `dev`, re-verified against the API 2026-08-02. Rules as of 2026-08-02:
 
 | Rule | Effect |
 |---|---|
@@ -145,6 +145,15 @@ which resolves to `dev`. Verified 2026-07-26:
 | `non_fast_forward` | Force pushes blocked |
 | `code_scanning` | CodeQL results gate the merge |
 | `copilot_code_review` | Automatic Copilot review on PRs |
+| `required_status_checks` | **`Spec Enforcement Matrix` must pass to merge.** Added 2026-08-02 on the owner's instruction, alongside `PLZG-135`. `strict_required_status_checks_policy: false` deliberately — strict forces every branch up to date before merging, which means rebasing, and `D-023` disables rebase merging |
+
+**Why that one job and not the others.** It is the only gate whose failure means
+another gate has stopped working. `tests/spec_enforcement_matrix.sh` asserts that
+`validate_specs.py` FAILS on 24 broken fixtures; if it goes green having checked
+nothing, `Validate Specs` can be passing vacuously and nothing else would say so.
+During `PLZG-134` three of those five checks were found checking nothing while
+`Validate Specs` exited 0 throughout. The other jobs report on the tree; this one
+reports on a gate.
 
 **`non_fast_forward` is not `required_linear_history`.** They are different rules and
 only the latter conflicts with `D-023`. The warning below still holds and is not
