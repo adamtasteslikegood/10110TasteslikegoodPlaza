@@ -5,7 +5,7 @@
     "max_attempts_per_task": 3,
     "max_loop_iterations": 12
   },
-  "iteration": 5,
+  "iteration": 6,
   "tasks": [
     {
       "id": "T0",
@@ -95,8 +95,8 @@
       "acceptance": {
         "cmd": "tests/spec_enforcement_matrix.sh"
       },
-      "status": "todo",
-      "attempts": 0,
+      "status": "done",
+      "attempts": 1,
       "depends_on": [
         "T3"
       ],
@@ -104,7 +104,8 @@
       "blocks": [
         "T5",
         "T7"
-      ]
+      ],
+      "evidence": "PR #122 merged to dev as 6ad8588. Acceptance run ON dev at 6ad8588, after the merge: 'tests/spec_enforcement_matrix.sh' -> '25 passed, 0 failed', exit 0. Green in CI on the new Spec Enforcement Matrix job, so it runs for real rather than only locally. 25 cases: one baseline that must PASS -- asserted first, because every failing case is meaningless against a fixture set that was never valid -- and 24 broken fixtures that must FAIL. Fixtures are self-built in a temp dir; no network, no submodule, the working tree is never touched. T3 IS CONFIRMED STANDING, which is what this task exists to decide. Each of the twelve checks and guards in check_enforcement() was disabled in turn and the matrix reddened on all twelve, naming the case; a thirteenth sabotage appended 'def broken(' to validate_specs.py and was caught too. Had any sabotage passed, T3 reopened. THREE THINGS THE OBVIOUS MATRIX WOULD HAVE GOT WRONG, each found by verifying rather than by writing: (1) asserting only the exit code let a case pass because SOME check fired -- disabling check 4's missing-reason branch still failed the fixture via the sibling branch catching _MISSING as 'not a string', right outcome and wrong reason -- so every case now pins its expected message; (2) 'enforcement absent' is caught by the schema's required array AND by check 1, so it passed with check 1 disabled and proved only the schema, and a second case now drops enforcement from the fixture schema's required list to isolate the validator half; (3) exit 1 with no 'Traceback' does not prove the validator ran, because a SyntaxError exits 1 and prints no traceback line at all, so a needle matching the echoed source line would have scored 25/25 against an unparseable validator -- the completed 'Spec validation FAILED' banner is now required too. Review found (3); (1) and (2) were found by the sabotage sweep. The fake-job fixture runs on an n/a document, not an asserted one: PLZG-134 widened job-existence to every enforcement value, and an asserted fixture failed before that widening too, so it would prove the old behaviour and be read as proving the new. EXCLUDES the stale-snapshot fixture by design -- that is T5's deliverable, and T4 and T5 share this acceptance command, so shipping it here would satisfy T5 the moment T4 passed having changed nothing. shellcheck -s sh clean; parses under POSIX sh. Not folded in and tracked instead: CLAUDE.md still says the pipeline has four jobs while this makes it seven (issue #110, updated with the measured count), and the CHANGELOG entry belongs to T8 which names the test matrix explicitly (issue #123, with a closing condition recorded)."
     },
     {
       "id": "T5",
