@@ -681,27 +681,34 @@ def check_enforcement(
             )
             continue
 
-        # 2. enforced/asserted need a non-empty gates list naming real CI jobs.
-        if value in ("enforced", "asserted"):
-            if not gates:
+        # 2. enforced/asserted need a NON-EMPTY gates list; ANY declared gate,
+        #    whatever the enforcement value, must name a job that exists.
+        #
+        # The two halves are scoped differently on purpose. Requiring gates is
+        # about the value's meaning, so it applies only where the value claims
+        # CI backing. Requiring a named job to be real is about the claim being
+        # checkable at all, and an `intended` or `n/a` document naming a
+        # nonexistent job is just as false -- scoping that half to
+        # enforced/asserted left a hole nothing would ever have reported.
+        if value in ("enforced", "asserted") and not gates:
+            problems.append(
+                Problem(
+                    path,
+                    f"is {value!r} but declares no gates. A value claiming CI backing "
+                    "must name the job that provides it",
+                )
+            )
+        for gate in gates:
+            job = gate.rsplit(":", 1)[0]
+            if job not in jobs:
                 problems.append(
                     Problem(
                         path,
-                        f"is {value!r} but declares no gates. A value claiming CI backing "
-                        "must name the job that provides it",
+                        f"names gate job {job!r}, which is not a job in "
+                        ".github/workflows/ci.yml -- a gate that does not exist "
+                        "cannot be enforcing anything",
                     )
                 )
-            for gate in gates:
-                job = gate.rsplit(":", 1)[0]
-                if job not in jobs:
-                    problems.append(
-                        Problem(
-                            path,
-                            f"names gate job {job!r}, which is not a job in "
-                            ".github/workflows/ci.yml -- a gate that does not exist "
-                            "cannot be enforcing anything",
-                        )
-                    )
 
         # 3. enforced needs at least one live gate (D-027 rule 4).
         if value == "enforced":
