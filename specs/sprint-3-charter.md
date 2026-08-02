@@ -18,8 +18,7 @@ derives_from: [META-SPEC, SPEC-DRIVERS-025, SPRINT-2-CHARTER]
 
 `PLZG Sprint 3` (board `169`, sprint id `45`) is **`future`**, scoped
 **2026-07-31 → 2026-08-14**, carrying nine tasks. `T1`–`T8` each carry **one
-Jira key**: `PLZG-132`, `133`, `134`, `135`, `130` (`T5`), `136`, `137`, `138`.
-`T0` has none by design — it is a precondition the `SessionStart` hook already
+Jira key**, listed per task in §5. `T0` has none by design — it is a precondition the `SessionStart` hook already
 runs, and a permanently-instant item would pollute the flow data this split
 exists to produce.
 
@@ -31,8 +30,17 @@ exists to produce.
 > no throughput signal — which is why Sprint 2's flow was unmeasurable.
 
 The machine-readable half is [`sprint-3-loop-plan.json`](sprint-3-loop-plan.json),
-the shape `delivery_loop_gate.py` consumes. **Where the two disagree, that file is
-the one the loop executes** — it is checked by a gate and this document is not.
+the shape `delivery_loop_gate.py` consumes. **The two must agree. A disagreement
+is a defect to fix, not a precedence to apply** — patch both in the same change,
+and if which one is right is genuinely unclear, stop and record it in the
+open-conflict register per `META-SPEC` §4.
+
+An earlier draft of this paragraph said the loop plan wins because it is checked
+by a gate. That was wrong twice over: passing a shape validator is not authority,
+and inventing a tie-break rule in a tier-3 document is precisely the unilateral
+reconciliation §4 forbids. Kept as a note because the error is an easy one — "the
+machine-checked artifact must be the real one" sounds like this repo's own
+reasoning, and is not.
 
 Open questions that were *not* settled in the session that produced this charter
 are recorded as comments on `PLZG-131`, not left in the transcript.
@@ -254,20 +262,23 @@ value should be re-examined.
 
 ## 5. Scope — nine items
 
-Sequenced. `T1`–`T3` must land before `T6`, and `T2` before the charter can
-declare its own authority (see §7).
+**Execution order — `T0 → T1 → T2 → T6 → T3 → T4 → T5 → T7 → T8`.** The table
+below is by task id, which is *not* the running order: `T6` runs before `T3`, and
+`T5` runs late. The authoritative dependency graph is the `depends_on` field in
+[`sprint-3-loop-plan.json`](sprint-3-loop-plan.json); this line is a reading aid.
+`§5.1` says why the order is what it is.
 
-| | Item | Acceptance |
-|---|---|---|
-| `T0` | Fetch / reconcile. **Blocking, exempt from the attempt cap.** | `scripts/check_sync.sh --strict` |
-| `T1` | Amend `META-SPEC` — define the `enforcement` axis (§3 `D-027`) and add `delivery` to the authority vocabulary (§3 `D-028`). **Atomically:** register both rows, add `decides: [D-027, D-028]`, and bump `doc_set_version` → **0.2.10**. See §5.1. | `validate_specs.py` |
-| `T2` | Extend `spec-frontmatter.schema.json` — `enforcement` enum, `gates[]` of `{job, type}`, `weakest_claim`, `authority` += `delivery` with `x-may-originate: true`. | `validate_specs.py` |
-| `T3` | Extend `validate_specs.py` — DoD checks 1–5, reading permitted values **from the schema**, never restated in the script. | `validate_specs.py` — see §5.1 |
-| `T4` | `tests/spec_enforcement_matrix.sh` + a `Spec Enforcement Matrix` CI job. | the matrix, exit 0 |
-| `T5` | Snapshot staleness check in `validate_delivery_coordinates.py` — **`PLZG-130`**. | `validate_delivery_coordinates.py` |
-| `T6` | Migrate **all 24** governed documents — assign `enforcement`, `gates`, `weakest_claim`; registry entries; `n/a` reasons. **24 includes this charter**; it is not exempt from the axis it introduces. | `validate_specs.py` |
-| `T7` | Re-point **both** `SPRINT-2-CHARTER` **and this charter** to `authority: delivery` (§7); close §4.10 with the resolved-by-amendment note; correct `D-026`'s retired clause (GH #96). **Atomically:** bump `doc_set_version` → **0.2.11**. See §5.1. | `validate_specs.py` |
-| `T8` | CHANGELOG under `[Unreleased]` — the amendment as a whole. **No version bump; it belongs with the decision that caused it.** | `validate_specs.py` |
+| | Ticket | Item | Acceptance |
+|---|---|---|---|
+| `T0` | — | Fetch / reconcile. **Blocking, exempt from the attempt cap.** | `scripts/check_sync.sh --strict` |
+| `T1` | `PLZG-132` | Amend `META-SPEC` — define the `enforcement` axis (§3 `D-027`) and add `delivery` to the authority vocabulary (§3 `D-028`). **Atomically:** register both rows, add `decides: [D-027, D-028]`, and bump `doc_set_version` → **0.2.10**. See §5.1. | `validate_specs.py` |
+| `T2` | `PLZG-133` | Extend `spec-frontmatter.schema.json` — `enforcement` enum, `gates[]` of `{job, type}`, `weakest_claim`, `authority` += `delivery` with `x-may-originate: true`. | `validate_specs.py` |
+| `T3` | `PLZG-134` | Extend `validate_specs.py` — DoD checks 1–5, reading permitted values **from the schema**, never restated in the script. | `validate_specs.py` — see §5.1 |
+| `T4` | `PLZG-135` | `tests/spec_enforcement_matrix.sh` + a `Spec Enforcement Matrix` CI job. | the matrix, exit 0 |
+| `T5` | `PLZG-130` | Snapshot staleness check in `validate_delivery_coordinates.py`. | `validate_delivery_coordinates.py` |
+| `T6` | `PLZG-136` | Migrate **all 24** governed documents — assign `enforcement`, `gates`, `weakest_claim`; registry entries; `n/a` reasons. **24 includes this charter**; it is not exempt from the axis it introduces. | `validate_specs.py` |
+| `T7` | `PLZG-137` | Re-point **both** `SPRINT-2-CHARTER` **and this charter** to `authority: delivery` (§7); close §4.10 with the resolved-by-amendment note; correct `D-026`'s retired clause (GH #96). **Atomically:** bump `doc_set_version` → **0.2.11**. See §5.1. | `validate_specs.py` |
+| `T8` | `PLZG-138` | CHANGELOG under `[Unreleased]` — the amendment as a whole. **No version bump; it belongs with the decision that caused it.** | `validate_specs.py` |
 
 ### 5.1 Two constraints that reshaped this table
 
@@ -292,6 +303,28 @@ force them to ship together for no reason. `T8` keeps only the CHANGELOG.
 non-vacuity gate: if its fixtures do not redden against `T3`'s checks, `T3` reopens.
 An earlier draft said `T3` could not be `done` until `T4` passed, which deadlocked
 against `T4` depending on `T3`.
+
+**Migration runs before enforcement — `T6` before `T3`.** Check 1 makes a missing
+`enforcement` value fail the build. Landing that while all 24 documents are
+unmigrated means `validate_specs.py` — `T3`'s own acceptance command — can never
+exit 0, with `T4` and `T6` both stuck behind it. **You do not switch on a required
+field before populating it.** So `T2` adds `enforcement` as *optional*, `T6`
+populates all 24, and `T3` then makes absence fail. This also settles the question
+`T2` was carrying: optional first, required after migration.
+
+**`T5` accepts on the matrix, not on the live snapshot.** `data/plzg-flow-snapshot.json`
+is dated 2026-07-30, before this sprint's window, so once the staleness check exists
+`validate_delivery_coordinates.py` *must* exit 1 against it — it can never prove the
+task done. §4 already requires the matrix to carry a stale-snapshot fixture, so `T5`
+accepts there and depends on `T4`.
+
+> **Escalation `T5` will surface, and must not work around.** Refreshing the
+> committed snapshot cannot currently satisfy clause (b) of the Sprint 2 definition
+> of done, which requires `wip > 0` — live WIP is 0. **A gate that requires someone
+> to be mid-task is a gate that rewards a fake transition**, which is what the
+> six-minute WIP window in §1.2 actually was. Whether clause (b) should assert
+> `wip > 0` at all, or only that the snapshot is fresh and honest about whatever the
+> board says, is an owner decision this task surfaces — not one to settle inside it.
 
 ### Absorbed doc-truth defect
 
