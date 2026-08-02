@@ -9,6 +9,9 @@ last_updated: 2026-07
 owner: adamtasteslikegood
 derives_from: [META-SPEC]
 supersedes: []
+enforcement: asserted
+gates: [Validate Specs:live]
+weakest_claim: those were never in dispute and are registered as
 ---
 
 # Concept Driver — the storyboard as the origin of concept

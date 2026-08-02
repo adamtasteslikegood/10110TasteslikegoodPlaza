@@ -8,6 +8,9 @@ doc_set_version: 0.2.10
 last_updated: 2026-07
 owner: adamtasteslikegood
 derives_from: [STORYBOARD-W1, DESIGN-25D, PLATFORM-DECISIONS]
+enforcement: asserted
+gates: [Validate Specs:live, Validate Agent Data:live]
+weakest_claim: Layer 1 and Layer 4 already exist.
 ---
 
 # 10110 TastesLike Plaza — Project Overview

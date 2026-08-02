@@ -8,6 +8,7 @@ doc_set_version: 0.2.10
 last_updated: 2026-07
 owner: adamtasteslikegood
 derives_from: [AGILE-EXPLAINED]
+enforcement: n/a
 ---
 
 # Explain "Agile" to a 5yr old:

@@ -8,6 +8,9 @@ doc_set_version: 0.2.10
 last_updated: 2026-07
 owner: adamtasteslikegood
 derives_from: []
+enforcement: intended
+gates: [Validate Specs:live]
+weakest_claim: 137+ agent `.md` files
 ---
 
 # 10110 TastesLike Plaza — Aligned Specification Set v0.2.5

@@ -8,6 +8,9 @@ doc_set_version: 0.2.10
 last_updated: 2026-07
 owner: adamtasteslikegood
 derives_from: [META-SPEC]
+enforcement: asserted
+gates: [Validate Specs:live, Check Sync Matrix:live]
+weakest_claim: Verified 2026-07-26
 ---
 
 # Branching Strategy

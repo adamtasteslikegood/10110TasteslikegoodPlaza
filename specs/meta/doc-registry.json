@@ -24,7 +24,8 @@
       "tier": 0,
       "authority": "constitution",
       "status": "ACTIVE",
-      "note": "Every locked decision, with a stable D-nnn id and a named origin document. What the 'cite the source doc' rule points at."
+      "note": "Every locked decision, with a stable D-nnn id and a named origin document. What the 'cite the source doc' rule points at.",
+      "enforcement_na_reason": "Decisions only. Records what was chosen and why -- makes no claim about the repository, the board, or the running system, so the enforcement scale does not apply."
     },
     {
       "doc_id": "SPEC-DRIVERS-025",
@@ -48,7 +49,8 @@
       "tier": 1,
       "authority": "concept",
       "status": "ACTIVE",
-      "note": "The heart. The ONLY document permitted to originate concept and narrative decisions. Edits require human sign-off."
+      "note": "The heart. The ONLY document permitted to originate concept and narrative decisions. Edits require human sign-off.",
+      "enforcement_na_reason": "Concept and narrative only. Defines what the world IS; asserts nothing about what the code, board or tooling currently does."
     },
     {
       "doc_id": "DESIGN-25D",
@@ -184,7 +186,8 @@
       "tier": 4,
       "authority": "research",
       "status": "ACTIVE",
-      "note": "Foundational onboarding reading on agile practice, for humans and agents. Explains a general methodology; specifies nothing about Plaza and originates nothing. Cite for rationale, never as law -- same standing as ALIGNED-SPEC-025."
+      "note": "Foundational onboarding reading on agile practice, for humans and agents. Explains a general methodology; specifies nothing about Plaza and originates nothing. Cite for rationale, never as law -- same standing as ALIGNED-SPEC-025.",
+      "enforcement_na_reason": "General agile practice, not this project. States in its own header that it 'does not specify anything about Plaza', so it carries no repository-state claim to enforce."
     },
     {
       "doc_id": "AGILE-LIKE-IM-5",
@@ -192,7 +195,8 @@
       "tier": 4,
       "authority": "research",
       "status": "ACTIVE",
-      "note": "Plain-language companion to AGILE-EXPLAINED. Same standing: authoritative over nothing."
+      "note": "Plain-language companion to AGILE-EXPLAINED. Same standing: authoritative over nothing.",
+      "enforcement_na_reason": "Plain-language companion to AGILE-EXPLAINED. Same reason: general education, no claim about this repository."
     }
   ],
   "exempt": [

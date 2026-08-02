@@ -9,6 +9,9 @@ last_updated: 2026-07
 owner: adamtasteslikegood
 derives_from: [META-SPEC]
 supersedes: []
+enforcement: asserted
+gates: [Validate Specs:live]
+weakest_claim: `Validate Specs` is green at `doc_set_version: 0.2.8`
 ---
 
 # Spec Drivers v0.2.5

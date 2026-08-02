@@ -8,6 +8,9 @@ doc_set_version: 0.2.10
 last_updated: 2026-07
 owner: adamtasteslikegood
 derives_from: [ROADMAP]
+enforcement: asserted
+gates: [Validate Specs:live, Export Godot 4 Prototype:live]
+weakest_claim: Export all 133 agent .md files to a single `agents.json`
 ---
 
 # 10110 TastesLike Plaza — PM Task Tracker

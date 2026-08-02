@@ -8,6 +8,9 @@ doc_set_version: 0.2.10
 last_updated: 2026-07
 owner: adamtasteslikegood
 derives_from: [ROADMAP, DELIVERY-COORDINATES, META-SPEC]
+enforcement: asserted
+gates: [Validate Specs:live, Validate Delivery Coordinates:snapshot]
+weakest_claim: The proving artifact is a new stdlib-only `scripts/validate_delivery_coordinates.py`
 ---
 
 # Sprint 2 charter — delivery decisions locked 2026-07-30

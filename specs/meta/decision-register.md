@@ -9,6 +9,7 @@ last_updated: 2026-07
 owner: adamtasteslikegood
 derives_from: [META-SPEC]
 supersedes: []
+enforcement: n/a
 ---
 
 # Decision Register

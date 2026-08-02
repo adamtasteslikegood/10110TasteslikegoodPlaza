@@ -9,6 +9,9 @@ last_updated: 2026-07
 owner: adamtasteslikegood
 derives_from: [PROJECT-OVERVIEW]
 decides: [D-017]
+enforcement: asserted
+gates: [Validate Agent Data:live, Validate Specs:live]
+weakest_claim: **133 roles** - Comprehensive coverage
 ---
 
 # 10110_TastesLikePlaza - 'Employee' Directory

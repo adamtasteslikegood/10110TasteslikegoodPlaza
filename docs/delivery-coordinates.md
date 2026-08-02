@@ -9,6 +9,9 @@ last_updated: 2026-07
 owner: adamtasteslikegood
 derives_from: [PROJECT-OVERVIEW]
 decides: [D-026]
+enforcement: asserted
+gates: [Validate Delivery Coordinates:snapshot, Validate Specs:live]
+weakest_claim: two Python scripts are the only other place a key legitimately appears
 ---
 
 # Delivery coordinates

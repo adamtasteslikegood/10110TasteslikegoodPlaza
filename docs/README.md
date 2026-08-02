@@ -8,6 +8,9 @@ doc_set_version: 0.2.10
 last_updated: 2026-07
 owner: adamtasteslikegood
 derives_from: [META-SPEC]
+enforcement: asserted
+gates: [Validate Specs:live]
+weakest_claim: engine, bridge transport, agent data layer, licence, submodule and merge policy
 ---
 
 # docs/

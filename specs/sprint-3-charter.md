@@ -8,6 +8,9 @@ doc_set_version: 0.2.10
 last_updated: 2026-08
 owner: adamtasteslikegood
 derives_from: [META-SPEC, SPEC-DRIVERS-025, SPRINT-2-CHARTER]
+enforcement: asserted
+gates: [Validate Specs:live, Validate Delivery Coordinates:snapshot]
+weakest_claim: PLZG issue is `To Do` today: **live WIP is 0.**
 ---
 
 # Sprint 3 charter — the doc set declares what is proven
