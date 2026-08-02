@@ -17,12 +17,25 @@ derives_from: [META-SPEC, SPEC-DRIVERS-025, SPRINT-2-CHARTER]
 > produced it.
 
 `PLZG Sprint 3` (board `169`, sprint id `45`) is **`future`**, scoped
-**2026-07-31 → 2026-08-14**, carrying nine tasks under two tickets:
-**`PLZG-131`** (this charter and the `META-SPEC` amendment, `T0`–`T4` and
-`T6`–`T8`) and **`PLZG-130`** (`T5`, the snapshot staleness check).
+**2026-07-31 → 2026-08-14**, carrying nine tasks. `T1`–`T8` each carry **one
+Jira key**: `PLZG-132`, `133`, `134`, `135`, `130` (`T5`), `136`, `137`, `138`.
+`T0` has none by design — it is a precondition the `SessionStart` hook already
+runs, and a permanently-instant item would pollute the flow data this split
+exists to produce.
+
+> This paragraph originally named **two** tickets, with `PLZG-131` as an umbrella
+> over `T0`–`T4` and `T6`–`T8`. Split on the owner's instruction of 2026-08-01,
+> *"individual tickets for t1-t8 as suggested for data gathering."* `PLZG-131` was
+> re-scoped to this charter alone and closed. An umbrella spanning the sprint never
+> transitions, so it inflates work-item age and holds a WIP slot while contributing
+> no throughput signal — which is why Sprint 2's flow was unmeasurable.
+
+The machine-readable half is [`sprint-3-loop-plan.json`](sprint-3-loop-plan.json),
+the shape `delivery_loop_gate.py` consumes. **Where the two disagree, that file is
+the one the loop executes** — it is checked by a gate and this document is not.
 
 Open questions that were *not* settled in the session that produced this charter
-are recorded as a comment on `PLZG-131`, not left in the transcript.
+are recorded as comments on `PLZG-131`, not left in the transcript.
 
 **Sprint goal:** every governed document declares which of its claims about state
 are proven and by what — and the tier ladder gains a home for delivery policy.
@@ -247,14 +260,38 @@ declare its own authority (see §7).
 | | Item | Acceptance |
 |---|---|---|
 | `T0` | Fetch / reconcile. **Blocking, exempt from the attempt cap.** | `scripts/check_sync.sh --strict` |
-| `T1` | Amend `META-SPEC` — define the `enforcement` axis (§3 `D-027`) and add `delivery` to the authority vocabulary (§3 `D-028`). Add `decides: [D-027, D-028]`. | `validate_specs.py` |
+| `T1` | Amend `META-SPEC` — define the `enforcement` axis (§3 `D-027`) and add `delivery` to the authority vocabulary (§3 `D-028`). **Atomically:** register both rows, add `decides: [D-027, D-028]`, and bump `doc_set_version` → **0.2.10**. See §5.1. | `validate_specs.py` |
 | `T2` | Extend `spec-frontmatter.schema.json` — `enforcement` enum, `gates[]` of `{job, type}`, `weakest_claim`, `authority` += `delivery` with `x-may-originate: true`. | `validate_specs.py` |
-| `T3` | Extend `validate_specs.py` — DoD checks 1–5, reading permitted values **from the schema**, never restated in the script. | `tests/spec_enforcement_matrix.sh` |
+| `T3` | Extend `validate_specs.py` — DoD checks 1–5, reading permitted values **from the schema**, never restated in the script. | `validate_specs.py` — see §5.1 |
 | `T4` | `tests/spec_enforcement_matrix.sh` + a `Spec Enforcement Matrix` CI job. | the matrix, exit 0 |
 | `T5` | Snapshot staleness check in `validate_delivery_coordinates.py` — **`PLZG-130`**. | `validate_delivery_coordinates.py` |
 | `T6` | Migrate **all 24** governed documents — assign `enforcement`, `gates`, `weakest_claim`; registry entries; `n/a` reasons. **24 includes this charter**; it is not exempt from the axis it introduces. | `validate_specs.py` |
-| `T7` | Re-point **both** `SPRINT-2-CHARTER` **and this charter** to `authority: delivery` (§7); close §4.10 with the resolved-by-amendment note; register `D-027`/`D-028`. | `validate_specs.py` |
-| `T8` | Bump `doc_set_version` 0.2.9 → 0.2.10 across the set; CHANGELOG under `[Unreleased]`. | `validate_specs.py` |
+| `T7` | Re-point **both** `SPRINT-2-CHARTER` **and this charter** to `authority: delivery` (§7); close §4.10 with the resolved-by-amendment note; correct `D-026`'s retired clause (GH #96). **Atomically:** bump `doc_set_version` → **0.2.11**. See §5.1. | `validate_specs.py` |
+| `T8` | CHANGELOG under `[Unreleased]` — the amendment as a whole. **No version bump; it belongs with the decision that caused it.** | `validate_specs.py` |
+
+### 5.1 Two constraints that reshaped this table
+
+Found by the independent reviewer on PR #104, against a draft that could not run.
+
+**`T1` cannot claim a decision it has not registered.** `scripts/validate_specs.py`
+`check_decisions()` (line 457) fails any document whose `decides:` names a `D-nnn`
+absent from `decision-register.md`. So `META-SPEC` declaring
+`decides: [D-027, D-028]` while the register rows land in `T7` would fail `T1`'s
+own acceptance command. Registration, the `decides:` list and the prose are one
+change.
+
+**A trailing version-bump task is out of policy by construction.** `META-SPEC` §8
+item 4 requires a changed locked decision and the set-wide `doc_set_version` bump
+in the **same commit**. `T1` and `T7` each change locked decisions, so each carries
+its own bump — 0.2.10 and 0.2.11. **Two bumps in one sprint is correct here**, not
+a mistake: two unrelated decisions change, and coupling them into one version would
+force them to ship together for no reason. `T8` keeps only the CHANGELOG.
+
+**`T3` accepts on `validate_specs.py`, not the matrix.** The matrix is created by
+`T4`, so accepting `T3` against it is unrunnable. `T4` is the *downstream*
+non-vacuity gate: if its fixtures do not redden against `T3`'s checks, `T3` reopens.
+An earlier draft said `T3` could not be `done` until `T4` passed, which deadlocked
+against `T4` depending on `T3`.
 
 ### Absorbed doc-truth defect
 

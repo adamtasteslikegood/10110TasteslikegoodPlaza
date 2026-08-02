@@ -1,5 +1,5 @@
 {
-  "$comment": "Machine-readable Sprint 3 plan. Prose rationale lives in specs/sprint-3-charter.md; this file is the shape delivery_loop_gate.py consumes. That script is NOT in this repo and must not be vendored here -- it ships with the pm-skills plugin, enabled at project scope in .claude/settings.json. Resolve it, do not hardcode (PLZG-117, PLZG-129): PM_SCRIPTS=$(find ~/.claude/plugins -path '*/pm-skills/scripts' -type d -print -quit) then python3 \"$PM_SCRIPTS/delivery_loop_gate.py\" --plan specs/sprint-3-loop-plan.json --mode plan --output human. See charter section 9 of the Sprint 2 charter for why that resolution is written out rather than assumed. Every task carries acceptance.cmd rather than acceptance.criterion -- with a single human, owner == reviewer, and machine verification is what makes that non-circular. Statuses in this file must be produced by running the acceptance command against dev, never transcribed from the session that ran it: Sprint 2 closed CLOSE-OK against a scratch copy in /tmp and this file's predecessor recorded all ten tasks as todo afterwards (PLZG-128).",
+  "$comment": "Machine-readable Sprint 3 plan. Prose rationale lives in specs/sprint-3-charter.md; this file is the shape delivery_loop_gate.py consumes. That script is NOT in this repo and must not be vendored here -- it ships with the pm-skills plugin, enabled at project scope in .claude/settings.json. Resolve it, do not hardcode (PLZG-117, PLZG-129): PM_SCRIPTS=$(find ~/.claude/plugins -path '*/pm-skills/scripts' -type d -print -quit) then python3 \"$PM_SCRIPTS/delivery_loop_gate.py\" --plan specs/sprint-3-loop-plan.json --mode plan --output human. See charter section 9 of the Sprint 2 charter for why that resolution is written out rather than assumed. Every task carries acceptance.cmd rather than acceptance.criterion -- with a single human, owner == reviewer, and machine verification is what makes that non-circular. Statuses in this file must be produced by running the acceptance command against dev, never transcribed from the session that ran it: Sprint 2 closed CLOSE-OK against a scratch copy in /tmp and this file's predecessor recorded all ten tasks as todo afterwards (PLZG-128). TICKETING: T1-T8 carry one Jira key each (PLZG-130, PLZG-132 through PLZG-138), not the two the charter originally named. Split on the owner's instruction of 2026-08-01, 'individual tickets for t1-t8 as suggested for data gathering', recorded on PLZG-131 which was re-scoped to the charter alone and closed. An umbrella spanning the sprint never transitions, so it inflates work item age and holds a WIP slot while contributing no throughput signal -- the reason Sprint 2's flow was unmeasurable. T0 has no ticket by design; see its note.",
   "goal": "Every governed document declares which of its claims about state are proven and by what, and the tier ladder gains a home for delivery policy. PLZG Sprint 3, board 169, sprint 45, 2026-07-31 to 2026-08-14.",
   "budgets": {
     "max_attempts_per_task": 3,
@@ -18,11 +18,12 @@
       },
       "status": "todo",
       "attempts": 0,
-      "note": "Blocking precondition, exempt from the attempt cap per Sprint 2 charter section 5. No Jira ticket: it is a precondition the SessionStart hook already runs, not a unit of work, and ticketing it would add a permanently-instant item to the flow data the T1-T8 split exists to produce. A loop that burns attempts against stale state has spent its budget learning nothing."
+      "blocks": ["T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8"],
+      "note": "Blocking precondition, exempt from the attempt cap per Sprint 2 charter section 5. The blocks edge lists every task deliberately: the loop reads structured dependency fields, not notes, so describing T0 as blocking in prose alone would let the loop start work against a stale checkout -- the exact R1 failure this task exists to prevent. No Jira ticket: it is a precondition the SessionStart hook already runs, not a unit of work, and ticketing it would add a permanently-instant item to the flow data the T1-T8 split exists to produce. A loop that burns attempts against stale state has spent its budget learning nothing."
     },
     {
       "id": "T1",
-      "title": "PLZG-132 -- amend META-SPEC: define the enforcement axis (D-027) and add the delivery authority (D-028)",
+      "title": "PLZG-132 -- amend META-SPEC and register D-027/D-028 atomically: define the enforcement axis and the delivery authority, add decides:, bump doc_set_version to 0.2.10",
       "owner": "adam schoen",
       "executor": "agent",
       "reviewer": "adam schoen",
@@ -31,8 +32,9 @@
       },
       "status": "todo",
       "attempts": 0,
+      "depends_on": ["T0"],
       "blocks": ["T2", "T3", "T4", "T6", "T7", "T8"],
-      "note": "Both decisions are rules about documents, so tier-0 META-SPEC is the entitled origin -- the clean case that D-005 was not. Acceptance passes before the checks exist; T1 defines the axis, T3 makes it enforceable. Adds decides: [D-027, D-028] to META-SPEC frontmatter."
+      "note": "ATOMIC BY NECESSITY -- do not split. Two independent constraints force the register rows, the decides: list and the version bump into this one task. (1) validate_specs.py check_decisions (line 457) fails any doc whose decides: names a D-nnn absent from decision-register.md, so META-SPEC declaring decides: [D-027, D-028] while the rows land later cannot pass this task's own acceptance command. (2) META-SPEC section 8 item 4 requires a changed locked decision and the set-wide doc_set_version bump in the SAME COMMIT. An earlier draft of this plan split all three across T1, T7 and T8 and was unrunnable. Scope: define the axis and the delivery authority in META-SPEC prose; add the D-027 and D-028 rows in a NEW constitution-originated section of the register (it has none today); add decides: [D-027, D-028] to META-SPEC frontmatter; bump doc_set_version 0.2.9 -> 0.2.10 across all 24 documents and doc-registry.json. Both decisions are rules about documents, so tier-0 META-SPEC is the entitled origin -- the clean case that D-005 was not."
     },
     {
       "id": "T2",
@@ -62,7 +64,7 @@
       "attempts": 0,
       "depends_on": ["T2"],
       "blocks": ["T4", "T6"],
-      "note": "ACCEPTANCE DEVIATES FROM THE CHARTER, DELIBERATELY. Charter section 5 gives T3 the command tests/spec_enforcement_matrix.sh -- a file T4 creates, so a gate cannot accept T3 against it. validate_specs.py exiting 0 is necessary and NOT sufficient here: all five checks can pass vacuously, which is how tests/smoke_test.tscn passed until v0.2.8. T3 must not be marked done before T4 passes; the two are one unit split for review size, and T4 is the real gate for both. Raised as PLZG-145."
+      "note": "ACCEPTANCE DEVIATES FROM THE CHARTER, DELIBERATELY. Charter section 5 gives T3 the command tests/spec_enforcement_matrix.sh -- a file T4 creates, so a gate cannot accept T3 against it. T3 therefore completes on validate_specs.py, and T4 is the DOWNSTREAM non-vacuity gate: if T4's fixtures do not redden against T3's checks, T3 reopens and both are reworked. An earlier draft said T3 must not be marked done until T4 passes, which deadlocked against T4's depends_on: [T3] -- T3 could never complete and T4 could never start. Stated plainly because validate_specs.py exiting 0 is necessary and NOT sufficient here: all five checks can pass vacuously, which is how tests/smoke_test.tscn passed until v0.2.8."
     },
     {
       "id": "T4",
@@ -89,7 +91,8 @@
       },
       "status": "todo",
       "attempts": 0,
-      "note": "Independent of T1-T4; can run in parallel. The gate currently exits 0 reporting wip=1 while the live board is 0, because as_of is parsed only to print it. Compare instants, not string prefixes -- the Agile API returns UTC and every sprint boundary here is 17:00 PT, which is 00:00 UTC the next day (PLZG-144)."
+      "depends_on": ["T0"],
+      "note": "Independent of T1-T4 and parallelisable with them, but NOT with T0 -- it depends on the sync alone. The dependency is stated explicitly rather than relying on T0's blocks edge, because every other task reaches T0 transitively through T1 and T5 does not; without this line, a loop reading depends_on would start T5 against an unsynced checkout. The gate currently exits 0 reporting wip=1 while the live board is 0, because as_of is parsed only to print it. Compare instants, not string prefixes -- the Agile API returns UTC and every sprint boundary here is 17:00 PT, which is 00:00 UTC the next day (PLZG-144)."
     },
     {
       "id": "T6",
@@ -108,7 +111,7 @@
     },
     {
       "id": "T7",
-      "title": "PLZG-137 -- re-point both sprint charters to authority: delivery, close conflict 4.10, register D-027/D-028",
+      "title": "PLZG-137 -- re-point both sprint charters to authority: delivery, close conflict 4.10, correct D-026's retired clause, bump doc_set_version to 0.2.11",
       "owner": "adam schoen",
       "executor": "agent",
       "reviewer": "adam schoen",
@@ -119,11 +122,11 @@
       "attempts": 0,
       "depends_on": ["T2", "T6"],
       "blocks": ["T8"],
-      "note": "Section 4.10 must close as resolved-by-amendment, not resolved-by-correction: the reviewer was right and the Sprint 2 charter was not always fine -- the ladder lacked a slot and D-028 creates one. Under delivery, that charter becomes retroactively entitled to have set its budgets; say so. Also correct D-026's now-dead clause per GitHub #96 -- owner ruling 2026-08-01: keep the retired clause marked historical rather than deleting it, because it records why the coordinates were centralised. Status stays LOCKED; nothing replaced it. Register needs a new constitution-originated section; it has none today."
+      "note": "CARRIES ITS OWN VERSION BUMP, per META-SPEC section 8 item 4: this task changes D-026, a locked decision, so the register edit and the set-wide doc_set_version bump must be the SAME COMMIT. That is a second bump in one sprint (T1 does 0.2.9 -> 0.2.10, this does 0.2.10 -> 0.2.11) and it is correct: two locked decisions change, on unrelated subjects, so each carries its own version rather than being coupled to ship together. Section 4.10 must close as resolved-by-amendment, not resolved-by-correction: the reviewer was right and the Sprint 2 charter was not always fine -- the ladder lacked a slot and D-028 creates one. Under delivery, that charter becomes retroactively entitled to have set its budgets; say so. D-026 per GitHub #96, owner ruling 2026-08-01: the dead clause spans two columns (Choice, and the Rationale's closing arbitration sentence). Keep the retired clause marked historical rather than deleting it -- it records why the coordinates were centralised, and a future hardcoded coordinate is the failure it was written against. Status stays LOCKED; nothing replaced it. Re-pointing either charter to authority: delivery requires T2's schema enum, hence depends_on."
     },
     {
       "id": "T8",
-      "title": "PLZG-138 -- bump doc_set_version 0.2.9 to 0.2.10 across the set and log the amendment in CHANGELOG",
+      "title": "PLZG-138 -- log the amendment in CHANGELOG under [Unreleased]",
       "owner": "adam schoen",
       "executor": "agent",
       "reviewer": "adam schoen",
@@ -133,7 +136,7 @@
       "status": "todo",
       "attempts": 0,
       "depends_on": ["T7"],
-      "note": "META-SPEC section 8: bump when a locked decision changed, in the same commit. Nothing was decided until T7 registered D-027/D-028, so bumping earlier would have claimed a decision not yet made. The charter's own CHANGELOG entry already landed in PR #85 (cfb6f71); this entry covers the amendment. If GitHub #58 has been settled by then, apply the ruling; if not, leave it open and do not resolve it here."
+      "note": "CHANGELOG only. The doc_set_version bumps moved to T1 and T7, because META-SPEC section 8 item 4 requires each bump in the same commit as the locked-decision change that caused it -- a trailing bump task is out of policy by construction, and an earlier draft of this plan had exactly that. Covers D-027, D-028, the new validator checks, the test matrix, the 24-document migration and the D-026 correction. The charter's own entry already landed in PR #85 (cfb6f71); do not restate it. If GitHub #58 has been settled by then, apply the ruling; if not, leave it open and do not resolve it here."
     }
   ]
 }
