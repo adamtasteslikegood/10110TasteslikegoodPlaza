@@ -10,7 +10,7 @@ owner: adamtasteslikegood
 derives_from: [META-SPEC]
 enforcement: asserted
 gates: [Validate Specs:live]
-weakest_claim: which is the machine-readable truth this file
+weakest_claim: Every line of it was wrong by the time anyone read it
 ---
 
 # Meta-specs — the governed tree

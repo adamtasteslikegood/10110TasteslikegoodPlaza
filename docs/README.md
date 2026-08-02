@@ -10,7 +10,7 @@ owner: adamtasteslikegood
 derives_from: [META-SPEC]
 enforcement: asserted
 gates: [Validate Specs:live]
-weakest_claim: engine, bridge transport, agent data layer, licence, submodule and merge policy
+weakest_claim: Files here change slowly
 ---
 
 # docs/

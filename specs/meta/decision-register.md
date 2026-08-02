@@ -9,7 +9,9 @@ last_updated: 2026-07
 owner: adamtasteslikegood
 derives_from: [META-SPEC]
 supersedes: []
-enforcement: n/a
+enforcement: asserted
+gates: [Validate Specs:live]
+weakest_claim: 19 of the 24 orchestration commands
 ---
 
 # Decision Register

@@ -11,7 +11,7 @@ derives_from: [PROJECT-OVERVIEW]
 decides: [D-017]
 enforcement: asserted
 gates: [Validate Agent Data:live, Validate Specs:live]
-weakest_claim: **133 roles** - Comprehensive coverage
+weakest_claim: quote 133 when you mean roles, NPCs, or rows in
 ---
 
 # 10110_TastesLikePlaza - 'Employee' Directory

@@ -24,8 +24,7 @@
       "tier": 0,
       "authority": "constitution",
       "status": "ACTIVE",
-      "note": "Every locked decision, with a stable D-nnn id and a named origin document. What the 'cite the source doc' rule points at.",
-      "enforcement_na_reason": "Decisions only. Records what was chosen and why -- makes no claim about the repository, the board, or the running system, so the enforcement scale does not apply."
+      "note": "Every locked decision, with a stable D-nnn id and a named origin document. What the 'cite the source doc' rule points at."
     },
     {
       "doc_id": "SPEC-DRIVERS-025",
