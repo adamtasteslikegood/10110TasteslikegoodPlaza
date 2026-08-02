@@ -5,7 +5,7 @@ tier: 3
 authority: derived
 status: ACTIVE
 doc_set_version: 0.2.9
-last_updated: 2026-07
+last_updated: 2026-08
 owner: adamtasteslikegood
 derives_from: [META-SPEC, SPEC-DRIVERS-025, SPRINT-2-CHARTER]
 ---
@@ -238,9 +238,13 @@ correction** — the reviewer was right, and the charter was not always fine.
 **The test matrix is not optional.** Checks 1–5 can pass vacuously, which is how
 `tests/smoke_test.tscn` passed until v0.2.8. Fixtures must assert failure for: a
 document claiming `enforced` on a `snapshot`-only gate; a `gates:` entry naming a
-job absent from `ci.yml`; a `weakest_claim` not present in its file; a stale
-snapshot. Shape it after `tests/check_sync_matrix.sh`, which builds its own
-fixtures and needs no network.
+job absent from `ci.yml`; a `weakest_claim` not present in its file. Shape it
+after `tests/check_sync_matrix.sh`, which builds its own fixtures and needs no
+network.
+
+**The stale-snapshot fixture is `T5`'s, not `T4`'s.** `T4` and `T5` share this
+acceptance command, so if `T4` shipped that fixture too, `T5` would pass the
+moment `T4` did and could be marked done having changed nothing.
 
 ### What this deliberately cannot catch
 
@@ -274,11 +278,11 @@ below is by task id, which is *not* the running order: `T6` runs before `T3`, an
 | `T1` | `PLZG-132` | Amend `META-SPEC` — define the `enforcement` axis (§3 `D-027`) and add `delivery` to the authority vocabulary (§3 `D-028`). **Atomically:** register both rows, add `decides: [D-027, D-028]`, and bump `doc_set_version` → **0.2.10**. See §5.1. | `validate_specs.py` |
 | `T2` | `PLZG-133` | Extend `spec-frontmatter.schema.json` — `enforcement` enum, `gates[]` of `{job, type}`, `weakest_claim`, `authority` += `delivery` with `x-may-originate: true`. | `validate_specs.py` |
 | `T3` | `PLZG-134` | Extend `validate_specs.py` — DoD checks 1–5, reading permitted values **from the schema**, never restated in the script. | `validate_specs.py` — see §5.1 |
-| `T4` | `PLZG-135` | `tests/spec_enforcement_matrix.sh` + a `Spec Enforcement Matrix` CI job. | the matrix, exit 0 |
-| `T5` | `PLZG-130` | Snapshot staleness check in `validate_delivery_coordinates.py`. | `validate_delivery_coordinates.py` |
+| `T4` | `PLZG-135` | `tests/spec_enforcement_matrix.sh` + a `Spec Enforcement Matrix` CI job. **Excludes the stale-snapshot fixture — that is `T5`'s.** | `tests/spec_enforcement_matrix.sh` |
+| `T5` | `PLZG-130` | Snapshot staleness check in `validate_delivery_coordinates.py`, plus the fixture that exercises it. | `tests/spec_enforcement_matrix.sh` — see §5.1 |
 | `T6` | `PLZG-136` | Migrate **all 24** governed documents — assign `enforcement`, `gates`, `weakest_claim`; registry entries; `n/a` reasons. **24 includes this charter**; it is not exempt from the axis it introduces. | `validate_specs.py` |
-| `T7` | `PLZG-137` | Re-point **both** `SPRINT-2-CHARTER` **and this charter** to `authority: delivery` (§7); close §4.10 with the resolved-by-amendment note; correct `D-026`'s retired clause (GH #96). **Atomically:** bump `doc_set_version` → **0.2.11**. See §5.1. | `validate_specs.py` |
-| `T8` | `PLZG-138` | CHANGELOG under `[Unreleased]` — the amendment as a whole. **No version bump; it belongs with the decision that caused it.** | `validate_specs.py` |
+| `T7` | `PLZG-137` | Re-point **both** `SPRINT-2-CHARTER` **and this charter** to `authority: delivery` (§7); close §4.10 with the resolved-by-amendment note; correct `D-026`'s retired clause (GH #96). **Atomically:** bump `doc_set_version` → **0.2.11**. See §5.1. | `validate_specs.py && tests/spec_enforcement_matrix.sh` |
+| `T8` | `PLZG-138` | CHANGELOG under `[Unreleased]` — the amendment as a whole. **No version bump; it belongs with the decision that caused it.** | `validate_specs.py && tests/spec_enforcement_matrix.sh` |
 
 ### 5.1 Two constraints that reshaped this table
 
@@ -387,4 +391,4 @@ because a later reader will otherwise see a charter declaring `derived` while
 
 ---
 
-*Last updated: July 2026*
+*Last updated: August 2026*
