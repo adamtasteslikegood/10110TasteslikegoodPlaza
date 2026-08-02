@@ -252,7 +252,11 @@ correction** — the reviewer was right, and the charter was not always fine.
 **The test matrix is not optional.** Checks 1–5 can pass vacuously, which is how
 `tests/smoke_test.tscn` passed until v0.2.8. Fixtures must assert failure for: a
 document claiming `enforced` on a `snapshot`-only gate; a `gates:` entry naming a
-job absent from `ci.yml`; a `weakest_claim` not present in its file. Shape it
+job absent from `ci.yml` **on an `intended` or `n/a` document, not merely an
+`asserted` one** — that job-existence half was widened to every enforcement
+value in `PLZG-134`, and a fixture using `asserted` would have failed before the
+widening too, so it cannot prove the new branch works; a `weakest_claim` not
+present in its file. Shape it
 after `tests/check_sync_matrix.sh`, which builds its own fixtures and needs no
 network.
 

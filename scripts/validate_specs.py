@@ -567,10 +567,15 @@ def check_enforcement(
 ) -> None:
     """The five enforcement-axis checks (D-027).
 
-    Each closes a gap the schema cannot: the schema validates one field of one
-    document at a time, and every rule here is either cross-field (gates depend
+    Checks 2-5 close gaps the schema cannot express: it validates one field of
+    one document at a time, and each of those rules is cross-field (gates depend
     on the enforcement value), cross-file (a job name lives in ci.yml, a reason
     lives in the registry), or cross-layer (a quote must appear in the body).
+
+    Check 1 is the exception and is DELIBERATELY DOUBLED. `enforcement` is in the
+    schema's `required` array, so absence already fails there -- but the schema
+    binds every consumer while this script is what CI runs, and a rule this
+    load-bearing is worth failing twice rather than resting on one layer.
 
     Check 1 is why this task had to run AFTER the migration. `enforcement` was
     published OPTIONAL so T6 could populate all 24 documents first, and is

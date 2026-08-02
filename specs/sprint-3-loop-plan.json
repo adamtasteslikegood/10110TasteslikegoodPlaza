@@ -100,7 +100,7 @@
       "depends_on": [
         "T3"
       ],
-      "note": "Shape after tests/check_sync_matrix.sh, which builds its own fixtures and needs no network. Every fixture must assert the check FAILS: enforced on a snapshot-only gate, a gates entry naming a job absent from ci.yml, a weakest_claim not present verbatim, a governed doc with no enforcement value, an n/a doc with no registry reason. DELIBERATELY EXCLUDES the stale-snapshot fixture, which is T5's deliverable -- see T5. T4 and T5 share this acceptance command, so if T4 also shipped that fixture, T5 would be satisfied the moment T4 passed and could be marked done having changed nothing. Verify by breaking one check deliberately and confirming the matrix reddens.",
+      "note": "Shape after tests/check_sync_matrix.sh, which builds its own fixtures and needs no network. Every fixture must assert the check FAILS: enforced on a snapshot-only gate, a gates entry naming a job absent from ci.yml ON AN intended OR n/a DOCUMENT -- PLZG-134 widened job-existence from enforced/asserted to every enforcement value, and a fixture using asserted would have failed before that widening too, so it cannot prove the new branch works, a weakest_claim not present verbatim, a governed doc with no enforcement value, an n/a doc with no registry reason. DELIBERATELY EXCLUDES the stale-snapshot fixture, which is T5's deliverable -- see T5. T4 and T5 share this acceptance command, so if T4 also shipped that fixture, T5 would be satisfied the moment T4 passed and could be marked done having changed nothing. Verify by breaking one check deliberately and confirming the matrix reddens.",
       "blocks": [
         "T5",
         "T7"
