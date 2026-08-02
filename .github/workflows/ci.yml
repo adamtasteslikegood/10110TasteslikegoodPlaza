@@ -68,6 +68,21 @@ jobs:
       - name: Run the check_sync regression matrix
         run: tests/check_sync_matrix.sh
 
+  spec-enforcement-matrix:
+    name: Spec Enforcement Matrix
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The non-vacuity gate for the D-027 enforcement checks. `Validate Specs`
+      # exiting 0 is necessary and not sufficient: during PLZG-134 three of
+      # those five checks were found checking nothing while it stayed green.
+      # This builds its own three-document fixture set in a temp dir -- no
+      # network, no submodule, and it never touches the checkout -- then asserts
+      # the validator FAILS on each broken case, with the expected message.
+      - name: Run the enforcement-axis matrix
+        run: tests/spec_enforcement_matrix.sh
+
   validate-agent-data:
     name: Validate Agent Data
     runs-on: ubuntu-latest
