@@ -481,6 +481,8 @@ def check_decisions(documents: dict, problems: list) -> None:
 # caps at `asserted`. The VOCABULARY is read from the schema below rather than
 # restated here; only which member means "re-derives" is named, because that is
 # a decision D-027 makes and no schema can express.
+_MISSING = object()
+
 LIVE_GATE_TYPE = "live"
 
 # The enforcement values this implementation knows the SEMANTICS of. The schema
@@ -618,8 +620,9 @@ def check_enforcement(
         return
 
     reasons = {
-        entry["doc_id"]: entry.get("enforcement_na_reason")
+        entry["doc_id"]: entry["enforcement_na_reason"]
         for entry in registry.get("documents", [])
+        if "enforcement_na_reason" in entry
     }
     jobs = ci_job_names()
     if not jobs:
@@ -713,8 +716,19 @@ def check_enforcement(
                 )
 
         # 4. n/a must say why, in the registry, where claiming it is visible.
+        #
+        # PRESENCE and CONTENT are asked separately, and the difference matters
+        # in both directions. `"enforcement_na_reason": ""` on a non-n/a
+        # document is a leftover the earlier truthiness test let through, since
+        # an empty reason and an absent key looked identical to it -- yet the
+        # rule is that a non-n/a document must not carry the key at all. And a
+        # non-string reason used to reach .strip() and raise AttributeError,
+        # the same crash class as gates and weakest_claim: the registry is JSON
+        # and nothing constrains this key's type, so it arrives however it was
+        # written.
+        reason = reasons.get(doc_id, _MISSING)
         if value == "n/a":
-            if not (reasons.get(doc_id) or "").strip():
+            if reason is _MISSING:
                 problems.append(
                     Problem(
                         path,
@@ -724,12 +738,20 @@ def check_enforcement(
                         "to stop",
                     )
                 )
-        elif (reasons.get(doc_id) or "").strip():
+            elif not isinstance(reason, str) or not reason.strip():
+                problems.append(
+                    Problem(
+                        REGISTRY_PATH,
+                        f"{doc_id} declares enforcement_na_reason {reason!r} -- it must "
+                        "be a non-empty string saying why the document is off the scale",
+                    )
+                )
+        elif reason is not _MISSING:
             problems.append(
                 Problem(
                     path,
                     f"is {value!r} but still carries an enforcement_na_reason in "
-                    "doc-registry.json -- a leftover from a rescoring. Remove it",
+                    "doc-registry.json -- a leftover from a rescoring. Remove the key",
                 )
             )
 
