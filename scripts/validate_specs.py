@@ -472,6 +472,330 @@ def check_decisions(documents: dict, problems: list) -> None:
 
 
 # --------------------------------------------------------------------------
+# The enforcement axis (D-027)
+# --------------------------------------------------------------------------
+
+# The one gate type that counts as re-derivation. D-027 rule 4: `enforced`
+# requires a gate that re-derives the fact from the system that owns it, and a
+# `snapshot` gate re-reads committed data without re-checking anything, so it
+# caps at `asserted`. The VOCABULARY is read from the schema below rather than
+# restated here; only which member means "re-derives" is named, because that is
+# a decision D-027 makes and no schema can express.
+_MISSING = object()
+
+LIVE_GATE_TYPE = "live"
+
+# The enforcement values this implementation knows the SEMANTICS of. The schema
+# publishes the vocabulary; per-value meaning -- which values need gates, which
+# need a weakest_claim, which needs a registry reason -- is D-027's, and cannot
+# be expressed in JSON Schema, so it is branched on below.
+#
+# Checked against the schema rather than assumed to match. Without that check,
+# adding a fifth value to the enum would validate green while every rule below
+# silently skipped documents carrying it -- the vocabulary and the semantics
+# would drift apart with no signal. This is not hypothetical: PLZG-147 proposes
+# exactly such a fifth value for "was true, now stale", and this is what will
+# make that change fail loudly here until the semantics land with it.
+HANDLED_ENFORCEMENT = {"enforced", "asserted", "intended", "n/a"}
+
+CI_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "ci.yml"
+CI_JOB_NAME_RE = re.compile(r"^    name:\s*(.+?)\s*$", re.M)
+GATE_TYPES_RE = re.compile(r"\(([a-z|]+)\)")
+
+
+def schema_enforcement_values(schema: dict) -> list:
+    """The permitted `enforcement` values, read from the published contract."""
+    return schema.get("properties", {}).get("enforcement", {}).get("enum", [])
+
+
+def schema_gate_types(schema: dict) -> list:
+    """The permitted gate types, extracted from the schema's own `gates` pattern.
+
+    Read rather than restated, for the same reason ``check_decision_authority``
+    reads ``x-may-originate``: a validator holding its own copy of a published
+    vocabulary is a second source of truth, and section 4.8 is the record of what
+    happens when the two drift. The pattern is ``^[^:]+:(live|snapshot)$``; the
+    alternation group is the vocabulary.
+    """
+    pattern = (
+        schema.get("properties", {})
+        .get("gates", {})
+        .get("items", {})
+        .get("pattern", "")
+    )
+    found = GATE_TYPES_RE.search(pattern)
+    return found.group(1).split("|") if found else []
+
+
+def document_body(text: str) -> str:
+    """Everything after the frontmatter block.
+
+    Check 5 matches ``weakest_claim`` against THIS, not against the raw file, and
+    the difference is the whole check. The frontmatter is part of the file, so
+    ``claim in text`` matches the ``weakest_claim:`` line against itself and is
+    true for every possible value -- including a sentence appearing nowhere in
+    the document. The first draft of this check did exactly that and passed a
+    fabricated quote, which is precisely the vacuous-gate failure
+    ``tests/smoke_test.tscn`` sat in until v0.2.8.
+    """
+    lines = text.splitlines(keepends=True)
+    if not lines or lines[0].strip() != "---":
+        return text
+    for index in range(1, len(lines)):
+        if lines[index].strip() == "---":
+            return "".join(lines[index + 1 :])
+    return text
+
+
+def ci_job_names() -> set:
+    """Display names of every job in ci.yml.
+
+    Deliberately a narrow regex rather than a YAML parse: this validator is
+    stdlib-only by design so it runs on a bare checkout with no install step,
+    and `Validate Specs` must never be the job that needs a dependency.
+    """
+    if not CI_WORKFLOW.is_file():
+        return set()
+    return {
+        m.strip("\"'")
+        for m in CI_JOB_NAME_RE.findall(CI_WORKFLOW.read_text(encoding="utf-8"))
+    }
+
+
+def check_enforcement(
+    documents: dict, registry: dict, schema: dict, problems: list
+) -> None:
+    """The five enforcement-axis checks (D-027).
+
+    Each closes a gap the schema cannot: the schema validates one field of one
+    document at a time, and every rule here is either cross-field (gates depend
+    on the enforcement value), cross-file (a job name lives in ci.yml, a reason
+    lives in the registry), or cross-layer (a quote must appear in the body).
+
+    Check 1 is why this task had to run AFTER the migration. `enforcement` is
+    optional in the schema so T6 could populate all 24 documents first; absence
+    becomes fatal here. You do not switch on a required field before populating
+    it.
+
+    WHAT THESE CANNOT SEE, stated so it is not rediscovered as a defect: check 5
+    proves a `weakest_claim` quote is real, never that it is the WEAKEST. During
+    the T6 migration eight of the 24 claims were genuine verbatim quotes and not
+    the weakest, and every one was caught by human review rather than by any
+    gate. A green run here is not evidence the values are honest.
+    """
+    permitted = schema_enforcement_values(schema)
+    gate_types = schema_gate_types(schema)
+    if not permitted or not gate_types:
+        problems.append(
+            Problem(
+                SCHEMA_PATH,
+                "publishes no enforcement enum or no gates type vocabulary, so the "
+                "D-027 axis cannot be checked -- a check that quietly does nothing "
+                "is worse than no check, because the green tick still reads as coverage",
+            )
+        )
+        return
+    if set(permitted) != HANDLED_ENFORCEMENT:
+        unknown = sorted(set(permitted) - HANDLED_ENFORCEMENT)
+        dropped = sorted(HANDLED_ENFORCEMENT - set(permitted))
+        problems.append(
+            Problem(
+                SCHEMA_PATH,
+                f"publishes enforcement values {sorted(permitted)}, which this "
+                f"validator does not match (unhandled: {unknown}, missing: {dropped}). "
+                "Every value needs its rules written here -- gates, weakest_claim, "
+                "registry reason -- or documents carrying it validate green while "
+                "nothing checks them",
+            )
+        )
+        return
+    if LIVE_GATE_TYPE not in gate_types:
+        problems.append(
+            Problem(
+                SCHEMA_PATH,
+                f"gates vocabulary {gate_types} does not contain {LIVE_GATE_TYPE!r}, so "
+                "D-027 rule 4 (enforced requires a re-deriving gate) cannot be enforced",
+            )
+        )
+        return
+
+    reasons = {
+        entry["doc_id"]: entry["enforcement_na_reason"]
+        for entry in registry.get("documents", [])
+        if "enforcement_na_reason" in entry
+    }
+    jobs = ci_job_names()
+    if not jobs:
+        # ONE precise diagnostic instead of N misleading ones. With the earlier
+        # `if jobs and ...` guard an empty set skipped the job-existence check
+        # entirely and the run still exited 0; that guard is gone, so an empty
+        # set would now report every gate on every document as naming a missing
+        # job -- true, but it buries the actual fault. The real fault is here:
+        # ci.yml is absent, or it has been reindented past CI_JOB_NAME_RE. A
+        # narrow regex is the price of staying stdlib-only, and this says so
+        # once, pointing at the file that broke.
+        problems.append(
+            Problem(
+                CI_WORKFLOW,
+                "no job names could be read, so 'every gate names a real CI job' "
+                "cannot be checked. Either the file is missing or its formatting "
+                "no longer matches the parser -- fix one of those rather than "
+                "letting the check pass on nothing",
+            )
+        )
+        return
+
+    for doc_id, info in sorted(documents.items()):
+        path, fields = info["path"], info["fields"]
+        body = document_body(info["text"])
+        value = fields.get("enforcement")
+
+        # 1. Declared, from the enum. Absence fails -- no default.
+        if value is None:
+            problems.append(
+                Problem(
+                    path,
+                    "declares no enforcement value. Every governed document states how "
+                    f"far its claims about state are proven -- one of {permitted} "
+                    "(META-SPEC section 2.1, D-027)",
+                )
+            )
+            continue
+
+        gates = fields.get("gates", [])
+        if not isinstance(gates, list) or not all(isinstance(g, str) for g in gates):
+            # Same guard, same reason, as weakest_claim below -- a schema failure
+            # does not remove a document from `documents`, so a malformed value
+            # arrives here anyway. Two distinct ways this bit: `gates: 42` parses
+            # as an int and made `for gate in gates` raise TypeError, killing the
+            # run before any queued Problem printed; `gates: some-string` parses
+            # as a str, which IS iterable, so it walked the value character by
+            # character and reported the missing job 'g'. A crash and a nonsense
+            # message are both worse than one accurate sentence.
+            problems.append(
+                Problem(
+                    path,
+                    f"declares a malformed gates value ({gates!r}). It must be a list "
+                    "of 'job:type' strings, as in [Validate Specs:live]",
+                )
+            )
+            continue
+
+        # 2. enforced/asserted need a non-empty gates list naming real CI jobs.
+        if value in ("enforced", "asserted"):
+            if not gates:
+                problems.append(
+                    Problem(
+                        path,
+                        f"is {value!r} but declares no gates. A value claiming CI backing "
+                        "must name the job that provides it",
+                    )
+                )
+            for gate in gates:
+                job = gate.rsplit(":", 1)[0]
+                if job not in jobs:
+                    problems.append(
+                        Problem(
+                            path,
+                            f"names gate job {job!r}, which is not a job in "
+                            ".github/workflows/ci.yml -- a gate that does not exist "
+                            "cannot be enforcing anything",
+                        )
+                    )
+
+        # 3. enforced needs at least one live gate (D-027 rule 4).
+        if value == "enforced":
+            if not any(g.rsplit(":", 1)[-1] == LIVE_GATE_TYPE for g in gates):
+                problems.append(
+                    Problem(
+                        path,
+                        f"is 'enforced' but declares no {LIVE_GATE_TYPE!r} gate. A "
+                        "snapshot gate re-reads committed data without re-deriving it, "
+                        "so it caps at 'asserted' (D-027 rule 4)",
+                    )
+                )
+
+        # 4. n/a must say why, in the registry, where claiming it is visible.
+        #
+        # PRESENCE and CONTENT are asked separately, and the difference matters
+        # in both directions. `"enforcement_na_reason": ""` on a non-n/a
+        # document is a leftover the earlier truthiness test let through, since
+        # an empty reason and an absent key looked identical to it -- yet the
+        # rule is that a non-n/a document must not carry the key at all. And a
+        # non-string reason used to reach .strip() and raise AttributeError,
+        # the same crash class as gates and weakest_claim: the registry is JSON
+        # and nothing constrains this key's type, so it arrives however it was
+        # written.
+        reason = reasons.get(doc_id, _MISSING)
+        if value == "n/a":
+            if reason is _MISSING:
+                problems.append(
+                    Problem(
+                        path,
+                        "is 'n/a' but carries no enforcement_na_reason in "
+                        "specs/meta/doc-registry.json. Taking a document off the scale "
+                        "is a claim, and an unexplained claim is the thing this axis exists "
+                        "to stop",
+                    )
+                )
+            elif not isinstance(reason, str) or not reason.strip():
+                problems.append(
+                    Problem(
+                        REGISTRY_PATH,
+                        f"{doc_id} declares enforcement_na_reason {reason!r} -- it must "
+                        "be a non-empty string saying why the document is off the scale",
+                    )
+                )
+        elif reason is not _MISSING:
+            problems.append(
+                Problem(
+                    path,
+                    f"is {value!r} but still carries an enforcement_na_reason in "
+                    "doc-registry.json -- a leftover from a rescoring. Remove the key",
+                )
+            )
+
+        # 5. asserted/intended must quote a weakest claim that really appears.
+        if value in ("asserted", "intended"):
+            claim = fields.get("weakest_claim")
+            if not isinstance(claim, str):
+                # A schema failure does not remove a document from `documents`,
+                # so a non-string value -- `weakest_claim: 42`, or anything in
+                # [brackets], which parse_frontmatter reads as a list -- reaches
+                # this check. Without the type guard `claim not in body` raises
+                # TypeError and aborts the whole run, so a reader sees a
+                # traceback instead of the schema error that was already queued.
+                if claim is not None:
+                    problems.append(
+                        Problem(
+                            path,
+                            f"declares a non-string weakest_claim ({claim!r}). It must "
+                            "be one quoted sentence appearing in the document body",
+                        )
+                    )
+                    continue
+                claim = ""
+            if not claim.strip():
+                problems.append(
+                    Problem(
+                        path,
+                        f"is {value!r} but declares no weakest_claim. The quote is what "
+                        "makes the value falsifiable in ten seconds",
+                    )
+                )
+            elif claim not in body:
+                problems.append(
+                    Problem(
+                        path,
+                        f"declares weakest_claim {claim!r}, which does not appear "
+                        "verbatim in the document. Substring match -- either the quote "
+                        "is wrong or the sentence it cited has been edited, and either "
+                        "way the value needs re-examining",
+                    )
+                )
+
+
+# --------------------------------------------------------------------------
 # Entry point
 # --------------------------------------------------------------------------
 
@@ -496,6 +820,7 @@ def main() -> int:
     check_scene_ids(documents, problems)
     check_decisions(documents, problems)
     check_decision_authority(documents, schema, problems)
+    check_enforcement(documents, registry, schema, problems)
 
     if problems:
         print(f"Spec validation FAILED -- {len(problems)} problem(s):\n")
