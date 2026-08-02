@@ -10,7 +10,7 @@ owner: adamtasteslikegood
 derives_from: [META-SPEC]
 enforcement: asserted
 gates: [Validate Specs:live, Check Sync Matrix:live]
-weakest_claim: Verified 2026-07-26
+weakest_claim: Nothing — a stub echo until `project.godot` exists.
 ---
 
 # Branching Strategy
