@@ -27,13 +27,20 @@ are recorded as a comment on `PLZG-131`, not left in the transcript.
 **Sprint goal:** every governed document declares which of its claims about state
 are proven and by what — and the tier ladder gains a home for delivery policy.
 
-> **Sprint 2 is still `active` in Jira** (sprint id `44`, ends 2026-08-14) despite
-> the repo recording `CLOSE-OK` on 2026-07-30 and all nine committed items sitting
-> `Done`. Sprint 3 was created in `future` state precisely so it needs no change to
-> that. Closing sprint 44 is a human call and is **not** a task below. Note also
-> that `SPRINT-2-CHARTER` states the window as 2026-07-30 → **08-13** while the
-> board says **08-14** — the board owns this, so the charter is the bug. Both are
-> instances of R2 (§6), now visible in the sprint object itself.
+> **Sprint 2 was still `active` in Jira** (sprint id `44`) when this charter was
+> written, despite the repo recording `CLOSE-OK` on 2026-07-30 and every committed
+> item sitting `Done` — an instance of R2 (§6) visible in the sprint object itself.
+> Sprint 3 was created in `future` state precisely so it needed no change to that.
+> **Resolved 2026-08-01:** sprint 44 closed with all 11 items `Done` and resolved.
+>
+> This block also claimed the two disagreed on the end date, `08-13` against
+> `08-14`, and that the charter was the bug. **Retracted — there was no
+> disagreement** (`PLZG-144`). The Agile API returns UTC, and every sprint boundary
+> here is 17:00 PT, which is 00:00 UTC the next day; reading `endDate[:10]` shifts
+> every end date forward by one. `SPRINT-2-CHARTER` was right. Kept rather than
+> deleted because the lesson is not the date: **querying the owning system is
+> necessary and not sufficient** — the value still has to be read in that system's
+> units. That failure survived a check against Jira.
 
 Decided in a `/grill-with-specs` interrogation on 2026-07-31, following Sprint 2's
 close. Where a number came from a measurement, the command that produced it is
