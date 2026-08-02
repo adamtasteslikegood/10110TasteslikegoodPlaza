@@ -5,7 +5,7 @@
     "max_attempts_per_task": 3,
     "max_loop_iterations": 12
   },
-  "iteration": 1,
+  "iteration": 2,
   "tasks": [
     {
       "id": "T0",
@@ -16,8 +16,9 @@
       "acceptance": {
         "cmd": "scripts/check_sync.sh --strict"
       },
-      "status": "todo",
-      "attempts": 0,
+      "status": "done",
+      "evidence": "Run on dev at 9964bca: 'check_sync: dev is in sync with origin/dev (ahead 0, behind 0)', exit 0. Re-run after the T1 merge, not transcribed from the session that opened PR #105.",
+      "attempts": 1,
       "blocks": [
         "T1"
       ],
@@ -32,8 +33,9 @@
       "acceptance": {
         "cmd": "python3 scripts/validate_specs.py"
       },
-      "status": "todo",
-      "attempts": 0,
+      "status": "done",
+      "evidence": "PR #105 merged to dev as 9964bca (merge commit; D-023). Acceptance run ON dev at 9964bca, after the merge: 'Spec validation passed: 24 governed document(s), doc set v0.2.10.', exit 0. Green in CI on the Validate Specs job. Proven non-vacuous rather than merely green -- swapping D-028 for an unregistered D-999 exits 1, and skewing one file's doc_set_version to 0.2.11 exits 1, both restoring to 0. The independent claude-review job re-ran both probes in its own scratch copy and matched the claimed table, verdict 'No changes needed'.",
+      "attempts": 1,
       "depends_on": [
         "T0"
       ],
