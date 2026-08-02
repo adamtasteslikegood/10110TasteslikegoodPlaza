@@ -11,7 +11,7 @@ derives_from: [PROJECT-OVERVIEW]
 decides: [D-026]
 enforcement: asserted
 gates: [Validate Delivery Coordinates:snapshot, Validate Specs:live]
-weakest_claim: two Python scripts are the only other place a key legitimately appears
+weakest_claim: **There is a Linear workspace, and it syncs.**
 ---
 
 # Delivery coordinates

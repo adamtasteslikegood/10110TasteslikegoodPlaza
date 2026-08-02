@@ -185,8 +185,7 @@
       "tier": 4,
       "authority": "research",
       "status": "ACTIVE",
-      "note": "Foundational onboarding reading on agile practice, for humans and agents. Explains a general methodology; specifies nothing about Plaza and originates nothing. Cite for rationale, never as law -- same standing as ALIGNED-SPEC-025.",
-      "enforcement_na_reason": "General agile practice, not this project. States in its own header that it 'does not specify anything about Plaza', so it carries no repository-state claim to enforce."
+      "note": "Foundational onboarding reading on agile practice, for humans and agents. Explains a general methodology; specifies nothing about Plaza and originates nothing. Cite for rationale, never as law -- same standing as ALIGNED-SPEC-025."
     },
     {
       "doc_id": "AGILE-LIKE-IM-5",
@@ -195,7 +194,7 @@
       "authority": "research",
       "status": "ACTIVE",
       "note": "Plain-language companion to AGILE-EXPLAINED. Same standing: authoritative over nothing.",
-      "enforcement_na_reason": "Plain-language companion to AGILE-EXPLAINED. Same reason: general education, no claim about this repository."
+      "enforcement_na_reason": "Plain-language companion to AGILE-EXPLAINED. General education, no claim about this repository -- checked explicitly during PLZG-136 review, which found AGILE-EXPLAINED does carry one ('Adopted as foundational onboarding reading') and rescored it asserted. This file carries no equivalent."
     }
   ],
   "exempt": [
