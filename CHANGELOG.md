@@ -17,6 +17,35 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
 
+### Added — the machine-readable Sprint 3 loop plan (`PLZG-145`)
+
+- `specs/sprint-3-loop-plan.json`, the shape `delivery_loop_gate.py` consumes.
+  Sprint 3 had a charter and no plan — the charter is prose and the gate cannot read
+  prose — so the pm-loop harness had nothing to run. Nine tasks, `T0`–`T8`, each with
+  `acceptance.cmd` rather than `acceptance.criterion`.
+- **Seven defects that made the plan unrunnable were caught in review, across three
+  rounds, while `PLAN-OK` stayed green for all of them.** `T1` claimed
+  `decides: [D-027, D-028]` while registration was deferred, which
+  `validate_specs.py` `check_decisions()` rejects — so `T1` could not pass its own
+  acceptance command. `T3` added "a missing `enforcement` value fails" while all 24
+  documents were unmigrated, so it could never exit 0. `T3` and `T4` deadlocked on
+  each other. `T5` accepted against a snapshot its own check must reject. `T0`
+  blocked nothing structurally. `T4` and `T5` shared an acceptance command, so `T5`
+  could pass having changed nothing. `T7`/`T8` split a version bump from the decision
+  that caused it, which `META-SPEC` §8 item 4 forbids.
+- Execution order is now `T0 → T1 → T2 → T6 → T3 → T4 → T5 → T7 → T8` — **migration
+  before enforcement**, because you do not switch on a required field before
+  populating it. `depends_on` is authoritative; `blocks` is exactly its inverse.
+- `specs/sprint-3-charter.md` amended to match: a per-task ticket column, §5.1
+  recording the constraints that reshaped the scope table, and the removal of a
+  precedence rule it had invented — *"where the two disagree the loop plan wins"* is
+  not authority, and a tier-3 document may not create a tie-break `META-SPEC` §4
+  reserves for the conflict register.
+- `G1`–`G6` check that tasks have owners, reviewers and machine-checkable acceptance.
+  They cannot check that an acceptance command **can succeed**, that the graph is
+  acyclic, or that a precondition is satisfiable when the task runs. That gap is the
+  argument `D-027` makes, arriving from the delivery side rather than the docs side.
+
 ### Added — Sprint 3 charter, and what Sprint 2 actually delivered (`PLZG-131`)
 
 - `specs/sprint-3-charter.md`, a new tier-3 governed document, plus its

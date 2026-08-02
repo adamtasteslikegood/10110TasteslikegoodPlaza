@@ -19,16 +19,9 @@
       "status": "todo",
       "attempts": 0,
       "blocks": [
-        "T1",
-        "T2",
-        "T3",
-        "T4",
-        "T5",
-        "T6",
-        "T7",
-        "T8"
+        "T1"
       ],
-      "note": "Blocking precondition, exempt from the attempt cap per Sprint 2 charter section 5. The blocks edge lists every task deliberately: the loop reads structured dependency fields, not notes, so describing T0 as blocking in prose alone would let the loop start work against a stale checkout -- the exact R1 failure this task exists to prevent. No Jira ticket: it is a precondition the SessionStart hook already runs, not a unit of work, and ticketing it would add a permanently-instant item to the flow data the T1-T8 split exists to produce. A loop that burns attempts against stale state has spent its budget learning nothing."
+      "note": "Blocking precondition, exempt from the attempt cap per Sprint 2 charter section 5. depends_on is the authoritative scheduling field and blocks is exactly its inverse -- direct successors only, never transitive intent. An earlier draft gave T0 a blocks edge to all eight tasks to express 'nothing starts before the sync', while T3, T6 and T7 used blocks for direct successors, so one field meant two things in one file and a scheduler trusting it would have been wrong about both. T0 still gates everything, transitively: every task reaches T0 through depends_on, which is checked rather than asserted. No Jira ticket: it is a precondition the SessionStart hook already runs, not a unit of work, and ticketing it would add a permanently-instant item to the flow data the T1-T8 split exists to produce. A loop that burns attempts against stale state has spent its budget learning nothing."
     },
     {
       "id": "T1",
@@ -45,12 +38,7 @@
         "T0"
       ],
       "blocks": [
-        "T2",
-        "T3",
-        "T4",
-        "T6",
-        "T7",
-        "T8"
+        "T2"
       ],
       "note": "ATOMIC BY NECESSITY -- do not split. Two independent constraints force the register rows, the decides: list and the version bump into this one task. (1) validate_specs.py check_decisions() fails any doc whose decides: names a D-nnn absent from decision-register.md, so META-SPEC declaring decides: [D-027, D-028] while the rows land later cannot pass this task's own acceptance command. (2) META-SPEC section 8 item 4 requires a changed locked decision and the set-wide doc_set_version bump in the SAME COMMIT. An earlier draft of this plan split all three across T1, T7 and T8 and was unrunnable. Scope: define the axis and the delivery authority in META-SPEC prose; add the D-027 and D-028 rows in a NEW constitution-originated section of the register (it has none today); add decides: [D-027, D-028] to META-SPEC frontmatter; bump doc_set_version 0.2.9 -> 0.2.10 across all 24 documents and doc-registry.json. Both decisions are rules about documents, so tier-0 META-SPEC is the entitled origin -- the clean case that D-005 was not."
     },
@@ -70,7 +58,7 @@
       ],
       "blocks": [
         "T3",
-        "T7"
+        "T6"
       ],
       "note": "Add enforcement as an OPTIONAL property with the enum constraint applied only when present, plus gates[] of {job, type}, weakest_claim, and delivery in the authority enum with x-may-originate: true. Optional is the whole point and resolves the question an earlier draft left open: a required field cannot be introduced before the documents carry it. T6 populates all 24, then T3 makes absence fail. validate_specs.py must read permitted values FROM this schema, never restate them -- that is what stopped the section 4.8 authority gate drifting from its contract."
     },
@@ -110,7 +98,8 @@
       ],
       "note": "Shape after tests/check_sync_matrix.sh, which builds its own fixtures and needs no network. Every fixture must assert the check FAILS: enforced on a snapshot-only gate, a gates entry naming a job absent from ci.yml, a weakest_claim not present verbatim, a governed doc with no enforcement value, an n/a doc with no registry reason. DELIBERATELY EXCLUDES the stale-snapshot fixture, which is T5's deliverable -- see T5. T4 and T5 share this acceptance command, so if T4 also shipped that fixture, T5 would be satisfied the moment T4 passed and could be marked done having changed nothing. Verify by breaking one check deliberately and confirming the matrix reddens.",
       "blocks": [
-        "T5"
+        "T5",
+        "T7"
       ]
     },
     {
@@ -127,7 +116,7 @@
       "depends_on": [
         "T4"
       ],
-      "note": "ACCEPTANCE IS THE FIXTURE, NOT THE LIVE SNAPSHOT. An earlier draft accepted on validate_delivery_coordinates.py against data/plzg-flow-snapshot.json, which is dated 2026-07-30 -- before Sprint 3's window. Once the staleness check exists that command MUST exit 1, so it could never prove the task done. T5 accepts on the matrix instead and depends on T4. SHARED COMMAND, NON-VACUOUS BY CONSTRUCTION: T4 uses the same acceptance command, so T5 must be the task that makes it newly pass. T4 ships the matrix WITHOUT the stale-snapshot fixture; T5 adds both the staleness check and the fixture that exercises it, and the matrix must be red on that fixture until both land. If the matrix is already green when T5 starts, T5 is unprovable and the split is wrong -- escalate rather than marking it done. Compare instants, not string prefixes: the Agile API returns UTC and every sprint boundary here is 17:00 PT, which is 00:00 UTC the next day (PLZG-144). ESCALATE, DO NOT WORK AROUND: refreshing the committed snapshot cannot currently satisfy clause (b) of the Sprint 2 definition of done, which requires wip > 0, because live WIP is 0. A gate that requires someone to be mid-task is a gate that rewards a fake transition -- which is what the six-minute WIP window in charter section 1.2 actually was. Whether clause (b) should assert wip > 0 at all, or only that the snapshot is fresh and honest about whatever the board says, is an owner decision surfaced by this task, not one to settle inside it."
+      "note": "ACCEPTANCE IS THE FIXTURE, NOT THE LIVE SNAPSHOT. An earlier draft accepted on validate_delivery_coordinates.py against data/plzg-flow-snapshot.json, which is dated 2026-07-30 -- before Sprint 3's window. Once the staleness check exists that command MUST exit 1, so it could never prove the task done. T5 accepts on the matrix instead and depends on T4. SHARED COMMAND, NON-VACUOUS BY CONSTRUCTION: T4 uses the same acceptance command, so T5 must be the task that makes it newly pass. T4 ships the matrix WITHOUT the stale-snapshot fixture; T5 adds both the staleness check and the fixture that exercises it, and the matrix must be red on that fixture until both land. If the matrix is already green when T5 starts, T5 is unprovable and the split is wrong -- escalate rather than marking it done. Compare instants, not string prefixes: the Agile API returns UTC and every sprint boundary here is 17:00 PT, which is 00:00 UTC the next day (PLZG-144). ESCALATE, DO NOT WORK AROUND: refreshing the committed snapshot cannot currently satisfy clause (b) of the Sprint 2 definition of done, which requires wip > 0, because live WIP is 0. A gate that requires someone to be mid-task is a gate that rewards a fake transition -- which is what the six-minute WIP window in charter section 1.2 actually was. Whether clause (b) should assert wip > 0 at all, or only that the snapshot is fresh and honest about whatever the board says, is an owner decision surfaced by this task, not one to settle inside it. SCHEDULING: nothing depends on T5, so it is not forced into the position the charter's reading order shows. Once T4 lands it may run any time, including concurrently with T7 and T8. No artificial edge was added to make the prose order look mandatory -- T5 (snapshot staleness) and T7 (charter authority) are genuinely unrelated, and a fake dependency would misreport the critical path."
     },
     {
       "id": "T6",

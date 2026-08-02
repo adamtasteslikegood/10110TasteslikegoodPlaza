@@ -266,11 +266,16 @@ value should be re-examined.
 
 ## 5. Scope — nine items
 
-**Execution order — `T0 → T1 → T2 → T6 → T3 → T4 → T5 → T7 → T8`.** The table
-below is by task id, which is *not* the running order: `T6` runs before `T3`, and
-`T5` runs late. The authoritative dependency graph is the `depends_on` field in
-[`sprint-3-loop-plan.json`](sprint-3-loop-plan.json); this line is a reading aid.
-`§5.1` says why the order is what it is.
+**One valid order — `T0 → T1 → T2 → T6 → T3 → T4 → T5 → T7 → T8`.** The table
+below is by task id, which is *not* the running order: `T6` runs before `T3`.
+
+This is **one linearization of an under-constrained graph, not a schedule.**
+Nothing depends on `T5`, so once `T4` lands it may run any time — including
+alongside `T7` and `T8`. No edge was invented to make this line look mandatory:
+`T5` and `T7` are genuinely unrelated, and a fake dependency would misreport the
+critical path. The authority is `depends_on` in
+[`sprint-3-loop-plan.json`](sprint-3-loop-plan.json), where `blocks` is exactly
+its inverse. `§5.1` says why the order is what it is.
 
 | | Ticket | Item | Acceptance |
 |---|---|---|---|
