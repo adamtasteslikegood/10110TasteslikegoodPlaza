@@ -5,7 +5,7 @@ tier: 3
 authority: derived
 status: ACTIVE
 doc_set_version: 0.2.10
-last_updated: 2026-07
+last_updated: 2026-08
 owner: adamtasteslikegood
 derives_from: [ROADMAP, DELIVERY-COORDINATES, META-SPEC]
 enforcement: asserted
@@ -56,7 +56,8 @@ that exits 0 when both hold:
   `TO`. `CHANGELOG.md` and any `status: SUPERSEDED` doc are exempt — they are
   history, and history is allowed to mention a deprecated board.
 - **(b)** A committed PLZG snapshot yields `wip > 0` and a non-empty
-  `work_item_age`.
+  `work_item_age`. **AMENDED 2026-08-02 — see below; `wip > 0` is no longer
+  required.**
 
 Clause (b) is the one that matters. Without it a rename-only sundown passes green
 while flow remains unmeasurable.
@@ -101,9 +102,34 @@ Derived, not guessed — Little's Law: `WIP = throughput × cycle time`
 ≈ `2.75/wk × ~1wk target` ≈ 3. The spreadsheet of record is
 `docs/assets/agile-littles-law.ods`.
 
-### What clause (b) asserts, and what it deliberately does not
+### Clause (b) as amended — `wip > 0` removed, 2026-08-02
 
-It asserts `work_item_age` is non-empty and `wip > 0`. It does **not** assert
+> **Owner ruling on `PLZG-130`.** Clause (b) no longer requires `wip > 0`. It
+> now requires the snapshot to be **fresh** — `as_of` inside the sprint window
+> it declares, and that sprint not yet ended — and **honest**, with
+> `work_item_age` naming exactly `counts.wip` items. `wip` may be **0**.
+>
+> **Why the original was wrong.** A single-contributor board at rest genuinely
+> has zero WIP. Requiring `wip > 0` therefore did not test health; it tested
+> **snapshot timing**, demanding the snapshot be captured during a window that
+> only exists while someone is mid-task. §1.2 of the Sprint 3 charter records
+> what that produced: a ticket open 14:14→14:20, six minutes, whose subject was
+> this very gate. **A gate that requires someone to be mid-task is a gate that
+> rewards a fake transition.**
+>
+> **What survives.** The anti-fabrication property, without the incentive: a
+> snapshot claiming three items in progress while naming none now fails on the
+> *mismatch*, not on the honest zero. Implemented in
+> `scripts/validate_delivery_coordinates.py`; fixtures in
+> `tests/spec_enforcement_matrix.sh`.
+>
+> **This section is kept rather than rewritten.** The original wording above is
+> what Sprint 2 was judged against, and editing it would erase the record of a
+> gate that passed while the thing it guarded was false.
+
+### What clause (b) still deliberately does not assert
+
+It does **not** assert
 conformance to a Service Level Expectation. Asserting an SLE now would be
 forecasting on contaminated data — see § 3. Prove the pipe emits the measures
 this sprint; earn the SLE next sprint.
@@ -387,4 +413,4 @@ whose whole purpose is that sentence.
 
 ---
 
-*Last updated: July 2026*
+*Last updated: August 2026*
