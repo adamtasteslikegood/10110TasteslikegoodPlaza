@@ -4,7 +4,7 @@ title: Sprint 2 charter — delivery decisions locked 2026-07-30
 tier: 3
 authority: derived
 status: ACTIVE
-doc_set_version: 0.2.9
+doc_set_version: 0.2.10
 last_updated: 2026-07
 owner: adamtasteslikegood
 derives_from: [ROADMAP, DELIVERY-COORDINATES, META-SPEC]

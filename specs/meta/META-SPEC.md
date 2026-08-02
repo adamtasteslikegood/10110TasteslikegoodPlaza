@@ -4,11 +4,12 @@ title: Meta-Spec — how the Plaza doc set governs itself
 tier: 0
 authority: constitution
 status: ACTIVE
-doc_set_version: 0.2.9
+doc_set_version: 0.2.10
 last_updated: 2026-07
 owner: adamtasteslikegood
 derives_from: []
 supersedes: []
+decides: [D-027, D-028]
 ---
 
 # Meta-Spec — how the Plaza doc set governs itself
@@ -65,6 +66,7 @@ decide:
 | `concept` | The story, the player, the world, the fiction. **Exactly one document holds this.** | Yes |
 | `implementation` | Engine, architecture, scope, technical approach. | Yes |
 | `taxonomy` | One specific reference mapping (departments, floors, colours). | Yes |
+| `delivery` | Time-boxed operational policy that expires with its artifact — WIP limits, retry budgets, review gates, forecast blackouts. Licensed at tier 3. | Yes |
 | `derived` | Nothing new. Sequences and applies decisions made above it. | **No** |
 | `summary` | Nothing. Regenerable from its sources; if it disagrees, it is wrong. | **No** |
 | `research` | Nothing. Background, findings, and rationale to cite. | **No** |
@@ -89,6 +91,70 @@ flows down from tier 2. They are independent — a promoted design may override 
 a scene is *built* without touching what the scene *is*.
 [`README.md`](../../README.md) (`PROJECT-OVERVIEW`) is where the two axes are
 reconciled into one public statement.
+
+### 2.1 The `enforcement` axis — `D-027`
+
+`tier` says which document wins. `authority` says what it may decide. Neither says
+whether what it *asserts about the world* is still true. Every governed document
+therefore also declares `enforcement`:
+
+| `enforcement` | Meaning |
+|---|---|
+| `enforced` | A named CI gate re-derives every state claim on every run. |
+| `asserted` | Verified by a human at a stated date. Nothing re-checks. |
+| `intended` | Aspiration. Explicitly not yet true. |
+| `n/a` | The document makes no claims about state. Off the scale, not on its bottom rung. |
+
+Four rules govern the value, each chosen against a stated alternative:
+
+1. **Per document, not per claim.** A per-claim marker is more precise and
+   unenforceable — it asks a validator to parse prose. Per-document is greppable,
+   and an agent learns the trust level before reading a word.
+2. **A document's value is its weakest claim.** The consequence is accepted
+   knowingly: `enforced` is **empty on day one**. `CLAUDE.md` is proven on
+   `npm test` and unproven on the ~200-line budget; `AGENT-DIRECTORY`'s counts are
+   gate-backed but its template artifacts are not; §2 of this file is enforced and
+   §6 is not. That emptiness is the finding, not a defect in the axis —
+   *no governed document in this set is fully machine-backed* is true today and
+   currently invisible. `enforced` is a rung to earn.
+3. **State claims only.** `authority` governs decisions; `enforcement` governs
+   claims about the repository, the board, the running system and the tooling.
+   Without this scoping the axis is a category error — weakest-claim would stamp
+   `intended` on `STORYBOARD-W1` and `DECISION-REGISTER`, the two documents that
+   define canon. **An `intended` value restricts nothing about originating
+   decisions:** `STORYBOARD-W1` keeps `D-002` regardless.
+4. **A snapshot gate is not enforcement.** `gates:` entries are typed `live` (the
+   gate re-derives the fact from the system that owns it) or `snapshot` (it reads
+   committed data). **`enforced` requires at least one `live` gate; snapshot-only
+   caps at `asserted`.** This falls out of the definitions — `asserted` *is* "a
+   human verified it at a stated date, nothing re-checks," which is exactly what a
+   committed snapshot is. Wrapping it in a CI job re-reads; it does not re-check.
+
+**The only consequence of `intended`:** that document's factual assertions may not
+be relied on as current — re-verify against the owning system before acting. There
+are no others.
+
+**What this gate cannot check:** whether the declared `weakest_claim` is genuinely
+the weakest. The validator proves the quote is *real*, never that it is the
+*worst*. This is the third instance of the same limit — `authority` cannot check
+subject matter, `constitution` cannot check whether a decision is product-shaped,
+and now `enforcement` cannot rank claims. Review is still the check.
+
+### 2.2 The `delivery` authority — `D-028`
+
+The ladder models what the product is (tiers 1–2) and what order it is built in
+(tier 3), with no authority for *how work is governed while it is built*. Sprint
+charters set WIP limits, retry budgets, review gates and forecast blackouts that
+nothing else sets, while declaring `derived` — licensed to originate nothing.
+
+`delivery` closes that gap: it is licensed at tier 3 to originate **time-boxed
+operational policy that expires with its artifact**. When the sprint ends, so does
+the policy; nothing needs retiring because nothing was permanent. It was chosen
+over an expiring `P-nnn` policy class on the evidence that most such parameters
+expire unexercised, and permanent ids for those are a register of things that did
+not happen. `delivery` reuses machinery that already exists — one enum value,
+enforced by the same `x-may-originate` check — rather than opening a second
+register.
 
 ## 3. The direction of truth
 
@@ -194,7 +260,7 @@ These are hard gates, not preferences. A change that breaks one fails review.
 
 ## 7. Versioning
 
-- The doc **set** carries one semantic version. This release is **0.2.9**. Files do
+- The doc **set** carries one semantic version. This release is **0.2.10**. Files do
   not version independently; each declares `doc_set_version` and the validator
   requires them all to agree.
 - `1.0.0` is cut when M8 is demonstrable in-engine.
@@ -214,4 +280,4 @@ These are hard gates, not preferences. A change that breaks one fails review.
    [`decision-register.md`](decision-register.md) and bump `doc_set_version`
    everywhere in the same commit.
 
-*Doc set version: 0.2.9 · Last updated: July 2026*
+*Doc set version: 0.2.10 · Last updated: August 2026*

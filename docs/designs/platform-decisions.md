@@ -4,7 +4,7 @@ title: Platform Decisions — engine, transport, data layer, licence, repo polic
 tier: 2
 authority: implementation
 status: ACTIVE
-doc_set_version: 0.2.9
+doc_set_version: 0.2.10
 last_updated: 2026-07
 owner: adamtasteslikegood
 derives_from: [META-SPEC]
