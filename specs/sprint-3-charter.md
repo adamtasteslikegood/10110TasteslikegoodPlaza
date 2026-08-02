@@ -224,7 +224,12 @@ correction** — the reviewer was right, and the charter was not always fine.
    no default.
 2. `enforced` / `asserted` declare a non-empty `gates:` list, each entry naming a
    job that **exists in `.github/workflows/ci.yml`**, each typed `live` or
-   `snapshot`.
+   `snapshot`. Encoded as **`job:type` strings** — `[Validate Specs:live]` —
+   not as `{job, type}` objects. Corrected in `PLZG-133` under `META-SPEC` §4
+   rule 1: `parse_frontmatter()` accepts only `key: scalar` and `key: [a, b]`,
+   so the object form **silently misparses** to `['{job: X', 'type: live}']`
+   rather than failing. Tier 0 owns how frontmatter is encoded, so this
+   tier-3 charter is patched to match the schema rather than the reverse.
 3. `enforced` requires at least one `live` gate.
 4. `n/a` carries a one-line reason in `doc-registry.json`, in the shape of the
    existing `exempt` block — so claiming it is visible rather than silent.
@@ -281,7 +286,7 @@ its inverse. `§5.1` says why the order is what it is.
 |---|---|---|---|
 | `T0` | — | Fetch / reconcile. **Blocking, exempt from the attempt cap.** | `scripts/check_sync.sh --strict` |
 | `T1` | `PLZG-132` | Amend `META-SPEC` — define the `enforcement` axis (§3 `D-027`) and add `delivery` to the authority vocabulary (§3 `D-028`). **Atomically:** register both rows, add `decides: [D-027, D-028]`, and bump `doc_set_version` → **0.2.10**. See §5.1. | `validate_specs.py` |
-| `T2` | `PLZG-133` | Extend `spec-frontmatter.schema.json` — `enforcement` enum, `gates[]` of `{job, type}`, `weakest_claim`, `authority` += `delivery` with `x-may-originate: true`. | `validate_specs.py` |
+| `T2` | `PLZG-133` | Extend `spec-frontmatter.schema.json` — `enforcement` enum, `gates[]` of `job:type` strings (see §4 check 2; **not** `{job, type}` objects, which the frontmatter parser cannot express), `weakest_claim`, `authority` += `delivery` with `x-may-originate: true`. | `validate_specs.py` |
 | `T3` | `PLZG-134` | Extend `validate_specs.py` — DoD checks 1–5, reading permitted values **from the schema**, never restated in the script. | `validate_specs.py` — see §5.1 |
 | `T4` | `PLZG-135` | `tests/spec_enforcement_matrix.sh` + a `Spec Enforcement Matrix` CI job. **Excludes the stale-snapshot fixture — that is `T5`'s.** | `tests/spec_enforcement_matrix.sh` |
 | `T5` | `PLZG-130` | Snapshot staleness check in `validate_delivery_coordinates.py`, plus the fixture that exercises it. | `tests/spec_enforcement_matrix.sh` — see §5.1 |
