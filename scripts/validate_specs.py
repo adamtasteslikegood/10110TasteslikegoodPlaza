@@ -567,15 +567,23 @@ def check_enforcement(
 ) -> None:
     """The five enforcement-axis checks (D-027).
 
-    Each closes a gap the schema cannot: the schema validates one field of one
-    document at a time, and every rule here is either cross-field (gates depend
+    Checks 2-5 close gaps the schema cannot express: it validates one field of
+    one document at a time, and each of those rules is cross-field (gates depend
     on the enforcement value), cross-file (a job name lives in ci.yml, a reason
     lives in the registry), or cross-layer (a quote must appear in the body).
 
-    Check 1 is why this task had to run AFTER the migration. `enforcement` is
-    optional in the schema so T6 could populate all 24 documents first; absence
-    becomes fatal here. You do not switch on a required field before populating
-    it.
+    Check 1 is the exception and is DELIBERATELY DOUBLED. `enforcement` is in the
+    schema's `required` array, so absence already fails there -- but the schema
+    binds every consumer while this script is what CI runs, and a rule this
+    load-bearing is worth failing twice rather than resting on one layer.
+
+    Check 1 is why this task had to run AFTER the migration. `enforcement` was
+    published OPTIONAL so T6 could populate all 24 documents first, and is
+    `required` in the schema now that they carry it -- publish optional,
+    populate, then require. You do not switch on a required field before
+    populating it. Absence therefore fails twice over: once against the schema,
+    once here. The duplication is deliberate, since the schema binds consumers
+    other than this script.
 
     WHAT THESE CANNOT SEE, stated so it is not rediscovered as a defect: check 5
     proves a `weakest_claim` quote is real, never that it is the WEAKEST. During
@@ -681,27 +689,34 @@ def check_enforcement(
             )
             continue
 
-        # 2. enforced/asserted need a non-empty gates list naming real CI jobs.
-        if value in ("enforced", "asserted"):
-            if not gates:
+        # 2. enforced/asserted need a NON-EMPTY gates list; ANY declared gate,
+        #    whatever the enforcement value, must name a job that exists.
+        #
+        # The two halves are scoped differently on purpose. Requiring gates is
+        # about the value's meaning, so it applies only where the value claims
+        # CI backing. Requiring a named job to be real is about the claim being
+        # checkable at all, and an `intended` or `n/a` document naming a
+        # nonexistent job is just as false -- scoping that half to
+        # enforced/asserted left a hole nothing would ever have reported.
+        if value in ("enforced", "asserted") and not gates:
+            problems.append(
+                Problem(
+                    path,
+                    f"is {value!r} but declares no gates. A value claiming CI backing "
+                    "must name the job that provides it",
+                )
+            )
+        for gate in gates:
+            job = gate.rsplit(":", 1)[0]
+            if job not in jobs:
                 problems.append(
                     Problem(
                         path,
-                        f"is {value!r} but declares no gates. A value claiming CI backing "
-                        "must name the job that provides it",
+                        f"names gate job {job!r}, which is not a job in "
+                        ".github/workflows/ci.yml -- a gate that does not exist "
+                        "cannot be enforcing anything",
                     )
                 )
-            for gate in gates:
-                job = gate.rsplit(":", 1)[0]
-                if job not in jobs:
-                    problems.append(
-                        Problem(
-                            path,
-                            f"names gate job {job!r}, which is not a job in "
-                            ".github/workflows/ci.yml -- a gate that does not exist "
-                            "cannot be enforcing anything",
-                        )
-                    )
 
         # 3. enforced needs at least one live gate (D-027 rule 4).
         if value == "enforced":
