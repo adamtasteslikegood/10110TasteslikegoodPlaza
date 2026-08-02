@@ -5,7 +5,7 @@ tier: 3
 authority: derived
 status: ACTIVE
 doc_set_version: 0.2.10
-last_updated: 2026-07
+last_updated: 2026-08
 owner: adamtasteslikegood
 derives_from: [META-SPEC]
 enforcement: asserted
@@ -36,7 +36,7 @@ Most branching docs describe an aspiration. This section is the honest split.
 | `claude-review.yml` — independent review | **Runs on PRs to `main` and `dev`**; see its `on:` block for the exact trigger set. Advisory, never a required check |
 | Branch protection on `dev` | **Active** — ruleset `18798438`: PR required, deletion and force-push blocked, code scanning gates merge, and **`Spec Enforcement Matrix` is a required status check**. See §5 |
 | Branch protection on `main` | **Not configured.** §5 "Still to apply" |
-| Required status checks by name | **Not configured** — `dev`'s ruleset gates `code_scanning` but does not require `Validate Specs` or `Lint Python Bridge` by name |
+| Required status checks by name | **One:** `Spec Enforcement Matrix`, required since 2026-08-02. Every other CI job — `Validate Specs`, `Lint Python Bridge`, `Validate Agent Data`, `Validate Delivery Coordinates`, `Check Sync Matrix`, `Export Godot 4 Prototype` — still reports without gating the merge |
 | CODEOWNERS gating | **No `CODEOWNERS` file exists** |
 | Required linked issue | Convention at best |
 
@@ -145,7 +145,20 @@ which resolves to `dev`, re-verified against the API 2026-08-02. Rules as of 202
 | `non_fast_forward` | Force pushes blocked |
 | `code_scanning` | CodeQL results gate the merge |
 | `copilot_code_review` | Automatic Copilot review on PRs |
-| `required_status_checks` | **`Spec Enforcement Matrix` must pass to merge.** Added 2026-08-02 on the owner's instruction, alongside `PLZG-135`. `strict_required_status_checks_policy: false` deliberately — strict forces every branch up to date before merging, which means rebasing, and `D-023` disables rebase merging |
+| `required_status_checks` | **`Spec Enforcement Matrix` must pass to merge.** Added 2026-08-02 on the owner's instruction, alongside `PLZG-135`. `strict_required_status_checks_policy: false` — see below |
+
+**On `strict_required_status_checks_policy: false`.** An earlier revision of this
+section claimed strict was left off because it "forces rebasing, and `D-023`
+disables rebase merging." **That reasoning was wrong and is corrected here.**
+Strict requires the head branch to contain the latest base-branch commits, which
+is satisfied by **merging `dev` into the topic branch** just as well as by
+rebasing; and disabling *Rebase and merge* governs how a PR is **completed**, not
+how its head branch is **updated**. The two never conflicted.
+
+The real trade-off is ordinary: strict means every PR must absorb `dev` again
+whenever `dev` moves, so a busy base branch turns into a queue of update-merge
+commits. Left off for that reason alone. **Turning it on is an owner call and
+would not violate `D-023`.**
 
 **Why that one job and not the others.** It is the only gate whose failure means
 another gate has stopped working. `tests/spec_enforcement_matrix.sh` asserts that
@@ -177,9 +190,11 @@ currently violated.
 
 Genuinely not configured — these remain instructions, not description.
 
-**Required status checks on `dev`.** The ruleset gates on `code_scanning` but does not
-require the CI jobs by name. Add to the ruleset's `required_status_checks`:
-`Validate Specs`, `Lint Python Bridge`.
+**More required status checks on `dev`.** Partially done: `Spec Enforcement
+Matrix` was made required on 2026-08-02 (§5), because it is the one gate whose
+failure means another gate has stopped working. The rest still only report.
+Candidates to add to the ruleset's `required_status_checks`: `Validate Specs`,
+`Lint Python Bridge`.
 
 **CODEOWNERS gating.** No `CODEOWNERS` file exists; nothing enforces reviewer
 assignment.
@@ -199,8 +214,9 @@ targeting `main`:
 > this project has deliberately not adopted. The upstream original told you to enable
 > it — that instruction was never valid here.
 
-`dev`'s ruleset already covers deletion, force pushes, PR-required, and code
-scanning — the only gap there is required status checks by name, above. Keep
+`dev`'s ruleset already covers deletion, force pushes, PR-required, code
+scanning, and one required status check by name — the remaining gap is the
+*other* CI jobs, above. Keep
 approvals at 0 until a second contributor joins.
 
 Use the exact job names above — GitHub matches required checks by name, and the
@@ -348,4 +364,4 @@ to re-run. Two things follow:
 · **Related:** [`../CONTRIBUTING.md`](../CONTRIBUTING.md) ·
 [`meta/META-SPEC.md`](meta/META-SPEC.md) · [`../CHANGELOG.md`](../CHANGELOG.md)
 
-*Last updated: July 2026*
+*Last updated: August 2026*
