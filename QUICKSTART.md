@@ -33,23 +33,9 @@ This repo tracks [adamtasteslikegood/claude-code-tresor](https://github.com/adam
 These definitions are what [`data/agents.json`](data/agents.json) is built from — `scripts/generate_agents_json.py` generates it from the submodule (`D-024`). It already exists; never hand-edit it, regenerate. `python3 scripts/generate_agents_json.py --check` fails if the two have drifted apart, and CI runs that check.
 
 
-## 2. Set up the `.env` (only if you want to run the Atlassian scripts)
+## 2. Optional: the Atlassian scripts
 
-The two Python scripts at the repo root post status reports from Jira to Confluence. They both read `./.env` directly — no `python-dotenv` involved. Copy the template and fill it in:
-
-```bash
-cp .env.example .env
-```
-
-[`.env.example`](.env.example) is the source of truth for what those scripts read. It documents all three required variables, how to build the base64 credential, and which variables that turn up in real `.env` files here are read by *nothing* in this repo — so their absence is not mistaken for a missing requirement. Three are required:
-
-| Variable | Notes |
-|---|---|
-| `ATLASSIAN_URL` | Host only — no scheme, no trailing slash |
-| `ATLASSIAN_API_TOKEN_BASE64` | base64 of `email:api_token`, not the raw token |
-| `ATLASSIAN_JIRA_PROJECT_KEY` | Which board the report is built from — see [`docs/delivery-coordinates.md`](docs/delivery-coordinates.md) (`D-026`), don't guess it |
-
-`.env` is gitignored; `.env.example` is committed and must never carry a real value. If a token is ever exposed, rotate it — deleting the commit does not revoke it.
+`generate_report.py` and `post_to_confluence.py` build a status report from a Jira board and post it to a Confluence page. Both read `./.env` — `cp .env.example .env` and fill in the four variables it documents, including your own board and page. Nothing else in the repo needs them.
 
 ## 3. Install Python deps
 
@@ -58,36 +44,12 @@ The CI workflow uses just `flake8 black websockets`. You can match it:
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-pip install flake8 black websockets requests
+pip install flake8 black websockets
 ```
 
-(`requests` is what the Atlassian scripts use.)
+Nothing here needs `requests`. Both scripts in §2 make their HTTP calls with stdlib `urllib.request`, and the repo's other Python — `validate_specs.py`, `validate_delivery_coordinates.py` — is stdlib-only by design. `pyyaml` is the one exception, needed only by `scripts/generate_agents_json.py`.
 
-## 4. Generate and post a status report
-
-```bash
-# Pulls Jira project updates from the last 7 days into report.md
-python generate_report.py
-
-# Renders report.md to HTML and posts it as a child of the space home page
-python post_to_confluence.py
-```
-
-Which space and which parent page is not a secret and is not restated here — [`docs/delivery-coordinates.md`](docs/delivery-coordinates.md) (`D-026`) is the source of truth for every Atlassian identifier this repo uses, and `post_to_confluence.py` is the only other place the value legitimately appears, because it executes it. There is no fallback: if the parent page is unreachable the script exits 1 rather than publishing somewhere else.
-
-Neither crashes on a missing variable any more. Both name what is absent and exit 1 — verified against the unfilled template:
-
-```
-$ python3 generate_report.py
-Missing required configuration: ATLASSIAN_API_TOKEN_BASE64 or
-ATLASSIAN_API_TOKEN_BASE64_USEREMAIL, ATLASSIAN_JIRA_PROJECT_KEY. ...
-$ echo $?
-1
-```
-
-They raised `KeyError` until 2026-07-28, which this page went on describing as intentional afterwards.
-
-## 5. Lint before pushing
+## 4. Lint before pushing
 
 Same checks CI runs:
 
@@ -97,7 +59,7 @@ flake8 . --select=E9,F63,F7,F82                       # must pass
 flake8 . --exit-zero --max-complexity=10 --max-line-length=127   # advisory
 ```
 
-## 6. Where to go next
+## 5. Where to go next
 
 | If you want to… | Start here |
 |---|---|

@@ -1,39 +1,60 @@
 import datetime
 import html
 import json
+import os
 import re
 import sys
 import urllib.parse
 import urllib.request
 
-env_vars = {}
-with open("./.env") as f:
-    for line in f:
-        if line.strip() and not line.startswith("#"):
-            key, val = line.strip().split("=", 1)
-            env_vars[key] = val
+# Same loader as generate_report.py: real environment first, ./.env only to fill
+# gaps, and a missing .env is not fatal. This script used to open("./.env")
+# unconditionally, so running it without one raised FileNotFoundError instead of
+# naming what was absent.
+env_vars = dict(os.environ)
+env_file = "./.env"
+if os.path.exists(env_file):
+    with open(env_file) as f:
+        for line in f:
+            if line.strip() and not line.startswith("#"):
+                key, val = line.strip().split("=", 1)
+                if key not in env_vars:
+                    env_vars[key] = val
 
 # See generate_report.py: .env carries ATLASSIAN_API_TOKEN_BASE64, while this
 # script required the longer ..._USEREMAIL name until 2026-07-28 and so raised a
 # KeyError against a correctly-populated .env. Accept either name.
 TOKEN_VARS = ("ATLASSIAN_API_TOKEN_BASE64", "ATLASSIAN_API_TOKEN_BASE64_USEREMAIL")
 auth_token = next((env_vars[k] for k in TOKEN_VARS if env_vars.get(k)), None)
-if not auth_token or not env_vars.get("ATLASSIAN_URL"):
+
+missing_vars = [
+    key
+    for key in ("ATLASSIAN_URL", "ATLASSIAN_CONFLUENCE_PARENT_PAGE_ID")
+    if not env_vars.get(key)
+]
+if not auth_token:
+    missing_vars.insert(0, " or ".join(TOKEN_VARS))
+if missing_vars:
     print(
         "Missing required configuration: "
-        + " or ".join(TOKEN_VARS)
-        + ", ATLASSIAN_URL. Set them as environment variables or in ./.env."
+        + ", ".join(missing_vars)
+        + ". Set them as environment variables"
+        + (" or provide them in ./.env." if not os.path.exists(env_file) else ".")
     )
     sys.exit(1)
 
 url_base = f"https://{env_vars['ATLASSIAN_URL']}"
-# Space PLZA, "10110 Tasteslikegood Plaza" — this project's own Confluence space.
-# Reports previously landed under two pages in space TLG ("Tasteslikegood.org"),
-# the sibling product's space: 15925249 "Sprint 0 Plan - Agile Operating System"
-# and 15695959 "Scrum Bootstrap And Board Plan". Both are TLG planning documents,
-# not Plaza report parents. There is no fallback now on purpose: a fallback that
-# silently writes into another product's space is how the reports ended up there.
-parent_page_id = "11075756"
+# The report's parent page, and configuration rather than a constant: the space
+# is resolved from whatever page this names, so pointing the script at a
+# different Confluence means editing .env, not this file.
+#
+# There is still no fallback, deliberately. Reports once landed in space TLG
+# ("Tasteslikegood.org"), the sibling product's, under two of its sprint-planning
+# pages — 15925249 and 15695959, neither a Plaza report parent — and a fallback
+# that silently writes somewhere else is how that happened. An unreachable parent
+# exits 1. docs/delivery-coordinates.md (D-026) records the value this project
+# uses; it is not a secret, it is just not a constant any more.
+parent_page_id = env_vars["ATLASSIAN_CONFLUENCE_PARENT_PAGE_ID"]
 
 
 def confluence_request(method, endpoint, payload=None):
@@ -57,7 +78,10 @@ def confluence_request(method, endpoint, payload=None):
 
 page_data = confluence_request("GET", f"/wiki/api/v2/pages/{parent_page_id}")
 if not page_data:
-    print(f"Failed to get parent page {parent_page_id} (space PLZA)")
+    print(
+        f"Failed to get parent page {parent_page_id} "
+        "(ATLASSIAN_CONFLUENCE_PARENT_PAGE_ID). Not posting."
+    )
     sys.exit(1)
 
 space_id = page_data["spaceId"]
