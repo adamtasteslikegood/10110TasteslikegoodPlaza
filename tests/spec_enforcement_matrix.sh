@@ -196,13 +196,21 @@ expect_fail() { # name, needle, dir
     rc=$?
     tb=$( printf '%s' "$out" | grep -c 'Traceback' )
     hit=$( printf '%s' "$out" | grep -cF "$needle" )
-    if [ "$rc" = 1 ] && [ "$tb" = 0 ] && [ "$hit" -ge 1 ]; then
+    # The banner is required as well as the needle. Exit 1 with no "Traceback"
+    # is NOT enough to prove the validator ran: a SyntaxError in
+    # validate_specs.py exits 1 and prints no traceback line at all -- just the
+    # file, the offending source line and "SyntaxError". If that echoed source
+    # line happened to contain the needle, the case would count as passed while
+    # the validator never produced a report. Demanding the completed banner
+    # means only a finished validation run can satisfy a failure case.
+    banner=$( printf '%s' "$out" | grep -c 'Spec validation FAILED' )
+    if [ "$rc" = 1 ] && [ "$tb" = 0 ] && [ "$hit" -ge 1 ] && [ "$banner" -ge 1 ]; then
         PASS=$((PASS + 1))
         printf '  ok   %-50s exit=1, reported\n' "$name"
     else
         FAIL=$((FAIL + 1))
-        printf '  FAIL %-50s exit=%s tracebacks=%s matched=%s (want 1, 0, >=1)\n' \
-            "$name" "$rc" "$tb" "$hit"
+        printf '  FAIL %-50s exit=%s tb=%s matched=%s banner=%s\n' \
+            "$name" "$rc" "$tb" "$hit" "$banner"
         printf '         expected to contain: %s\n' "$needle"
         printf '%s\n' "$out" | sed 's/^/         | /' | head -6
     fi
