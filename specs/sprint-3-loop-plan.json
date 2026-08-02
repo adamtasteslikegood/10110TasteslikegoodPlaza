@@ -1,0 +1,178 @@
+{
+  "$comment": "Machine-readable Sprint 3 plan. Prose rationale lives in specs/sprint-3-charter.md; this file is the shape delivery_loop_gate.py consumes. That script is NOT in this repo and must not be vendored here -- it ships with the pm-skills plugin, enabled at project scope in .claude/settings.json. Resolve it, do not hardcode (PLZG-117, PLZG-129): PM_SCRIPTS=$(find ~/.claude/plugins -path '*/pm-skills/scripts' -type d -print -quit) then python3 \"$PM_SCRIPTS/delivery_loop_gate.py\" --plan specs/sprint-3-loop-plan.json --mode plan --output human. See charter section 9 of the Sprint 2 charter for why that resolution is written out rather than assumed. Every task carries acceptance.cmd rather than acceptance.criterion -- with a single human, owner == reviewer, and machine verification is what makes that non-circular. Statuses in this file must be produced by running the acceptance command against dev, never transcribed from the session that ran it: Sprint 2 closed CLOSE-OK against a scratch copy in /tmp and this file's predecessor recorded all ten tasks as todo afterwards (PLZG-128). TICKETING: T1-T8 carry one Jira key each (PLZG-130, PLZG-132 through PLZG-138), not the two the charter originally named. Split on the owner's instruction of 2026-08-01, 'individual tickets for t1-t8 as suggested for data gathering', recorded on PLZG-131 which was re-scoped to the charter alone and closed. An umbrella spanning the sprint never transitions, so it inflates work item age and holds a WIP slot while contributing no throughput signal -- the reason Sprint 2's flow was unmeasurable. T0 has no ticket by design; see its note.",
+  "goal": "Every governed document declares which of its claims about state are proven and by what, and the tier ladder gains a home for delivery policy. PLZG Sprint 3, board 169, sprint 45, 2026-07-31 to 2026-08-14.",
+  "budgets": {
+    "max_attempts_per_task": 3,
+    "max_loop_iterations": 12
+  },
+  "iteration": 1,
+  "tasks": [
+    {
+      "id": "T0",
+      "title": "Fetch and reconcile against origin/dev before any other task runs",
+      "owner": "adam schoen",
+      "executor": "agent",
+      "reviewer": "adam schoen",
+      "acceptance": {
+        "cmd": "scripts/check_sync.sh --strict"
+      },
+      "status": "todo",
+      "attempts": 0,
+      "blocks": [
+        "T1"
+      ],
+      "note": "Blocking precondition, exempt from the attempt cap per Sprint 2 charter section 5. depends_on is the authoritative scheduling field and blocks is exactly its inverse -- direct successors only, never transitive intent. An earlier draft gave T0 a blocks edge to all eight tasks to express 'nothing starts before the sync', while T3, T6 and T7 used blocks for direct successors, so one field meant two things in one file and a scheduler trusting it would have been wrong about both. T0 still gates everything, transitively: every task reaches T0 through depends_on, which is checked rather than asserted. No Jira ticket: it is a precondition the SessionStart hook already runs, not a unit of work, and ticketing it would add a permanently-instant item to the flow data the T1-T8 split exists to produce. A loop that burns attempts against stale state has spent its budget learning nothing."
+    },
+    {
+      "id": "T1",
+      "title": "PLZG-132 -- amend META-SPEC and register D-027/D-028 atomically: define the enforcement axis and the delivery authority, add decides:, bump doc_set_version to 0.2.10",
+      "owner": "adam schoen",
+      "executor": "agent",
+      "reviewer": "adam schoen",
+      "acceptance": {
+        "cmd": "python3 scripts/validate_specs.py"
+      },
+      "status": "todo",
+      "attempts": 0,
+      "depends_on": [
+        "T0"
+      ],
+      "blocks": [
+        "T2"
+      ],
+      "note": "ATOMIC BY NECESSITY -- do not split. Two independent constraints force the register rows, the decides: list and the version bump into this one task. (1) validate_specs.py check_decisions() fails any doc whose decides: names a D-nnn absent from decision-register.md, so META-SPEC declaring decides: [D-027, D-028] while the rows land later cannot pass this task's own acceptance command. (2) META-SPEC section 8 item 4 requires a changed locked decision and the set-wide doc_set_version bump in the SAME COMMIT. An earlier draft of this plan split all three across T1, T7 and T8 and was unrunnable. Scope: define the axis and the delivery authority in META-SPEC prose; add the D-027 and D-028 rows in a NEW constitution-originated section of the register (it has none today); add decides: [D-027, D-028] to META-SPEC frontmatter; bump doc_set_version 0.2.9 -> 0.2.10 across all 24 documents and doc-registry.json. Both decisions are rules about documents, so tier-0 META-SPEC is the entitled origin -- the clean case that D-005 was not."
+    },
+    {
+      "id": "T2",
+      "title": "PLZG-133 -- extend spec-frontmatter.schema.json: enforcement enum, typed gates[], weakest_claim, delivery authority",
+      "owner": "adam schoen",
+      "executor": "agent",
+      "reviewer": "adam schoen",
+      "acceptance": {
+        "cmd": "python3 scripts/validate_specs.py"
+      },
+      "status": "todo",
+      "attempts": 0,
+      "depends_on": [
+        "T1"
+      ],
+      "blocks": [
+        "T3",
+        "T6"
+      ],
+      "note": "Add enforcement as an OPTIONAL property with the enum constraint applied only when present, plus gates[] of {job, type}, weakest_claim, and delivery in the authority enum with x-may-originate: true. Optional is the whole point and resolves the question an earlier draft left open: a required field cannot be introduced before the documents carry it. T6 populates all 24, then T3 makes absence fail. validate_specs.py must read permitted values FROM this schema, never restate them -- that is what stopped the section 4.8 authority gate drifting from its contract."
+    },
+    {
+      "id": "T3",
+      "title": "PLZG-134 -- extend validate_specs.py with the five enforcement-axis checks",
+      "owner": "adam schoen",
+      "executor": "agent",
+      "reviewer": "adam schoen",
+      "acceptance": {
+        "cmd": "python3 scripts/validate_specs.py"
+      },
+      "status": "todo",
+      "attempts": 0,
+      "depends_on": [
+        "T2",
+        "T6"
+      ],
+      "blocks": [
+        "T4"
+      ],
+      "note": "Runs AFTER T6, so 'every governed document declares enforcement -- absence fails' can pass against a migrated set. ACCEPTANCE DEVIATES FROM THE CHARTER, DELIBERATELY: charter section 5 gives T3 the command tests/spec_enforcement_matrix.sh, a file T4 creates, so a gate cannot accept T3 against it. T3 completes on validate_specs.py and T4 is the DOWNSTREAM non-vacuity gate -- if T4's fixtures do not redden against T3's checks, T3 reopens and both are reworked. Do not restate the deadlock the other way: saying T3 cannot be done until T4 passes, while T4 depends on T3, means neither can ever run. validate_specs.py exiting 0 is necessary and NOT sufficient here; all five checks can pass vacuously, which is how tests/smoke_test.tscn passed until v0.2.8."
+    },
+    {
+      "id": "T4",
+      "title": "PLZG-135 -- tests/spec_enforcement_matrix.sh and its CI job, so the new checks cannot pass vacuously",
+      "owner": "adam schoen",
+      "executor": "agent",
+      "reviewer": "adam schoen",
+      "acceptance": {
+        "cmd": "tests/spec_enforcement_matrix.sh"
+      },
+      "status": "todo",
+      "attempts": 0,
+      "depends_on": [
+        "T3"
+      ],
+      "note": "Shape after tests/check_sync_matrix.sh, which builds its own fixtures and needs no network. Every fixture must assert the check FAILS: enforced on a snapshot-only gate, a gates entry naming a job absent from ci.yml, a weakest_claim not present verbatim, a governed doc with no enforcement value, an n/a doc with no registry reason. DELIBERATELY EXCLUDES the stale-snapshot fixture, which is T5's deliverable -- see T5. T4 and T5 share this acceptance command, so if T4 also shipped that fixture, T5 would be satisfied the moment T4 passed and could be marked done having changed nothing. Verify by breaking one check deliberately and confirming the matrix reddens.",
+      "blocks": [
+        "T5",
+        "T7"
+      ]
+    },
+    {
+      "id": "T5",
+      "title": "PLZG-130 -- fail validate_delivery_coordinates.py on a snapshot older than the current sprint window",
+      "owner": "adam schoen",
+      "executor": "agent",
+      "reviewer": "adam schoen",
+      "acceptance": {
+        "cmd": "tests/spec_enforcement_matrix.sh"
+      },
+      "status": "todo",
+      "attempts": 0,
+      "depends_on": [
+        "T4"
+      ],
+      "note": "ACCEPTANCE IS THE FIXTURE, NOT THE LIVE SNAPSHOT. An earlier draft accepted on validate_delivery_coordinates.py against data/plzg-flow-snapshot.json, which is dated 2026-07-30 -- before Sprint 3's window. Once the staleness check exists that command MUST exit 1, so it could never prove the task done. T5 accepts on the matrix instead and depends on T4. SHARED COMMAND, NON-VACUOUS BY CONSTRUCTION: T4 uses the same acceptance command, so T5 must be the task that makes it newly pass. T4 ships the matrix WITHOUT the stale-snapshot fixture; T5 adds both the staleness check and the fixture that exercises it, and the matrix must be red on that fixture until both land. If the matrix is already green when T5 starts, T5 is unprovable and the split is wrong -- escalate rather than marking it done. Compare instants, not string prefixes: the Agile API returns UTC and every sprint boundary here is 17:00 PT, which is 00:00 UTC the next day (PLZG-144). ESCALATE, DO NOT WORK AROUND: refreshing the committed snapshot cannot currently satisfy clause (b) of the Sprint 2 definition of done, which requires wip > 0, because live WIP is 0. A gate that requires someone to be mid-task is a gate that rewards a fake transition -- which is what the six-minute WIP window in charter section 1.2 actually was. Whether clause (b) should assert wip > 0 at all, or only that the snapshot is fresh and honest about whatever the board says, is an owner decision surfaced by this task, not one to settle inside it. SCHEDULING: nothing depends on T5, so it is not forced into the position the charter's reading order shows. Once T4 lands it may run any time, including concurrently with T7 and T8. No artificial edge was added to make the prose order look mandatory -- T5 (snapshot staleness) and T7 (charter authority) are genuinely unrelated, and a fake dependency would misreport the critical path."
+    },
+    {
+      "id": "T6",
+      "title": "PLZG-136 -- migrate all 24 governed documents: assign enforcement, gates and weakest_claim",
+      "owner": "adam schoen",
+      "executor": "agent",
+      "reviewer": "adam schoen",
+      "acceptance": {
+        "cmd": "python3 scripts/validate_specs.py"
+      },
+      "status": "todo",
+      "attempts": 0,
+      "depends_on": [
+        "T2"
+      ],
+      "blocks": [
+        "T3",
+        "T7"
+      ],
+      "note": "RUNS BEFORE T3, NOT AFTER. An earlier draft had T3 add the 'absence fails' check while all 24 documents were still unmigrated, so validate_specs.py -- T3's own acceptance command -- could never exit 0, and T4 and T6 both sat behind it. You do not switch on a required field before populating it. Acceptance is validate_specs.py alone because tests/spec_enforcement_matrix.sh does not exist until T4. 24 includes SPRINT-3-CHARTER itself; it is not exempt from the axis it introduces. Expect enforced to come out EMPTY -- a document landing enforced is a finding to double-check, not a win. Decision-only docs (STORYBOARD-W1, DECISION-REGISTER) land n/a. Absorbs PLZG-118: CLAUDE.md states the plugin cache path as cache/<name>/<version>/ when the real shape carries a marketplace level. KNOWN RISK R1: the validator cannot check the values are honest -- check 5 proves a quote is real, never that it is the weakest. A green build here is not evidence the migration was done well."
+    },
+    {
+      "id": "T7",
+      "title": "PLZG-137 -- re-point both sprint charters to authority: delivery, close conflict 4.10, correct D-026's retired clause, bump doc_set_version to 0.2.11",
+      "owner": "adam schoen",
+      "executor": "agent",
+      "reviewer": "adam schoen",
+      "acceptance": {
+        "cmd": "python3 scripts/validate_specs.py && tests/spec_enforcement_matrix.sh"
+      },
+      "status": "todo",
+      "attempts": 0,
+      "depends_on": [
+        "T4",
+        "T6"
+      ],
+      "blocks": [
+        "T8"
+      ],
+      "note": "CARRIES ITS OWN VERSION BUMP, per META-SPEC section 8 item 4: this task changes D-026, a locked decision, so the register edit and the set-wide doc_set_version bump must be the SAME COMMIT. That is a second bump in one sprint (T1 does 0.2.9 -> 0.2.10, this does 0.2.10 -> 0.2.11) and it is correct: two locked decisions change, on unrelated subjects, so each carries its own version rather than being coupled to ship together. Section 4.10 must close as resolved-by-amendment, not resolved-by-correction: the reviewer was right and the Sprint 2 charter was not always fine -- the ladder lacked a slot and D-028 creates one. Under delivery, that charter becomes retroactively entitled to have set its budgets; say so. D-026 per GitHub #96, owner ruling 2026-08-01: the dead clause spans two columns (Choice, and the Rationale's closing arbitration sentence). Keep the retired clause marked historical rather than deleting it -- it records why the coordinates were centralised, and a future hardcoded coordinate is the failure it was written against. Status stays LOCKED; nothing replaced it. Re-pointing either charter to authority: delivery requires T2's schema enum, hence depends_on."
+    },
+    {
+      "id": "T8",
+      "title": "PLZG-138 -- log the amendment in CHANGELOG under [Unreleased]",
+      "owner": "adam schoen",
+      "executor": "agent",
+      "reviewer": "adam schoen",
+      "acceptance": {
+        "cmd": "python3 scripts/validate_specs.py && tests/spec_enforcement_matrix.sh"
+      },
+      "status": "todo",
+      "attempts": 0,
+      "depends_on": [
+        "T7"
+      ],
+      "note": "CHANGELOG only. The doc_set_version bumps moved to T1 and T7, because META-SPEC section 8 item 4 requires each bump in the same commit as the locked-decision change that caused it -- a trailing bump task is out of policy by construction, and an earlier draft of this plan had exactly that. Covers D-027, D-028, the new validator checks, the test matrix, the 24-document migration and the D-026 correction. The charter's own entry already landed in PR #85 (cfb6f71); do not restate it. If GitHub #58 has been settled by then, apply the ruling; if not, leave it open and do not resolve it here."
+    }
+  ]
+}
