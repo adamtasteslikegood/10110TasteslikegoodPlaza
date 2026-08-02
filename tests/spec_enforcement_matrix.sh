@@ -37,9 +37,11 @@
 # rather than invoked in place because it derives REPO_ROOT from its own
 # location.
 #
-# DELIBERATELY EXCLUDED: the stale-snapshot fixture. That is T5/PLZG-130's
-# deliverable. T4 and T5 share this acceptance command, so shipping it here
-# would satisfy T5 the moment T4 passed, having changed nothing.
+# THE STALE-SNAPSHOT FIXTURES ARE NOW HERE, added by T5/PLZG-130. They were
+# deliberately EXCLUDED when T4 shipped this file: T4 and T5 share this
+# acceptance command, so shipping them early would have satisfied T5 the moment
+# T4 passed, having changed nothing. That split did its job -- reverting only
+# T5's script change, keeping its fixtures, leaves seven cases red.
 #
 # Usage: tests/spec_enforcement_matrix.sh    (exit 0 all pass, 1 any failure)
 
@@ -463,6 +465,23 @@ d=$(new_coord_case); snapshot_py "$d" "s.pop('as_of')"
 coord_expect "as_of missing" 1 "as_of is missing" "$d"
 d=$(new_coord_case); snapshot_py "$d" "s.pop('sprint')"
 coord_expect "sprint window missing" 1 "cannot be dated against a sprint window" "$d"
+# A truthy non-dict sprint used to reach .get() and raise AttributeError.
+d=$(new_coord_case); snapshot_py "$d" "s['sprint'] = 'unknown'"
+coord_expect "sprint present but not an object" 1 "cannot be dated against a sprint window" "$d"
+# A full-timestamp end must be the boundary AS GIVEN. Adding a day to it kept
+# snapshots valid for 24 hours past expiry.
+#
+# The window has to straddle NOW for this to discriminate: `end` is three hours
+# ago, so the correct boundary has passed and the buggy one (end + 1 day) has
+# not. A fixture with `end` weeks in the past fails under BOTH versions and
+# proves nothing -- the first draft of this case did exactly that, and was
+# caught by reverting the fix and watching the matrix stay green.
+d=$(new_coord_case)
+tstart=$(date -u -d '5 days ago' +%Y-%m-%d 2>/dev/null || date -u -v-5d +%Y-%m-%d)
+tend=$(date -u -d '3 hours ago' +%Y-%m-%dT%H:%M:%S+00:00 2>/dev/null || date -u -v-3H +%Y-%m-%dT%H:%M:%S+00:00)
+tasof=$(date -u -d '1 day ago' +%Y-%m-%dT%H:%M:%S+00:00 2>/dev/null || date -u -v-1d +%Y-%m-%dT%H:%M:%S+00:00)
+snapshot_py "$d" "s['sprint']['start'] = '$tstart'; s['sprint']['end'] = '$tend'; s['as_of'] = '$tasof'"
+coord_expect "timestamp end is the boundary, not end+1d" 1 "describes a finished sprint" "$d"
 
 echo
 echo "$PASS passed, $FAIL failed"

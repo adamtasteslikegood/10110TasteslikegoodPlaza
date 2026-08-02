@@ -23,7 +23,7 @@ rename.
 rest genuinely has zero WIP, so the rule did not test health, it tested
 SNAPSHOT TIMING -- it demanded the snapshot be captured during a window that
 only exists while someone is mid-task. Sprint 2 satisfied it with a ticket open
-for six minutes whose subject was this very gate (``sprint-2-charter.md``
+for six minutes whose subject was this very gate (``sprint-3-charter.md``
 section 1.2). A gate that requires someone to be mid-task is a gate that rewards
 a fake transition.
 
@@ -184,24 +184,29 @@ def check_clause_a() -> list[Failure]:
     return failures
 
 
-def parse_instant(value: str) -> "datetime | None":
+def parse_instant(value: str) -> "tuple[datetime | None, bool]":
     """Parse an ISO-8601 timestamp, or a bare date as midnight UTC.
 
-    INSTANTS, NOT STRING PREFIXES (PLZG-144). Every sprint boundary on this
-    board is 17:00 PT, which the Agile API returns as 00:00 UTC the NEXT day,
-    so comparing ``as_of[:10]`` against ``sprint.end[:10]`` shifts every
-    boundary by a day and reports a disagreement that does not exist. That
-    already happened once, in a charter, and survived a check against Jira --
-    querying the owning system is necessary and not sufficient if the value is
-    then read in the wrong units.
+    INSTANTS, NOT STRING PREFIXES (PLZG-144). Comparing ``as_of[:10]`` against
+    ``sprint.end[:10]`` shifts every boundary by a day and reports a
+    disagreement that does not exist. That already happened once, in a charter,
+    and survived a check against Jira -- querying the owning system is necessary
+    and not sufficient if the value is then read in the wrong units.
+
+    Returns ``(instant, was_bare_date)``. The caller needs the second value:
+    a bare date names a DAY and its window runs to the end of it, while a full
+    timestamp already names the boundary instant and must be used as-is.
     """
     if not isinstance(value, str):
-        return None
+        return None, False
     try:
         parsed = datetime.fromisoformat(value)
     except ValueError:
-        return None
-    return parsed.replace(tzinfo=timezone.utc) if parsed.tzinfo is None else parsed
+        return None, False
+    bare_date = len(value.strip()) == 10
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed, bare_date
 
 
 def check_clause_b() -> list[Failure]:
@@ -224,10 +229,17 @@ def check_clause_b() -> list[Failure]:
     # whose timestamp and sprint disagree; "that sprint has ended" is what makes
     # the check expire, and without it a snapshot stays valid forever as long as
     # it is internally consistent.
-    as_of = parse_instant(snapshot.get("as_of", ""))
-    sprint = snapshot.get("sprint") or {}
-    start = parse_instant(sprint.get("start", ""))
-    end = parse_instant(sprint.get("end", ""))
+    as_of, _ = parse_instant(snapshot.get("as_of", ""))
+    # A truthy non-dict `sprint` -- "sprint": "unknown" -- reached .get() and
+    # raised AttributeError, crashing the run instead of reporting the malformed
+    # snapshot. `or {}` only substitutes for missing or falsy. Same class as the
+    # three type guards in validate_specs.py: every value here is hand-written
+    # and arrives unconstrained.
+    sprint = snapshot.get("sprint")
+    if not isinstance(sprint, dict):
+        sprint = {}
+    start, _ = parse_instant(sprint.get("start", ""))
+    end, end_is_bare_date = parse_instant(sprint.get("end", ""))
 
     if as_of is None:
         failures.append(Failure("b", str(rel), "as_of is missing or not a timestamp"))
@@ -241,9 +253,19 @@ def check_clause_b() -> list[Failure]:
             )
         )
     else:
-        # The window is inclusive of its end DAY: a sprint ending 2026-08-14
-        # runs through that day, and a bare date parses as its midnight.
-        window_end = end + timedelta(days=1)
+        # A BARE DATE names a day, so the window runs to the end of it. A FULL
+        # TIMESTAMP already names the boundary instant and is used unchanged --
+        # adding a day to `2026-08-15T00:00:00Z` would keep snapshots valid
+        # through the 16th, defeating the expiry this check exists for.
+        #
+        # Known imprecision, bounded and in the safe direction: the real board
+        # boundary is 17:00 PT, which is 00:00 UTC next day under PDT and 01:00
+        # UTC under PST. Treating a bare date as ending at 00:00 UTC is
+        # therefore exact for eight months of the year and up to one hour EARLY
+        # for the rest. Early means a snapshot is called stale slightly before
+        # it truly is; it can never let a stale one through. Fixing it properly
+        # needs the board's timezone, which is not in the snapshot.
+        window_end = end + timedelta(days=1) if end_is_bare_date else end
         if not (start <= as_of < window_end):
             failures.append(
                 Failure(
