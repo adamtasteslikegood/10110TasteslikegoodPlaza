@@ -49,8 +49,9 @@ SCRIPT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 REPO_ROOT=$(dirname "$SCRIPT_DIR")
 SUT="$REPO_ROOT/scripts/validate_specs.py"
 SCHEMA="$REPO_ROOT/specs/meta/spec-frontmatter.schema.json"
+COORD="$REPO_ROOT/scripts/validate_delivery_coordinates.py"
 
-for required in "$SUT" "$SCHEMA"; do
+for required in "$SUT" "$SCHEMA" "$COORD"; do
     if [ ! -f "$required" ]; then
         echo "FATAL: $required is missing" >&2
         exit 1
@@ -253,12 +254,95 @@ p.write_text(json.dumps(r, indent=2) + '\n')
 "
 }
 
+
+# --------------------------------------------------------------------------
+# Clause (b): snapshot freshness (T5 / PLZG-130)
+# --------------------------------------------------------------------------
+#
+# A SECOND system under test, deliberately in this file rather than its own.
+# T4 and T5 share `tests/spec_enforcement_matrix.sh` as their acceptance
+# command, so T5's fixture has to live where T5's acceptance runs. T4 shipped
+# WITHOUT these cases on purpose: had it included them, T5 would have been
+# satisfied the moment T4 passed, having changed nothing.
+#
+# The fixture is a bare snapshot plus the script -- clause (a) scans governed
+# trees for `TO` references and finds none here, so it passes trivially and
+# leaves clause (b) as the only thing under test.
+
+build_coord_base() {
+    base=$1
+    mkdir -p "$base/scripts" "$base/data" "$base/.git"
+    # The script refuses to run outside a checkout, so the fixture needs a .git
+    # marker. A directory is enough -- nothing here runs git, and creating a real
+    # repository would be slower and no more honest.
+    cp "$COORD" "$base/scripts/validate_delivery_coordinates.py"
+    cat > "$base/data/plzg-flow-snapshot.json" <<'SNAP'
+{
+  "mode": "flow",
+  "project": "PLZG",
+  "as_of": "SNAP_AS_OF",
+  "counts": { "total": 10, "done": 4, "wip": 1 },
+  "work_item_age": [ { "key": "PLZG-1", "created": "SNAP_START", "age_days": 1 } ],
+  "aging_wip_alerts": [],
+  "wip_limit": 3,
+  "sprint": { "name": "Fixture Sprint", "board": 169, "id": 99,
+              "start": "SNAP_START", "end": "SNAP_END" }
+}
+SNAP
+    # Dates are stamped at run time, never hardcoded: a fixture with fixed dates
+    # is a time bomb -- it passes until the day its window closes, then fails
+    # for a reason that has nothing to do with the code.
+    today=$(date -u +%Y-%m-%d)
+    start=$(date -u -d '2 days ago' +%Y-%m-%d 2>/dev/null || date -u -v-2d +%Y-%m-%d)
+    end=$(date -u -d '10 days' +%Y-%m-%d 2>/dev/null || date -u -v+10d +%Y-%m-%d)
+    sed -i.bak "s|SNAP_AS_OF|${today}T00:00:00+00:00|; s|SNAP_START|$start|g; s|SNAP_END|$end|" \
+        "$base/data/plzg-flow-snapshot.json"
+    rm -f "$base/data/plzg-flow-snapshot.json.bak"
+}
+
+new_coord_case() {
+    rm -rf "$WORK/coord"
+    cp -R "$WORK/coordbase" "$WORK/coord"
+    printf '%s' "$WORK/coord"
+}
+
+snapshot_py() { # dir, python-body operating on `s`
+    python3 -c "
+import json, pathlib
+p = pathlib.Path('$1/data/plzg-flow-snapshot.json')
+s = json.loads(p.read_text())
+$2
+p.write_text(json.dumps(s, indent=2) + '\n')
+"
+}
+
+coord_expect() { # name, expected_exit, needle, dir
+    name=$1 want=$2 needle=$3 dir=$4
+    out=$( cd "$dir" && python3 scripts/validate_delivery_coordinates.py 2>&1 )
+    rc=$?
+    tb=$( printf '%s' "$out" | grep -c 'Traceback' )
+    if [ -n "$needle" ]; then
+        hit=$( printf '%s' "$out" | grep -cF "$needle" )
+    else
+        hit=1
+    fi
+    if [ "$rc" = "$want" ] && [ "$tb" = 0 ] && [ "$hit" -ge 1 ]; then
+        PASS=$((PASS + 1))
+        printf '  ok   %-50s exit=%s\n' "$name" "$rc"
+    else
+        FAIL=$((FAIL + 1))
+        printf '  FAIL %-50s exit=%s tb=%s matched=%s (want %s)\n' "$name" "$rc" "$tb" "$hit" "$want"
+        printf '%s\n' "$out" | sed 's/^/         | /' | head -5
+    fi
+}
+
 # --------------------------------------------------------------------------
 # The matrix
 # --------------------------------------------------------------------------
 
 echo "Building fixtures..."
 build_base "$WORK/base"
+build_coord_base "$WORK/coordbase"
 
 echo
 echo "baseline — a valid set must pass, or every case below is meaningless"
@@ -361,6 +445,24 @@ s['properties']['enforcement']['enum'].append('stale')
 p.write_text(json.dumps(s, indent=2) + '\n')
 "
 expect_fail "schema publishes a value with no semantics" "publishes enforcement values" "$d"
+
+echo
+echo "clause (b) — snapshot freshness and honesty (T5/PLZG-130)"
+d=$(new_coord_case); coord_expect "fresh snapshot, wip=1" 0 "" "$d"
+# The point of the owner ruling: an honest zero is not a failure. A gate that
+# demands someone be mid-task is a gate that rewards a fake transition.
+d=$(new_coord_case); snapshot_py "$d" "s['counts']['wip'] = 0; s['work_item_age'] = []"
+coord_expect "HONEST ZERO wip must pass" 0 "" "$d"
+d=$(new_coord_case); snapshot_py "$d" "s['sprint']['start'] = '2026-01-01'; s['sprint']['end'] = '2026-01-14'; s['as_of'] = '2026-01-05T00:00:00+00:00'"
+coord_expect "snapshot describing a finished sprint" 1 "describes a finished sprint" "$d"
+d=$(new_coord_case); snapshot_py "$d" "s['as_of'] = '2020-01-01T00:00:00+00:00'"
+coord_expect "as_of outside its declared window" 1 "falls outside the sprint window" "$d"
+d=$(new_coord_case); snapshot_py "$d" "s['counts']['wip'] = 3"
+coord_expect "wip claims more items than it names" 1 "must name it" "$d"
+d=$(new_coord_case); snapshot_py "$d" "s.pop('as_of')"
+coord_expect "as_of missing" 1 "as_of is missing" "$d"
+d=$(new_coord_case); snapshot_py "$d" "s.pop('sprint')"
+coord_expect "sprint window missing" 1 "cannot be dated against a sprint window" "$d"
 
 echo
 echo "$PASS passed, $FAIL failed"
