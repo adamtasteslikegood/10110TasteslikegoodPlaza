@@ -10,7 +10,7 @@ owner: adamtasteslikegood
 derives_from: [META-SPEC]
 enforcement: asserted
 gates: [Validate Specs:live, Check Sync Matrix:live]
-weakest_claim: Nothing — a stub echo until `project.godot` exists.
+weakest_claim: Convention, followed in practice
 ---
 
 # Branching Strategy
@@ -81,7 +81,7 @@ From [`../.github/workflows/ci.yml`](../.github/workflows/ci.yml):
 |---|---|
 | `Validate Specs` | `python3 scripts/validate_specs.py` — missing or malformed frontmatter, unregistered documents, authority disagreeing with the registry, `doc_set_version` skew, broken relative links, unknown `D-nnn`, scene ids with no matching scene. Standard library only; no `pip install` step. |
 | `Lint Python Bridge` | `black --check .` and `flake8 --select=E9,F63,F7,F82`. A third `flake8` pass runs `--exit-zero` and is advisory only. |
-| `Export Godot 4 Prototype` | Nothing — a stub echo until `project.godot` exists. Don't wire it to a real export before M1. |
+| `Export Godot 4 Prototype` | **Runs `godot --headless tests/smoke_test.tscn`** (`ci.yml:184`). Despite the name it does not export. It was a stub echo when this row was written; `project.godot` has existed since M1 and the job became a real gate in v0.2.8. Corrected 2026-08-02. |
 
 Run all three locally before pushing. See
 [`../CONTRIBUTING.md`](../CONTRIBUTING.md) § CI expectations for the commands.
@@ -159,6 +159,16 @@ The real trade-off is ordinary: strict means every PR must absorb `dev` again
 whenever `dev` moves, so a busy base branch turns into a queue of update-merge
 commits. Left off for that reason alone. **Turning it on is an owner call and
 would not violate `D-023`.**
+
+**One live disagreement inside this ruleset, recorded rather than silently
+tolerated.** Its `pull_request` rule lists `allowed_merge_methods: ["merge",
+"rebase"]`, so the ruleset **permits rebase**, while repository settings deny it
+(`allow_rebase_merge: false`, `allow_squash_merge: false`, `allow_merge_commit:
+true` — read from the API 2026-08-02). Nothing is broken today because settings
+win, and `D-023` is satisfied. But `D-023` locates the guarantee in *settings*,
+so re-enabling rebase there would meet no resistance from the ruleset. Tightening
+`allowed_merge_methods` to `["merge"]` would make the two agree; that is an owner
+call, not a drive-by.
 
 **Why that one job and not the others.** It is the only gate whose failure means
 another gate has stopped working. `tests/spec_enforcement_matrix.sh` asserts that
