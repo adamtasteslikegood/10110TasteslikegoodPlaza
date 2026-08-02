@@ -483,6 +483,19 @@ def check_decisions(documents: dict, problems: list) -> None:
 # a decision D-027 makes and no schema can express.
 LIVE_GATE_TYPE = "live"
 
+# The enforcement values this implementation knows the SEMANTICS of. The schema
+# publishes the vocabulary; per-value meaning -- which values need gates, which
+# need a weakest_claim, which needs a registry reason -- is D-027's, and cannot
+# be expressed in JSON Schema, so it is branched on below.
+#
+# Checked against the schema rather than assumed to match. Without that check,
+# adding a fifth value to the enum would validate green while every rule below
+# silently skipped documents carrying it -- the vocabulary and the semantics
+# would drift apart with no signal. This is not hypothetical: PLZG-147 proposes
+# exactly such a fifth value for "was true, now stale", and this is what will
+# make that change fail loudly here until the semantics land with it.
+HANDLED_ENFORCEMENT = {"enforced", "asserted", "intended", "n/a"}
+
 CI_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "ci.yml"
 CI_JOB_NAME_RE = re.compile(r"^    name:\s*(.+?)\s*$", re.M)
 GATE_TYPES_RE = re.compile(r"\(([a-z|]+)\)")
@@ -580,6 +593,20 @@ def check_enforcement(
             )
         )
         return
+    if set(permitted) != HANDLED_ENFORCEMENT:
+        unknown = sorted(set(permitted) - HANDLED_ENFORCEMENT)
+        dropped = sorted(HANDLED_ENFORCEMENT - set(permitted))
+        problems.append(
+            Problem(
+                SCHEMA_PATH,
+                f"publishes enforcement values {sorted(permitted)}, which this "
+                f"validator does not match (unhandled: {unknown}, missing: {dropped}). "
+                "Every value needs its rules written here -- gates, weakest_claim, "
+                "registry reason -- or documents carrying it validate green while "
+                "nothing checks them",
+            )
+        )
+        return
     if LIVE_GATE_TYPE not in gate_types:
         problems.append(
             Problem(
@@ -596,13 +623,14 @@ def check_enforcement(
     }
     jobs = ci_job_names()
     if not jobs:
-        # Same rule as the two guards above, and it caught a real hole: with an
-        # empty set, `job not in jobs` would have been skipped for every gate on
-        # every document, so check 2's job-existence half would silently do
-        # nothing while the run still exited 0. That happens whenever ci.yml is
-        # missing OR whenever it is reindented past CI_JOB_NAME_RE -- a narrow
-        # regex is the price of staying stdlib-only, and this is what stops that
-        # price being paid in coverage nobody notices losing.
+        # ONE precise diagnostic instead of N misleading ones. With the earlier
+        # `if jobs and ...` guard an empty set skipped the job-existence check
+        # entirely and the run still exited 0; that guard is gone, so an empty
+        # set would now report every gate on every document as naming a missing
+        # job -- true, but it buries the actual fault. The real fault is here:
+        # ci.yml is absent, or it has been reindented past CI_JOB_NAME_RE. A
+        # narrow regex is the price of staying stdlib-only, and this says so
+        # once, pointing at the file that broke.
         problems.append(
             Problem(
                 CI_WORKFLOW,
@@ -691,7 +719,24 @@ def check_enforcement(
         # 5. asserted/intended must quote a weakest claim that really appears.
         if value in ("asserted", "intended"):
             claim = fields.get("weakest_claim")
-            if not claim:
+            if not isinstance(claim, str):
+                # A schema failure does not remove a document from `documents`,
+                # so a non-string value -- `weakest_claim: 42`, or anything in
+                # [brackets], which parse_frontmatter reads as a list -- reaches
+                # this check. Without the type guard `claim not in body` raises
+                # TypeError and aborts the whole run, so a reader sees a
+                # traceback instead of the schema error that was already queued.
+                if claim is not None:
+                    problems.append(
+                        Problem(
+                            path,
+                            f"declares a non-string weakest_claim ({claim!r}). It must "
+                            "be one quoted sentence appearing in the document body",
+                        )
+                    )
+                    continue
+                claim = ""
+            if not claim.strip():
                 problems.append(
                     Problem(
                         path,
