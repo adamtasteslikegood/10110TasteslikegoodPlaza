@@ -660,6 +660,23 @@ def check_enforcement(
             continue
 
         gates = fields.get("gates", [])
+        if not isinstance(gates, list) or not all(isinstance(g, str) for g in gates):
+            # Same guard, same reason, as weakest_claim below -- a schema failure
+            # does not remove a document from `documents`, so a malformed value
+            # arrives here anyway. Two distinct ways this bit: `gates: 42` parses
+            # as an int and made `for gate in gates` raise TypeError, killing the
+            # run before any queued Problem printed; `gates: some-string` parses
+            # as a str, which IS iterable, so it walked the value character by
+            # character and reported the missing job 'g'. A crash and a nonsense
+            # message are both worse than one accurate sentence.
+            problems.append(
+                Problem(
+                    path,
+                    f"declares a malformed gates value ({gates!r}). It must be a list "
+                    "of 'job:type' strings, as in [Validate Specs:live]",
+                )
+            )
+            continue
 
         # 2. enforced/asserted need a non-empty gates list naming real CI jobs.
         if value in ("enforced", "asserted"):
