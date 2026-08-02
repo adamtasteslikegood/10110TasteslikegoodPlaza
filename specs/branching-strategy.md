@@ -5,12 +5,12 @@ tier: 3
 authority: derived
 status: ACTIVE
 doc_set_version: 0.2.10
-last_updated: 2026-07
+last_updated: 2026-08
 owner: adamtasteslikegood
 derives_from: [META-SPEC]
 enforcement: asserted
 gates: [Validate Specs:live, Check Sync Matrix:live]
-weakest_claim: Nothing — a stub echo until `project.godot` exists.
+weakest_claim: Convention, followed in practice
 ---
 
 # Branching Strategy
@@ -34,9 +34,9 @@ Most branching docs describe an aspiration. This section is the honest split.
 | `ci.yml` — `Validate Specs`, `Lint Python Bridge`, `Export Godot 4 Prototype` | **Runs on every push and PR to `main` and `dev`** |
 | CodeQL (`Analyze (python)`, `Analyze (actions)`), GitGuardian | **Runs on PRs** |
 | `claude-review.yml` — independent review | **Runs on PRs to `main` and `dev`**; see its `on:` block for the exact trigger set. Advisory, never a required check |
-| Branch protection on `dev` | **Active** — ruleset `18798438`: PR required, deletion and force-push blocked, code scanning gates merge. See §5 |
+| Branch protection on `dev` | **Active** — ruleset `18798438`: PR required, deletion and force-push blocked, code scanning gates merge, and **`Spec Enforcement Matrix` is a required status check**. See §5 |
 | Branch protection on `main` | **Not configured.** §5 "Still to apply" |
-| Required status checks by name | **Not configured** — `dev`'s ruleset gates `code_scanning` but does not require `Validate Specs` or `Lint Python Bridge` by name |
+| Required status checks by name | **One:** `Spec Enforcement Matrix`, required since 2026-08-02. Every other CI job — `Validate Specs`, `Lint Python Bridge`, `Validate Agent Data`, `Validate Delivery Coordinates`, `Check Sync Matrix`, `Export Godot 4 Prototype` — still reports without gating the merge |
 | CODEOWNERS gating | **No `CODEOWNERS` file exists** |
 | Required linked issue | Convention at best |
 
@@ -81,7 +81,7 @@ From [`../.github/workflows/ci.yml`](../.github/workflows/ci.yml):
 |---|---|
 | `Validate Specs` | `python3 scripts/validate_specs.py` — missing or malformed frontmatter, unregistered documents, authority disagreeing with the registry, `doc_set_version` skew, broken relative links, unknown `D-nnn`, scene ids with no matching scene. Standard library only; no `pip install` step. |
 | `Lint Python Bridge` | `black --check .` and `flake8 --select=E9,F63,F7,F82`. A third `flake8` pass runs `--exit-zero` and is advisory only. |
-| `Export Godot 4 Prototype` | Nothing — a stub echo until `project.godot` exists. Don't wire it to a real export before M1. |
+| `Export Godot 4 Prototype` | **Runs `godot --headless tests/smoke_test.tscn`** (`ci.yml:184`). Despite the name it does not export. It was a stub echo when this row was written; `project.godot` has existed since M1 and the job became a real gate in v0.2.8. Corrected 2026-08-02. |
 
 Run all three locally before pushing. See
 [`../CONTRIBUTING.md`](../CONTRIBUTING.md) § CI expectations for the commands.
@@ -136,7 +136,7 @@ are not duplicated here. The policy points:
 
 `dev` **is** protected — by a **repository ruleset**, not a classic branch-protection
 rule. Ruleset `dev` (id `18798438`, `enforcement: active`) targets `~DEFAULT_BRANCH`,
-which resolves to `dev`. Verified 2026-07-26:
+which resolves to `dev`, re-verified against the API 2026-08-02. Rules as of 2026-08-02:
 
 | Rule | Effect |
 |---|---|
@@ -145,6 +145,38 @@ which resolves to `dev`. Verified 2026-07-26:
 | `non_fast_forward` | Force pushes blocked |
 | `code_scanning` | CodeQL results gate the merge |
 | `copilot_code_review` | Automatic Copilot review on PRs |
+| `required_status_checks` | **`Spec Enforcement Matrix` must pass to merge.** Added 2026-08-02 on the owner's instruction, alongside `PLZG-135`. `strict_required_status_checks_policy: false` — see below |
+
+**On `strict_required_status_checks_policy: false`.** An earlier revision of this
+section claimed strict was left off because it "forces rebasing, and `D-023`
+disables rebase merging." **That reasoning was wrong and is corrected here.**
+Strict requires the head branch to contain the latest base-branch commits, which
+is satisfied by **merging `dev` into the topic branch** just as well as by
+rebasing; and disabling *Rebase and merge* governs how a PR is **completed**, not
+how its head branch is **updated**. The two never conflicted.
+
+The real trade-off is ordinary: strict means every PR must absorb `dev` again
+whenever `dev` moves, so a busy base branch turns into a queue of update-merge
+commits. Left off for that reason alone. **Turning it on is an owner call and
+would not violate `D-023`.**
+
+**One live disagreement inside this ruleset, recorded rather than silently
+tolerated.** Its `pull_request` rule lists `allowed_merge_methods: ["merge",
+"rebase"]`, so the ruleset **permits rebase**, while repository settings deny it
+(`allow_rebase_merge: false`, `allow_squash_merge: false`, `allow_merge_commit:
+true` — read from the API 2026-08-02). Nothing is broken today because settings
+win, and `D-023` is satisfied. But `D-023` locates the guarantee in *settings*,
+so re-enabling rebase there would meet no resistance from the ruleset. Tightening
+`allowed_merge_methods` to `["merge"]` would make the two agree; that is an owner
+call, not a drive-by.
+
+**Why that one job and not the others.** It is the only gate whose failure means
+another gate has stopped working. `tests/spec_enforcement_matrix.sh` asserts that
+`validate_specs.py` FAILS on 24 broken fixtures; if it goes green having checked
+nothing, `Validate Specs` can be passing vacuously and nothing else would say so.
+During `PLZG-134` three of those five checks were found checking nothing while
+`Validate Specs` exited 0 throughout. The other jobs report on the tree; this one
+reports on a gate.
 
 **`non_fast_forward` is not `required_linear_history`.** They are different rules and
 only the latter conflicts with `D-023`. The warning below still holds and is not
@@ -168,9 +200,11 @@ currently violated.
 
 Genuinely not configured — these remain instructions, not description.
 
-**Required status checks on `dev`.** The ruleset gates on `code_scanning` but does not
-require the CI jobs by name. Add to the ruleset's `required_status_checks`:
-`Validate Specs`, `Lint Python Bridge`.
+**More required status checks on `dev`.** Partially done: `Spec Enforcement
+Matrix` was made required on 2026-08-02 (§5), because it is the one gate whose
+failure means another gate has stopped working. The rest still only report.
+Candidates to add to the ruleset's `required_status_checks`: `Validate Specs`,
+`Lint Python Bridge`.
 
 **CODEOWNERS gating.** No `CODEOWNERS` file exists; nothing enforces reviewer
 assignment.
@@ -190,8 +224,9 @@ targeting `main`:
 > this project has deliberately not adopted. The upstream original told you to enable
 > it — that instruction was never valid here.
 
-`dev`'s ruleset already covers deletion, force pushes, PR-required, and code
-scanning — the only gap there is required status checks by name, above. Keep
+`dev`'s ruleset already covers deletion, force pushes, PR-required, code
+scanning, and one required status check by name — the remaining gap is the
+*other* CI jobs, above. Keep
 approvals at 0 until a second contributor joins.
 
 Use the exact job names above — GitHub matches required checks by name, and the
@@ -339,4 +374,4 @@ to re-run. Two things follow:
 · **Related:** [`../CONTRIBUTING.md`](../CONTRIBUTING.md) ·
 [`meta/META-SPEC.md`](meta/META-SPEC.md) · [`../CHANGELOG.md`](../CHANGELOG.md)
 
-*Last updated: July 2026*
+*Last updated: August 2026*
