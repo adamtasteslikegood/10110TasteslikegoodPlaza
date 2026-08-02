@@ -1,0 +1,139 @@
+{
+  "$comment": "Machine-readable Sprint 3 plan. Prose rationale lives in specs/sprint-3-charter.md; this file is the shape delivery_loop_gate.py consumes. That script is NOT in this repo and must not be vendored here -- it ships with the pm-skills plugin, enabled at project scope in .claude/settings.json. Resolve it, do not hardcode (PLZG-117, PLZG-129): PM_SCRIPTS=$(find ~/.claude/plugins -path '*/pm-skills/scripts' -type d -print -quit) then python3 \"$PM_SCRIPTS/delivery_loop_gate.py\" --plan specs/sprint-3-loop-plan.json --mode plan --output human. See charter section 9 of the Sprint 2 charter for why that resolution is written out rather than assumed. Every task carries acceptance.cmd rather than acceptance.criterion -- with a single human, owner == reviewer, and machine verification is what makes that non-circular. Statuses in this file must be produced by running the acceptance command against dev, never transcribed from the session that ran it: Sprint 2 closed CLOSE-OK against a scratch copy in /tmp and this file's predecessor recorded all ten tasks as todo afterwards (PLZG-128).",
+  "goal": "Every governed document declares which of its claims about state are proven and by what, and the tier ladder gains a home for delivery policy. PLZG Sprint 3, board 169, sprint 45, 2026-07-31 to 2026-08-14.",
+  "budgets": {
+    "max_attempts_per_task": 3,
+    "max_loop_iterations": 12
+  },
+  "iteration": 1,
+  "tasks": [
+    {
+      "id": "T0",
+      "title": "Fetch and reconcile against origin/dev before any other task runs",
+      "owner": "adam schoen",
+      "executor": "agent",
+      "reviewer": "adam schoen",
+      "acceptance": {
+        "cmd": "scripts/check_sync.sh --strict"
+      },
+      "status": "todo",
+      "attempts": 0,
+      "note": "Blocking precondition, exempt from the attempt cap per Sprint 2 charter section 5. No Jira ticket: it is a precondition the SessionStart hook already runs, not a unit of work, and ticketing it would add a permanently-instant item to the flow data the T1-T8 split exists to produce. A loop that burns attempts against stale state has spent its budget learning nothing."
+    },
+    {
+      "id": "T1",
+      "title": "PLZG-132 -- amend META-SPEC: define the enforcement axis (D-027) and add the delivery authority (D-028)",
+      "owner": "adam schoen",
+      "executor": "agent",
+      "reviewer": "adam schoen",
+      "acceptance": {
+        "cmd": "python3 scripts/validate_specs.py"
+      },
+      "status": "todo",
+      "attempts": 0,
+      "blocks": ["T2", "T3", "T4", "T6", "T7", "T8"],
+      "note": "Both decisions are rules about documents, so tier-0 META-SPEC is the entitled origin -- the clean case that D-005 was not. Acceptance passes before the checks exist; T1 defines the axis, T3 makes it enforceable. Adds decides: [D-027, D-028] to META-SPEC frontmatter."
+    },
+    {
+      "id": "T2",
+      "title": "PLZG-133 -- extend spec-frontmatter.schema.json: enforcement enum, typed gates[], weakest_claim, delivery authority",
+      "owner": "adam schoen",
+      "executor": "agent",
+      "reviewer": "adam schoen",
+      "acceptance": {
+        "cmd": "python3 scripts/validate_specs.py"
+      },
+      "status": "todo",
+      "attempts": 0,
+      "depends_on": ["T1"],
+      "blocks": ["T3", "T7"],
+      "note": "validate_specs.py must read permitted values FROM this schema, never restate them -- that is what stopped the section 4.8 authority gate drifting from its contract. Open decision to make explicitly rather than discover: if enforcement is required here before T6 populates it, T2 and T6 must land together, or T2 makes it required only once present. State the choice in the PR."
+    },
+    {
+      "id": "T3",
+      "title": "PLZG-134 -- extend validate_specs.py with the five enforcement-axis checks",
+      "owner": "adam schoen",
+      "executor": "agent",
+      "reviewer": "adam schoen",
+      "acceptance": {
+        "cmd": "python3 scripts/validate_specs.py"
+      },
+      "status": "todo",
+      "attempts": 0,
+      "depends_on": ["T2"],
+      "blocks": ["T4", "T6"],
+      "note": "ACCEPTANCE DEVIATES FROM THE CHARTER, DELIBERATELY. Charter section 5 gives T3 the command tests/spec_enforcement_matrix.sh -- a file T4 creates, so a gate cannot accept T3 against it. validate_specs.py exiting 0 is necessary and NOT sufficient here: all five checks can pass vacuously, which is how tests/smoke_test.tscn passed until v0.2.8. T3 must not be marked done before T4 passes; the two are one unit split for review size, and T4 is the real gate for both. Raised as PLZG-145."
+    },
+    {
+      "id": "T4",
+      "title": "PLZG-135 -- tests/spec_enforcement_matrix.sh and its CI job, so the new checks cannot pass vacuously",
+      "owner": "adam schoen",
+      "executor": "agent",
+      "reviewer": "adam schoen",
+      "acceptance": {
+        "cmd": "tests/spec_enforcement_matrix.sh"
+      },
+      "status": "todo",
+      "attempts": 0,
+      "depends_on": ["T3"],
+      "note": "Shape after tests/check_sync_matrix.sh, which builds its own fixtures and needs no network. Every fixture must assert the check FAILS: enforced on a snapshot-only gate, a gates entry naming a job absent from ci.yml, a weakest_claim not present verbatim, a governed doc with no enforcement value, an n/a doc with no registry reason. Verify by breaking one check deliberately and confirming the matrix reddens."
+    },
+    {
+      "id": "T5",
+      "title": "PLZG-130 -- fail validate_delivery_coordinates.py on a snapshot older than the current sprint window",
+      "owner": "adam schoen",
+      "executor": "agent",
+      "reviewer": "adam schoen",
+      "acceptance": {
+        "cmd": "python3 scripts/validate_delivery_coordinates.py"
+      },
+      "status": "todo",
+      "attempts": 0,
+      "note": "Independent of T1-T4; can run in parallel. The gate currently exits 0 reporting wip=1 while the live board is 0, because as_of is parsed only to print it. Compare instants, not string prefixes -- the Agile API returns UTC and every sprint boundary here is 17:00 PT, which is 00:00 UTC the next day (PLZG-144)."
+    },
+    {
+      "id": "T6",
+      "title": "PLZG-136 -- migrate all 24 governed documents: assign enforcement, gates and weakest_claim",
+      "owner": "adam schoen",
+      "executor": "agent",
+      "reviewer": "adam schoen",
+      "acceptance": {
+        "cmd": "python3 scripts/validate_specs.py && tests/spec_enforcement_matrix.sh"
+      },
+      "status": "todo",
+      "attempts": 0,
+      "depends_on": ["T3", "T4"],
+      "blocks": ["T7"],
+      "note": "24 includes SPRINT-3-CHARTER itself; it is not exempt from the axis it introduces. Expect enforced to come out EMPTY -- a document landing enforced is a finding to double-check, not a win. Decision-only docs (STORYBOARD-W1, DECISION-REGISTER) land n/a. Absorbs PLZG-118: CLAUDE.md states the plugin cache path as cache/<name>/<version>/ when the real shape carries a marketplace level. KNOWN RISK R1: the validator cannot check the values are honest -- check 5 proves a quote is real, never that it is the weakest. A green build here is not evidence the migration was done well."
+    },
+    {
+      "id": "T7",
+      "title": "PLZG-137 -- re-point both sprint charters to authority: delivery, close conflict 4.10, register D-027/D-028",
+      "owner": "adam schoen",
+      "executor": "agent",
+      "reviewer": "adam schoen",
+      "acceptance": {
+        "cmd": "python3 scripts/validate_specs.py && tests/spec_enforcement_matrix.sh"
+      },
+      "status": "todo",
+      "attempts": 0,
+      "depends_on": ["T2", "T6"],
+      "blocks": ["T8"],
+      "note": "Section 4.10 must close as resolved-by-amendment, not resolved-by-correction: the reviewer was right and the Sprint 2 charter was not always fine -- the ladder lacked a slot and D-028 creates one. Under delivery, that charter becomes retroactively entitled to have set its budgets; say so. Also correct D-026's now-dead clause per GitHub #96 -- owner ruling 2026-08-01: keep the retired clause marked historical rather than deleting it, because it records why the coordinates were centralised. Status stays LOCKED; nothing replaced it. Register needs a new constitution-originated section; it has none today."
+    },
+    {
+      "id": "T8",
+      "title": "PLZG-138 -- bump doc_set_version 0.2.9 to 0.2.10 across the set and log the amendment in CHANGELOG",
+      "owner": "adam schoen",
+      "executor": "agent",
+      "reviewer": "adam schoen",
+      "acceptance": {
+        "cmd": "python3 scripts/validate_specs.py && tests/spec_enforcement_matrix.sh"
+      },
+      "status": "todo",
+      "attempts": 0,
+      "depends_on": ["T7"],
+      "note": "META-SPEC section 8: bump when a locked decision changed, in the same commit. Nothing was decided until T7 registered D-027/D-028, so bumping earlier would have claimed a decision not yet made. The charter's own CHANGELOG entry already landed in PR #85 (cfb6f71); this entry covers the amendment. If GitHub #58 has been settled by then, apply the ruling; if not, leave it open and do not resolve it here."
+    }
+  ]
+}
