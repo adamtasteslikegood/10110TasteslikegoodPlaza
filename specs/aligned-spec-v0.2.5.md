@@ -4,7 +4,7 @@ title: Aligned Specification Set v0.2.5 (research input)
 tier: 4
 authority: research
 status: SUPERSEDED
-doc_set_version: 0.2.9
+doc_set_version: 0.2.10
 last_updated: 2026-07
 owner: adamtasteslikegood
 derives_from: []

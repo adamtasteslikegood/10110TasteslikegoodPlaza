@@ -4,7 +4,7 @@ title: Meta-specs — the governed tree
 tier: 4
 authority: summary
 status: ACTIVE
-doc_set_version: 0.2.9
+doc_set_version: 0.2.10
 last_updated: 2026-07
 owner: adamtasteslikegood
 derives_from: [META-SPEC]
