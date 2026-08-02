@@ -503,7 +503,10 @@ def schema_gate_types(schema: dict) -> list:
     alternation group is the vocabulary.
     """
     pattern = (
-        schema.get("properties", {}).get("gates", {}).get("items", {}).get("pattern", "")
+        schema.get("properties", {})
+        .get("gates", {})
+        .get("items", {})
+        .get("pattern", "")
     )
     found = GATE_TYPES_RE.search(pattern)
     return found.group(1).split("|") if found else []
@@ -538,10 +541,15 @@ def ci_job_names() -> set:
     """
     if not CI_WORKFLOW.is_file():
         return set()
-    return {m.strip("\"'") for m in CI_JOB_NAME_RE.findall(CI_WORKFLOW.read_text(encoding="utf-8"))}
+    return {
+        m.strip("\"'")
+        for m in CI_JOB_NAME_RE.findall(CI_WORKFLOW.read_text(encoding="utf-8"))
+    }
 
 
-def check_enforcement(documents: dict, registry: dict, schema: dict, problems: list) -> None:
+def check_enforcement(
+    documents: dict, registry: dict, schema: dict, problems: list
+) -> None:
     """The five enforcement-axis checks (D-027).
 
     Each closes a gap the schema cannot: the schema validates one field of one
@@ -587,6 +595,24 @@ def check_enforcement(documents: dict, registry: dict, schema: dict, problems: l
         for entry in registry.get("documents", [])
     }
     jobs = ci_job_names()
+    if not jobs:
+        # Same rule as the two guards above, and it caught a real hole: with an
+        # empty set, `job not in jobs` would have been skipped for every gate on
+        # every document, so check 2's job-existence half would silently do
+        # nothing while the run still exited 0. That happens whenever ci.yml is
+        # missing OR whenever it is reindented past CI_JOB_NAME_RE -- a narrow
+        # regex is the price of staying stdlib-only, and this is what stops that
+        # price being paid in coverage nobody notices losing.
+        problems.append(
+            Problem(
+                CI_WORKFLOW,
+                "no job names could be read, so 'every gate names a real CI job' "
+                "cannot be checked. Either the file is missing or its formatting "
+                "no longer matches the parser -- fix one of those rather than "
+                "letting the check pass on nothing",
+            )
+        )
+        return
 
     for doc_id, info in sorted(documents.items()):
         path, fields = info["path"], info["fields"]
@@ -619,7 +645,7 @@ def check_enforcement(documents: dict, registry: dict, schema: dict, problems: l
                 )
             for gate in gates:
                 job = gate.rsplit(":", 1)[0]
-                if jobs and job not in jobs:
+                if job not in jobs:
                     problems.append(
                         Problem(
                             path,
