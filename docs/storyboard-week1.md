@@ -9,6 +9,7 @@ last_updated: 2026-04
 owner: adamtasteslikegood
 derives_from: []
 decides: [D-002, D-008, D-009, D-010, D-019]
+enforcement: n/a
 ---
 
 # 10110 TastesLike Plaza — Week 1 Storyboard

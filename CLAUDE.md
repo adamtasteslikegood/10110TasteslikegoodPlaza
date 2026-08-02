@@ -140,7 +140,7 @@ Both live in `.claude/skills/` because they encode how *this* repo breaks, which
 - **`review-specs`** — the review pass for a PR or branch here, and the interactive counterpart to `claude-review.yml`. Its highest-yield check is repository-state claims, because that is the defect class this document set actually produces.
 - **`grill-with-specs`** — points the `grill-with-docs` plugin at this repo. Upstream it is anchored on a `CONTEXT.md` glossary and `docs/adr/`, and **creates both lazily when missing**. Neither exists here and neither should — the equivalents are `META-SPEC.md` §2 and `decision-register.md`. Unredirected, the plugin would start a second decision store beside `specs/meta/`: the exact fork the register prevents.
 
-Adapt a plugin from inside `.claude/skills/`, never by editing the plugin. Plugins live in `~/.claude/plugins/cache/<name>/<version>/` and are replaced wholesale on version bump, so an edit there is silently lost.
+Adapt a plugin from inside `.claude/skills/`, never by editing the plugin. Plugins live in `~/.claude/plugins/cache/<marketplace>/<plugin>/<version>/` and are replaced wholesale on version bump, so an edit there is silently lost.
 
 ## Document conventions
 

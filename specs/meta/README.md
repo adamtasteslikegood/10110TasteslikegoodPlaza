@@ -9,6 +9,9 @@ last_updated: 2026-07
 owner: adamtasteslikegood
 derives_from: [META-SPEC]
 supersedes: []
+enforcement: asserted
+gates: [Validate Specs:live]
+weakest_claim: This folder governs every other document in the repo.
 ---
 
 # `specs/meta/` — the layer above the specs

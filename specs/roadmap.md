@@ -8,6 +8,9 @@ doc_set_version: 0.2.10
 last_updated: 2026-04
 owner: adamtasteslikegood
 derives_from: [PROJECT-OVERVIEW, DESIGN-25D, SPEC-DRIVERS-025]
+enforcement: asserted
+gates: [Validate Specs:live, Export Godot 4 Prototype:live]
+weakest_claim: For now it returns scripted/hardcoded responses.
 ---
 
 # 10110 TastesLike Plaza — Prototype Build Roadmap

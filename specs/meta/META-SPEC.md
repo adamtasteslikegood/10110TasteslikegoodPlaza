@@ -10,6 +10,9 @@ owner: adamtasteslikegood
 derives_from: []
 supersedes: []
 decides: [D-027, D-028]
+enforcement: asserted
+gates: [Validate Specs:live]
+weakest_claim: `enforced` is **empty on day one**
 ---
 
 # Meta-Spec — how the Plaza doc set governs itself

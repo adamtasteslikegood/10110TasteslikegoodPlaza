@@ -9,6 +9,9 @@ last_updated: 2026-07
 owner: adamtasteslikegood
 derives_from: [PROJECT-OVERVIEW]
 decides: [D-026]
+enforcement: asserted
+gates: [Validate Delivery Coordinates:snapshot, Validate Specs:live]
+weakest_claim: **There is a Linear workspace, and it syncs.**
 ---
 
 # Delivery coordinates

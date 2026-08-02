@@ -7,6 +7,9 @@ status: ACTIVE
 doc_set_version: 0.2.10
 last_updated: 2026-07
 owner: adamtasteslikegood
+enforcement: asserted
+gates: [Validate Specs:live]
+weakest_claim: Adopted as foundational onboarding reading for humans and agents alike.
 ---
 
 # Agile — A Practical Explanation

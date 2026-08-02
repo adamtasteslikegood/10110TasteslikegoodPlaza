@@ -48,7 +48,8 @@
       "tier": 1,
       "authority": "concept",
       "status": "ACTIVE",
-      "note": "The heart. The ONLY document permitted to originate concept and narrative decisions. Edits require human sign-off."
+      "note": "The heart. The ONLY document permitted to originate concept and narrative decisions. Edits require human sign-off.",
+      "enforcement_na_reason": "Concept and narrative only. Defines what the world IS; asserts nothing about what the code, board or tooling currently does."
     },
     {
       "doc_id": "DESIGN-25D",
@@ -192,7 +193,8 @@
       "tier": 4,
       "authority": "research",
       "status": "ACTIVE",
-      "note": "Plain-language companion to AGILE-EXPLAINED. Same standing: authoritative over nothing."
+      "note": "Plain-language companion to AGILE-EXPLAINED. Same standing: authoritative over nothing.",
+      "enforcement_na_reason": "Plain-language companion to AGILE-EXPLAINED. General education, no claim about this repository -- checked explicitly during PLZG-136 review, which found AGILE-EXPLAINED does carry one ('Adopted as foundational onboarding reading') and rescored it asserted. This file carries no equivalent."
     }
   ],
   "exempt": [

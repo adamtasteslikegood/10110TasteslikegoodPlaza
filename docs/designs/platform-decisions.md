@@ -10,6 +10,9 @@ owner: adamtasteslikegood
 derives_from: [META-SPEC]
 supersedes: []
 decides: [D-003, D-005, D-015, D-016, D-018, D-021, D-022, D-023, D-024]
+enforcement: asserted
+gates: [Validate Specs:live]
+weakest_claim: All nine were already made, already evidenced,
 ---
 
 # Platform Decisions
