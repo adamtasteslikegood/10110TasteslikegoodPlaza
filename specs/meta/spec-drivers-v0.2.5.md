@@ -5,7 +5,7 @@ tier: 0
 authority: constitution
 status: ACTIVE
 doc_set_version: 0.2.11
-last_updated: 2026-07
+last_updated: 2026-08
 owner: adamtasteslikegood
 derives_from: [META-SPEC]
 supersedes: []
@@ -366,7 +366,7 @@ understated its standing rather than claiming one it had not been granted.
 human call about the constitution rather than something to settle inside a sprint's
 own charter. That call was made: see the resolution below.
 
-Two candidate resolutions, neither adopted:
+Two candidate resolutions were recorded. **Candidate 1 was adopted in v0.2.11** as `D-028`; candidate 2 was not, for the reason given in the resolution above:
 
 1. Add a `delivery` authority to the tier-3 vocabulary, licensed to originate
    time-boxed operational policy that expires with its artifact.
@@ -413,4 +413,4 @@ this version does not move it.
 Between here and there, each round closes with the same check: the register has no
 conflict that has been open longer than the round that discovered it.
 
-*Doc set version: 0.2.9 · Last updated: July 2026*
+*Doc set version: 0.2.11 · Last updated: August 2026*

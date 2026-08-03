@@ -161,7 +161,7 @@
       "tier": 3,
       "authority": "delivery",
       "status": "ACTIVE",
-      "note": "Executable context for PLZG Sprint 2 (board 169, sprint 44, 2026-07-30 to 2026-08-13). Locks the delivery decisions reached in the 2026-07-30 grill so they survive the session that produced them. Derives from ROADMAP and DELIVERY-COORDINATES; originates nothing."
+      "note": "Executable context for PLZG Sprint 2 (board 169, sprint 44, 2026-07-30 to 2026-08-13). Locks the delivery decisions reached in the 2026-07-30 grill so they survive the session that produced them. Derives from ROADMAP and DELIVERY-COORDINATES; originates time-boxed delivery policy under D-028 -- WIP limits, retry budgets, review gates, forecast blackouts -- which expires with the sprint and is deliberately not registered as a D-nnn."
     },
     {
       "doc_id": "SPRINT-3-CHARTER",

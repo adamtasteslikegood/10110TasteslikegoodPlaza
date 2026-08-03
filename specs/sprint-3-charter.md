@@ -412,9 +412,10 @@ claiming one not yet granted. **Done: `T7` flipped both charters to `delivery` i
 the same change that closed §4.10**, and the frontmatter above now reads
 `authority: delivery`.
 
-Flip it to `delivery` under `T7`, in the same change that closes §4.10. Recorded
-because a later reader will otherwise see a charter declaring `derived` while
-§3 argues that is wrong, and read it as drift rather than as sequence.
+That flip happened under `T7`, in the same change that closed §4.10. Recorded
+because a reader of an earlier revision would otherwise have seen a charter
+declaring `derived` while §3 argued that is wrong, and read it as drift rather
+than as sequence.
 
 ---
 

@@ -173,4 +173,4 @@ not here. Add the `D-nnn` to this file's `decides:` list and to
 `scripts/validate_specs.py` fails the build if the two disagree, and now also fails
 if a document declares `decides:` without an authority licensed to originate.
 
-*Doc set version: 0.2.9 · Last updated: July 2026*
+*Doc set version: 0.2.11 · Last updated: July 2026*
