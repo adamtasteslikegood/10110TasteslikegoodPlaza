@@ -5,7 +5,7 @@
     "max_attempts_per_task": 3,
     "max_loop_iterations": 12
   },
-  "iteration": 7,
+  "iteration": 8,
   "tasks": [
     {
       "id": "T0",
@@ -154,8 +154,8 @@
       "acceptance": {
         "cmd": "python3 scripts/validate_specs.py && tests/spec_enforcement_matrix.sh"
       },
-      "status": "todo",
-      "attempts": 0,
+      "status": "done",
+      "attempts": 1,
       "depends_on": [
         "T4",
         "T6"
@@ -163,7 +163,8 @@
       "blocks": [
         "T8"
       ],
-      "note": "CARRIES ITS OWN VERSION BUMP, per META-SPEC section 8 item 4: this task changes D-026, a locked decision, so the register edit and the set-wide doc_set_version bump must be the SAME COMMIT. That is a second bump in one sprint (T1 does 0.2.9 -> 0.2.10, this does 0.2.10 -> 0.2.11) and it is correct: two locked decisions change, on unrelated subjects, so each carries its own version rather than being coupled to ship together. Section 4.10 must close as resolved-by-amendment, not resolved-by-correction: the reviewer was right and the Sprint 2 charter was not always fine -- the ladder lacked a slot and D-028 creates one. Under delivery, that charter becomes retroactively entitled to have set its budgets; say so. D-026 per GitHub #96, owner ruling 2026-08-01: the dead clause spans two columns (Choice, and the Rationale's closing arbitration sentence). Keep the retired clause marked historical rather than deleting it -- it records why the coordinates were centralised, and a future hardcoded coordinate is the failure it was written against. Status stays LOCKED; nothing replaced it. Re-pointing either charter to authority: delivery requires T2's schema enum, hence depends_on."
+      "note": "CARRIES ITS OWN VERSION BUMP, per META-SPEC section 8 item 4: this task changes D-026, a locked decision, so the register edit and the set-wide doc_set_version bump must be the SAME COMMIT. That is a second bump in one sprint (T1 does 0.2.9 -> 0.2.10, this does 0.2.10 -> 0.2.11) and it is correct: two locked decisions change, on unrelated subjects, so each carries its own version rather than being coupled to ship together. Section 4.10 must close as resolved-by-amendment, not resolved-by-correction: the reviewer was right and the Sprint 2 charter was not always fine -- the ladder lacked a slot and D-028 creates one. Under delivery, that charter becomes retroactively entitled to have set its budgets; say so. D-026 per GitHub #96, owner ruling 2026-08-01: the dead clause spans two columns (Choice, and the Rationale's closing arbitration sentence). Keep the retired clause marked historical rather than deleting it -- it records why the coordinates were centralised, and a future hardcoded coordinate is the failure it was written against. Status stays LOCKED; nothing replaced it. Re-pointing either charter to authority: delivery requires T2's schema enum, hence depends_on.",
+      "evidence": "PRs #133 and #136 merged; dev at 8267991. Acceptance run ON dev after the merge: 'python3 scripts/validate_specs.py && tests/spec_enforcement_matrix.sh' -> 'Spec validation passed: 24 governed document(s), doc set v0.2.11.' plus '34 passed, 0 failed', exit 0. Both charters declare authority: delivery in frontmatter and doc-registry.json. Conflict 4.10 CLOSED AS RESOLVED-BY-AMENDMENT, not by correction -- the reviewer was right and SPRINT-2-CHARTER was setting policy it had no licence to set; the ladder changed and only then was the charter entitled. Register now reads ten resolved, none open. D-026's dead clause retired in both columns and KEPT AS HISTORY per the owner ruling, because it records why the coordinates were centralised; the decision is untouched and stays LOCKED. doc_set_version 0.2.10 -> 0.2.11 across 24 documents and the registry, in the same commit as the locked-decision change per META-SPEC section 8 item 4. TWENTY-THREE REVIEW FINDINGS ACROSS THE TWO PRs, ALL UPHELD, NONE REBUTTED -- the highest count of any task this sprint, and the reason is that prose about prose has no gate. The classes: (a) SIX statements falsified the moment the frontmatter flipped, each accurate when written; (b) FIVE broken citations, each a different failure -- a source that did not say what I claimed, a number that does not exist, a real URL whose content did not support the claim, a section heading I invented, and a decision credited with another decision's fix; (c) THREE failed sweeps, all literal substring matches that missed a capitalisation, a paraphrase, and finally the original sentence I had written it in; (d) FIVE documents publishing two versions at once -- footers stale since v0.2.9, missed by T1's bump too, because nothing reads the footer (filed as PLZG-160); (e) two fresh FALSE state claims written into fixes for stale ones -- 'the table is the only copy in the tree', contradicted by three files, and CLAUDE.md sending operators to .env when os.environ wins. Also raised: PLZG-163, CONTRIBUTING.md step 4 instructs contributors to file into the DEPRECATED TO board, in a file the registry exempts so no gate has ever read it."
     },
     {
       "id": "T8",
