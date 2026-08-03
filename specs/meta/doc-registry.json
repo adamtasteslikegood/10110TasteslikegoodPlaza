@@ -1,6 +1,6 @@
 {
   "$comment": "The index of the 10110 TastesLike Plaza doc set. This file answers 'which document wins' in machine-readable form. Governed by specs/meta/META-SPEC.md; enforced by scripts/validate_specs.py. Every markdown file under docs/, specs/, Docs/, and the root README.md must appear in exactly one of `documents` or `exempt`.",
-  "doc_set_version": "0.2.10",
+  "doc_set_version": "0.2.11",
   "documents": [
     {
       "doc_id": "META-SPEC",
@@ -159,17 +159,17 @@
       "doc_id": "SPRINT-2-CHARTER",
       "path": "specs/sprint-2-charter.md",
       "tier": 3,
-      "authority": "derived",
+      "authority": "delivery",
       "status": "ACTIVE",
-      "note": "Executable context for PLZG Sprint 2 (board 169, sprint 44, 2026-07-30 to 2026-08-13). Locks the delivery decisions reached in the 2026-07-30 grill so they survive the session that produced them. Derives from ROADMAP and DELIVERY-COORDINATES; originates nothing."
+      "note": "Executable context for PLZG Sprint 2 (board 169, sprint 44, 2026-07-30 to 2026-08-13). Locks the delivery decisions reached in the 2026-07-30 grill so they survive the session that produced them. Derives from ROADMAP and DELIVERY-COORDINATES; originates time-boxed delivery policy under D-028 -- WIP limits, retry budgets, review gates, forecast blackouts -- which expires with the sprint and is deliberately not registered as a D-nnn."
     },
     {
       "doc_id": "SPRINT-3-CHARTER",
       "path": "specs/sprint-3-charter.md",
       "tier": 3,
-      "authority": "derived",
+      "authority": "delivery",
       "status": "ACTIVE",
-      "note": "Executable context for Sprint 3. Follows up Sprint 2's close and plans the enforcement-axis amendment (D-027) plus the delivery authority that closes open conflict 4.10 (D-028). Declares 'derived' only because 'delivery' does not exist until the sprint creates it -- see its section 7. Originates nothing yet."
+      "note": "Executable context for Sprint 3. Follows up Sprint 2's close and plans the enforcement-axis amendment (D-027) plus the delivery authority that closes open conflict 4.10 (D-028). Declared 'derived' until T7, only because 'delivery' did not exist until this sprint created it -- see its section 7. Now declares 'delivery' and originates the same class of time-boxed policy as SPRINT-2-CHARTER: budgets, gates and blackouts that expire with the sprint and are deliberately not registered as D-nnn."
     },
     {
       "doc_id": "GOVERNANCE-TREE",
