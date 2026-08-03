@@ -22,10 +22,21 @@ weakest_claim: **There is a Linear workspace, and it syncs.**
 `D-026` designates this file as the taxonomy authority for delivery
 coordinates, the same way `D-017` designates `AGENT-DIRECTORY` for the
 department taxonomy. Every other mention — `CLAUDE.md`, `README.md`,
-`QUICKSTART.md`, any guide — **cites this table rather than restating it**. The
-two Python scripts are the only other place a key legitimately appears, because
-they have to execute it; when a script and this table disagree, the script is
-the fact and this table is the bug.
+`QUICKSTART.md`, any guide — **cites this table rather than restating it**.
+**This table is now the only copy in the tree**: since `PLZG-109` both Python
+scripts read their coordinates from the environment and hold none, so there is
+no second place for a key to legitimately appear. See § *What the scripts read*
+below, which has said so since 2026-07-31.
+
+> ***Retired 2026-08-03, kept as history.*** This paragraph used to continue:
+> *"The two Python scripts are the only other place a key legitimately appears,
+> because they have to execute it; when a script and this table disagree, the
+> script is the fact and this table is the bug."* That tie-break settled a
+> disagreement that can no longer happen. **Kept rather than deleted because it
+> is *why* the coordinates were centralised** — a future hardcoded coordinate is
+> the failure it was written against, and deleting the reasoning invites someone
+> to re-add one without knowing what it cost. Retired alongside the matching
+> clause in `D-026`'s register row, under `PLZG-137`.
 
 This document exists because that rule was absent and the coordinates drifted.
 `post_to_confluence.py` published Plaza status reports into `TLG`, a sibling
