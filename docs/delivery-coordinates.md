@@ -5,7 +5,7 @@ tier: 2
 authority: taxonomy
 status: ACTIVE
 doc_set_version: 0.2.11
-last_updated: 2026-07
+last_updated: 2026-08
 owner: adamtasteslikegood
 derives_from: [PROJECT-OVERVIEW]
 decides: [D-026]
@@ -214,4 +214,4 @@ them first.
   cross-project board. Untracked and git-ignored: committing it is a disclosure
   decision, not a formatting one.
 
-*Last updated: July 2026*
+*Last updated: August 2026*
