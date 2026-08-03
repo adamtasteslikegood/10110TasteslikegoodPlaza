@@ -25,8 +25,8 @@ department taxonomy. Every other mention — `CLAUDE.md`, `README.md`,
 `QUICKSTART.md`, any guide — **cites this table rather than restating it**.
 **This table is now the only copy in the tree**: since `PLZG-109` both Python
 scripts read their coordinates from the environment and hold none, so there is
-no second place for a key to legitimately appear. See § *What the scripts read*
-below, which has said so since 2026-07-31.
+no second place for a key to legitimately appear. § *What derives from this*
+has said so since 2026-07-31.
 
 > ***Retired 2026-08-03, kept as history.*** This paragraph used to continue:
 > *"The two Python scripts are the only other place a key legitimately appears,
