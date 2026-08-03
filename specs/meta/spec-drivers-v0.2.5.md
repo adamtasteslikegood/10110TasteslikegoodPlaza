@@ -366,17 +366,18 @@ understated its standing rather than claiming one it had not been granted.
 human call about the constitution rather than something to settle inside a sprint's
 own charter. That call was made: see the resolution below.
 
-Two candidate resolutions were recorded. **Candidate 1 was adopted in v0.2.11** as `D-028`; candidate 2 was not, for the reason given in the resolution above:
+Two candidate resolutions were recorded. **Candidate 1 was adopted as `D-028` in v0.2.10**, and taken up by both charters in v0.2.11; candidate 2 was not, for the reason given in the resolution above:
 
 1. Add a `delivery` authority to the tier-3 vocabulary, licensed to originate
    time-boxed operational policy that expires with its artifact.
 2. Add an expiring decision class (`P-nnn`, "policy") alongside `D-nnn`, so the
    register can carry sprint-scoped commitments without them becoming permanent.
 
-**RESOLVED IN v0.2.11 BY AMENDMENT, NOT BY CORRECTION.** `D-028` adopts candidate
-resolution 1: `delivery` joins the `authority` vocabulary, licensed at tier 3 to
-originate time-boxed operational policy that expires with its artifact. Both sprint
-charters now declare it. `PLZG-137`.
+**RESOLVED BY AMENDMENT, NOT BY CORRECTION.** `D-028` — registered in **v0.2.10** —
+adopts candidate resolution 1: `delivery` joins the `authority` vocabulary, licensed at tier 3 to
+originate time-boxed operational policy that expires with its artifact. Both sprint charters declare it as of **v0.2.11**, which is when this conflict
+closes: the authority existed one release earlier, but nothing had taken it, so the
+gap §4.10 describes was still open. `PLZG-137`.
 
 **The reviewer was right, and the charter was not "fine all along."** That
 distinction is the whole point of closing this as an amendment. The charter was

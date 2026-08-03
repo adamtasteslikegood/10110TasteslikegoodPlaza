@@ -169,7 +169,7 @@
       "tier": 3,
       "authority": "delivery",
       "status": "ACTIVE",
-      "note": "Executable context for Sprint 3. Follows up Sprint 2's close and plans the enforcement-axis amendment (D-027) plus the delivery authority that closes open conflict 4.10 (D-028). Declares 'derived' only because 'delivery' does not exist until the sprint creates it -- see its section 7. Originates nothing yet."
+      "note": "Executable context for Sprint 3. Follows up Sprint 2's close and plans the enforcement-axis amendment (D-027) plus the delivery authority that closes open conflict 4.10 (D-028). Declared 'derived' until T7, only because 'delivery' did not exist until this sprint created it -- see its section 7. Now declares 'delivery' and originates the same class of time-boxed policy as SPRINT-2-CHARTER: budgets, gates and blackouts that expire with the sprint and are deliberately not registered as D-nnn."
     },
     {
       "doc_id": "GOVERNANCE-TREE",
