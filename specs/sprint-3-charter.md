@@ -419,9 +419,7 @@ Three things had to happen, in order: **`META-SPEC` creates the authority (`T1`)
 the schema learns to accept it (`T2`), the charters declare it (`T7`).** Collapsing
 any of those into the others is the tier confusion `D-005` cost two releases to
 unpick — and describing a tier-3 charter as *creating* an authority would be the
-same error this sprint spent `D-027` and `D-028` correcting. **Done: `T7` flipped both charters to `delivery` in
-the same change that closed §4.10**, and the frontmatter above now reads
-`authority: delivery`.
+same error this sprint spent `D-027` and `D-028` correcting.
 
 That flip happened under `T7`, in the same change that closed §4.10. Recorded
 because a reader of an earlier revision would otherwise have seen a charter
