@@ -167,7 +167,7 @@ Keep a PR to one concern.
 
 ## Atlassian coordinates
 
-**`docs/delivery-coordinates.md` is the source of truth** (`D-026`) — Jira keys, board roles, the Confluence space and parent page id, and the keys belonging to the owner's *other* repos. Do not restate a key here or in any guide; cite it. Since `PLZG-109` **neither script holds a coordinate** — both read the environment — so the table is the only copy in the tree, and the deployed value is whatever `.env` says. Two rules you need too often to look up: every PR title carries a **`PLZG-###`** key or the board never sees it, and `TO` is **deprecated** — read-only until archival, never filed into.
+**`docs/delivery-coordinates.md` is the source of truth** (`D-026`) — Jira keys, board roles, the Confluence space and parent page id, and the keys belonging to the owner's *other* repos. Do not restate a key here or in any guide; cite it. Since `PLZG-109` **neither script holds a coordinate** — both read the environment — so no script is a second source; the deployed value is the environment, then `.env`. Two rules you need too often to look up: every PR title carries a **`PLZG-###`** key or the board never sees it, and `TO` is **deprecated** — read-only until archival, never filed into.
 
 ## When you're asked to add Godot code
 

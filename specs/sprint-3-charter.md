@@ -405,12 +405,22 @@ Carried risks, both materialised in Sprint 2 rather than hypothesised:
 
 ## 7. The sequencing constraint
 
-**This charter could not declare the authority it creates.** `authority: delivery`
-did not exist until `T2` landed, so the frontmatter above declared `derived` — the
+**This charter could not declare the authority it plans.** `delivery` is created by
+`D-028`, whose registered origin is tier-0 `META-SPEC` — **not this charter.** A
+tier-3 document plans the amendment and is licensed to originate delivery policy
+under it; it cannot originate the authority itself. `T1` made that amendment and
+registered `D-028`; the frontmatter *schema* then rejected the value until `T2`
+extended the enum, so it stayed undeclarable for one more task even after the
+decision existed. The frontmatter above therefore declared `derived` — the
 conservative reading §4.10 established, understating its standing rather than
-claiming one not yet granted. **Done: `T7` flipped both charters to `delivery` in
-the same change that closed §4.10**, and the frontmatter above now reads
-`authority: delivery`.
+claiming one not yet granted.
+
+Three things had to happen, in order: **`META-SPEC` creates the authority (`T1`),
+the schema learns to accept it (`T2`), the charters declare it (`T7`).** Collapsing
+any of those into the others is the tier confusion `D-005` cost two releases to
+unpick — and describing a tier-3 charter as *creating* an authority would be the
+same error `D-028` exists to close. (`D-027` is the enforcement axis and has
+nothing to do with authority origin; only `D-028` addresses this.)
 
 That flip happened under `T7`, in the same change that closed §4.10. Recorded
 because a reader of an earlier revision would otherwise have seen a charter
