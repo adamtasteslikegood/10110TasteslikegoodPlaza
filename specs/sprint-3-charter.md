@@ -405,10 +405,17 @@ Carried risks, both materialised in Sprint 2 rather than hypothesised:
 
 ## 7. The sequencing constraint
 
-**This charter could not declare the authority it creates.** `authority: delivery`
-did not exist until `T2` landed, so the frontmatter above declared `derived` — the
-conservative reading §4.10 established, understating its standing rather than
-claiming one not yet granted. **Done: `T7` flipped both charters to `delivery` in
+**This charter could not declare the authority it creates.** `D-028` creates
+`delivery`, and `T1` registered it — but the frontmatter *schema* rejected the
+value until `T2` extended the enum, so the value was undeclarable for one more
+task even after the decision existed. The frontmatter above therefore declared
+`derived` — the conservative reading §4.10 established, understating its standing
+rather than claiming one not yet granted.
+
+Worth keeping straight, because two things had to happen in order: **`T1`
+constitutional creation, `T2` schema support.** Attributing the authority's
+existence to `T2` reads as though a schema edit could originate an authority,
+which is exactly the tier confusion `D-005` cost two releases to unpick. **Done: `T7` flipped both charters to `delivery` in
 the same change that closed §4.10**, and the frontmatter above now reads
 `authority: delivery`.
 
