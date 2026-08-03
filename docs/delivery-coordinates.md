@@ -23,9 +23,10 @@ weakest_claim: **There is a Linear workspace, and it syncs.**
 coordinates, the same way `D-017` designates `AGENT-DIRECTORY` for the
 department taxonomy. Every other mention — `CLAUDE.md`, `README.md`,
 `QUICKSTART.md`, any guide — **cites this table rather than restating it**.
-**This table is now the only copy in the tree**: since `PLZG-109` both Python
-scripts read their coordinates from the environment and hold none, so there is
-no second place for a key to legitimately appear. § *What derives from this*
+**No script is a second source any more**: since `PLZG-109` both Python scripts
+read their coordinates from the environment and hold none. Keys still *appear*
+in prose elsewhere — guides cite them, and citing is the point — but nothing
+else *originates* one, which is what `D-026` actually forbids. § *What derives from this*
 has said so since 2026-07-31.
 
 > ***Retired 2026-08-03, kept as history.*** This paragraph used to continue:
