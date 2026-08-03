@@ -89,7 +89,7 @@
       "tier": 2,
       "authority": "taxonomy",
       "status": "ACTIVE",
-      "note": "Taxonomy authority for Atlassian identifiers (D-026). The single origin of every Jira key, Confluence space and page id this repo uses. Since PLZG-109 both Python scripts read their coordinates from the environment and hold none, so this table is the only copy in the tree -- the 'scripts are the other legitimate copy' clause was retired with D-026's rationale in PLZG-137."
+      "note": "Taxonomy authority for Atlassian identifiers (D-026). The single origin of every Jira key, Confluence space and page id this repo uses. Since PLZG-109, both Python scripts read their coordinates from the environment and hold none; this table is the only copy in the tree -- the 'scripts are the other legitimate copy' clause was retired with D-026's rationale in PLZG-137."
     },
     {
       "doc_id": "ROADMAP",

@@ -405,17 +405,21 @@ Carried risks, both materialised in Sprint 2 rather than hypothesised:
 
 ## 7. The sequencing constraint
 
-**This charter could not declare the authority it creates.** `D-028` creates
-`delivery`, and `T1` registered it — but the frontmatter *schema* rejected the
-value until `T2` extended the enum, so the value was undeclarable for one more
-task even after the decision existed. The frontmatter above therefore declared
-`derived` — the conservative reading §4.10 established, understating its standing
-rather than claiming one not yet granted.
+**This charter could not declare the authority it plans.** `delivery` is created by
+`D-028`, whose registered origin is tier-0 `META-SPEC` — **not this charter.** A
+tier-3 document plans the amendment and is licensed to originate delivery policy
+under it; it cannot originate the authority itself. `T1` made that amendment and
+registered `D-028`; the frontmatter *schema* then rejected the value until `T2`
+extended the enum, so it stayed undeclarable for one more task even after the
+decision existed. The frontmatter above therefore declared `derived` — the
+conservative reading §4.10 established, understating its standing rather than
+claiming one not yet granted.
 
-Worth keeping straight, because two things had to happen in order: **`T1`
-constitutional creation, `T2` schema support.** Attributing the authority's
-existence to `T2` reads as though a schema edit could originate an authority,
-which is exactly the tier confusion `D-005` cost two releases to unpick. **Done: `T7` flipped both charters to `delivery` in
+Three things had to happen, in order: **`META-SPEC` creates the authority (`T1`),
+the schema learns to accept it (`T2`), the charters declare it (`T7`).** Collapsing
+any of those into the others is the tier confusion `D-005` cost two releases to
+unpick — and describing a tier-3 charter as *creating* an authority would be the
+same error this sprint spent `D-027` and `D-028` correcting. **Done: `T7` flipped both charters to `delivery` in
 the same change that closed §4.10**, and the frontmatter above now reads
 `authority: delivery`.
 
