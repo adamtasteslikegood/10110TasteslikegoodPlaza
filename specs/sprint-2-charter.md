@@ -2,9 +2,9 @@
 doc_id: SPRINT-2-CHARTER
 title: Sprint 2 charter — delivery decisions locked 2026-07-30
 tier: 3
-authority: derived
+authority: delivery
 status: ACTIVE
-doc_set_version: 0.2.10
+doc_set_version: 0.2.11
 last_updated: 2026-08
 owner: adamtasteslikegood
 derives_from: [ROADMAP, DELIVERY-COORDINATES, META-SPEC]

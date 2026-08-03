@@ -4,7 +4,7 @@ title: specs/ — development process index
 tier: 4
 authority: summary
 status: ACTIVE
-doc_set_version: 0.2.10
+doc_set_version: 0.2.11
 last_updated: 2026-05
 owner: adamtasteslikegood
 derives_from: [META-SPEC]

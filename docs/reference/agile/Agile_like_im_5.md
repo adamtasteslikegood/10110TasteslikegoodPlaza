@@ -4,7 +4,7 @@ title: Explain "Agile" to a 5yr old
 tier: 4
 authority: research
 status: ACTIVE
-doc_set_version: 0.2.10
+doc_set_version: 0.2.11
 last_updated: 2026-07
 owner: adamtasteslikegood
 derives_from: [AGILE-EXPLAINED]

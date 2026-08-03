@@ -2,9 +2,9 @@
 doc_id: SPRINT-3-CHARTER
 title: Sprint 3 charter — the doc set declares what is proven
 tier: 3
-authority: derived
+authority: delivery
 status: ACTIVE
-doc_set_version: 0.2.10
+doc_set_version: 0.2.11
 last_updated: 2026-08
 owner: adamtasteslikegood
 derives_from: [META-SPEC, SPEC-DRIVERS-025, SPRINT-2-CHARTER]
@@ -204,8 +204,10 @@ Adds `delivery` to the `authority` vocabulary, licensed at tier 3 to originate
 Closes open conflict §4.10, which has stood since 2026-07-30: the ladder models
 what the product is (tiers 1–2) and what order it is built in (tier 3), with no
 authority for *how work is governed while it is built*. `SPRINT-2-CHARTER`
-declares `derived` — licensed to originate nothing — while setting a WIP limit,
-retry budgets, a review gate and a forecast blackout that nothing else sets.
+**declared** `derived` — licensed to originate nothing — while setting a WIP limit,
+retry budgets, a review gate and a forecast blackout that nothing else set. Both
+charters declare `delivery` since `T7`; the past tense here is the gap `D-028`
+closed, not the current state.
 
 Chosen over §4.10's other candidate, an expiring `P-nnn` policy class, on the
 Sprint 2 evidence: of the four policies named, **only two were ever exercised** —
@@ -403,10 +405,12 @@ Carried risks, both materialised in Sprint 2 rather than hypothesised:
 
 ## 7. The sequencing constraint
 
-**This charter cannot declare the authority it creates.** `authority: delivery`
-does not exist until `T2` lands, so the frontmatter above declares `derived` —
-the conservative reading §4.10 established, understating its standing rather than
-claiming one not yet granted.
+**This charter could not declare the authority it creates.** `authority: delivery`
+did not exist until `T2` landed, so the frontmatter above declared `derived` — the
+conservative reading §4.10 established, understating its standing rather than
+claiming one not yet granted. **Done: `T7` flipped both charters to `delivery` in
+the same change that closed §4.10**, and the frontmatter above now reads
+`authority: delivery`.
 
 Flip it to `delivery` under `T7`, in the same change that closes §4.10. Recorded
 because a later reader will otherwise see a charter declaring `derived` while

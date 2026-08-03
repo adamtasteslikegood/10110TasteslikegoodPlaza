@@ -4,7 +4,7 @@ title: Spec Drivers v0.2.5 — what this doc-set version must produce
 tier: 0
 authority: constitution
 status: ACTIVE
-doc_set_version: 0.2.10
+doc_set_version: 0.2.11
 last_updated: 2026-07
 owner: adamtasteslikegood
 derives_from: [META-SPEC]
@@ -132,7 +132,7 @@ now; neither is started.
 ## 4. Open-conflict register
 
 Per [`META-SPEC.md`](META-SPEC.md) §4, conflicts are recorded rather than silently
-resolved. **Nine resolved, one open** (§4.10) as of v0.2.9. Resolved entries are kept,
+resolved. **Ten resolved, none open** as of v0.2.11 — §4.10 closed by amendment in `PLZG-137`. Resolved entries are kept,
 not deleted — the record of *how* a conflict was settled is what stops it reopening.
 
 ### 4.1 `ALIGNED-SPEC-025` §01.3 versus `STORYBOARD-W1` — **RESOLVED**
@@ -333,7 +333,7 @@ asking what the new check deliberately could not cover. Worth repeating whenever
 gate ships — the question "what does this deliberately not catch?" is where the
 next §4.9 lives.
 
-### 4.10 The ladder has no home for delivery policy — **OPEN**
+### 4.10 The ladder has no home for delivery policy — **RESOLVED**
 
 Raised 2026-07-30 by the independent PR reviewer against `SPRINT-2-CHARTER`
 (`specs/sprint-2-charter.md`), rated CRITICAL, and **not resolved in that PR.**
@@ -359,11 +359,12 @@ gets built in* (tier 3), with no authority for *how the work is governed while i
 built*. `derived` is the closest available label and it is a poor fit — the charter
 does not derive its budgets from anything, it sets them.
 
-Recorded rather than papered over, per META-SPEC §4. The charter stays `derived` and
-carries no `decides:` — the conservative reading, which understates its standing
-rather than claiming one it has not been granted. **Resolving this needs a
-META-SPEC change, not a frontmatter edit**, and that is a human call about the
-constitution rather than something to settle inside a sprint's own charter.
+Recorded rather than papered over, per META-SPEC §4. **Until v0.2.11** the charter
+stayed `derived` and carried no `decides:` — the conservative reading, which
+understated its standing rather than claiming one it had not been granted.
+**Resolving this needs a META-SPEC change, not a frontmatter edit**, and that is a
+human call about the constitution rather than something to settle inside a sprint's
+own charter. That call was made: see the resolution below.
 
 Two candidate resolutions, neither adopted:
 
@@ -372,9 +373,35 @@ Two candidate resolutions, neither adopted:
 2. Add an expiring decision class (`P-nnn`, "policy") alongside `D-nnn`, so the
    register can carry sprint-scoped commitments without them becoming permanent.
 
-Until then, treat the reviewer's finding as **standing and correct**. It should keep
-being raised on every sprint charter, and that recurrence is the signal that the
-constitution — not the charter — is what needs the edit.
+**RESOLVED IN v0.2.11 BY AMENDMENT, NOT BY CORRECTION.** `D-028` adopts candidate
+resolution 1: `delivery` joins the `authority` vocabulary, licensed at tier 3 to
+originate time-boxed operational policy that expires with its artifact. Both sprint
+charters now declare it. `PLZG-137`.
+
+**The reviewer was right, and the charter was not "fine all along."** That
+distinction is the whole point of closing this as an amendment. The charter was
+setting policy it had no licence to set; the ladder is what changed, and only then
+did the charter become entitled. Recording it the other way round — as though the
+finding had been a misreading — would erase a correct CRITICAL finding and teach
+the next reviewer that raising this shape is noise.
+
+**Retroactive effect, stated plainly because it is the useful part:** under
+`delivery`, `SPRINT-2-CHARTER` is now entitled to have set its WIP limit, retry and
+iteration budgets, review gate and forecast blackout. Those were the right calls
+made without standing. Nothing about them changes; what changes is that the ladder
+can now say so.
+
+**Candidate 2 was not adopted.** `D-028`'s rationale records why: of the four
+policies Sprint 2 named, only two were ever exercised — the budgets never bound at
+one attempt per task, and WIP peaked at 1 against a limit of 3. Permanent ids and
+expiry machinery for parameters that expire unexercised is a register of things
+that did not happen. `delivery` reuses machinery that already exists: one enum
+value, enforced by the same `x-may-originate` check that closed §4.8.
+
+**The recurrence signal worked.** This section said the finding "should keep being
+raised on every sprint charter, and that recurrence is the signal that the
+constitution — not the charter — is what needs the edit." It was raised again in
+Sprint 3, and the constitution is what was edited.
 
 ## 5. Exit criteria to v1.0.0
 
