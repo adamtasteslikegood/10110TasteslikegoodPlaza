@@ -69,6 +69,20 @@ When you touch design, add it under [`docs/`](docs/README.md). When you touch pr
 
 After a notable change, add an entry to [`CHANGELOG.md`](CHANGELOG.md) under `## [Unreleased]`.
 
+**One entry per shipped change, not per PR** — owner ruling, 2026-08-08, settling
+issue #58. A change delivered across several PRs gets one entry describing the change;
+a single PR carrying two unrelated changes gets two. So a PR with no `CHANGELOG` diff
+is not automatically a defect: check whether an existing `[Unreleased]` entry already
+covers what it shipped, and cite that entry rather than filing. Six tickets were filed
+against this rule before it was settled, three of which were already covered by an
+entry sitting directly above where the new one would have gone.
+
+The test is whether a reader of `[Unreleased]` would learn something new, not whether
+each PR number appears. Two exceptions worth naming, both from that batch: **adding a
+CI job and making it a required check are separate changes**, because one is advisory
+and the other blocks every merge; and a change to what a gate **fails on** is always
+notable, however small the diff.
+
 ## Department / color mapping
 
 The nine-department color scheme is canonical in two places:
