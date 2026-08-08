@@ -69,18 +69,25 @@ The Sprint 3 amendment, end to end. `D-027` and `D-028` are registered against
   being checkable, and a gate naming a nonexistent job is equally false on an
   `intended` document. Scoping both halves together left a hole nothing reported.
 - **`tests/spec_enforcement_matrix.sh` and a `Spec Enforcement Matrix` CI job — 34
-  assertions, every one asserting the validator *fails* where it should.** Checks
-  1–5 can all pass vacuously, which is how `tests/smoke_test.tscn` passed until
-  v0.2.8. It builds its own fixtures and needs no network, after the
-  `check_sync_matrix.sh` precedent.
+  cases: 31 assert the validator *fails* where it should, and 3 assert it *passes*
+  where it should.** Checks 1–5 can all pass vacuously, which is how
+  `tests/smoke_test.tscn` passed until v0.2.8 — so the failure cases are the point.
+  The three success cases are what stop the gate becoming vacuous in the other
+  direction: an unmodified three-document set, a fresh snapshot, and an **honest
+  zero-WIP snapshot**. Without that baseline, a validator that rejected everything
+  would score 31 out of 31. It builds its own fixtures and needs no network, after
+  the `check_sync_matrix.sh` precedent.
 - **All 24 governed documents migrated.** Measured outcome: **22 `asserted`, 2
   `n/a`, and `enforced` empty** — as predicted, and the emptiness *is* the finding
   rather than a defect. *No governed document in this set is fully machine-backed*
   was true before this sprint and invisible; it is now greppable.
 - **Two `doc_set_version` bumps in one sprint, 0.2.10 and 0.2.11** — correct, not a
   mistake. `META-SPEC` §8 item 4 requires the bump in the same commit as the locked
-  decision that caused it; two unrelated decisions changed, and coupling them into
-  one version would force them to ship together for no reason.
+  decision that caused it, and this sprint carried **two independent
+  decision-change sets**: `D-027` and `D-028` registered under `T1`, then `D-026`'s
+  retired clause corrected under `T7`. Three locked decisions, two unrelated
+  events — coupling them into one version would force them to ship together for no
+  reason.
 - `CLAUDE.md`'s plugin cache path corrected to carry the marketplace level —
   `cache/<marketplace>/<plugin>/<version>/` — absorbed into the migration because
   the `weakest_claim` audit read that section anyway (`PLZG-118`).
