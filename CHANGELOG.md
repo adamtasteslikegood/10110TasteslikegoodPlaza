@@ -17,6 +17,51 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
 
+### Changed — `Spec Enforcement Matrix` is a required check, not just a job (`PLZG-155`)
+
+- Ruleset `18798438` on `dev` gained a `required_status_checks` rule naming **`Spec
+  Enforcement Matrix`**, so it now blocks every merge rather than merely reporting.
+  Verified live: `gh api …/rulesets/18798438` lists it as the required context. The
+  job itself, and the 34-case matrix behind it, are described in the amendment entry
+  below — this records the separate change of making it mandatory, which is a
+  repo-wide change to merge requirements and outlives any one sprint.
+- Adding a gate and *requiring* a gate are different events with different blast
+  radii, which is why they are two bullets. A job that is present but not required
+  is advisory, and this repo already has one of those (`claude-review.yml`).
+
+### Fixed — a definition-of-done gate that was green on a false claim (`PLZG-158`)
+
+- `validate_delivery_coordinates.py` clause (b) **exited 0 reporting `wip=1` while
+  the live board was 0**, reading `data/plzg-flow-snapshot.json` frozen at 14:20 on
+  2026-07-30 and parsing `as_of` only to print it. With no staleness check it would
+  still have passed in 2027 reporting a July 2026 board. It now fails when the
+  snapshot predates the active sprint window, forcing a re-query rather than a green
+  light.
+- **Clause (b) no longer requires `wip > 0`** — owner ruling, 2026-08-02. A gate that
+  requires someone to be mid-task is a gate that rewards a fake transition. `wip` may
+  be any integer including 0; what must hold is that `work_item_age` **agrees** with
+  the count it claims. **The mismatch is the failure, not the honest zero.**
+- The gate written to prove *"every doc claim about state matches the system that owns
+  it"* was itself a doc claim that no longer matched. The snapshot's own `$comment`
+  said it correctly — *"THIS IS A SNAPSHOT, NOT A LIVE READING"* — and the gate
+  asserted it anyway. The file was honest; the gate was not.
+
+### Changed — `post_to_confluence.py` takes its target from the environment (`PLZG-141`)
+
+- The parent page id was **hard-coded**; it now comes from
+  `ATLASSIAN_CONFLUENCE_PARENT_PAGE_ID`, and the Confluence space is resolved from
+  that page rather than named separately. **There is no fallback** — an unreachable
+  parent exits 1. The removed fallback used to write into a sibling product's space,
+  which is how reports ended up there.
+- **`./.env` is no longer required, and the real environment wins over it.** The
+  loader reads `os.environ` first and uses `.env` only to fill gaps, matching
+  `generate_report.py`; a missing `.env` is not fatal. It also accepts either token
+  variable name, because `.env` carries `ATLASSIAN_API_TOKEN_BASE64` while the script
+  wanted a different name — a `KeyError` against a correctly populated file.
+- Missing variables are now **named** on exit 1 instead of raising `KeyError`. Anyone
+  running it without the new variable gets a different, correct error than before,
+  which is why this is a behaviour change and not a refactor.
+
 ### Added — every governed document declares whether its claims are proven (`PLZG-138`)
 
 The Sprint 3 amendment, end to end. `D-027` and `D-028` are registered against
