@@ -11,11 +11,88 @@ section at release time. PR references in parentheses.
 **Two version axes, deliberately separate.** This file and the tags track the
 **application**: the 3D era was `0.0.x`, and the 2.5D line is `0.1.y`. The
 `doc_set_version:` in every governed document's frontmatter is the **document
-set's** number and is unrelated — it reached `0.2.9` on its own axis. Prose that
+set's** number and is unrelated — it reached `0.2.11` on its own axis. Prose that
 cites `v0.2.7` or `v0.2.8` as software releases is conflating the two; those were
 spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
+
+### Added — every governed document declares whether its claims are proven (`PLZG-138`)
+
+The Sprint 3 amendment, end to end. `D-027` and `D-028` are registered against
+`META-SPEC` and `LOCKED`; the charter's own entry landed separately under
+`PLZG-131` and is not restated here.
+
+- **`D-027`, the `enforcement` axis.** Every governed document declares
+  `enforcement` — `enforced` · `asserted` · `intended` · `n/a` — alongside `tier`
+  and `authority`. Per document, valued at its **weakest state claim**. `tier` says
+  which document wins and `authority` says what it may decide; **neither says
+  whether what a document asserts about the world is still true**, which is the gap
+  this set's defects keep falling into. Scoped to state claims only — applying
+  weakest-claim to decisions would stamp `intended` on `STORYBOARD-W1` and the
+  decision register, the two documents that define canon.
+- **A snapshot gate is not enforcement.** `gates:` entries are typed `live` (the
+  gate re-derives from the system that owns the fact) or `snapshot` (it re-reads
+  committed data); `enforced` requires at least one `live` gate and snapshot-only
+  caps at `asserted`. This falls out of the definitions rather than being a rule
+  bolted on: `asserted` already means *"a human verified it at a stated date,
+  nothing re-checks"*, which is exactly what committed data is. Without it the axis
+  would have stamped `enforced` — the highest tier of trust — on the frozen-snapshot
+  defect that prompted the whole amendment.
+- **`D-028`, the `delivery` authority.** Added to the `authority` vocabulary,
+  licensed at tier 3 to originate **time-boxed operational policy that expires with
+  its artifact** — WIP limits, retry budgets, review gates, forecast blackouts. Both
+  sprint charters now declare `authority: delivery`, which makes Sprint 2
+  **retroactively entitled** to the budgets it set.
+- **Open conflict §4.10 is closed by amendment, not by correction** — the reviewer
+  was right and the charter was not always fine. The ladder modelled what the
+  product is (tiers 1–2) and what order it is built in (tier 3), with no authority
+  for *how work is governed while it is built*, so charters were setting budgets
+  nothing else set while declaring `derived` — licensed to originate nothing.
+  `spec-drivers-v0.2.5.md` §4 now reads **ten resolved, none open**.
+- **`spec-frontmatter.schema.json`** gains the `enforcement` enum, `weakest_claim`,
+  and `authority` += `delivery` with `x-may-originate: true`. `gates` are
+  **`job:type` strings** — `[Validate Specs:live]` — deliberately **not**
+  `{job, type}` objects: `parse_frontmatter()` accepts only `key: scalar` and
+  `key: [a, b]`, so the object form would **silently misparse** to
+  `['{job: X', 'type: live}']` rather than failing.
+- **`validate_specs.py` gains five checks**, reading permitted values *from the
+  schema* rather than restating them — the discipline that kept the §4.8 authority
+  gate from drifting from its contract. Absence of `enforcement` fails, with no
+  default. `enforced`/`asserted` must declare gates; `enforced` needs a `live` one;
+  `n/a` carries a registry reason so claiming it is visible rather than silent; and
+  `asserted`/`intended` carry a `weakest_claim` **quoted verbatim from the
+  document**, which is what makes a value falsifiable in ten seconds.
+- **The job-existence half applies to every enforcement value**, widened in review:
+  *requiring* gates is about what a value claims, so it applies only to values
+  claiming CI backing — but requiring a named job to **exist** is about the claim
+  being checkable, and a gate naming a nonexistent job is equally false on an
+  `intended` document. Scoping both halves together left a hole nothing reported.
+- **`tests/spec_enforcement_matrix.sh` and a `Spec Enforcement Matrix` CI job — 34
+  assertions, every one asserting the validator *fails* where it should.** Checks
+  1–5 can all pass vacuously, which is how `tests/smoke_test.tscn` passed until
+  v0.2.8. It builds its own fixtures and needs no network, after the
+  `check_sync_matrix.sh` precedent.
+- **All 24 governed documents migrated.** Measured outcome: **22 `asserted`, 2
+  `n/a`, and `enforced` empty** — as predicted, and the emptiness *is* the finding
+  rather than a defect. *No governed document in this set is fully machine-backed*
+  was true before this sprint and invisible; it is now greppable.
+- **Two `doc_set_version` bumps in one sprint, 0.2.10 and 0.2.11** — correct, not a
+  mistake. `META-SPEC` §8 item 4 requires the bump in the same commit as the locked
+  decision that caused it; two unrelated decisions changed, and coupling them into
+  one version would force them to ship together for no reason.
+- `CLAUDE.md`'s plugin cache path corrected to carry the marketplace level —
+  `cache/<marketplace>/<plugin>/<version>/` — absorbed into the migration because
+  the `weakest_claim` audit read that section anyway (`PLZG-118`).
+
+**What this deliberately cannot catch.** The validator proves a `weakest_claim`
+quote is **real**, never that it is the **weakest** — a document may quote a
+trivially true sentence and self-report `asserted`. This is the third appearance of
+the same shape of limit: `authority` cannot check subject matter (§4.8),
+`constitution` cannot check whether a decision is product-shaped (§4.9), and now
+`enforcement` cannot check whether a claim is the weakest. Each was found by a human
+asking what the new gate could not see. **A green build here is not evidence the
+migration was done well.**
 
 ### Added — the machine-readable Sprint 3 loop plan (`PLZG-145`)
 
