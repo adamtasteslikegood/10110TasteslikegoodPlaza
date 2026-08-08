@@ -69,19 +69,28 @@ When you touch design, add it under [`docs/`](docs/README.md). When you touch pr
 
 After a notable change, add an entry to [`CHANGELOG.md`](CHANGELOG.md) under `## [Unreleased]`.
 
-**One entry per shipped change, not per PR** — owner ruling, 2026-08-08, settling
-issue #58. A change delivered across several PRs gets one entry describing the change;
-a single PR carrying two unrelated changes gets two. So a PR with no `CHANGELOG` diff
-is not automatically a defect: check whether an existing `[Unreleased]` entry already
-covers what it shipped, and cite that entry rather than filing. Six tickets were filed
-against this rule before it was settled, three of which were already covered by an
-entry sitting directly above where the new one would have gone.
+**One entry per shipped change, not per PR** — owner ruling, 2026-08-08. A change
+delivered across several PRs gets one entry describing the change; a single PR carrying
+two unrelated changes gets two. So a PR with no `CHANGELOG` diff is not automatically a
+defect: check whether an existing `[Unreleased]` entry already covers what it shipped,
+and cite that entry rather than filing. Six tickets were filed against this rule before
+it was settled; **three of them — `PLZG-150`, `152`, `154` — were already covered,
+before any new entry was written**, by a single sprint-level entry sitting directly
+above where the new ones would have gone.
 
 The test is whether a reader of `[Unreleased]` would learn something new, not whether
 each PR number appears. Two exceptions worth naming, both from that batch: **adding a
 CI job and making it a required check are separate changes**, because one is advisory
 and the other blocks every merge; and a change to what a gate **fails on** is always
 notable, however small the diff.
+
+**This does not settle issue #58, which asks a different question** — whether
+*plan-only* documents (charters, loop plans, tier-4 reference material) are exempt from
+the convention until the work they plan lands something. Granularity and exemption are
+independent: the ruling above says how many entries a change gets, not whether a
+plan-only change is one. #58 stays open and is the owner's to settle; until it is, the
+conservative reading applies, as it did for PR #85 — `CONTRIBUTING.md` says notable
+changes get an entry, so plan-only documents get one.
 
 ## Department / color mapping
 
