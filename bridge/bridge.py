@@ -11,6 +11,7 @@ D-015: ws://localhost:8765.
 import asyncio
 import json
 import os
+import re
 import sys
 
 import websockets
@@ -22,6 +23,8 @@ DEFAULT_MODEL = "claude-opus-4-6"
 DEFAULT_TIMEOUT = 60
 DEFAULT_MAX_TOKENS = 4096
 
+_VALID_AGENT_ID = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_-]*$")
+
 
 def _build_client():
     return Anthropic()
@@ -30,8 +33,8 @@ def _build_client():
 def _load_agent_definition(agent_id):
     """Load agent definition from the bridge agent store (D-029).
 
-    T3b (bridge/agents.py) will provide the real loader. Until then, fall
-    back to a generic persona so the bridge is testable standalone.
+    T3b (bridge/agents.py) will provide the real loader. Until then,
+    reads .md files directly from bridge/agents/ if present.
     """
     try:
         from bridge.agents import load_agent
@@ -42,8 +45,11 @@ def _load_agent_definition(agent_id):
 
     agents_dir = os.path.join(os.path.dirname(__file__), "agents")
     agent_path = os.path.join(agents_dir, f"{agent_id}.md")
-    if os.path.isfile(agent_path):
-        with open(agent_path, encoding="utf-8") as f:
+    resolved = os.path.realpath(agent_path)
+    if not resolved.startswith(os.path.realpath(agents_dir)):
+        return None
+    if os.path.isfile(resolved):
+        with open(resolved, encoding="utf-8") as f:
             return f.read()
 
     return None
@@ -71,38 +77,50 @@ def _make_success(agent_id, task, output):
 
 def handle_request(client, request):
     """Process a single bridge request. Returns a response dict per PROTOCOL.md."""
+    if not isinstance(request, dict):
+        return _make_error("", "", "invalid_request", "Request must be a JSON object")
+
     agent_id = request.get("agent_id", "")
     task = request.get("task", "")
+
+    if not isinstance(agent_id, str) or not isinstance(task, str):
+        return _make_error(
+            "", "", "invalid_request", "agent_id and task must be strings"
+        )
 
     if not agent_id or not task:
         return _make_error(
             agent_id, task, "invalid_request", "agent_id and task are required"
         )
 
+    if not _VALID_AGENT_ID.match(agent_id):
+        return _make_error(
+            agent_id, task, "invalid_request", "agent_id contains invalid characters"
+        )
+
     definition = _load_agent_definition(agent_id)
     if definition is None:
         return _make_error(agent_id, task, "not_found", f"No agent '{agent_id}'")
 
-    model = request.get("model", DEFAULT_MODEL)
-    timeout = request.get("timeout", DEFAULT_TIMEOUT)
-    max_tokens = request.get("max_tokens", DEFAULT_MAX_TOKENS)
-
     try:
         response = client.messages.create(
-            model=model,
-            max_tokens=max_tokens,
+            model=DEFAULT_MODEL,
+            max_tokens=DEFAULT_MAX_TOKENS,
             system=definition,
             messages=[{"role": "user", "content": task}],
-            timeout=timeout,
+            timeout=DEFAULT_TIMEOUT,
         )
-        output = response.content[0].text if response.content else ""
+        parts = [b.text for b in response.content if hasattr(b, "text")]
+        output = "\n\n".join(parts) if parts else ""
         return _make_success(agent_id, task, output)
     except Exception as exc:
         exc_name = type(exc).__name__
         if "auth" in exc_name.lower() or "authentication" in str(exc).lower():
             return _make_error(agent_id, task, "auth", str(exc))
         if "timeout" in exc_name.lower() or "timed out" in str(exc).lower():
-            return _make_error(agent_id, task, "timeout", f"Timed out after {timeout}s")
+            return _make_error(
+                agent_id, task, "timeout", f"Timed out after {DEFAULT_TIMEOUT}s"
+            )
         return _make_error(agent_id, task, "api_error", str(exc))
 
 
