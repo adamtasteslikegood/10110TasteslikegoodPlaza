@@ -127,7 +127,7 @@ Adam owns and reviews all tasks. Three review layers:
 
 | # | Failure mode | Likelihood | Mitigation |
 |---|---|---|---|
-| R1 | Auth doesn't work outside CI. `setup-token` tested in GitHub Actions but never in a local Python bridge. | Medium | T2 is standalone with manual verify. Test `Anthropic()` resolution before wiring. |
+| R1 | Auth doesn't work locally. `ANTHROPIC_API_KEY` untested in a local Python bridge context. | Medium | T2 is standalone with manual verify. Test `Anthropic()` resolution before wiring. |
 | R2 | D-005 boundary violation. Bridge learns about Godot. | Medium | Swap test in every review. `/codex` adversarial adds second eyes. |
 | R3 | Submodule empty — agent loader fails. | ~~High~~ Low | **Mitigated by D-029.** Bridge reads from its own store, not the submodule. |
 | R4 | WebSocket stability. Version/protocol mismatches. | Low-Medium | `wscat`/`websocat` test before Godot integration. D-006 timeout protection. |

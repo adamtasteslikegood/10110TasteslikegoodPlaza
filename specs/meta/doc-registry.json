@@ -177,7 +177,7 @@
       "tier": 3,
       "authority": "delivery",
       "status": "ACTIVE",
-      "note": "Executable context for Sprint 4. Delivers M7 (Python bridge with Claude SDK) and M8 (first live agent output in-world). Registers D-029 (bridge agent store). Bridge uses anthropic Python SDK instead of subprocess CLI; auth via setup-token / ANTHROPIC_API_KEY."
+      "note": "Executable context for Sprint 4. Delivers M7 (Python bridge with Claude SDK) and M8 (first live agent output in-world). Registers D-029 (bridge agent store). Bridge uses anthropic Python SDK instead of subprocess CLI; auth via ANTHROPIC_API_KEY."
     },
     {
       "doc_id": "GOVERNANCE-TREE",
