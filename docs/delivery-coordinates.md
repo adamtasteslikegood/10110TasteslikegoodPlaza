@@ -139,39 +139,67 @@ them still syncs.
 
 ### Pull requests drive status, and no longer drive `Done`
 
-Configured by the owner on 2026-08-08, in **both** trackers — Linear rules on both
-teams, and a Jira automation in this project:
+Configured by the owner across 2026-08-08/09 — Linear rules on both teams, the old Jira
+merge rule disabled, and **two new Jira automations: one on branch creation, one on PR
+creation**, each moving `To Do` items to `In Progress`.
 
-| GitHub event | Intended status | Observed 2026-08-09 |
+| GitHub event | Intended status | Verified 2026-08-10 |
 |---|---|---|
-| PR opened, **including draft** | `In Progress` | **did not fire** — see below |
+| **Branch** created carrying the key | `In Progress` | **works, and correctly scoped** |
+| PR opened | `In Progress` | works, but **over-matches** — see below |
 | Ready to merge / review requested | `In Review` | not yet tested |
-| PR merged | **nothing** — `Done` is now a human transition | holds |
+| PR merged | **nothing** — `Done` is a human transition | holds |
 
-**The `In Progress` half is unverified, and this table says so rather than asserting
-it.** Tested on PR #145 against `PLZG-164`: `GitHub for Jira` linked the open PR
-correctly — `/rest/dev-status/latest/issue/summary` reported
-`pullrequest count=1 state=OPEN` — but the issue stayed `To Do` in Jira and its Linear
-counterpart `OFFICE-90` stayed `Todo` with `startedAt: null`. The linkage works; the
-transition did not happen. The `In Progress` transition is available on the workflow
-(`id 21`, global), so a missing transition is not the cause.
+**Tested deliberately, not inferred.** `PLZG-129` was fixed on branch
+`fix/PLZG-129-sprint-2-gate-resolver`, whose *name* carries only `PLZG-129` while its
+*commit body* cites `PLZG-118` three times and `PLZG-117` once. Both `PLZG-129` and
+`PLZG-118` were `To Do` before the push.
 
-Two candidate causes, and the check that separates them:
+**The branch rule is immune to prose mentions, and the dev-info API shows why:**
 
-1. **The Jira rule is absent, disabled, or scoped differently.** Jira automation keeps
-   an audit log per rule showing every execution and every skipped trigger; that log is
-   the definitive answer and lives in **Project settings → Automation**.
-2. **Linear's rules can no longer match this repo's PRs at all.** This is the more
-   interesting possibility and it follows from the rename below: Linear now matches
-   `OFFICE-nn`, while `.claude/pr-workflow.md` requires every PR title to carry a
-   **`PLZG-###`** key so the Jira board sees it. PR #145's title and branch both name
-   `PLZG-164` and neither contains an `OFFICE` key, so a Linear-side rule had nothing
-   to match. **If the `In Progress` and `In Review` rules live on the Linear side, they
-   are now structurally unable to fire for any PR that follows this repo's convention.**
+| Issue | `pullrequest` links | `branch` links | Moved on push? |
+|---|---|---|---|
+| `PLZG-129` | 3 | **1** | yes, within 10s |
+| `PLZG-118` | 2 | **0** | no |
 
-That second possibility matters more than a missing status: `started` timestamps are
-what the §1.3 forecast blackout needs, and a rule that silently stops matching produces
-exactly the appearance of working — no error, no transition, no data.
+Only a key in the **branch name** produces a `branch` link. Mentions in commit messages
+and PR bodies produce `pullrequest` and `commit` links instead. So the branch trigger
+cannot be fooled by a citation — the failure mode that made the old merge rule close
+eight tickets wrongly.
+
+**The PR-creation rule can be, and was.** Opening PR #146 moved `PLZG-118` to
+`In Progress` although that PR does not touch it; it was merely cited. Stable across
+four polls over 60 seconds, so not transient. Reverted by hand.
+
+**Why that is worse than it sounds.** The blast radius is far smaller than the old rule
+— `In Progress` is not `Done`, and nothing is falsely reported complete — but the damage
+lands exactly on what these rules exist to produce. A false `In Progress` inflates WIP,
+one of the Kanban Guide's four mandatory measures and the quantity
+`validate_delivery_coordinates.py` clause (b) requires to agree with `work_item_age`. It
+also stamps a false `started` timestamp, the input to cycle time and therefore to the
+§1.3 forecast blackout. **The mechanism meant to make flow data trustworthy currently
+pollutes it.**
+
+**The fix is small, and the branch rule is the reason.** Every PR here is preceded by a
+branch push carrying the key, because `.claude/pr-workflow.md` requires the key in both
+branch name and title. So the branch rule alone already achieves the intent, and the PR
+rule is both redundant and the leaky one. Either disable the PR-creation rule, or
+condition it on the key appearing in `{{pullRequest.title}}` or `{{branch.name}}` rather
+than merely being linked.
+
+**No retroactive firing**, which is why an earlier revision of this section recorded the
+`In Progress` half as *"did not fire"*. It was tested on PR #145, whose branch and PR
+events **predate the rules** — so nothing was wrong with the rules, and nothing was
+wrong with the observation either. Kept as a note because the trap is a general one:
+*an automation cannot be tested against an event that happened before it existed*, and
+reading that null result as a broken rule would have sent someone to debug a rule that
+works.
+
+**One consequence of the `OFFICE` rename that this test settles.** Linear now matches
+`OFFICE-nn`, while every PR title here carries `PLZG-###` so the Jira board sees it. A
+Linear-side PR rule therefore has nothing to match on any conventional PR in this repo —
+harmless while Jira drives status and Linear mirrors it, but it means the Linear rules
+are effectively inert here rather than redundant backups.
 
 **What it replaced, and why.** Merging a PR used to transition every referenced
 issue to `Done`. `GitHub for Jira` writes development-info links onto *every*
@@ -196,12 +224,12 @@ origin and Linear the mirror, even though rules existed in both. The decisive ch
 is structural, though, not chronological: the keys cited in those PRs do not exist
 in Linear at all, so Linear had nothing to match on — see the prefix warning below.
 
-**Consequence being aimed at, once the `In Progress` half works.** A PR that moves its
-issue to `In Progress` on open gives the work a real `started` timestamp without anyone
+**The consequence this buys, now that the branch half is verified.** A branch push moves
+its issue to `In Progress`, so work acquires a real `started` timestamp without anyone
 remembering to set one. Sprint 3 produced only four such items, all transitioned by
-hand, which is why charter §1.3's forecast blackout could not lift. This is the
-mechanism that would close that gap by construction rather than by discipline — which
-is why the unverified half above is worth chasing rather than assuming.
+hand, which is why charter §1.3's forecast blackout could not lift. From Sprint 4 the
+timestamps arrive by construction rather than by discipline — **provided the PR rule is
+scoped, since a false `In Progress` corrupts the same measure it feeds.**
 
 ### Linear is `OFFICE`; it used to be `PLZG`, and that collision is why
 
