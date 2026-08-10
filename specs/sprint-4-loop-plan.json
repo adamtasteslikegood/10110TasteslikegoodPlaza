@@ -5,7 +5,7 @@
     "max_attempts_per_task": 3,
     "max_loop_iterations": 12
   },
-  "iteration": 0,
+  "iteration": 1,
   "tasks": [
     {
       "id": "T0",
@@ -16,9 +16,9 @@
       "acceptance": {
         "cmd": "scripts/check_sync.sh --strict"
       },
-      "status": "todo",
-      "evidence": "",
-      "attempts": 0,
+      "status": "done",
+      "evidence": "Run on dev at 44a920c: 'check_sync: dev is in sync with origin/dev (ahead 0, behind 0)', exit 0. SessionStart hook verified.",
+      "attempts": 1,
       "blocks": ["T1"],
       "note": "Blocking precondition, exempt from the attempt cap. No Jira ticket: it is a precondition the SessionStart hook already runs."
     },
@@ -32,12 +32,12 @@
       "acceptance": {
         "cmd": "python3 scripts/validate_specs.py && test -f specs/sprint-4-charter.md && test -f specs/sprint-4-loop-plan.json"
       },
-      "status": "todo",
-      "evidence": "",
-      "attempts": 0,
+      "status": "done",
+      "evidence": "Acceptance run ON dev at 44a920c: 'python3 scripts/validate_specs.py' -> 'Spec validation passed: 25 governed document(s), doc set v0.2.12.', exit 0; 'test -f specs/sprint-4-charter.md' exit 0; 'test -f specs/sprint-4-loop-plan.json' exit 0. Charter exists, loop plan exists, D-029 registered and LOCKED in decision-register.md (line 74), Jira sprint 48 created with 8 tickets PLZG-170 through PLZG-177 all To Do. Eng review completed (plan-eng-review, 5 issues, all resolved) with Codex outside voice (17 findings, 3 cross-model tensions resolved). Model router scripts committed as 44a920c (separate from charter, for Claude Code model routing not bridge).",
+      "attempts": 1,
       "depends_on": ["T0"],
       "blocks": ["T2", "T3a", "T3b", "T4"],
-      "note": "Charter, loop plan, and D-029 registration in one PR. Jira sprint 48 created on PLZG board 169 (company-managed Scrum). D-029: Bridge agent store — bridge maintains its own copy of agent definitions, decoupled from the submodule at runtime. Origin: docs/designs/platform-decisions.md."
+      "note": "Charter, loop plan, and D-029 registration in one PR. Jira sprint 48 created on PLZG board 169 (company-managed Scrum). D-029: Bridge agent store — bridge maintains its own copy of agent definitions, decoupled from the submodule at runtime. Origin: docs/designs/platform-decisions.md. ENG REVIEW DECISIONS (2026-08-10): (D3) SDK-only with OAuth token, no subprocess fallback; (D4) blocking sync call accepted for single-client bridge; (D5) bridge/__init__.py added to T2 scope; (D6/D9) CDM as bridge/PROTOCOL.md implementation reference, not governed doc, per D-014; (D7) basic unit tests for agents.py only; (D8) smoke test stays scene-level, live proof is manual demo; (D10) prompt-based personas, not full agent behavior -- agent .md as system prompts is sufficient for M8 proof of concept."
     },
     {
       "id": "T2",
