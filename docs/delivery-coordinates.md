@@ -139,14 +139,39 @@ them still syncs.
 
 ### Pull requests drive status, and no longer drive `Done`
 
-Set by the owner on 2026-08-08, in **both** trackers — Linear rules on both teams,
-and a Jira automation in this project:
+Configured by the owner on 2026-08-08, in **both** trackers — Linear rules on both
+teams, and a Jira automation in this project:
 
-| GitHub event | Resulting status |
-|---|---|
-| PR opened, **including draft** | `In Progress` |
-| Ready to merge / review requested | `In Review` |
-| PR merged | **nothing** — `Done` is now a human transition |
+| GitHub event | Intended status | Observed 2026-08-09 |
+|---|---|---|
+| PR opened, **including draft** | `In Progress` | **did not fire** — see below |
+| Ready to merge / review requested | `In Review` | not yet tested |
+| PR merged | **nothing** — `Done` is now a human transition | holds |
+
+**The `In Progress` half is unverified, and this table says so rather than asserting
+it.** Tested on PR #145 against `PLZG-164`: `GitHub for Jira` linked the open PR
+correctly — `/rest/dev-status/latest/issue/summary` reported
+`pullrequest count=1 state=OPEN` — but the issue stayed `To Do` in Jira and its Linear
+counterpart `OFFICE-90` stayed `Todo` with `startedAt: null`. The linkage works; the
+transition did not happen. The `In Progress` transition is available on the workflow
+(`id 21`, global), so a missing transition is not the cause.
+
+Two candidate causes, and the check that separates them:
+
+1. **The Jira rule is absent, disabled, or scoped differently.** Jira automation keeps
+   an audit log per rule showing every execution and every skipped trigger; that log is
+   the definitive answer and lives in **Project settings → Automation**.
+2. **Linear's rules can no longer match this repo's PRs at all.** This is the more
+   interesting possibility and it follows from the rename below: Linear now matches
+   `OFFICE-nn`, while `.claude/pr-workflow.md` requires every PR title to carry a
+   **`PLZG-###`** key so the Jira board sees it. PR #145's title and branch both name
+   `PLZG-164` and neither contains an `OFFICE` key, so a Linear-side rule had nothing
+   to match. **If the `In Progress` and `In Review` rules live on the Linear side, they
+   are now structurally unable to fire for any PR that follows this repo's convention.**
+
+That second possibility matters more than a missing status: `started` timestamps are
+what the §1.3 forecast blackout needs, and a rule that silently stops matching produces
+exactly the appearance of working — no error, no transition, no data.
 
 **What it replaced, and why.** Merging a PR used to transition every referenced
 issue to `Done`. `GitHub for Jira` writes development-info links onto *every*
@@ -171,11 +196,12 @@ origin and Linear the mirror, even though rules existed in both. The decisive ch
 is structural, though, not chronological: the keys cited in those PRs do not exist
 in Linear at all, so Linear had nothing to match on — see the prefix warning below.
 
-**Consequence worth planning around.** Because a PR now moves its issue to
-`In Progress` on open, work done through a PR acquires a real `started` timestamp
-without anyone remembering to set one. Sprint 3 produced only four such items, all
-transitioned by hand, which is why charter §1.3's forecast blackout could not lift.
-This closes that gap mechanically rather than by discipline.
+**Consequence being aimed at, once the `In Progress` half works.** A PR that moves its
+issue to `In Progress` on open gives the work a real `started` timestamp without anyone
+remembering to set one. Sprint 3 produced only four such items, all transitioned by
+hand, which is why charter §1.3's forecast blackout could not lift. This is the
+mechanism that would close that gap by construction rather than by discipline — which
+is why the unverified half above is worth chasing rather than assuming.
 
 ### Linear is `OFFICE`; it used to be `PLZG`, and that collision is why
 
