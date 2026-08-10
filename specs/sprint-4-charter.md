@@ -10,7 +10,7 @@ owner: adamtasteslikegood
 derives_from: [META-SPEC, SPEC-DRIVERS-025, SPRINT-3-CHARTER]
 enforcement: asserted
 gates: [Validate Specs:live]
-weakest_claim: No open Jira sprint exists yet for Sprint 4
+weakest_claim: Sprint 4 is Jira sprint 48 on board 169, state future
 ---
 
 # Sprint 4 charter — the agent bridge layer
@@ -19,9 +19,8 @@ weakest_claim: No open Jira sprint exists yet for Sprint 4
 > session that has read this file needs nothing from the conversation that
 > produced it.
 
-No open Jira sprint exists yet for Sprint 4 — T1 creates it. Until then, board
-state is not trackable and the forecast blackout from Sprint 3 §1.3 carries
-forward.
+Sprint 4 is Jira sprint 48 on board 169, state future (created 2026-08-10).
+The forecast blackout from Sprint 3 §1.3 carries forward — no date commitment.
 
 **Sprint goal:** M7 + M8 — write the agent bridge layer. Done when
 `tests/smoke_test.tscn` exits 0 with a real Claude agent response rendered
@@ -99,14 +98,14 @@ wikilink markdown, gbrain-style index). Origin: `docs/designs/platform-decisions
 | Task | Title | Jira | Acceptance |
 |---|---|---|---|
 | T0 | Fetch and reconcile against origin/dev | — | `scripts/check_sync.sh --strict` |
-| T1 | Sprint charter, loop plan, D-029, Jira sprint | TBD | `python3 scripts/validate_specs.py && test -f specs/sprint-4-charter.md` |
-| T2 | `bridge/bridge.py` — WebSocket + Claude SDK | TBD | `python3 -m py_compile bridge/bridge.py` |
-| T3a | `bridge/sync.py` — sync module (D-029) | TBD | `python3 -m py_compile bridge/sync.py` |
-| T3b | `bridge/agents.py` — agent store loader | TBD | `python3 -m py_compile bridge/agents.py` |
-| T4 | `scenes/bridge/ws_client.gd` — Godot WS client | TBD | `godot --headless tests/smoke_test.tscn` |
-| T5 | Wire dialogue → bridge → response → typewriter | TBD | `godot --headless tests/smoke_test.tscn` |
-| T6 | Smoke test: assert real agent response | TBD | `godot --headless tests/smoke_test.tscn` |
-| T7 | Sprint close | TBD | `python3 scripts/validate_specs.py && godot --headless tests/smoke_test.tscn` |
+| T1 | Sprint charter, loop plan, D-029, Jira sprint | PLZG-170 | `python3 scripts/validate_specs.py && test -f specs/sprint-4-charter.md` |
+| T2 | `bridge/bridge.py` — WebSocket + Claude SDK | PLZG-171 | `python3 -m py_compile bridge/bridge.py` |
+| T3a | `bridge/sync.py` — sync module (D-029) | PLZG-172 | `python3 -m py_compile bridge/sync.py` |
+| T3b | `bridge/agents.py` — agent store loader | PLZG-173 | `python3 -m py_compile bridge/agents.py` |
+| T4 | `scenes/bridge/ws_client.gd` — Godot WS client | PLZG-174 | `godot --headless tests/smoke_test.tscn` |
+| T5 | Wire dialogue → bridge → response → typewriter | PLZG-175 | `godot --headless tests/smoke_test.tscn` |
+| T6 | Smoke test: assert real agent response | PLZG-176 | `godot --headless tests/smoke_test.tscn` |
+| T7 | Sprint close | PLZG-177 | `python3 scripts/validate_specs.py && godot --headless tests/smoke_test.tscn` |
 
 ### 4.2 Out of scope
 

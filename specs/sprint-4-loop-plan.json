@@ -24,6 +24,7 @@
     },
     {
       "id": "T1",
+      "jira": "PLZG-170",
       "title": "Sprint 4 charter (specs/sprint-4-charter.md), loop plan, D-029 in decision register, Jira sprint creation on PLZG board",
       "owner": "adam schoen",
       "executor": "agent",
@@ -40,6 +41,7 @@
     },
     {
       "id": "T2",
+      "jira": "PLZG-171",
       "title": "bridge/bridge.py — WebSocket server + Claude SDK call (D-005, D-006, D-015)",
       "owner": "adam schoen",
       "executor": "agent",
@@ -56,6 +58,7 @@
     },
     {
       "id": "T3a",
+      "jira": "PLZG-172",
       "title": "bridge/sync.py — sync module copies .md from submodule into bridge/agents/ (D-029)",
       "owner": "adam schoen",
       "executor": "agent",
@@ -72,6 +75,7 @@
     },
     {
       "id": "T3b",
+      "jira": "PLZG-173",
       "title": "bridge/agents.py — agent store loader, reads from bridge/agents/ at runtime (D-016)",
       "owner": "adam schoen",
       "executor": "agent",
@@ -88,6 +92,7 @@
     },
     {
       "id": "T4",
+      "jira": "PLZG-174",
       "title": "scenes/bridge/ws_client.gd — Godot WebSocket client (D-005 boundary)",
       "owner": "adam schoen",
       "executor": "agent",
@@ -104,6 +109,7 @@
     },
     {
       "id": "T5",
+      "jira": "PLZG-175",
       "title": "Wire dialogue panel send → ws_client → bridge → response → typewriter (M8 integration, D-007)",
       "owner": "adam schoen",
       "executor": "agent",
@@ -120,6 +126,7 @@
     },
     {
       "id": "T6",
+      "jira": "PLZG-176",
       "title": "Smoke test update — assert real agent response (machine-checkable acceptance)",
       "owner": "adam schoen",
       "executor": "agent",
@@ -136,6 +143,7 @@
     },
     {
       "id": "T7",
+      "jira": "PLZG-177",
       "title": "Sprint close — task-tracker update, CHANGELOG entry, charter close section",
       "owner": "adam schoen",
       "executor": "agent",
