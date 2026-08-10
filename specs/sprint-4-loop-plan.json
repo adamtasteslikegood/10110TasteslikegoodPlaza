@@ -1,5 +1,5 @@
 {
-  "$comment": "Machine-readable Sprint 4 plan. Prose rationale lives in specs/sprint-4-charter.md; this file is the shape delivery_loop_gate.py consumes. That script is NOT in this repo — it ships with the pm-skills plugin. Resolve it: PM_SCRIPTS=$(find ~/.claude/plugins -path '*/pm-skills/scripts' -type d -print -quit) then python3 \"$PM_SCRIPTS/delivery_loop_gate.py\" --plan specs/sprint-4-loop-plan.json --mode plan --output human. Sprint goal: M7 + M8 — write the agent bridge layer. Done = tests/smoke_test.tscn green with a real agent response in-engine. Bridge uses Claude Python SDK (not subprocess CLI). Auth: ANTHROPIC_API_KEY environment variable. D-029: bridge owns agent store at runtime, decoupled from submodule. Model band: opus-4-6 floor / opus-5 ceiling / fable by choice only. Reviewers: claude-review.yml + /codex adversarial + Adam.",
+  "$comment": "Machine-readable Sprint 4 plan. Prose rationale lives in specs/sprint-4-charter.md; this file is the shape delivery_loop_gate.py consumes. That script is NOT in this repo — it ships with the pm-skills plugin. Resolve it: PM_SCRIPTS=$(find ~/.claude/plugins -path '*/pm-skills/scripts' -type d -print -quit) then python3 \"$PM_SCRIPTS/delivery_loop_gate.py\" --plan specs/sprint-4-loop-plan.json --mode plan --output human. Sprint goal: M7 + M8 — write the agent bridge layer. Done = tests/smoke_test.tscn green with a real agent response in-engine. Bridge uses Claude Python SDK (not subprocess CLI). Auth: setup-token OAuth primary (ANTHROPIC_AUTH_TOKEN) / ANTHROPIC_API_KEY fallback. D-029: bridge owns agent store at runtime, decoupled from submodule. Model band: opus-4-6 floor / opus-5 ceiling / fable by choice only. Reviewers: claude-review.yml + /codex adversarial + Adam.",
   "goal": "M7 + M8: write the agent bridge layer. Done when tests/smoke_test.tscn exits 0 with a real Claude agent response rendered in-engine via the typewriter effect. PLZG Sprint 4.",
   "budgets": {
     "max_attempts_per_task": 3,
@@ -54,7 +54,7 @@
       "attempts": 0,
       "depends_on": ["T1"],
       "blocks": ["T5"],
-      "note": "WebSocket server on localhost:8765 (D-015). Synchronous with timeout (D-006). Zero UI awareness (D-005) — swap test: replacing Godot with a CLI harness must require no bridge change. Uses anthropic Python SDK, bare Anthropic() constructor. Auth: ANTHROPIC_API_KEY environment variable. Standalone wscat/websocat test before Godot integration."
+      "note": "WebSocket server on localhost:8765 (D-015). Synchronous with timeout (D-006). Zero UI awareness (D-005) — swap test: replacing Godot with a CLI harness must require no bridge change. Uses anthropic Python SDK, bare Anthropic() constructor. Auth: setup-token OAuth primary (ANTHROPIC_AUTH_TOKEN) / ANTHROPIC_API_KEY fallback. Standalone wscat/websocat test before Godot integration."
     },
     {
       "id": "T3a",

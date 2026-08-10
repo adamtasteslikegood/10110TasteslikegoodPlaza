@@ -46,9 +46,9 @@ live agent output in-world).
 Python SDK with `client.messages.create()`, passing agent definitions as system
 prompts. No subprocess, no CLI dependency.
 
-Auth: `ANTHROPIC_API_KEY` environment variable, resolved by the bare `Anthropic()`
-constructor. For the owner's personal usage under TOS for apps using long-lived
-tokens.
+Auth: `claude setup-token` stores a long-lived OAuth token; the `Anthropic()`
+constructor resolves it via `ANTHROPIC_AUTH_TOKEN`. `ANTHROPIC_API_KEY` is the
+fallback. Both are for the owner's personal usage under TOS.
 
 ### 1.3 Forecast blackout (carried from Sprint 3)
 
@@ -127,7 +127,7 @@ Adam owns and reviews all tasks. Three review layers:
 
 | # | Failure mode | Likelihood | Mitigation |
 |---|---|---|---|
-| R1 | Auth doesn't work locally. `ANTHROPIC_API_KEY` untested in a local Python bridge context. | Medium | T2 is standalone with manual verify. Test `Anthropic()` resolution before wiring. |
+| R1 | Auth doesn't work locally. `setup-token` OAuth path untested in a local Python bridge context. | Medium | T2 is standalone with manual verify. Test `Anthropic()` resolution before wiring. |
 | R2 | D-005 boundary violation. Bridge learns about Godot. | Medium | Swap test in every review. `/codex` adversarial adds second eyes. |
 | R3 | Submodule empty — agent loader fails. | ~~High~~ Low | **Mitigated by D-029.** Bridge reads from its own store, not the submodule. |
 | R4 | WebSocket stability. Version/protocol mismatches. | Low-Medium | `wscat`/`websocat` test before Godot integration. D-006 timeout protection. |
