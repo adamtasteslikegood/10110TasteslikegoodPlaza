@@ -4,7 +4,7 @@ title: Concept Driver — the storyboard as the origin of concept
 tier: 0
 authority: constitution
 status: ACTIVE
-doc_set_version: 0.2.11
+doc_set_version: 0.2.12
 last_updated: 2026-07
 owner: adamtasteslikegood
 derives_from: [META-SPEC]

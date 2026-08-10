@@ -4,7 +4,7 @@ title: Delivery coordinates — which board, which space, which key
 tier: 2
 authority: taxonomy
 status: ACTIVE
-doc_set_version: 0.2.11
+doc_set_version: 0.2.12
 last_updated: 2026-08
 owner: adamtasteslikegood
 derives_from: [PROJECT-OVERVIEW]

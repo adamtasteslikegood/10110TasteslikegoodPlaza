@@ -119,7 +119,7 @@ Root holds the entry points: `README.md` (pitch, 4-layer architecture, departmen
 | File | Why it matters |
 |---|---|
 | `docs/designs/2.5D-RPG-Prototype.md` | **Active design** — the 2.5D pivot. |
-| `docs/designs/platform-decisions.md` | **Platform authority**, nine decisions (`D-003`, `D-005`, `D-015`, `D-016`, `D-018`, `D-021`–`D-024`). Scope test: would it survive replacing the whole frontend? If it dies with the 2.5D prototype it belongs in the design doc. |
+| `docs/designs/platform-decisions.md` | **Platform authority**, ten decisions (`D-003`, `D-005`, `D-015`, `D-016`, `D-018`, `D-021`–`D-024`, `D-029`). Scope test: would it survive replacing the whole frontend? If it dies with the 2.5D prototype it belongs in the design doc. |
 | `docs/agent-directory.md` | **Taxonomy authority (`D-017`)** — every agent count derives from here. |
 | `docs/delivery-coordinates.md` | **Atlassian taxonomy authority (`D-026`)** — every Jira key, board role, space and page id. |
 | `specs/meta/` | **Start here.** See the section above. |

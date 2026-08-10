@@ -4,20 +4,20 @@ title: Platform Decisions — engine, transport, data layer, licence, repo polic
 tier: 2
 authority: implementation
 status: ACTIVE
-doc_set_version: 0.2.11
+doc_set_version: 0.2.12
 last_updated: 2026-07
 owner: adamtasteslikegood
 derives_from: [META-SPEC]
 supersedes: []
-decides: [D-003, D-005, D-015, D-016, D-018, D-021, D-022, D-023, D-024]
+decides: [D-003, D-005, D-015, D-016, D-018, D-021, D-022, D-023, D-024, D-029]
 enforcement: asserted
 gates: [Validate Specs:live]
-weakest_claim: All nine were already made, already evidenced,
+weakest_claim: All ten were already made, already evidenced,
 ---
 
 # Platform Decisions
 
-> **One line:** the nine project-level decisions that are neither concept nor
+> **One line:** the ten project-level decisions that are neither concept nor
 > prototype design — engine, bridge boundary, transport, data layer, licence, and
 > repository policy — and the document entitled to originate them.
 
@@ -36,7 +36,7 @@ at all. Open conflict §4.9, [issue #18](https://github.com/adamtasteslikegood/1
 Twice now the entitlement error has been found by reading the authority column
 rather than the decision — the decisions themselves were never in doubt.
 
-**Nothing here is a new decision.** All nine were already made, already evidenced,
+**Nothing here is a new decision.** All ten were already made, already evidenced,
 and already being acted on. What changed is which document is entitled to hold
 them — `PROJECT-OVERVIEW` goes back to being purely the reconciliation of the two
 axes, which is what `META-SPEC` §2 already said it was, and `META-SPEC` goes back to
