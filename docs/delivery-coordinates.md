@@ -164,8 +164,8 @@ creation**, each moving `To Do` items to `In Progress`.
 
 Only a key in the **branch name** produces a `branch` link. Mentions in commit messages
 and PR bodies produce `pullrequest` and `commit` links instead. So the branch trigger
-cannot be fooled by a citation — the failure mode that made the old merge rule close
-eight tickets wrongly.
+cannot be fooled by a citation — the failure mode that made the old merge rule produce
+five false `Done` states.
 
 **The PR-creation rule can be, and was.** Opening PR #146 moved `PLZG-118` to
 `In Progress` although that PR does not touch it; it was merely cited. Stable across
@@ -180,12 +180,12 @@ also stamps a false `started` timestamp, the input to cycle time and therefore t
 `specs/sprint-3-charter.md` §1.3 forecast blackout. **The mechanism meant to make flow
 data trustworthy currently pollutes it.**
 
-**The fix is small, and the branch rule is the reason.** Every PR here is preceded by a
-branch push carrying the key, because `.claude/pr-workflow.md` requires the key in both
-branch name and title. So the branch rule alone already achieves the intent, and the PR
-rule is both redundant and the leaky one. Either disable the PR-creation rule, or
-condition it on the key appearing in `{{pullRequest.title}}` or `{{branch.name}}` rather
-than merely being linked.
+**The fix is small, and the branch rule is the reason.** `.claude/pr-workflow.md`
+requires the key in the PR **title** and recommends it in the branch name ("Put it in the
+branch name and commit messages too"). In practice every branch in this repo carries the
+key (`type/PLZG-###-description`), so the branch rule fires. Either disable the
+PR-creation rule, or condition it on the key appearing in `{{pullRequest.title}}` or
+`{{branch.name}}` rather than merely being linked.
 
 **No retroactive firing**, which is why an earlier revision of this section recorded the
 `In Progress` half as *"did not fire"*. It was tested on PR #145, whose branch and PR

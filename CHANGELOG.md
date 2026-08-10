@@ -27,7 +27,7 @@ spec-set versions, and no application release existed before `v0.1.22`.
   timestamp without anyone remembering to set one.
 - The PR-creation rule also fires but **over-matches**: it moves any issue whose key
   appears in a `pullrequest` link, including prose mentions. Diagnosed and recorded;
-  the branch rule alone achieves the intent.
+  the branch rule achieves the intent in practice (every branch here carries the key).
 - **Linear is `OFFICE`.** Renamed by the owner on 2026-08-09, issue numbers preserved
   (`PLZG-90` → `OFFICE-90`). This closes the cross-tracker key collision that made a
   bare `PLZG-nn` ambiguous between Jira and Linear for keys in the `1`–`90` range.
