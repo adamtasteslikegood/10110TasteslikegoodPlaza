@@ -4,7 +4,7 @@ title: Spec Drivers v0.2.5 — what this doc-set version must produce
 tier: 0
 authority: constitution
 status: ACTIVE
-doc_set_version: 0.2.11
+doc_set_version: 0.2.12
 last_updated: 2026-08
 owner: adamtasteslikegood
 derives_from: [META-SPEC]
@@ -414,4 +414,4 @@ this version does not move it.
 Between here and there, each round closes with the same check: the register has no
 conflict that has been open longer than the round that discovered it.
 
-*Doc set version: 0.2.11 · Last updated: August 2026*
+*Doc set version: 0.2.12 · Last updated: August 2026*

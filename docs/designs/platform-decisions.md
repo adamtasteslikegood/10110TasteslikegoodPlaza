@@ -4,20 +4,20 @@ title: Platform Decisions — engine, transport, data layer, licence, repo polic
 tier: 2
 authority: implementation
 status: ACTIVE
-doc_set_version: 0.2.11
-last_updated: 2026-07
+doc_set_version: 0.2.12
+last_updated: 2026-08
 owner: adamtasteslikegood
 derives_from: [META-SPEC]
 supersedes: []
-decides: [D-003, D-005, D-015, D-016, D-018, D-021, D-022, D-023, D-024]
+decides: [D-003, D-005, D-015, D-016, D-018, D-021, D-022, D-023, D-024, D-029]
 enforcement: asserted
 gates: [Validate Specs:live]
-weakest_claim: All nine were already made, already evidenced,
+weakest_claim: Nine of these were already made, already evidenced,
 ---
 
 # Platform Decisions
 
-> **One line:** the nine project-level decisions that are neither concept nor
+> **One line:** the ten project-level decisions that are neither concept nor
 > prototype design — engine, bridge boundary, transport, data layer, licence, and
 > repository policy — and the document entitled to originate them.
 
@@ -36,11 +36,13 @@ at all. Open conflict §4.9, [issue #18](https://github.com/adamtasteslikegood/1
 Twice now the entitlement error has been found by reading the authority column
 rather than the decision — the decisions themselves were never in doubt.
 
-**Nothing here is a new decision.** All nine were already made, already evidenced,
-and already being acted on. What changed is which document is entitled to hold
+**Nine of these were already made, already evidenced,
+and already being acted on.** What changed is which document is entitled to hold
 them — `PROJECT-OVERVIEW` goes back to being purely the reconciliation of the two
 axes, which is what `META-SPEC` §2 already said it was, and `META-SPEC` goes back to
-deciding only about documents.
+deciding only about documents. `D-029` is the exception: it is a new decision,
+registered here in v0.2.12 because it passes the scope test in §1 (the bridge
+agent store survives replacing the frontend).
 
 ## 1. Scope — what belongs in this document
 
@@ -162,6 +164,18 @@ would block every merge — and reverting a merged PR needs `git revert -m 1`.
 how the wrong rule arrived; see
 [`../../specs/branching-strategy.md`](../../specs/branching-strategy.md) §9.
 
+### `D-029` — Bridge agent store
+
+The bridge maintains its own copy of agent definitions at runtime, decoupled from
+the `claude-code-tresor` submodule. A sync module copies from
+`claude-code-tresor/subagents/` into `bridge/agents/`; at runtime the bridge reads
+only from its own store. Store format is initially `.md` files, with an upgrade
+path to a structured store (database, wikilink markdown, gbrain-style index).
+
+Passes the §1 scope test: replacing the frontend changes nothing about how the
+bridge loads agent definitions. Registered in Sprint 4 (`specs/sprint-4-charter.md`
+§1.4); implementation is T3a/T3b.
+
 ## 4. Adding a decision here
 
 Same procedure as any entitled document —
@@ -173,4 +187,4 @@ not here. Add the `D-nnn` to this file's `decides:` list and to
 `scripts/validate_specs.py` fails the build if the two disagree, and now also fails
 if a document declares `decides:` without an authority licensed to originate.
 
-*Doc set version: 0.2.11 · Last updated: July 2026*
+*Doc set version: 0.2.12 · Last updated: August 2026*

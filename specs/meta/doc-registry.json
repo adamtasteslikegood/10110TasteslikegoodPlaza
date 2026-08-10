@@ -1,6 +1,6 @@
 {
   "$comment": "The index of the 10110 TastesLike Plaza doc set. This file answers 'which document wins' in machine-readable form. Governed by specs/meta/META-SPEC.md; enforced by scripts/validate_specs.py. Every markdown file under docs/, specs/, Docs/, and the root README.md must appear in exactly one of `documents` or `exempt`.",
-  "doc_set_version": "0.2.11",
+  "doc_set_version": "0.2.12",
   "documents": [
     {
       "doc_id": "META-SPEC",
@@ -170,6 +170,14 @@
       "authority": "delivery",
       "status": "ACTIVE",
       "note": "Executable context for Sprint 3. Follows up Sprint 2's close and plans the enforcement-axis amendment (D-027) plus the delivery authority that closes open conflict 4.10 (D-028). Declared 'derived' until T7: D-028 created 'delivery' at T1 with META-SPEC as its origin, but the frontmatter schema rejected the value until T2 extended the enum, so it was undeclarable for one more task -- see its section 7. Now declares 'delivery' and originates the same class of time-boxed policy as SPRINT-2-CHARTER: budgets, gates and blackouts that expire with the sprint and are deliberately not registered as D-nnn."
+    },
+    {
+      "doc_id": "SPRINT-4-CHARTER",
+      "path": "specs/sprint-4-charter.md",
+      "tier": 3,
+      "authority": "delivery",
+      "status": "ACTIVE",
+      "note": "Executable context for Sprint 4. Delivers M7 (Python bridge with Claude SDK) and M8 (first live agent output in-world). Registers D-029 (bridge agent store). Bridge uses anthropic Python SDK instead of subprocess CLI; auth via setup-token OAuth (ANTHROPIC_AUTH_TOKEN) / ANTHROPIC_API_KEY fallback."
     },
     {
       "doc_id": "GOVERNANCE-TREE",

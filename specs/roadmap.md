@@ -4,7 +4,7 @@ title: 10110 TastesLike Plaza — Prototype Build Roadmap
 tier: 3
 authority: derived
 status: ACTIVE
-doc_set_version: 0.2.11
+doc_set_version: 0.2.12
 last_updated: 2026-04
 owner: adamtasteslikegood
 derives_from: [PROJECT-OVERVIEW, DESIGN-25D, SPEC-DRIVERS-025]

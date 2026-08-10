@@ -4,7 +4,7 @@ title: Concept Driver — the storyboard as the origin of concept
 tier: 0
 authority: constitution
 status: ACTIVE
-doc_set_version: 0.2.11
+doc_set_version: 0.2.12
 last_updated: 2026-07
 owner: adamtasteslikegood
 derives_from: [META-SPEC]
@@ -145,4 +145,4 @@ scene-level acceptance criteria and therefore block tasks:
 These are concept decisions. Only the human owner may close them, and the close
 lands in `STORYBOARD-W1` first — never here, and never in a task.
 
-*Doc set version: 0.2.11 · Last updated: July 2026*
+*Doc set version: 0.2.12 · Last updated: August 2026*

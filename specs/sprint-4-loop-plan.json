@@ -1,0 +1,161 @@
+{
+  "$comment": "Machine-readable Sprint 4 plan. Prose rationale lives in specs/sprint-4-charter.md; this file is the shape delivery_loop_gate.py consumes. That script is NOT in this repo — it ships with the pm-skills plugin. Resolve it: PM_SCRIPTS=$(find ~/.claude/plugins -path '*/pm-skills/scripts' -type d -print -quit) then python3 \"$PM_SCRIPTS/delivery_loop_gate.py\" --plan specs/sprint-4-loop-plan.json --mode plan --output human. Sprint goal: M7 + M8 — write the agent bridge layer. Done = tests/smoke_test.tscn green with a real agent response in-engine. Bridge uses Claude Python SDK (not subprocess CLI). Auth: setup-token OAuth primary (ANTHROPIC_AUTH_TOKEN) / ANTHROPIC_API_KEY fallback. D-029: bridge owns agent store at runtime, decoupled from submodule. Model band: opus-4-6 floor / opus-5 ceiling / fable by choice only. Reviewers: claude-review.yml + /codex adversarial + Adam.",
+  "goal": "M7 + M8: write the agent bridge layer. Done when tests/smoke_test.tscn exits 0 with a real Claude agent response rendered in-engine via the typewriter effect. PLZG Sprint 4.",
+  "budgets": {
+    "max_attempts_per_task": 3,
+    "max_loop_iterations": 12
+  },
+  "iteration": 0,
+  "tasks": [
+    {
+      "id": "T0",
+      "title": "Fetch and reconcile against origin/dev before any other task runs",
+      "owner": "adam schoen",
+      "executor": "agent",
+      "reviewer": "adam schoen",
+      "acceptance": {
+        "cmd": "scripts/check_sync.sh --strict"
+      },
+      "status": "todo",
+      "evidence": "",
+      "attempts": 0,
+      "blocks": ["T1"],
+      "note": "Blocking precondition, exempt from the attempt cap. No Jira ticket: it is a precondition the SessionStart hook already runs."
+    },
+    {
+      "id": "T1",
+      "jira": "PLZG-170",
+      "title": "Sprint 4 charter (specs/sprint-4-charter.md), loop plan, D-029 in decision register, Jira sprint creation on PLZG board",
+      "owner": "adam schoen",
+      "executor": "agent",
+      "reviewer": "adam schoen",
+      "acceptance": {
+        "cmd": "python3 scripts/validate_specs.py && test -f specs/sprint-4-charter.md && test -f specs/sprint-4-loop-plan.json"
+      },
+      "status": "todo",
+      "evidence": "",
+      "attempts": 0,
+      "depends_on": ["T0"],
+      "blocks": ["T2", "T3a", "T3b", "T4"],
+      "note": "Charter, loop plan, and D-029 registration in one PR. Jira sprint 48 created on PLZG board 169 (company-managed Scrum). D-029: Bridge agent store — bridge maintains its own copy of agent definitions, decoupled from the submodule at runtime. Origin: docs/designs/platform-decisions.md."
+    },
+    {
+      "id": "T2",
+      "jira": "PLZG-171",
+      "title": "bridge/bridge.py — WebSocket server + Claude SDK call (D-005, D-006, D-015)",
+      "owner": "adam schoen",
+      "executor": "agent",
+      "reviewer": "adam schoen",
+      "acceptance": {
+        "cmd": "python3 -c \"import bridge.bridge; print('import ok')\" && python3 -m py_compile bridge/bridge.py"
+      },
+      "status": "todo",
+      "evidence": "",
+      "attempts": 0,
+      "depends_on": ["T1"],
+      "blocks": ["T5"],
+      "note": "WebSocket server on localhost:8765 (D-015). Synchronous with timeout (D-006). Zero UI awareness (D-005) — swap test: replacing Godot with a CLI harness must require no bridge change. Uses anthropic Python SDK, bare Anthropic() constructor. Auth: setup-token OAuth primary (ANTHROPIC_AUTH_TOKEN) / ANTHROPIC_API_KEY fallback. Standalone wscat/websocat test before Godot integration."
+    },
+    {
+      "id": "T3a",
+      "jira": "PLZG-172",
+      "title": "bridge/sync.py — sync module copies .md from submodule into bridge/agents/ (D-029)",
+      "owner": "adam schoen",
+      "executor": "agent",
+      "reviewer": "adam schoen",
+      "acceptance": {
+        "cmd": "python3 -m py_compile bridge/sync.py"
+      },
+      "status": "todo",
+      "evidence": "",
+      "attempts": 0,
+      "depends_on": ["T1"],
+      "blocks": ["T3b"],
+      "note": "D-029: reads claude-code-tresor/subagents/, writes to bridge/agents/. Runs explicitly (build step or manual), never at request time. Warns when submodule is missing or stale but never blocks the bridge. Handles missing submodule gracefully — exit with a clear error, not a stack trace."
+    },
+    {
+      "id": "T3b",
+      "jira": "PLZG-173",
+      "title": "bridge/agents.py — agent store loader, reads from bridge/agents/ at runtime (D-016)",
+      "owner": "adam schoen",
+      "executor": "agent",
+      "reviewer": "adam schoen",
+      "acceptance": {
+        "cmd": "python3 -m py_compile bridge/agents.py"
+      },
+      "status": "todo",
+      "evidence": "",
+      "attempts": 0,
+      "depends_on": ["T3a"],
+      "blocks": ["T5"],
+      "note": "Loads agent .md definitions from bridge/agents/ (D-029 store). Returns the definition as a string for use as system prompt. NPC scene stores agent_id only (D-016) — the loader resolves id to definition."
+    },
+    {
+      "id": "T4",
+      "jira": "PLZG-174",
+      "title": "scenes/bridge/ws_client.gd — Godot WebSocket client (D-005 boundary)",
+      "owner": "adam schoen",
+      "executor": "agent",
+      "reviewer": "adam schoen",
+      "acceptance": {
+        "cmd": "godot --headless --import && godot --headless tests/smoke_test.tscn"
+      },
+      "status": "todo",
+      "evidence": "",
+      "attempts": 0,
+      "depends_on": ["T1"],
+      "blocks": ["T5"],
+      "note": "Godot-side WebSocket client. D-005 boundary check: ws_client knows about WebSocket messages (JSON), never about agent definitions, auth, or the SDK. Emits signals that the dialogue panel consumes. D-025 for file layout."
+    },
+    {
+      "id": "T5",
+      "jira": "PLZG-175",
+      "title": "Wire dialogue panel send → ws_client → bridge → response → typewriter (M8 integration, D-007)",
+      "owner": "adam schoen",
+      "executor": "agent",
+      "reviewer": "adam schoen",
+      "acceptance": {
+        "cmd": "godot --headless --import && godot --headless tests/smoke_test.tscn"
+      },
+      "status": "todo",
+      "evidence": "",
+      "attempts": 0,
+      "depends_on": ["T2", "T3b", "T4"],
+      "blocks": ["T6"],
+      "note": "M8 end-to-end: walk up to NPC → type question → real agent response appears with typewriter effect (D-007). Typewriter is frontend-only — bridge sends the full response, Godot reveals it character by character."
+    },
+    {
+      "id": "T6",
+      "jira": "PLZG-176",
+      "title": "Smoke test update — assert real agent response (machine-checkable acceptance)",
+      "owner": "adam schoen",
+      "executor": "agent",
+      "reviewer": "adam schoen",
+      "acceptance": {
+        "cmd": "godot --headless --import && godot --headless tests/smoke_test.tscn"
+      },
+      "status": "todo",
+      "evidence": "",
+      "attempts": 0,
+      "depends_on": ["T5"],
+      "blocks": ["T7"],
+      "note": "The sprint's terminal gate. Smoke test must assert that a real Claude response was received and rendered. Feel values asserted as bands, not equalities (existing convention). META-SPEC §5.8: machine-checkable acceptance means a gate went green, not that the work looked finished."
+    },
+    {
+      "id": "T7",
+      "jira": "PLZG-177",
+      "title": "Sprint close — task-tracker update, CHANGELOG entry, charter close section",
+      "owner": "adam schoen",
+      "executor": "agent",
+      "reviewer": "adam schoen",
+      "acceptance": {
+        "cmd": "python3 scripts/validate_specs.py && godot --headless tests/smoke_test.tscn"
+      },
+      "status": "todo",
+      "evidence": "",
+      "attempts": 0,
+      "depends_on": ["T6"],
+      "note": "Procedural close. Update specs/task-tracker.md to check off M7 and M8. Add [Unreleased] CHANGELOG entry. Close the charter. Run delivery_loop_gate.py --mode close."
+    }
+  ]
+}

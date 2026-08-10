@@ -17,6 +17,15 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
 
+### Added — Sprint 4 charter, D-029 bridge agent store (`PLZG-170`)
+
+- Sprint 4 charter (`specs/sprint-4-charter.md`) and machine-readable loop plan
+  (`specs/sprint-4-loop-plan.json`), scoping M7 + M8: the agent bridge layer.
+- `D-029` registered in `platform-decisions.md`: the bridge maintains its own copy
+  of agent definitions at runtime, decoupled from the `claude-code-tresor` submodule.
+- Jira sprint 48 created on PLZG board 169; tasks T1–T7 filed as PLZG-170–177.
+- Doc set version 0.2.11 → 0.2.12.
+
 ### Changed — PR-driven status automation and the Linear `OFFICE` rename (`PLZG-164`)
 
 - Merging a PR no longer transitions referenced issues to `Done` — the old rule
