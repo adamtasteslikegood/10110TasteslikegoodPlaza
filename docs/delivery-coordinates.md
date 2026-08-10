@@ -126,7 +126,7 @@ Corrected topology, set by the owner on 2026-07-29:
 
 | Link | Direction | Purpose |
 |---|---|---|
-| Linear `PLZG` ↔ Jira `PLZG` | **two-way, the default** | Live delivery work. |
+| Linear `OFFICE` ↔ Jira `PLZG` | **two-way, the default** | Live delivery work. Linear's prefix was itself `PLZG` until 2026-08-09; see below. |
 | Jira `TO` → Linear | one-way, retained | Lets closures on the ~dozen existing `TO`-linked Linear issues propagate. |
 
 What it was before: Linear `PLZG` ↔ Jira **`TO`** two-way, plus Jira `PLZG` →
@@ -136,6 +136,81 @@ filed in Linear was created in `TO`**.
 The `TO` → Linear leg is deliberately **not** deleted. Removing it would orphan
 the existing Linear issues that point at `TO`; keeping it one-way means closing
 them still syncs.
+
+### Pull requests drive status, and no longer drive `Done`
+
+Set by the owner on 2026-08-08, in **both** trackers — Linear rules on both teams,
+and a Jira automation in this project:
+
+| GitHub event | Resulting status |
+|---|---|
+| PR opened, **including draft** | `In Progress` |
+| Ready to merge / review requested | `In Review` |
+| PR merged | **nothing** — `Done` is now a human transition |
+
+**What it replaced, and why.** Merging a PR used to transition every referenced
+issue to `Done`. `GitHub for Jira` writes development-info links onto *every*
+`PLZG` key it finds in a merged PR's title, body, branch and commits, and the rule
+acted on those links — so it could not distinguish *"this PR fixes X"* from *"X is
+explicitly out of scope."* It produced **five false `Done` states**: `PLZG-138`,
+`PLZG-150`, `PLZG-158`, `PLZG-129` and `PLZG-142`. Two are instructive: `PLZG-129`
+was closed by a commit whose message read *"Do not copy that shape forward"*, and
+`PLZG-142` by a sentence reading *"is untouched here."* Both are statements that
+the work was **not** done. Diagnosis in `PLZG-164`.
+
+`PLZG-138` was the worst of them, because it was `T8` of Sprint 3 — the sprint whose
+goal was *"every governed document declares which of its claims about state are
+proven."* It sat `Done` for five days with no branch, no PR and no commit behind it.
+That is charter §6's risk R2 — *the board still measures fiction* — with a named
+mechanism rather than an accepted unknown.
+
+**Which tracker originated it, measured rather than assumed.** Jira transitioned
+first in **8 of 8** cases, leading Linear's mirrored `completedAt` by 1.5–6.0
+seconds; reopens propagate the same direction at the same speed. So Jira was the
+origin and Linear the mirror, even though rules existed in both. The decisive check
+is structural, though, not chronological: the keys cited in those PRs do not exist
+in Linear at all, so Linear had nothing to match on — see the prefix warning below.
+
+**Consequence worth planning around.** Because a PR now moves its issue to
+`In Progress` on open, work done through a PR acquires a real `started` timestamp
+without anyone remembering to set one. Sprint 3 produced only four such items, all
+transitioned by hand, which is why charter §1.3's forecast blackout could not lift.
+This closes that gap mechanically rather than by discipline.
+
+### Linear is `OFFICE`; it used to be `PLZG`, and that collision is why
+
+**Jira is `PLZG`. Linear is `OFFICE`.** Renamed by the owner on 2026-08-09, issue
+numbers preserved — Linear `PLZG-90` is now `OFFICE-90`. Jira `PLZG` is the key space
+this document governs, so Linear is the side that moved.
+
+Before the rename **both trackers used `PLZG` with independent numbering**, Linear's
+range running to about `90`, entirely inside Jira's `1`–`164`. A bare key therefore
+resolved to two different issues depending on which tracker read it:
+
+| Key, pre-rename | In Linear (now `OFFICE-nn`) | In Jira (unchanged) |
+|---|---|---|
+| `PLZG-64` | T8 — log the amendment in `CHANGELOG` | Define tutorial startup — company name |
+| `PLZG-68` | Root-level docs carry no frontmatter | Decide: save game format |
+| `PLZG-84` | PR #129 has no `CHANGELOG` entry | M7 — Python WebSocket bridge |
+| `PLZG-90` | The PR-merge automation defect | Export 137 agent `.md` files to `agents.json` |
+
+That was a live mis-closure path while merges drove `Done`: a PR citing a key in
+`1`–`90` could be matched by Linear against its *own* issue and mirrored into Jira,
+landing on an unrelated ticket. The status-automation change alone would have shrunk
+the blast radius without closing it — a stray mention would still move an unrelated
+ticket to `In Progress`, inflating WIP and corrupting the very flow data that change
+exists to produce. The rename is what actually closes it.
+
+**Reading older prose.** Any `PLZG-nn` in a document, commit or ticket body written
+before 2026-08-09 may mean either tracker, and the table above will not disambiguate
+beyond those four. Prefer the issue title over the key when interpreting them.
+Linear URLs of the form `linear.app/tasteslikegood/issue/PLZG-nn/…` survive only by
+Linear's own redirect — two are cited in `PLZG-129`'s description.
+
+**One hazard in this family remains open.** Jira `PLZG-42` and `PLZG-55` now resolve
+to **`RCP-30`** and **`KAN-73`**, having been moved to other projects, and JQL
+silently follows the old key. So a citation can still retarget across *projects*,
+which no prefix rename addresses.
 
 ### What "one-way" actually governs
 
