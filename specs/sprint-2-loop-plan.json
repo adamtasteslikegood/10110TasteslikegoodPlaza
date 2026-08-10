@@ -140,8 +140,11 @@
   ],
   "closed": {
     "verdict": "CLOSE-OK",
-    "gate": "delivery_loop_gate.py --mode close",
+    "gate": "bash -c 'set -e; mapfile -t G < <(find ~/.claude/plugins -path \"*/pm-skills/scripts/delivery_loop_gate.py\" | sort); [ ${#G[@]} -ge 1 ] || { echo \"FAIL: no delivery_loop_gate.py found\"; exit 1; }; [ \"$(printf \"%s\\n\" \"${G[@]}\" | xargs sha256sum | awk \"{print \\$1}\" | sort -u | wc -l)\" = 1 ] || { echo \"FAIL: installs differ -- pin one\"; exit 1; }; python3 \"${G[0]}\" --plan specs/sprint-2-loop-plan.json --mode close --output human'",
+    "gate_note": "This field was 'delivery_loop_gate.py --mode close' -- a bare script name presented as reproducible evidence for a gate that is not vendored in this repo, so it would not run from a fresh checkout. PLZG-129, a recurrence of PLZG-117, which was the same defect in charter prose. It is now written resolved and re-runnable. It deliberately does NOT use 'find -print -quit', the form this file's own $comment still recommends: that resolver is non-deterministic run to run, 5/10 each way over ten runs, recorded in sprint-3-loop-plan.json's T6 evidence and still open as PLZG-118 defect 2. Instead the resolver enumerates every match, sorts, fails on zero, and fails on two or more that are not byte-identical, so only an unambiguous resolution runs. The $comment's -quit guidance is left alone as PLZG-118's to fix; changing it here would make this a two-concern change.",
+    "gate_sha256": "34c869f227c1a62145342f0212645a8f898160f6b4589e3cec0e9baad74c692d -- the delivery_loop_gate.py that returned CLOSE-OK for this plan on 2026-08-09. Recorded so a future re-run can tell whether it is running the same gate rather than assuming it.",
     "closed_at": "2026-07-30",
+    "reverified_at": "2026-08-09 -- verdict re-obtained by executing the gate string above verbatim, rather than trusting the 2026-07-30 record. CLOSE-OK, exit 0, 10 of 10 tasks done. The original verdict stands; what changed is that it can now be re-derived from this file.",
     "note": "Every task carries acceptance.cmd rather than acceptance.criterion, so owner == reviewer stays non-circular: adam reviewing adam's prose is self-attestation, adam reviewing an exit code is not (charter section 4). Statuses here were produced by re-running each command against dev, not by transcribing them from a session."
   }
 }
