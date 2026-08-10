@@ -132,4 +132,4 @@ point of the tier ladder.
    `SUPERSEDED` — do not delete it — and bump `doc_set_version` across the set.
 4. Add the `D-nnn` to the origin document's `decides:` frontmatter list.
 
-*Doc set version: 0.2.11 · Last updated: August 2026*
+*Doc set version: 0.2.12 · Last updated: August 2026*

@@ -263,7 +263,7 @@ These are hard gates, not preferences. A change that breaks one fails review.
 
 ## 7. Versioning
 
-- The doc **set** carries one semantic version. This release is **0.2.11**. Files do
+- The doc **set** carries one semantic version. This release is **0.2.12**. Files do
   not version independently; each declares `doc_set_version` and the validator
   requires them all to agree.
 - `1.0.0` is cut when M8 is demonstrable in-engine.
@@ -283,4 +283,4 @@ These are hard gates, not preferences. A change that breaks one fails review.
    [`decision-register.md`](decision-register.md) and bump `doc_set_version`
    everywhere in the same commit.
 
-*Doc set version: 0.2.11 · Last updated: August 2026*
+*Doc set version: 0.2.12 · Last updated: August 2026*

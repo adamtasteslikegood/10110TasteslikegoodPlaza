@@ -46,9 +46,9 @@ live agent output in-world).
 Python SDK with `client.messages.create()`, passing agent definitions as system
 prompts. No subprocess, no CLI dependency.
 
-Auth: `claude setup-token` stores `ANTHROPIC_AUTH_TOKEN`; the bare `Anthropic()`
-constructor resolves it. `ANTHROPIC_API_KEY` is the fallback. Both are for the
-owner's personal usage under TOS for apps using long-lived tokens.
+Auth: `ANTHROPIC_API_KEY` environment variable, resolved by the bare `Anthropic()`
+constructor. For the owner's personal usage under TOS for apps using long-lived
+tokens.
 
 ### 1.3 Forecast blackout (carried from Sprint 3)
 
@@ -98,7 +98,7 @@ wikilink markdown, gbrain-style index). Origin: `docs/designs/platform-decisions
 | Task | Title | Jira | Acceptance |
 |---|---|---|---|
 | T0 | Fetch and reconcile against origin/dev | — | `scripts/check_sync.sh --strict` |
-| T1 | Sprint charter, loop plan, D-029, Jira sprint | PLZG-170 | `python3 scripts/validate_specs.py && test -f specs/sprint-4-charter.md` |
+| T1 | Sprint charter, loop plan, D-029, Jira sprint | PLZG-170 | `python3 scripts/validate_specs.py && test -f specs/sprint-4-charter.md && test -f specs/sprint-4-loop-plan.json` |
 | T2 | `bridge/bridge.py` — WebSocket + Claude SDK | PLZG-171 | `python3 -m py_compile bridge/bridge.py` |
 | T3a | `bridge/sync.py` — sync module (D-029) | PLZG-172 | `python3 -m py_compile bridge/sync.py` |
 | T3b | `bridge/agents.py` — agent store loader | PLZG-173 | `python3 -m py_compile bridge/agents.py` |

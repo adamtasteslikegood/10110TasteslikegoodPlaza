@@ -37,7 +37,7 @@
       "attempts": 0,
       "depends_on": ["T0"],
       "blocks": ["T2", "T3a", "T3b", "T4"],
-      "note": "Charter, loop plan, and D-029 registration in one PR. Jira sprint created on PLZG board (cloudId 029decc8-e09a-4d55-92f8-20d9ca64ca13, company-managed Scrum). D-029: Bridge agent store — bridge maintains its own copy of agent definitions, decoupled from the submodule at runtime. Origin: docs/designs/platform-decisions.md."
+      "note": "Charter, loop plan, and D-029 registration in one PR. Jira sprint 48 created on PLZG board 169 (company-managed Scrum). D-029: Bridge agent store — bridge maintains its own copy of agent definitions, decoupled from the submodule at runtime. Origin: docs/designs/platform-decisions.md."
     },
     {
       "id": "T2",
@@ -54,7 +54,7 @@
       "attempts": 0,
       "depends_on": ["T1"],
       "blocks": ["T5"],
-      "note": "WebSocket server on localhost:8765 (D-015). Synchronous with timeout (D-006). Zero UI awareness (D-005) — swap test: replacing Godot with a CLI harness must require no bridge change. Uses anthropic Python SDK, bare Anthropic() constructor. Auth: ANTHROPIC_AUTH_TOKEN (setup-token) primary, ANTHROPIC_API_KEY fallback. Standalone wscat/websocat test before Godot integration."
+      "note": "WebSocket server on localhost:8765 (D-015). Synchronous with timeout (D-006). Zero UI awareness (D-005) — swap test: replacing Godot with a CLI harness must require no bridge change. Uses anthropic Python SDK, bare Anthropic() constructor. Auth: ANTHROPIC_API_KEY environment variable. Standalone wscat/websocat test before Godot integration."
     },
     {
       "id": "T3a",

@@ -63,4 +63,4 @@ registered, claims an authority the registry does not grant, links to a file tha
 does not exist, disagrees with the rest of the set about `doc_set_version`, or if a
 scene id in the concept driver has no matching scene in the storyboard.
 
-*Doc set version: 0.2.11 · Last updated: July 2026*
+*Doc set version: 0.2.12 · Last updated: August 2026*

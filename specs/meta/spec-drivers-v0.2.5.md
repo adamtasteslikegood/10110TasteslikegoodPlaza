@@ -414,4 +414,4 @@ this version does not move it.
 Between here and there, each round closes with the same check: the register has no
 conflict that has been open longer than the round that discovered it.
 
-*Doc set version: 0.2.11 · Last updated: August 2026*
+*Doc set version: 0.2.12 · Last updated: August 2026*
