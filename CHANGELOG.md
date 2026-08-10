@@ -39,6 +39,8 @@ spec-set versions, and no application release existed before `v0.1.22`.
   reviewer caught. Both branches were exercised: the real hash passes, a tampered
   expectation fails.
 
+### Changed — `Spec Enforcement Matrix` is a required check, not just a job (`PLZG-155`)
+
 - Ruleset `18798438` on `dev` gained a `required_status_checks` rule naming **`Spec
   Enforcement Matrix`**, so it now blocks every merge rather than merely reporting.
   Verified live: `gh api …/rulesets/18798438` lists it as the required context. The
