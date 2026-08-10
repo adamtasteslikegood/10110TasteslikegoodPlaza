@@ -17,6 +17,21 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
 
+### Changed — PR-driven status automation and the Linear `OFFICE` rename (`PLZG-164`)
+
+- Merging a PR no longer transitions referenced issues to `Done` — the old rule
+  produced false completions by acting on every `PLZG` key `GitHub for Jira` linked,
+  including keys cited only as context. `Done` is a human transition again.
+- **Branch creation now drives `In Progress`.** A push whose branch name carries a
+  `PLZG-###` key moves that issue to `In Progress`, giving work a real `started`
+  timestamp without anyone remembering to set one.
+- The PR-creation rule also fires but **over-matches**: it moves any issue whose key
+  appears in a `pullrequest` link, including prose mentions. Diagnosed and recorded;
+  the branch rule alone achieves the intent.
+- **Linear is `OFFICE`.** Renamed by the owner on 2026-08-09, issue numbers preserved
+  (`PLZG-90` → `OFFICE-90`). This closes the cross-tracker key collision that made a
+  bare `PLZG-nn` ambiguous between Jira and Linear for keys in the `1`–`90` range.
+
 ### Changed — `Spec Enforcement Matrix` is a required check, not just a job (`PLZG-155`)
 
 - Ruleset `18798438` on `dev` gained a `required_status_checks` rule naming **`Spec

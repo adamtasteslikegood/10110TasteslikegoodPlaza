@@ -177,8 +177,8 @@ lands exactly on what these rules exist to produce. A false `In Progress` inflat
 one of the Kanban Guide's four mandatory measures and the quantity
 `validate_delivery_coordinates.py` clause (b) requires to agree with `work_item_age`. It
 also stamps a false `started` timestamp, the input to cycle time and therefore to the
-§1.3 forecast blackout. **The mechanism meant to make flow data trustworthy currently
-pollutes it.**
+`specs/sprint-3-charter.md` §1.3 forecast blackout. **The mechanism meant to make flow
+data trustworthy currently pollutes it.**
 
 **The fix is small, and the branch rule is the reason.** Every PR here is preceded by a
 branch push carrying the key, because `.claude/pr-workflow.md` requires the key in both
@@ -214,7 +214,7 @@ the work was **not** done. Diagnosis in `PLZG-164`.
 `PLZG-138` was the worst of them, because it was `T8` of Sprint 3 — the sprint whose
 goal was *"every governed document declares which of its claims about state are
 proven."* It sat `Done` for five days with no branch, no PR and no commit behind it.
-That is charter §6's risk R2 — *the board still measures fiction* — with a named
+That is `specs/sprint-3-charter.md` §6's risk R2 — *the board still measures fiction* — with a named
 mechanism rather than an accepted unknown.
 
 **Which tracker originated it, measured rather than assumed.** Jira transitioned
@@ -227,7 +227,8 @@ in Linear at all, so Linear had nothing to match on — see the prefix warning b
 **The consequence this buys, now that the branch half is verified.** A branch push moves
 its issue to `In Progress`, so work acquires a real `started` timestamp without anyone
 remembering to set one. Sprint 3 produced only four such items, all transitioned by
-hand, which is why charter §1.3's forecast blackout could not lift. From Sprint 4 the
+hand, which is why `specs/sprint-3-charter.md` §1.3's forecast blackout could not lift.
+From Sprint 4 the
 timestamps arrive by construction rather than by discipline — **provided the PR rule is
 scoped, since a false `In Progress` corrupts the same measure it feeds.**
 
@@ -255,9 +256,10 @@ the blast radius without closing it — a stray mention would still move an unre
 ticket to `In Progress`, inflating WIP and corrupting the very flow data that change
 exists to produce. The rename is what actually closes it.
 
-**Reading older prose.** Any `PLZG-nn` in a document, commit or ticket body written
-before 2026-08-09 may mean either tracker, and the table above will not disambiguate
-beyond those four. Prefer the issue title over the key when interpreting them.
+**Reading older prose.** A `PLZG-nn` in the `1`–`90` range, written before 2026-08-09,
+may mean either tracker; keys above `90` are unambiguously Jira. The table above will
+not disambiguate beyond those four collisions. Prefer the issue title over the key
+when interpreting them.
 Linear URLs of the form `linear.app/tasteslikegood/issue/PLZG-nn/…` survive only by
 Linear's own redirect — two are cited in `PLZG-129`'s description.
 
