@@ -17,7 +17,7 @@
         "cmd": "scripts/check_sync.sh --strict"
       },
       "status": "done",
-      "evidence": "Run on dev at 44a920c: 'check_sync: dev is in sync with origin/dev (ahead 0, behind 0)', exit 0. SessionStart hook verified.",
+      "evidence": "Run on dev at 1eabedb (origin/dev HEAD at session start): 'check_sync: dev is in sync with origin/dev (ahead 0, behind 0)', exit 0. SessionStart hook verified.",
       "attempts": 1,
       "blocks": ["T1"],
       "note": "Blocking precondition, exempt from the attempt cap. No Jira ticket: it is a precondition the SessionStart hook already runs."
@@ -33,7 +33,7 @@
         "cmd": "python3 scripts/validate_specs.py && test -f specs/sprint-4-charter.md && test -f specs/sprint-4-loop-plan.json"
       },
       "status": "done",
-      "evidence": "Acceptance run ON dev at 44a920c: 'python3 scripts/validate_specs.py' -> 'Spec validation passed: 25 governed document(s), doc set v0.2.12.', exit 0; 'test -f specs/sprint-4-charter.md' exit 0; 'test -f specs/sprint-4-loop-plan.json' exit 0. Charter exists, loop plan exists, D-029 registered and LOCKED in decision-register.md (line 74), Jira sprint 48 created with 8 tickets PLZG-170 through PLZG-177 all To Do. Eng review completed (plan-eng-review, 5 issues, all resolved) with Codex outside voice (17 findings, 3 cross-model tensions resolved). Model router scripts committed as 44a920c (separate from charter, for Claude Code model routing not bridge).",
+      "evidence": "Acceptance run on dev at 1eabedb (origin/dev HEAD): 'python3 scripts/validate_specs.py' -> 'Spec validation passed: 25 governed document(s), doc set v0.2.12.', exit 0; 'test -f specs/sprint-4-charter.md' exit 0; 'test -f specs/sprint-4-loop-plan.json' exit 0. Charter exists, loop plan exists, D-029 registered and LOCKED in decision-register.md (line 74), Jira sprint 48 created with 8 tickets PLZG-170 through PLZG-177 all To Do. Eng review completed (plan-eng-review, 5 issues, all resolved) with Codex outside voice (17 findings, 3 cross-model tensions resolved). Model router scripts committed separately (for Claude Code model routing, not bridge).",
       "attempts": 1,
       "depends_on": ["T0"],
       "blocks": ["T2", "T3a", "T3b", "T4"],

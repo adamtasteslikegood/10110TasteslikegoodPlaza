@@ -6,8 +6,8 @@ from anthropic import Anthropic
 
 # Define model string constants
 MODEL_HAIKU = "claude-3-5-haiku-latest"
-MODEL_OPUS_4_6 = "claude-4-6-opus"
-MODEL_OPUS_4_8 = "claude-4-8-opus"
+MODEL_OPUS_4_6 = "claude-opus-4-6"
+MODEL_OPUS_4_8 = "claude-opus-4-8"
 
 # Setup the Standard API Fallback client
 # If ANTHROPIC_API_KEY is missing, this will be handled dynamically below.
@@ -27,26 +27,25 @@ def run_via_subscription(
     full_prompt = f"{system_prompt}\n\nTask: {prompt}" if system_prompt else prompt
 
     cmd = [
-        "claude-code",
-        "run",
+        "claude",
+        "-p",
         "--model",
         model,
         "--max-tokens",
         str(max_tokens),
-        "--non-interactive",  # Prevents terminal from hanging on user input
-        full_prompt,
     ]
 
     try:
-        # Execute the process locally using the machine's active subscription token
-        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        result = subprocess.run(
+            cmd, capture_output=True, text=True, check=True, input=full_prompt
+        )
         return result.stdout.strip()
     except subprocess.CalledProcessError as e:
-        print(f"❌ Subscription run failed: {e.stderr}", file=sys.stderr)
+        print(f"Subscription run failed: {e.stderr}", file=sys.stderr)
         raise e
     except FileNotFoundError:
         print(
-            "❌ 'claude-code' CLI not found. Make sure it is installed globally (`npm install -g @anthropic-ai/claude-code`) and you are logged in.",
+            "'claude' CLI not found. Install: npm install -g @anthropic-ai/claude-code",
             file=sys.stderr,
         )
         raise

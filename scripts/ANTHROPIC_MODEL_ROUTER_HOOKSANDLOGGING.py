@@ -9,8 +9,8 @@ from anthropic import Anthropic
 # Configuration Paths & Constants
 LOG_FILE_PATH = os.path.expanduser("~/.claude/router_metrics.log")
 MODEL_HAIKU = "claude-3-5-haiku-latest"
-MODEL_OPUS_4_6 = "claude-4-6-opus"
-MODEL_OPUS_4_8 = "claude-4-8-opus"
+MODEL_OPUS_4_6 = "claude-opus-4-6"
+MODEL_OPUS_4_8 = "claude-opus-4-8"
 
 # Setup the classification client
 API_KEY = os.environ.get("ANTHROPIC_API_KEY")
@@ -59,7 +59,7 @@ def classify_task_complexity(user_prompt: str) -> tuple[str, float]:
             messages=[{"role": "user", "content": user_prompt}],
         )
         elapsed_ms = (time.perf_counter() - start_time) * 1000
-        return response.content.text.strip().upper(), elapsed_ms
+        return response.content[0].text.strip().upper(), elapsed_ms
     except Exception:
         elapsed_ms = (time.perf_counter() - start_time) * 1000
         return "OPUS_4_6", elapsed_ms
@@ -77,7 +77,7 @@ def main():
             sys.exit(0)
 
         event_payload = json.loads(input_data)
-        user_prompt = event_payload.get("prompt", "")
+        user_prompt = event_payload.get("user_prompt", "")
 
         # 2. Run classifier & compute latency
         decision, classification_ms = classify_task_complexity(user_prompt)
@@ -102,9 +102,7 @@ def main():
 
         log_entry = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
-            "prompt_sample": (
-                user_prompt[:60] + "..." if len(user_prompt) > 60 else user_prompt
-            ),
+            "prompt_length": len(user_prompt),
             "routed_model": target_model,
             "classification_latency_ms": round(classification_ms, 2),
             "total_hook_latency_ms": round(total_hook_ms, 2),
@@ -116,8 +114,8 @@ def main():
         total_hook_ms = (time.perf_counter() - hook_start_time) * 1000
         error_log = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
-            "prompt_sample": user_prompt[:60] + "...",
-            "routed_model": MODEL_OPUS_4_6,  # Default fallback choice
+            "prompt_length": len(user_prompt) if isinstance(user_prompt, str) else 0,
+            "routed_model": MODEL_OPUS_4_6,
             "classification_latency_ms": 0.0,
             "total_hook_latency_ms": round(total_hook_ms, 2),
             "status": f"ERROR: {str(e)}",
