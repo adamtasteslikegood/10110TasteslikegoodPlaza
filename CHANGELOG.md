@@ -32,6 +32,28 @@ spec-set versions, and no application release existed before `v0.1.22`.
   (`PLZG-90` → `OFFICE-90`). This closes the cross-tracker key collision that made a
   bare `PLZG-nn` ambiguous between Jira and Linear for keys in the `1`–`90` range.
 
+### Fixed — Sprint 2's close gate now runs from a fresh checkout (`PLZG-129`)
+
+- `closed.gate` in `specs/sprint-2-loop-plan.json` read `delivery_loop_gate.py
+  --mode close` — a bare script name recorded as reproducible evidence for a gate
+  that **is not vendored in this repo**. Run as written it gives `command not
+  found`, so the field archived a verdict nobody could re-derive. A recurrence of
+  `PLZG-117`, which was the same defect in charter prose.
+- Now written resolved, and **verified by executing the string extracted verbatim
+  from the JSON** — `CLOSE-OK`, exit 0, 10 of 10 tasks `done`. The 2026-07-30
+  verdict stands; what changed is that it can be re-derived rather than trusted.
+- **The resolver fails loudly instead of guessing.** It enumerates every matching
+  install, sorts, exits 1 on zero matches, and exits 1 when two or more are not
+  byte-identical. Deliberately **not** `find -print -quit`, which this file's own
+  `$comment` still recommends: that form is non-deterministic run to run, 5/10 each
+  way over ten runs, and remains open as `PLZG-118` defect 2.
+- **`gate_sha256` is asserted by the command, not merely recorded beside it.** The
+  gate exits 1 if the resolved binary's hash differs from the one that produced the
+  archived verdict. An earlier revision stored the hash while checking only that
+  the installs agreed with *each other* — a value nothing verified, which a
+  reviewer caught. Both branches were exercised: the real hash passes, a tampered
+  expectation fails.
+
 ### Changed — `Spec Enforcement Matrix` is a required check, not just a job (`PLZG-155`)
 
 - Ruleset `18798438` on `dev` gained a `required_status_checks` rule naming **`Spec
