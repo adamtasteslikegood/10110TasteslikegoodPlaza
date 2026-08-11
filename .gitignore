@@ -34,3 +34,5 @@ report.md
 
 # git worktrees
 .claude/worktrees/
+.venv/
+.agent-harness/
