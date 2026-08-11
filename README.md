@@ -40,29 +40,31 @@ TastesLike Plaza is a navigable 2.5D top-down office environment built on top of
 ## System Architecture (4 Layers)
 
 ```
-Layer 4 — Real agent execution
+Layer 4 — Real agent execution  (EXISTS)
   claude-code, gemini-cli, MCP servers, SSH, tty
-  STATUS: Already exists. Not built by this project.
+  Not built by this project.
 
-Layer 3 — UI-agnostic bridge  [Phase 2]
-  WebSocket server / named pipe
-  Connects any frontend to CLI agent processes
-  Exchanges intents and results only — zero UI awareness
+Layer 3 — UI-agnostic bridge  (EXISTS — M7+M8)
+  Python WebSocket server on ws://localhost:8765
+  Calls Claude SDK with agent .md as system prompt
+  Synchronous with timeout (D-005, D-006) — zero UI awareness
 
-Layer 2 — Current frontend  [Phase 1 — prototype target]
+Layer 2 — Current frontend  (PARTIAL)
   Today: 2.5D Godot. CLI, web, and a future 3D world are peers, not replacements.
   World / map       → 2.5D top-down rooms and floors (TileMap)
   NPC system        → characters + agent roles
   Player + HUD      → CharacterBody2D top-down controller, UI overlays
   Event bus         → tasks, unlocks, chat notifications
 
-Layer 1 — Data + config  [Exists now]
+Layer 1 — Data + config  (EXISTS)
   Employee directory  → 133 roles as JSON (from .md files)
   Scene / story data  → dialogue, unlock gates, tutorial flow
   Player profile      → progress, preferences, config
 ```
 
-**Critical insight:** Layer 1 and Layer 4 already exist. The prototype is Layers 2 and 3 only, built in that order.
+**Critical insight:** Layers 1, 3 and 4 all exist. The proof pipe is complete:
+walk up to an NPC, type a question, get a real Claude response. See
+[`QUICKSTART.md`](QUICKSTART.md) for how to run it.
 
 ---
 
@@ -129,4 +131,4 @@ Original contributions and changes © 2026 Adam Schoen. MIT License.
 
 ---
 
-*Last updated: April 2026*
+*Last updated: August 2026*
