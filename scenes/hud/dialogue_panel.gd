@@ -115,10 +115,10 @@ func _set_body(text: String) -> void:
 	_revealed = 0.0
 
 
-func _show_input(visible: bool) -> void:
-	_input_row.visible = visible
+func _show_input(show: bool) -> void:
+	_input_row.visible = show
 	_status_label.hide()
-	if visible:
+	if show:
 		_input.text = ""
 		_input.editable = true
 
