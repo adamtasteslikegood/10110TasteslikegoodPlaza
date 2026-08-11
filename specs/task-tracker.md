@@ -116,7 +116,7 @@ is ~15 lines (`scenes/player/player.gd`) and needed no template.
 - [x] Write `bridge/sync.py` — seed/upgrade tool, copies from `claude-code-tresor/subagents/` into `bridge/agents/`
 - [x] Commit 130 agent `.md` definitions to `bridge/agents/` (`D-029`: bridge owns its store)
 - [x] Write `scenes/bridge/ws_client.gd` — Godot WebSocket client, `BridgeClient` autoload
-- [x] Test bridge standalone: `python3 -m py_compile bridge/bridge.py` (CI gate)
+- [x] Test bridge standalone: `python3 -m py_compile bridge/bridge.py` (local; syntax covered by `flake8 --select=E9` in CI)
 - [x] Test: smoke test verifies `BridgeClient` autoload resolves, bridge signals wired
 
 ### M8 — First live agent output in-world ✅ Sprint 4
