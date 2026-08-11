@@ -17,6 +17,17 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
 
+### Fixed — Escape now reliably releases LineEdit focus (`PLZG-180`)
+
+- Pressing Escape while the dialogue panel's `LineEdit` had keyboard focus did not
+  reliably release it, leaving the player stuck (movement is suppressed while any
+  `Control` has focus). The original `_unhandled_input` handler never fired when the
+  `LineEdit` had selected text, because `LineEdit` consumes `ui_cancel` in
+  `_gui_input()` before unhandled propagation.
+- Switched to `_input()`, which fires before GUI dispatch, guarded on
+  `_panel.visible` and `_question_input.has_focus()`. Renamed the `_input` field to
+  `_question_input` — the old name shadowed `Node._input()`.
+
 ### Added — M7 + M8 agent bridge layer (`PLZG-171`–`PLZG-176`)
 
 - `bridge/bridge.py` — Python WebSocket server on `localhost:8765`, calls Claude
