@@ -22,6 +22,7 @@ config/icon="res://icon.svg"
 AgentRegistry="*res://autoload/AgentRegistry.gd"
 GameEvents="*res://autoload/GameEvents.gd"
 GameState="*res://autoload/GameState.gd"
+BridgeClient="*res://scenes/bridge/ws_client.gd"
 
 [display]
 

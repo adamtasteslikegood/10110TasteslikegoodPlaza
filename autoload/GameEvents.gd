@@ -23,3 +23,8 @@ signal task_completed(task_id: String)
 
 ## A floor or room became accessible, normally as a consequence of task_completed.
 signal floor_unlocked(floor_id: String)
+
+## Bridge signals — M7/M8. The ws_client emits these; dialogue_panel listens.
+signal agent_query_sent(agent_id: String, task: String)
+signal agent_response_received(agent_id: String, response: String)
+signal agent_query_failed(agent_id: String, error_type: String, message: String)
