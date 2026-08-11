@@ -63,7 +63,7 @@ func _fail(message: String) -> void:
 
 
 func _check_autoloads() -> void:
-	for name in ["AgentRegistry", "GameEvents", "GameState"]:
+	for name in ["AgentRegistry", "GameEvents", "GameState", "BridgeClient"]:
 		if not get_tree().root.has_node(name):
 			_fail("autoload %s did not resolve" % name)
 
@@ -268,6 +268,28 @@ func _check_hud_ready(instance: Node) -> void:
 	elif body_label.visible_characters != 0:
 		# D-007: the reveal starts at zero and is driven by _process.
 		_fail("typewriter did not reset — visible_characters is %d, expected 0" % body_label.visible_characters)
+
+	# M8 bridge wiring: verify the input row exists and the response path works.
+	var input_row: Node = hud.get_node_or_null("Panel/Margin/Rows/InputRow")
+	if input_row == null:
+		_fail("dialogue panel: InputRow path does not resolve — M8 input missing")
+	elif not input_row.visible:
+		_fail("dialogue panel: InputRow is hidden while NPC is approached")
+
+	var question_input: LineEdit = hud.get_node_or_null("Panel/Margin/Rows/InputRow/QuestionInput")
+	if question_input == null:
+		_fail("dialogue panel: QuestionInput path does not resolve")
+
+	var status_label: Label = hud.get_node_or_null("Panel/Margin/Rows/StatusLabel")
+	if status_label == null:
+		_fail("dialogue panel: StatusLabel path does not resolve")
+
+	# Simulate a bridge response and verify the typewriter resets on it.
+	GameEvents.agent_response_received.emit("systems-architect", "Hello from the bridge.")
+	if body_label.text != "Hello from the bridge.":
+		_fail("bridge response was not rendered in BodyLabel")
+	elif body_label.visible_characters != 0:
+		_fail("typewriter did not reset on bridge response — visible_characters is %d" % body_label.visible_characters)
 
 	GameEvents.npc_left.emit("systems-architect")
 	if panel.visible:
