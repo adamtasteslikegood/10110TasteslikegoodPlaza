@@ -7,7 +7,10 @@ extends CharacterBody2D
 
 
 func _physics_process(_delta: float) -> void:
-	velocity = _input_vector() * speed
+	if get_viewport().gui_get_focus_owner() != null:
+		velocity = Vector2.ZERO
+	else:
+		velocity = _input_vector() * speed
 	move_and_slide()
 
 
