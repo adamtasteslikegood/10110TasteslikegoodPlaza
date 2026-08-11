@@ -117,9 +117,9 @@
       "acceptance": {
         "cmd": "godot --headless --import && godot --headless tests/smoke_test.tscn"
       },
-      "status": "todo",
-      "evidence": "",
-      "attempts": 0,
+      "status": "done",
+      "evidence": "PR #174 merged to dev. dialogue_panel.gd wired: LineEdit input, BridgeClient.send_query(), bridge signal listeners, typewriter on response. player.gd movement suppressed during GUI focus. Review: 1 round Copilot (3 fixed, 1 acknowledged post-M8) + Claude (2 informational). Smoke test passes.",
+      "attempts": 1,
       "depends_on": ["T2", "T3b", "T4"],
       "blocks": ["T6"],
       "note": "M8 end-to-end: walk up to NPC → type question → real agent response appears with typewriter effect (D-007). Typewriter is frontend-only — bridge sends the full response, Godot reveals it character by character."
