@@ -5,7 +5,7 @@
     "max_attempts_per_task": 3,
     "max_loop_iterations": 12
   },
-  "iteration": 1,
+  "iteration": 2,
   "tasks": [
     {
       "id": "T0",
@@ -49,9 +49,9 @@
       "acceptance": {
         "cmd": "python3 -c \"import bridge.bridge; print('import ok')\" && python3 -m py_compile bridge/bridge.py"
       },
-      "status": "todo",
-      "evidence": "",
-      "attempts": 0,
+      "status": "done",
+      "evidence": "PR #164 merged to dev. bridge/bridge.py + bridge/__init__.py + bridge/PROTOCOL.md created. Acceptance: 'python3 -c import bridge.bridge' exit 0. Review: 2 rounds Copilot + Claude, findings fixed (path traversal guard, server-controlled params, multi-block join, dict type check).",
+      "attempts": 1,
       "depends_on": ["T1"],
       "blocks": ["T5"],
       "note": "WebSocket server on localhost:8765 (D-015). Synchronous with timeout (D-006). Zero UI awareness (D-005) — swap test: replacing Godot with a CLI harness must require no bridge change. Uses anthropic Python SDK, bare Anthropic() constructor. Auth: setup-token OAuth primary (ANTHROPIC_AUTH_TOKEN) / ANTHROPIC_API_KEY fallback. Standalone wscat/websocat test before Godot integration."
@@ -66,9 +66,9 @@
       "acceptance": {
         "cmd": "python3 -m py_compile bridge/sync.py"
       },
-      "status": "todo",
-      "evidence": "",
-      "attempts": 0,
+      "status": "done",
+      "evidence": "PR #167 merged to dev. bridge/sync.py seed() + 130 agent .md files committed to bridge/agents/. Acceptance: 'python3 -m py_compile bridge/sync.py' exit 0. Design corrected per owner: bridge/agents/ is committed to git (D-029), sync.py is a seed/upgrade tool not a runtime prerequisite.",
+      "attempts": 1,
       "depends_on": ["T1"],
       "blocks": ["T3b"],
       "note": "D-029: reads claude-code-tresor/subagents/, writes to bridge/agents/. Runs explicitly (build step or manual), never at request time. Warns when submodule is missing or stale but never blocks the bridge. Handles missing submodule gracefully — exit with a clear error, not a stack trace."
@@ -83,9 +83,9 @@
       "acceptance": {
         "cmd": "python3 -m py_compile bridge/agents.py"
       },
-      "status": "todo",
-      "evidence": "",
-      "attempts": 0,
+      "status": "done",
+      "evidence": "PR #167 merged to dev (same PR as T3a). bridge/agents.py + bridge/tests/test_agents.py created. Acceptance: 'python3 -m py_compile bridge/agents.py' exit 0. 9 unit tests pass (load, missing, path traversal, list sorted, empty/missing store).",
+      "attempts": 1,
       "depends_on": ["T3a"],
       "blocks": ["T5"],
       "note": "Loads agent .md definitions from bridge/agents/ (D-029 store). Returns the definition as a string for use as system prompt. NPC scene stores agent_id only (D-016) — the loader resolves id to definition."
@@ -100,9 +100,9 @@
       "acceptance": {
         "cmd": "godot --headless --import && godot --headless tests/smoke_test.tscn"
       },
-      "status": "todo",
-      "evidence": "",
-      "attempts": 0,
+      "status": "done",
+      "evidence": "PR #171 merged to dev. scenes/bridge/ws_client.gd + .uid, 3 bridge signals in GameEvents.gd, BridgeClient autoload in project.godot. Acceptance: smoke_test.tscn passes (CI). Review: 1 round Copilot (4) + Claude (3 informational), bugs fixed (send_text error check, in-flight close handling, .uid committed). godot-conventions.md updated.",
+      "attempts": 1,
       "depends_on": ["T1"],
       "blocks": ["T5"],
       "note": "Godot-side WebSocket client. D-005 boundary check: ws_client knows about WebSocket messages (JSON), never about agent definitions, auth, or the SDK. Emits signals that the dialogue panel consumes. D-025 for file layout."

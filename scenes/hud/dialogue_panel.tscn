@@ -24,7 +24,7 @@ anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
 offset_left = 24.0
-offset_top = -208.0
+offset_top = -248.0
 offset_right = -24.0
 offset_bottom = -24.0
 grow_horizontal = 2
@@ -66,4 +66,18 @@ text = "Role · Department"
 [node name="BodyLabel" type="Label" parent="Panel/Margin/Rows"]
 size_flags_vertical = 3
 autowrap_mode = 3
+text = ""
+
+[node name="InputRow" type="HBoxContainer" parent="Panel/Margin/Rows"]
+theme_override_constants/separation = 8
+
+[node name="QuestionInput" type="LineEdit" parent="Panel/Margin/Rows/InputRow"]
+size_flags_horizontal = 3
+placeholder_text = "Ask this agent a question..."
+theme_override_font_sizes/font_size = 14
+
+[node name="StatusLabel" type="Label" parent="Panel/Margin/Rows"]
+visible = false
+theme_override_colors/font_color = Color(0.68, 0.68, 0.74, 1)
+theme_override_font_sizes/font_size = 13
 text = ""
