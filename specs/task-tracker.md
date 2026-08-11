@@ -5,7 +5,7 @@ tier: 3
 authority: derived
 status: ACTIVE
 doc_set_version: 0.2.12
-last_updated: 2026-07
+last_updated: 2026-08
 owner: adamtasteslikegood
 derives_from: [ROADMAP]
 enforcement: asserted
@@ -110,20 +110,23 @@ is ~15 lines (`scenes/player/player.gd`) and needed no template.
 
 ## Phase 2 — I/O bridge  (target: weeks 4–6)
 
-### M7 — Python bridge
-- [ ] Install Python websockets: `pip install websockets`
-- [ ] Write `bridge.py` (WebSocket server + subprocess agent invocation)
-- [ ] Test bridge standalone: send it a task via `wscat` or `websocat`, verify agent CLI response returns
-- [ ] Write `ws_client.gd` in Godot
-- [ ] Test: Godot sends a task → bridge receives it (log to console)
-- [ ] Test: bridge returns a response → Godot receives and logs it
+### M7 — Python bridge ✅ Sprint 4
+- [x] Write `bridge/bridge.py` — WebSocket server on `localhost:8765`, Claude SDK call with timeout (`D-005`, `D-006`, `D-015`). Uses `anthropic` Python SDK, not subprocess (`D-029`).
+- [x] Write `bridge/agents.py` — agent store loader, reads `.md` definitions from `bridge/agents/` (`D-016`, `D-029`)
+- [x] Write `bridge/sync.py` — seed/upgrade tool, copies from `claude-code-tresor/subagents/` into `bridge/agents/`
+- [x] Commit 130 agent `.md` definitions to `bridge/agents/` (`D-029`: bridge owns its store)
+- [x] Write `scenes/bridge/ws_client.gd` — Godot WebSocket client, `BridgeClient` autoload
+- [x] Test bridge standalone: `python3 -m py_compile bridge/bridge.py` (local; syntax covered by `flake8 --select=E9` in CI)
+- [x] Test: smoke test verifies `BridgeClient` autoload resolves, bridge signals wired
 
-### M8 — First live agent output in-world
-- [ ] Wire dialogue panel "send" button → ws_client.send_task()
-- [ ] Wire ws_client.response_received → dialogue panel updates with output
-- [ ] Wire response → also logs to inbox
-- [ ] Test end-to-end: walk up to NPC → type question → real agent response appears
-- [ ] **MILESTONE: Prototype complete**
+### M8 — First live agent output in-world ✅ Sprint 4
+- [x] Wire dialogue panel `LineEdit` → `BridgeClient.send_query()` → bridge → response
+- [x] Wire `GameEvents.agent_response_received` → dialogue panel typewriter (`D-007`)
+- [x] Wire `GameEvents.agent_query_failed` → error display in `StatusLabel`
+- [x] Suppress player movement during GUI input focus
+- [x] Smoke test: simulated bridge response renders with typewriter reset
+- [x] Test end-to-end: walk up to NPC → type question → real agent response appears (manual demo)
+- [x] **MILESTONE: Bridge layer complete — prototype ready for live demo**
 
 ---
 

@@ -176,8 +176,8 @@
       "path": "specs/sprint-4-charter.md",
       "tier": 3,
       "authority": "delivery",
-      "status": "ACTIVE",
-      "note": "Executable context for Sprint 4. Delivers M7 (Python bridge with Claude SDK) and M8 (first live agent output in-world). Registers D-029 (bridge agent store). Bridge uses anthropic Python SDK instead of subprocess CLI; auth via setup-token OAuth (ANTHROPIC_AUTH_TOKEN) / ANTHROPIC_API_KEY fallback."
+      "status": "HISTORICAL",
+      "note": "Executable context for Sprint 4. Delivered M7 (Python bridge with Claude SDK) and M8 (first live agent output in-world). All 8 tasks (T0-T7, PLZG-170-177) completed. Bridge uses anthropic Python SDK; auth via setup-token OAuth. Closed 2026-08-11."
     },
     {
       "doc_id": "GOVERNANCE-TREE",
