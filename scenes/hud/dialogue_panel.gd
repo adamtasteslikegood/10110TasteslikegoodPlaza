@@ -37,6 +37,12 @@ func _ready() -> void:
 	_panel.hide()
 
 
+func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed("ui_cancel"):
+		_input.release_focus()
+		get_viewport().set_input_as_handled()
+
+
 func _process(delta: float) -> void:
 	if not _panel.visible:
 		return
