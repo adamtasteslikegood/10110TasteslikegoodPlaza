@@ -46,6 +46,11 @@ func _process(_delta: float) -> void:
 			if _connected:
 				_connected = false
 				push_warning("ws_client: connection closed (code %d)" % _socket.get_close_code())
+			if _pending_agent_id != "":
+				GameEvents.agent_query_failed.emit(
+					_pending_agent_id, "connection", "Connection lost during query"
+				)
+				_pending_agent_id = ""
 			_schedule_reconnect()
 
 
@@ -61,9 +66,15 @@ func send_query(agent_id: String, task: String) -> void:
 		)
 		return
 
-	_pending_agent_id = agent_id
 	var payload := JSON.stringify({"agent_id": agent_id, "task": task})
-	_socket.send_text(payload)
+	var err := _socket.send_text(payload)
+	if err != OK:
+		GameEvents.agent_query_failed.emit(
+			agent_id, "connection", "Failed to send query"
+		)
+		return
+
+	_pending_agent_id = agent_id
 	GameEvents.agent_query_sent.emit(agent_id, task)
 
 
@@ -77,6 +88,8 @@ func _on_message(raw: String) -> void:
 
 	var status: String = parsed.get("status", "error")
 	var agent_id: String = parsed.get("agent_id", _pending_agent_id)
+
+	_pending_agent_id = ""
 
 	if status == "ok":
 		GameEvents.agent_response_received.emit(agent_id, parsed.get("output", ""))
