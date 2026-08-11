@@ -3,7 +3,7 @@ doc_id: SPRINT-4-CHARTER
 title: Sprint 4 charter — the agent bridge layer
 tier: 3
 authority: delivery
-status: ACTIVE
+status: HISTORICAL
 doc_set_version: 0.2.12
 last_updated: 2026-08
 owner: adamtasteslikegood

@@ -17,6 +17,25 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
 
+### Added — M7 + M8 agent bridge layer (`PLZG-171`–`PLZG-176`)
+
+- `bridge/bridge.py` — Python WebSocket server on `localhost:8765`, calls Claude
+  SDK with agent `.md` as system prompt. Synchronous with timeout (`D-005`, `D-006`).
+- `bridge/agents.py` — agent store loader, reads 130 committed `.md` definitions
+  from `bridge/agents/` at runtime (`D-029`).
+- `bridge/sync.py` — seed/upgrade tool, copies from `claude-code-tresor/subagents/`.
+- `bridge/PROTOCOL.md` — implementation reference for the WebSocket JSON protocol.
+- `scenes/bridge/ws_client.gd` — Godot WebSocket client, registered as `BridgeClient`
+  autoload. Emits bridge signals via `GameEvents`.
+- Three bridge signals in `GameEvents.gd`: `agent_query_sent`,
+  `agent_response_received`, `agent_query_failed`.
+- Dialogue panel now has a `LineEdit` for player questions. Typing a question and
+  pressing Enter sends it to the bridge; the response renders with the D-007
+  typewriter effect.
+- Player movement suppressed while any GUI `Control` has focus.
+- Smoke test extended: verifies `BridgeClient` autoload, M8 node paths, and
+  simulated bridge response rendering.
+
 ### Added — Sprint 4 charter, D-029 bridge agent store (`PLZG-170`)
 
 - Sprint 4 charter (`specs/sprint-4-charter.md`) and machine-readable loop plan
