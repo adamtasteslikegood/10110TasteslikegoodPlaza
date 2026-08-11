@@ -270,7 +270,7 @@ func _check_hud_ready(instance: Node) -> void:
 		_fail("typewriter did not reset — visible_characters is %d, expected 0" % body_label.visible_characters)
 
 	# M8 bridge wiring: verify the input row exists and the response path works.
-	var input_row: Node = hud.get_node_or_null("Panel/Margin/Rows/InputRow")
+	var input_row: HBoxContainer = hud.get_node_or_null("Panel/Margin/Rows/InputRow")
 	if input_row == null:
 		_fail("dialogue panel: InputRow path does not resolve — M8 input missing")
 	elif not input_row.visible:
