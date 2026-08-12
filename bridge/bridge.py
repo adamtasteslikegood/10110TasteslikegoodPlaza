@@ -27,6 +27,29 @@ _VALID_AGENT_ID = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_-]*$")
 
 
 def _build_client():
+    """Build an Anthropic client, resolving credentials in this order:
+
+    1. ANTHROPIC_API_KEY          — console API key (sk-ant-..., x-api-key header)
+    2. ANTHROPIC_AUTH_TOKEN        — OAuth token (Authorization: Bearer)
+    3. CLAUDE_CODE_OAUTH_TOKEN     — same, bridge-local alias for subscription users
+    4. CLAUDE_CODE_0AUTH_TOKEN      — alternate spelling of the above
+    5. ant auth login profile      — SDK reads ~/.config/anthropic/ automatically
+
+    OAuth tokens and API keys use different auth headers; the SDK handles
+    that when you pass auth_token= vs api_key=.
+    """
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    if api_key.startswith("sk-ant-"):
+        return Anthropic(api_key=api_key)
+
+    auth_token = (
+        os.environ.get("ANTHROPIC_AUTH_TOKEN")
+        or os.environ.get("CLAUDE_CODE_OAUTH_TOKEN")
+        or os.environ.get("CLAUDE_CODE_0AUTH_TOKEN")
+    )
+    if auth_token:
+        return Anthropic(auth_token=auth_token)
+
     return Anthropic()
 
 
