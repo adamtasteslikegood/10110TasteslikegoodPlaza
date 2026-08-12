@@ -15,11 +15,11 @@ import re
 import sys
 
 import websockets
-from anthropic import Anthropic
+from anthropic import Anthropic, RateLimitError
 
 LISTEN_HOST = "localhost"
 LISTEN_PORT = 8765
-DEFAULT_MODEL = "claude-opus-4-6"
+DEFAULT_MODEL = os.environ.get("BRIDGE_MODEL", "claude-haiku-4-5-20251001")
 DEFAULT_TIMEOUT = 60
 DEFAULT_MAX_TOKENS = 4096
 
@@ -136,6 +136,18 @@ def handle_request(client, request):
         parts = [b.text for b in response.content if hasattr(b, "text")]
         output = "\n\n".join(parts) if parts else ""
         return _make_success(agent_id, task, output)
+    except RateLimitError as exc:
+        retry_after = ""
+        if hasattr(exc, "response") and exc.response:
+            ra = exc.response.headers.get("retry-after", "")
+            if ra:
+                retry_after = f" (retry after {ra}s)"
+        return _make_error(
+            agent_id,
+            task,
+            "rate_limit",
+            f"Rate limited on {DEFAULT_MODEL}{retry_after}",
+        )
     except Exception as exc:
         exc_name = type(exc).__name__
         if "auth" in exc_name.lower() or "authentication" in str(exc).lower():
@@ -168,7 +180,11 @@ async def serve():
         LISTEN_HOST,
         LISTEN_PORT,
     ):
-        print(f"Bridge running on ws://{LISTEN_HOST}:{LISTEN_PORT}", file=sys.stderr)
+        print(
+            f"Bridge running on ws://{LISTEN_HOST}:{LISTEN_PORT} "
+            f"(model: {DEFAULT_MODEL})",
+            file=sys.stderr,
+        )
         await asyncio.Future()
 
 
