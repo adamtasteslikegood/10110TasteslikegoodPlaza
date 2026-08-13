@@ -260,7 +260,7 @@ func _check_hud_ready(instance: Node) -> void:
 	elif name_label.text != "Systems Architect":
 		_fail("dialogue panel shows %s, expected 'Systems Architect'" % [name_label.text])
 
-	var body_label: Label = hud.get_node_or_null("Panel/Margin/Rows/BodyLabel")
+	var body_label: RichTextLabel = hud.get_node_or_null("Panel/Margin/Rows/BodyLabel")
 	if body_label == null:
 		_fail("dialogue panel: BodyLabel path does not resolve")
 	elif body_label.text != agent.get("description", ""):
