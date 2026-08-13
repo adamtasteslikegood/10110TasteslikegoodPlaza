@@ -70,6 +70,13 @@ chat, Agent SDK for domain sessions). Create a key at
 export ANTHROPIC_API_KEY="sk-ant-..."
 ```
 
+> "Unless previously approved, Anthropic does not allow third party developers
+> to offer claude.ai login or rate limits for their products, including agents
+> built on the Claude Agent SDK. Please use the API key authentication methods
+> described in this document instead."
+>
+> — [Anthropic Agent SDK QuickStart](https://code.claude.com/docs/en/agent-sdk/quickstart)
+
 ## 3. Run the demo
 
 Open **two terminals** (both from the repo root, both with the venv activated):
