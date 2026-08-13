@@ -260,7 +260,7 @@ func _check_hud_ready(instance: Node) -> void:
 	elif name_label.text != "Systems Architect":
 		_fail("dialogue panel shows %s, expected 'Systems Architect'" % [name_label.text])
 
-	var body_label: Label = hud.get_node_or_null("Panel/Margin/Rows/BodyLabel")
+	var body_label: RichTextLabel = hud.get_node_or_null("Panel/Margin/Rows/BodyLabel")
 	if body_label == null:
 		_fail("dialogue panel: BodyLabel path does not resolve")
 	elif body_label.text != agent.get("description", ""):
@@ -268,6 +268,8 @@ func _check_hud_ready(instance: Node) -> void:
 	elif body_label.visible_characters != 0:
 		# D-007: the reveal starts at zero and is driven by _process.
 		_fail("typewriter did not reset — visible_characters is %d, expected 0" % body_label.visible_characters)
+	elif not body_label.scroll_active:
+		_fail("BodyLabel scroll_active is false — long responses will overflow")
 
 	# M8 bridge wiring: verify the input row exists and the response path works.
 	var input_row: HBoxContainer = hud.get_node_or_null("Panel/Margin/Rows/InputRow")

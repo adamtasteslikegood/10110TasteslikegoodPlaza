@@ -63,9 +63,11 @@ theme_override_colors/font_color = Color(0.68, 0.68, 0.74, 1)
 theme_override_font_sizes/font_size = 14
 text = "Role · Department"
 
-[node name="BodyLabel" type="Label" parent="Panel/Margin/Rows"]
+[node name="BodyLabel" type="RichTextLabel" parent="Panel/Margin/Rows"]
 size_flags_vertical = 3
-autowrap_mode = 3
+fit_content = false
+scroll_active = true
+scroll_following = true
 text = ""
 
 [node name="InputRow" type="HBoxContainer" parent="Panel/Margin/Rows"]

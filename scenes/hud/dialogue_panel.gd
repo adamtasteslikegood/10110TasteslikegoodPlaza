@@ -22,7 +22,7 @@ var _waiting := false
 @onready var _portrait: ColorRect = $Panel/Margin/Rows/Header/Portrait
 @onready var _name_label: Label = $Panel/Margin/Rows/Header/Titles/NameLabel
 @onready var _role_label: Label = $Panel/Margin/Rows/Header/Titles/RoleLabel
-@onready var _body_label: Label = $Panel/Margin/Rows/BodyLabel
+@onready var _body_label: RichTextLabel = $Panel/Margin/Rows/BodyLabel
 @onready var _question_input: LineEdit = $Panel/Margin/Rows/InputRow/QuestionInput
 @onready var _input_row: HBoxContainer = $Panel/Margin/Rows/InputRow
 @onready var _status_label: Label = $Panel/Margin/Rows/StatusLabel
@@ -52,6 +52,12 @@ func _process(delta: float) -> void:
 		return
 	_revealed = minf(_revealed + CHARS_PER_SECOND * delta, float(_full_text.length()))
 	_body_label.visible_characters = int(_revealed)
+	# scroll_following only fires on text append, not on visible_characters
+	# changes, so drive the scroll manually to follow the typewriter reveal.
+	var scroll_bar := _body_label.get_v_scroll_bar()
+	if scroll_bar and scroll_bar.max_value > scroll_bar.page:
+		var frac := clampf(_revealed / float(maxi(_full_text.length(), 1)), 0.0, 1.0)
+		scroll_bar.value = frac * (scroll_bar.max_value - scroll_bar.page)
 
 
 func _on_npc_approached(agent_id: String, agent_data: Dictionary) -> void:
@@ -121,6 +127,9 @@ func _set_body(text: String) -> void:
 	_body_label.text = text
 	_body_label.visible_characters = 0
 	_revealed = 0.0
+	var scroll_bar := _body_label.get_v_scroll_bar()
+	if scroll_bar:
+		scroll_bar.value = 0
 
 
 func _show_input(show: bool) -> void:
