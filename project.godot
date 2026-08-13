@@ -1,11 +1,10 @@
 ; Engine configuration file.
-; Godot 4.7 — see docs/designs/2.5D-RPG-Prototype.md (D-001: 2.5D top-down, Godot 2D).
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
 ;
-; Movement uses the built-in ui_left/right/up/down actions rather than a custom
-; input map. The [input] block serialises InputEventKey as an inline Object(...)
-; literal whose fields shift between engine versions; ui_* is stable, works on a
-; fresh checkout with no setup, and player.gd layers WASD on top by polling
-; physical keycodes. See scenes/player/player.gd.
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
 
 config_version=5
 
