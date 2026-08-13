@@ -55,9 +55,9 @@ func _process(delta: float) -> void:
 	# scroll_following only fires on text append, not on visible_characters
 	# changes, so drive the scroll manually to follow the typewriter reveal.
 	var scroll_bar := _body_label.get_v_scroll_bar()
-	if scroll_bar and scroll_bar.max_value > 0:
+	if scroll_bar and scroll_bar.max_value > scroll_bar.page:
 		var frac := clampf(_revealed / float(maxi(_full_text.length(), 1)), 0.0, 1.0)
-		scroll_bar.value = frac * scroll_bar.max_value
+		scroll_bar.value = frac * (scroll_bar.max_value - scroll_bar.page)
 
 
 func _on_npc_approached(agent_id: String, agent_data: Dictionary) -> void:
