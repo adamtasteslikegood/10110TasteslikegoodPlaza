@@ -12,8 +12,12 @@ D-015: ws://localhost:8765.
 """
 
 import asyncio
+import os
+import sys
 
-from bridge.server import serve
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from bridge.server import serve  # noqa: E402
 
 if __name__ == "__main__":
     asyncio.run(serve())
