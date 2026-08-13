@@ -46,7 +46,8 @@ Layer 4 — Real agent execution  (EXISTS)
 
 Layer 3 — UI-agnostic bridge  (EXISTS — M7+M8)
   Python WebSocket server on ws://localhost:8765
-  Calls Claude SDK with agent .md as system prompt
+  Conversation engine (Messages API) + domain sessions (Agent SDK)
+  Requires an Anthropic API key (ANTHROPIC_API_KEY)
   Synchronous with timeout (D-005, D-006) — zero UI awareness
 
 Layer 2 — Current frontend  (PARTIAL)

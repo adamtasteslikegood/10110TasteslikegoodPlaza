@@ -57,12 +57,14 @@ and ensure `godot` is on your `PATH`.
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
-pip install websockets anthropic   # bridge runtime
+pip install websockets anthropic claude-agent-sdk  # bridge runtime
 pip install flake8 black           # linting (CI gates)
 pip install pyyaml                 # only for regenerating agents.json
 ```
 
-**Anthropic API key** — the bridge calls the Claude SDK, so you need a key:
+**Anthropic API key** — the bridge calls the Claude API (Messages API for NPC
+chat, Agent SDK for domain sessions). Create a key at
+[console.anthropic.com/settings/keys](https://console.anthropic.com/settings/keys):
 
 ```bash
 export ANTHROPIC_API_KEY="sk-ant-..."
