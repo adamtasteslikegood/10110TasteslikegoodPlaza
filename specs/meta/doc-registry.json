@@ -225,6 +225,18 @@
     {
       "path": "report.md",
       "reason": "Generated output of generate_report.py. Machine-written, not authored."
+    },
+    {
+      "path": "docs/reference/using_agents_sdk_with_claude_code.md",
+      "reason": "Research notes on the Claude Agent SDK API surface. Reference material, not specification."
+    },
+    {
+      "path": "docs/superpowers/plans/2026-08-12-bridge-domain-architecture.md",
+      "reason": "Superpowers-generated implementation plan. Execution artifact, not a governed spec."
+    },
+    {
+      "path": "docs/superpowers/specs/2026-08-12-bridge-domain-architecture-design.md",
+      "reason": "Superpowers-generated design spec. Brainstorming output driving the plan, not a governed doc."
     }
   ]
 }
