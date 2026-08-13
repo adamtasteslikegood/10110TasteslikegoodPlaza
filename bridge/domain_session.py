@@ -94,7 +94,7 @@ _SDK_ENV_PASSTHROUGH = [
     "ANTHROPIC_API_KEY",
     "ANTHROPIC_AUTH_TOKEN",
     "CLAUDE_CODE_OAUTH_TOKEN",
-    "CLAUDE_CODE_0AUTH_TOKEN",  # alternate spelling — see bridge/bridge.py
+    "CLAUDE_CODE_0AUTH_TOKEN",
 ]
 
 
