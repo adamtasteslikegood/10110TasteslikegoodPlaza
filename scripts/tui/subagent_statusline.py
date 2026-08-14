@@ -54,12 +54,17 @@ def build_mini_bar(token_count, context_size, width=5):
 
 
 def status_segment(status):
+    emoji_map = {
+        "completed": "✅",
+        "running": "🔄",
+    }
     color_map = {
         "completed": cc_session.GREEN,
         "running": cc_session.YELLOW,
     }
+    emoji = emoji_map.get(status, "⏳")
     color = color_map.get(status, cc_session.DIM)
-    return f"{color}{status or 'queued'}{cc_session.RESET}"
+    return f"{emoji} {color}{status or 'queued'}{cc_session.RESET}"
 
 
 def render_task(task):
@@ -73,11 +78,11 @@ def render_task(task):
 
     bar, pct_label = build_mini_bar(token_count, context_size)
 
-    parts = [f"{name} [{model_short}] {bar} {pct_label}"]
+    parts = [f"🤖 {name} [{model_short}] {bar} {pct_label}"]
 
     if effort:
-        effort_labels = {"xhigh": "xhigh", "medium": "med"}
-        parts.append(str(effort_labels.get(effort, effort)))
+        effort_labels = {"xhigh": "🔥 xhigh", "high": "🔥 high", "medium": "⚙️ med"}
+        parts.append(str(effort_labels.get(effort, str(effort))))
 
     parts.append(status_segment(status))
 
