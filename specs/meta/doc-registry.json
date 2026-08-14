@@ -212,6 +212,15 @@
       "status": "ACTIVE",
       "note": "Claude Code statusline protocol reference. Documents Anthropic's shipped JSON schema for statusline scripts and annotates bridge relevance per field. External protocol, asserts nothing about this repository.",
       "enforcement_na_reason": "External protocol documentation. Describes Anthropic's shipped CC statusline feature; asserts nothing about this repository's code or state."
+    },
+    {
+      "doc_id": "DEVOPS-SETUP",
+      "path": "docs/devops-setup.md",
+      "tier": 3,
+      "authority": "derived",
+      "status": "ACTIVE",
+      "note": "DevOps setup guide covering model routing, CI pipeline, issue triage, Claude routines, and release automation. Documents setup procedures; authoritative over nothing.",
+      "enforcement_na_reason": "Procedural guide. Describes how to configure devops tools; asserts nothing about repository state."
     }
   ],
   "exempt": [

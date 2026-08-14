@@ -137,6 +137,26 @@ jobs:
           # exit-zero treats all errors as warnings
           flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
+  bridge-tests:
+    name: Bridge Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest websockets
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Run bridge tests
+        run: pytest bridge/tests/ -v
+
   godot-build:
     name: Export Godot 4 Prototype
     runs-on: ubuntu-latest
@@ -164,7 +184,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Cache Godot binary
+        uses: actions/cache@v4
+        id: godot-cache
+        with:
+          path: /usr/local/bin/godot
+          key: godot-${{ env.GODOT_VERSION }}-linux-x86_64
+
       - name: Install Godot ${{ env.GODOT_VERSION }}
+        if: steps.godot-cache.outputs.cache-hit != 'true'
         run: |
           set -euo pipefail
           # godotengine/godot GitHub releases -- downloads.tuxfamily.org, which the
@@ -175,7 +203,9 @@ jobs:
           unzip -q godot.zip
           mv "Godot_v${GODOT_VERSION}-stable_linux.x86_64" /usr/local/bin/godot
           chmod +x /usr/local/bin/godot
-          godot --version
+
+      - name: Verify Godot version
+        run: godot --version
 
       - name: Import project
         run: godot --headless --import
