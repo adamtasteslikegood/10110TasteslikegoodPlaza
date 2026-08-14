@@ -1,0 +1,82 @@
+{
+  "cwd": "/home/user/Projects/10110TasteslikegoodPlaza",
+  "session_id": "abc123-test-session",
+  "session_name": "my-session",
+  "prompt_id": "550e8400-e29b-41d4-a716-446655440000",
+  "transcript_path": "/path/to/transcript.jsonl",
+  "model": {
+    "id": "claude-opus-4-6",
+    "display_name": "Opus 4.6"
+  },
+  "workspace": {
+    "current_dir": "/home/user/Projects/10110TasteslikegoodPlaza",
+    "project_dir": "/home/user/Projects/10110TasteslikegoodPlaza",
+    "added_dirs": [],
+    "git_worktree": "feature-xyz",
+    "repo": {
+      "host": "github.com",
+      "owner": "adamtasteslikegood",
+      "name": "10110TasteslikegoodPlaza"
+    }
+  },
+  "version": "2.1.200",
+  "output_style": {
+    "name": "default"
+  },
+  "cost": {
+    "total_cost_usd": 1.23,
+    "total_duration_ms": 754000,
+    "total_api_duration_ms": 23000,
+    "total_lines_added": 156,
+    "total_lines_removed": 23
+  },
+  "context_window": {
+    "total_input_tokens": 84000,
+    "total_output_tokens": 1200,
+    "context_window_size": 200000,
+    "used_percentage": 42,
+    "remaining_percentage": 58,
+    "current_usage": {
+      "input_tokens": 8500,
+      "output_tokens": 1200,
+      "cache_creation_input_tokens": 5000,
+      "cache_read_input_tokens": 2000
+    }
+  },
+  "exceeds_200k_tokens": false,
+  "fast_mode": false,
+  "effort": {
+    "level": "high"
+  },
+  "thinking": {
+    "enabled": true
+  },
+  "rate_limits": {
+    "five_hour": {
+      "used_percentage": 23.5,
+      "resets_at": 1738425600
+    },
+    "seven_day": {
+      "used_percentage": 41.2,
+      "resets_at": 1738857600
+    }
+  },
+  "vim": {
+    "mode": "NORMAL"
+  },
+  "agent": {
+    "name": "security-reviewer"
+  },
+  "pr": {
+    "number": 198,
+    "url": "https://github.com/adamtasteslikegood/10110TasteslikegoodPlaza/pull/198",
+    "review_state": "pending"
+  },
+  "worktree": {
+    "name": "my-feature",
+    "path": "/home/user/.claude/worktrees/my-feature",
+    "branch": "worktree-my-feature",
+    "original_cwd": "/home/user/Projects/10110TasteslikegoodPlaza",
+    "original_branch": "dev"
+  }
+}
