@@ -24,6 +24,7 @@
     "pm-skills@claude-code-skills": true,
     "superpowers@claude-plugins-official": true
   },
+  "advisorModel": "fable",
   "hooks": {
     "SessionStart": [
       {
