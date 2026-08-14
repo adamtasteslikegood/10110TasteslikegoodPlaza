@@ -79,15 +79,35 @@ def get_workspace(data):
 _GIT_CACHE_MAX_AGE = 5
 
 
+def _safe_write(path, content):
+    """Write a cache file, refusing to follow symlinks (O_NOFOLLOW)."""
+    try:
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o600)
+        with os.fdopen(fd, "w") as f:
+            f.write(content)
+    except OSError:
+        pass
+
+
+def _safe_read(path):
+    """Read a cache file, refusing to follow symlinks (O_NOFOLLOW)."""
+    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+    with os.fdopen(fd, "r") as f:
+        return f.read()
+
+
 def get_git_status(data):
     raw_id = str(data.get("session_id", "unknown"))
     safe_id = "".join(ch for ch in raw_id if ch.isalnum() or ch in ("-", "_"))
     cache_file = f"/tmp/statusline-git-cache-{safe_id or 'unknown'}"
 
     stale = True
-    if os.path.exists(cache_file):
-        age = time.time() - os.path.getmtime(cache_file)
-        stale = age > _GIT_CACHE_MAX_AGE
+    try:
+        st = os.lstat(cache_file)
+        if not os.path.islink(cache_file):
+            stale = (time.time() - st.st_mtime) > _GIT_CACHE_MAX_AGE
+    except OSError:
+        pass
 
     if stale:
         try:
@@ -105,15 +125,12 @@ def get_git_status(data):
             ).strip()
             staged_count = len(staged_out.split("\n")) if staged_out else 0
             modified_count = len(modified_out.split("\n")) if modified_out else 0
-            with open(cache_file, "w") as f:
-                f.write(f"{branch}|{staged_count}|{modified_count}")
+            _safe_write(cache_file, f"{branch}|{staged_count}|{modified_count}")
         except Exception:
-            with open(cache_file, "w") as f:
-                f.write("|0|0")
+            _safe_write(cache_file, "|0|0")
 
     try:
-        with open(cache_file) as f:
-            parts = f.read().strip().split("|")
+        parts = _safe_read(cache_file).strip().split("|")
         return {
             "branch": parts[0] if parts[0] else "",
             "staged_count": int(parts[1]) if len(parts) > 1 and parts[1] else 0,
