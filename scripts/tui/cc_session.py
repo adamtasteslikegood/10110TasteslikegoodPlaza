@@ -80,8 +80,9 @@ _GIT_CACHE_MAX_AGE = 5
 
 
 def get_git_status(data):
-    session_id = data.get("session_id", "unknown")
-    cache_file = f"/tmp/statusline-git-cache-{session_id}"
+    raw_id = str(data.get("session_id", "unknown"))
+    safe_id = "".join(ch for ch in raw_id if ch.isalnum() or ch in ("-", "_"))
+    cache_file = f"/tmp/statusline-git-cache-{safe_id or 'unknown'}"
 
     stale = True
     if os.path.exists(cache_file):
