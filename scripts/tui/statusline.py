@@ -63,7 +63,7 @@ def rate_limit_7d(pct):
         color = cc_session.YELLOW
     else:
         color = cc_session.GREEN
-    dots = f"{color}{'●' * filled}{'░' * empty}{cc_session.RESET}"
+    dots = f"{color}{'●' * filled}{'○' * empty}{cc_session.RESET}"
     return f"📅7d {dots} {pct}%"
 
 
