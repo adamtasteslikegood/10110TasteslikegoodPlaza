@@ -17,7 +17,7 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
 
-### Added — Claude Code TUI statusline customization (`PLZG-199`)
+### Added — Claude Code TUI statusline customization (`PLZG-200`)
 
 - Two-line main statusline showing model, project, branch, worktree, PR state,
   context-window bar, cost, rate limits, and session duration.
