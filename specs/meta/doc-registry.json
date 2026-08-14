@@ -203,6 +203,15 @@
       "status": "ACTIVE",
       "note": "Plain-language companion to AGILE-EXPLAINED. Same standing: authoritative over nothing.",
       "enforcement_na_reason": "Plain-language companion to AGILE-EXPLAINED. General education, no claim about this repository -- checked explicitly during PLZG-136 review, which found AGILE-EXPLAINED does carry one ('Adopted as foundational onboarding reading') and rescored it asserted. This file carries no equivalent."
+    },
+    {
+      "doc_id": "CC-STATUSLINE-PROTOCOL",
+      "path": "docs/cc-statusline-protocol.md",
+      "tier": 4,
+      "authority": "research",
+      "status": "ACTIVE",
+      "note": "Claude Code statusline protocol reference. Documents Anthropic's shipped JSON schema for statusline scripts and annotates bridge relevance per field. External protocol, asserts nothing about this repository.",
+      "enforcement_na_reason": "External protocol documentation. Describes Anthropic's shipped CC statusline feature; asserts nothing about this repository's code or state."
     }
   ],
   "exempt": [
@@ -237,6 +246,14 @@
     {
       "path": "docs/superpowers/specs/2026-08-12-bridge-domain-architecture-design.md",
       "reason": "Superpowers-generated design spec. Brainstorming output driving the plan, not a governed doc."
+    },
+    {
+      "path": "docs/superpowers/specs/2026-08-13-cc-tui-statusline-design.md",
+      "reason": "Superpowers-generated design spec. Brainstorming output driving the plan, not a governed doc."
+    },
+    {
+      "path": "docs/superpowers/plans/2026-08-13-cc-tui-statusline.md",
+      "reason": "Superpowers-generated implementation plan. Execution artifact, not a governed spec."
     }
   ]
 }

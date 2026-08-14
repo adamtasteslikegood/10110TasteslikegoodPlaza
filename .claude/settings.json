@@ -1,4 +1,13 @@
 {
+  "statusLine": {
+    "type": "command",
+    "command": "python3 \"$CLAUDE_PROJECT_DIR/scripts/tui/statusline.py\"",
+    "refreshInterval": 10
+  },
+  "subagentStatusLine": {
+    "type": "command",
+    "command": "python3 \"$CLAUDE_PROJECT_DIR/scripts/tui/subagent_statusline.py\""
+  },
   "extraKnownMarketplaces": {
     "claude-code-skills": {
       "source": {
