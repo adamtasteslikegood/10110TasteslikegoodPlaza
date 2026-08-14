@@ -24,7 +24,7 @@ spec-set versions, and no application release existed before `v0.1.22`.
 - Issue triage workflow auto-labeling by title pattern on open.
 - Three Claude routines: daily issue dedup, weekly doc scan, weekly submodule check.
 - release-please configuration for automated GitHub Releases on `main`.
-- Model routing config (`.claude-code-router.json`) for background request cost reduction.
+- Model routing documentation for `claude-code-router` (`ccr`) background request cost reduction.
 - DevOps setup guide (`docs/devops-setup.md`).
 
 ### Added — Claude Code TUI statusline customization (`PLZG-200`)

@@ -24,25 +24,47 @@ CI pipeline, issue triage, scheduled routines, and release automation.
 
 ## 1. Model Routing (`claude-code-router`)
 
-Routes Claude Code requests by type to different models. Background
-requests (subagents, background jobs) use a cheaper model; foreground
-stays on Opus.
+Routes Claude Code requests through a local gateway that can direct
+traffic to different upstream providers and models. Configured via a
+browser-based management UI, not a project-level config file.
 
 **One-time setup:**
 
 ```bash
 npm install -g @musistudio/claude-code-router
+ccr ui
 ```
 
-**Usage:** Start Claude Code through the router instead of directly:
+This starts the background service and opens the management UI at
+`http://127.0.0.1:3458`. From there:
+
+1. Add an upstream provider and at least one model.
+2. Create a CCR client key under **API Keys**.
+3. Configure routing rules (e.g. route background requests to Sonnet).
+4. Confirm the gateway is running under **Server** (default:
+   `http://127.0.0.1:3456`).
+
+**Launching Claude Code through a profile:**
 
 ```bash
-ccr code
+ccr "Claude - Work" cli
 ```
 
-**Config:** `.claude-code-router.json` in the project root defines
-routing rules. The default config routes background requests to
-Sonnet 5 and keeps foreground on Opus 4.6.
+Profiles are created in the **Agent Profiles** section of the UI.
+Each profile can specify a model, surface (CLI/App), and routing
+overrides.
+
+**Service commands:**
+
+| Command | What it does |
+|---------|-------------|
+| `ccr start` | Start background service + gateway |
+| `ccr ui` | Start service and open management UI |
+| `ccr stop` | Stop background service |
+| `ccr serve` | Run in foreground (for process supervisors) |
+
+**Config location:** `~/.claude-code-router/config.sqlite` (managed
+via the UI, not hand-edited).
 
 **Coexistence:** The native `advisorModel` setting in
 `~/.claude/settings.json` operates at a different layer and is

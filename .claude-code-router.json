@@ -1,9 +1,0 @@
-{
-  "defaultModel": "claude-opus-4-6",
-  "rules": [
-    {
-      "match": { "requestType": "background" },
-      "model": "claude-sonnet-5"
-    }
-  ]
-}
