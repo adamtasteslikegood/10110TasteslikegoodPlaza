@@ -25,6 +25,7 @@
   ```
 
   Do not substitute `$CLAUDE_JOB_DIR` (background jobs only), `$CLAUDE_CODE_BRIDGE_SESSION_ID` (the claude.ai session — absent in a plain terminal), the branch, or the worktree name. None are unique per session. (`Co-authored-by:` trailers belong in commits, not comments.)
+- **Review round bounds (`D-030`).** Minimum 2 rounds of reading and replying to review comments before merge. Maximum 3 rounds before deciding: merge (if clean), close PR, or revert to draft and elevate to Adam. Security, branch-protection and ticket-linked blockers are exempt from the max. A "round" is one full pass reading all comments and either fixing or rebutting each. **Default to fixing** over rebutting — a rebuttal the bot re-raises on the next push costs more than the fix.
 - **Loop until merged.** Monitor → fix or rebut → reply, until it merges, closes, or Adam says stop. Judgment calls only he can make — scope, product — go to him rather than a guess, but still reply on the thread noting it awaits his call.
 
 **Keep a PR to one concern.** A branch carrying a skill, a task-runner, a policy change and a bug fix gets reviewed as four arguments at once, and the mergeable part drowns in the arguable ones. Split before pushing.

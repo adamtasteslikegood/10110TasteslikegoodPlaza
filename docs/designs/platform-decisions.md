@@ -9,7 +9,7 @@ last_updated: 2026-08
 owner: adamtasteslikegood
 derives_from: [META-SPEC]
 supersedes: []
-decides: [D-003, D-005, D-015, D-016, D-018, D-021, D-022, D-023, D-024, D-029]
+decides: [D-003, D-005, D-015, D-016, D-018, D-021, D-022, D-023, D-024, D-029, D-030]
 enforcement: asserted
 gates: [Validate Specs:live]
 weakest_claim: Nine of these were already made, already evidenced,
@@ -175,6 +175,30 @@ path to a structured store (database, wikilink markdown, gbrain-style index).
 Passes the §1 scope test: replacing the frontend changes nothing about how the
 bridge loads agent definitions. Registered in Sprint 4 (`specs/sprint-4-charter.md`
 §1.4); implementation is T3a/T3b.
+
+### `D-030` — PR review round bounds
+
+Minimum 2 rounds of reading and replying to bot/human review comments before
+merge. Maximum 3 rounds before deciding: merge, close PR, or revert to draft
+and elevate to the owner.
+
+**Security findings, branch-protection failures and ticket-linked blockers are
+exempt from the max** — they run until resolved or elevated. Everything else
+(cosmetic, informational, contested governance) follows the bounds.
+
+The escalation path on round 3 is a three-way choice, not a default:
+
+1. **Merge** — all actionable findings addressed, remaining items are cosmetic
+   or accepted risk.
+2. **Close PR** — the approach is wrong; start over.
+3. **Revert to draft and elevate** — unresolved disagreement needs the owner's
+   call. File a ticket if one doesn't exist.
+
+Origin: PLZG-199 review, where one round of reading missed a fixable finding
+(symlink-follow in `/tmp` cache rebutted instead of fixed). The code was
+bridge-bound and bots re-flag it every push — rebutting cost more than fixing.
+
+Passes the §1 scope test: review process is frontend-agnostic.
 
 ## 4. Adding a decision here
 
