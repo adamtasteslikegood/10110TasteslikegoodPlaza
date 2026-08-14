@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """Two-line Claude Code statusline for 10110 TastesLike Plaza.
 
-Line 1: 🏢 [Model] project-folder | branch  wt:name  🔶 PR #N state
-Line 2: 🧠 ██████░░░░ 42% | 💰 $1.23 | ⚡5h ██░░░░ 24% | 📅7d ●●○○○○○ 41% | ⏱ 12m 34s
+Line 1: 🏢 [Model] 🔗 repo-link | 🌿 branch +2~3  🔀 wt:name  🔶 PR #N state
+Line 2: 🧠 ██████░░░░ 42% | 💰 $1.23 | ⚡5h ██░░░░ 24% | 📅7d ●●░░░░░ 41% | ⏱ 12m 34s
 """
 
 import os
+import re
+import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -61,8 +63,34 @@ def rate_limit_7d(pct):
         color = cc_session.YELLOW
     else:
         color = cc_session.GREEN
-    dots = f"{color}{'●' * filled}{'○' * empty}{cc_session.RESET}"
+    dots = f"{color}{'●' * filled}{'░' * empty}{cc_session.RESET}"
     return f"📅7d {dots} {pct}%"
+
+
+def repo_link():
+    try:
+        remote = subprocess.check_output(
+            ["git", "remote", "get-url", "origin"],
+            stderr=subprocess.DEVNULL,
+            text=True,
+        ).strip()
+        remote = re.sub(r"^git@github\.com:", "https://github.com/", remote)
+        remote = re.sub(r"\.git$", "", remote)
+        name = os.path.basename(remote)
+        return f"\033]8;;{remote}\a{name}\033]8;;\a"
+    except Exception:
+        return None
+
+
+def git_dirty(git_info):
+    parts = []
+    staged = git_info.get("staged_count", 0)
+    modified = git_info.get("modified_count", 0)
+    if staged:
+        parts.append(f"{cc_session.GREEN}+{staged}{cc_session.RESET}")
+    if modified:
+        parts.append(f"{cc_session.YELLOW}~{modified}{cc_session.RESET}")
+    return "".join(parts)
 
 
 def pr_segment(pr_info):
@@ -93,11 +121,18 @@ def main():
     wt = cc_session.get_worktree(data)
 
     # Line 1: identity and git state
-    project = os.path.basename(ws["current_dir"]) if ws["current_dir"] else "?"
-    parts = [f"🏢 {cc_session.CYAN}[{model_name}]{cc_session.RESET} {project}"]
+    link = repo_link()
+    if link:
+        project_label = f"🔗 {link}"
+    else:
+        project = os.path.basename(ws["current_dir"]) if ws["current_dir"] else "?"
+        project_label = f"📁 {project}"
+    parts = [f"🏢 {cc_session.CYAN}[{model_name}]{cc_session.RESET} {project_label}"]
 
     if git["branch"]:
-        parts.append(f"| 🌿 {git['branch']}")
+        dirty = git_dirty(git)
+        dirty_suffix = f" {dirty}" if dirty else ""
+        parts.append(f"| 🌿 {git['branch']}{dirty_suffix}")
 
     if wt:
         parts.append(f"{cc_session.YELLOW}🔀 wt:{wt['name']}{cc_session.RESET}")
