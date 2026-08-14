@@ -2,7 +2,7 @@
 """Two-line Claude Code statusline for 10110 TastesLike Plaza.
 
 Line 1: 🏢 [Model] 🔗 repo-link | 🌿 branch +2~3  🔀 wt:name  🔶 PR #N state
-Line 2: 🧠 ██████░░░░ 42% | 💰 $1.23 | ⚡5h ██░░░░ 24% | 📅7d ●●░░░░░ 41% | ⏱ 12m 34s
+Line 2: 🧠 ██████░░░░ 42% | 💰 $1.23 | ⚡5h █░░░░░ 24% | 📅7d ●●○○○○○ 41% | ⏱ 12m 34s
 """
 
 import os
@@ -36,7 +36,7 @@ def build_context_bar(pct, width=10):
 def rate_limit_5h(pct):
     if pct is None:
         return ""
-    pct = int(pct)
+    pct = round(pct)
     width = 6
     filled = pct * width // 100
     empty = width - filled
@@ -53,7 +53,7 @@ def rate_limit_5h(pct):
 def rate_limit_7d(pct):
     if pct is None:
         return ""
-    pct = int(pct)
+    pct = round(pct)
     total = 7
     filled = pct * total // 100
     empty = total - filled
@@ -75,6 +75,7 @@ def repo_link():
             text=True,
         ).strip()
         remote = re.sub(r"^git@github\.com:", "https://github.com/", remote)
+        remote = re.sub(r"(https?://)([^@]+@)", r"\1", remote)
         remote = re.sub(r"\.git$", "", remote)
         name = os.path.basename(remote)
         return f"\033]8;;{remote}\a{name}\033]8;;\a"
