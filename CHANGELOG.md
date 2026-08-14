@@ -17,6 +17,17 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
 
+### Added — Claude Code TUI statusline customization (`PLZG-199`)
+
+- Two-line main statusline showing model, project, branch, worktree, PR state,
+  context-window bar, cost, rate limits, and session duration.
+- Per-subagent statusline with model badge, context bar, effort level, and status.
+- Shared Python parser module (`scripts/tui/cc_session.py`) for CC's stdin JSON,
+  reusable by the bridge layer (Layer 3).
+- Reference doc (`docs/cc-statusline-protocol.md`) documenting CC's statusline
+  JSON protocol with bridge-relevance annotations.
+- PreToolUse hook for PR review nudge and merge guard.
+
 ### Fixed — Escape now reliably releases LineEdit focus (`PLZG-180`)
 
 - Pressing Escape while the dialogue panel's `LineEdit` had keyboard focus did not

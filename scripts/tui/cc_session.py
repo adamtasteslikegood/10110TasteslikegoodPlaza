@@ -56,8 +56,8 @@ def get_rate_limits(data):
     rl = data.get("rate_limits")
     if rl is None:
         return None
-    five = rl.get("five_hour", {})
-    seven = rl.get("seven_day", {})
+    five = rl.get("five_hour") or {}
+    seven = rl.get("seven_day") or {}
     return {
         "five_hour_pct": five.get("used_percentage"),
         "seven_day_pct": seven.get("used_percentage"),
@@ -65,7 +65,7 @@ def get_rate_limits(data):
 
 
 def get_workspace(data):
-    ws = data.get("workspace", {})
+    ws = data.get("workspace") or {}
     repo = ws.get("repo") or {}
     return {
         "current_dir": ws.get("current_dir") or data.get("cwd", ""),

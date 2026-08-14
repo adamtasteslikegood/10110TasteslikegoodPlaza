@@ -77,7 +77,7 @@ def render_task(task):
 
     if effort:
         effort_labels = {"xhigh": "xhigh", "medium": "med"}
-        parts.append(effort_labels.get(effort, effort))
+        parts.append(str(effort_labels.get(effort, effort)))
 
     parts.append(status_segment(status))
 
