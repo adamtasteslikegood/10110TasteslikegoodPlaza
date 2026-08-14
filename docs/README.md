@@ -34,6 +34,7 @@ frontmatter; `docs/storyboard-week1.md` is the sole origin of concept decisions 
 | [`quick-reference.md`](quick-reference.md) | One-page summary: build order, autoload list, department table, key decisions. |
 | [`agent-directory.md`](agent-directory.md) | Taxonomy of the 133 agent roles across nine departments plus Core. Source-of-truth for the department/color mapping (mirrored in the top-level `README.md`). |
 | [`delivery-coordinates.md`](delivery-coordinates.md) | **Taxonomy authority for Atlassian identifiers (`D-026`).** The single origin of every Jira key, board role, Confluence space and page id. Cite it; never restate a key elsewhere. |
+| [`devops-setup.md`](devops-setup.md) | DevOps setup guide: model routing (`ccr`), CI pipeline (8 jobs), issue triage workflow, Claude routines, release-please automation. |
 | [`assets/`](assets/) | `plaza_build_steps.html` and `plaza_godot_architecture.svg`. |
 
 ## When to add a file here

@@ -8,14 +8,16 @@ doc_set_version: 0.2.12
 last_updated: 2026-08
 owner: adamtasteslikegood
 derives_from: []
-enforcement: n/a
-gates: []
+enforcement: asserted
+gates: [Validate Specs:live]
+weakest_claim: "Three routines in `.claude/routines/`:"
 ---
 
 > **Authority: none.** Tier 3 `derived`, documents setup procedures for
 > the five devops capabilities added in the devops-foundation PR.
 > Authoritative over nothing; the CI pipeline, release config, and
-> workflow files are the source of truth.
+> workflow files are the source of truth. State claims asserted as of
+> `last_updated`; nothing re-checks them automatically.
 
 # DevOps Setup Guide
 
@@ -104,8 +106,9 @@ auto-labels by title pattern:
 | `documentation` | "CLAUDE.md", "doc", "spec", "META-SPEC" |
 | `pr-followup` | "PR #NNN" |
 
-Labels are created automatically on first match via the GitHub API
-(they must exist as repository labels first).
+Labels must exist as repository labels before the workflow can apply
+them. The four labels were created as part of the devops-foundation
+setup; new patterns require a matching `gh label create` first.
 
 ## 4. Claude Scheduled Routines
 
@@ -117,8 +120,11 @@ Three routines in `.claude/routines/`:
 | `weekly-doc-scan.md` | Mondays 10am | Catch stale doc claims |
 | `weekly-submodule-check.md` | Wednesdays 10am | Detect drifted submodule pin |
 
-**Prerequisite:** Claude Code subscription with routines enabled.
-Routines run as Claude Code sessions on the configured schedule.
+**Setup required:** These files are prompt templates, not
+self-registering. To activate each routine, use `/schedule` in
+Claude Code or create it through the routines UI, pasting the
+prompt from the corresponding `.md` file. The `cron` frontmatter
+documents the intended schedule.
 
 ## 5. Release Automation (release-please)
 
@@ -137,8 +143,9 @@ Google's `release-please` reads conventional commits on `main` and:
 
 - Only triggers on `main` (not `dev`) — the dev-to-main merge flow
 - Uses merge commits per D-023 (squash/rebase disabled)
-- Manages the application version axis only (`0.1.y`), not the
-  document set version (`0.2.x`)
+- Manages the application version axis only (currently `0.1.x`),
+  not the document set version (currently `0.2.x`). A `feat` commit
+  bumps the minor, so the next feature release becomes `0.2.0`.
 
 **Workflow:** conventional commits land on `dev` via feature PRs.
 When `dev` merges to `main`, release-please creates a Release PR.

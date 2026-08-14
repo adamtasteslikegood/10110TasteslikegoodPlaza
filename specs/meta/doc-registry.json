@@ -219,8 +219,7 @@
       "tier": 3,
       "authority": "derived",
       "status": "ACTIVE",
-      "note": "DevOps setup guide covering model routing, CI pipeline, issue triage, Claude routines, and release automation. Documents setup procedures; authoritative over nothing.",
-      "enforcement_na_reason": "Procedural guide. Describes how to configure devops tools; asserts nothing about repository state."
+      "note": "DevOps setup guide covering model routing, CI pipeline, issue triage, Claude routines, and release automation. Documents setup procedures; authoritative over nothing. State claims (job counts, file paths, labels) asserted as of last_updated."
     }
   ],
   "exempt": [
