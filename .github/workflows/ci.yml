@@ -189,7 +189,7 @@ jobs:
         id: godot-cache
         with:
           path: /usr/local/bin/godot
-          key: godot-${{ env.GODOT_VERSION }}-linux-x86_64
+          key: godot-${{ env.GODOT_VERSION }}-${{ env.GODOT_SHA512 }}-linux-x86_64
 
       - name: Install Godot ${{ env.GODOT_VERSION }}
         if: steps.godot-cache.outputs.cache-hit != 'true'
