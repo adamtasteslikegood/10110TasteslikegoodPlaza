@@ -17,6 +17,16 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
 
+### Added — DevOps foundation (`PLZG-209`)
+
+- Bridge unit test CI job running 76 tests via `pytest bridge/tests/`.
+- Godot binary cache in CI, keyed on `GODOT_VERSION`.
+- Issue triage workflow auto-labeling by title pattern on open.
+- Three Claude routines: daily issue dedup, weekly doc scan, weekly submodule check.
+- release-please configuration for automated GitHub Releases on `main`.
+- Model routing documentation for `claude-code-router` (`ccr`) background request cost reduction.
+- DevOps setup guide (`docs/devops-setup.md`).
+
 ### Added — Claude Code TUI statusline customization (`PLZG-200`)
 
 - Two-line main statusline showing model, project, branch, worktree, PR state,
