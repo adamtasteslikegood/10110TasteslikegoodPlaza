@@ -1,0 +1,90 @@
+name: Issue Arborist
+
+on:
+  schedule:
+    - cron: "0 10 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read
+
+jobs:
+  prune:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Find stale and resolved issues
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "## Issue Arborist — $(date -u +%Y-%m-%d)" > /tmp/arborist.md
+          echo >> /tmp/arborist.md
+
+          ISSUES=$(gh issue list --state open --json number,title,labels,updatedAt --limit 100)
+
+          echo "$ISSUES" | python3 -c "
+          import json, sys, subprocess
+          from datetime import datetime, timedelta, timezone
+
+          issues = json.load(sys.stdin)
+          now = datetime.now(timezone.utc)
+          stale_threshold = now - timedelta(days=30)
+          actions = []
+
+          for issue in issues:
+              num = issue['number']
+              title = issue['title']
+              updated = datetime.fromisoformat(issue['updatedAt'].replace('Z', '+00:00'))
+              labels = [l['name'] for l in issue.get('labels', [])]
+
+              # Check for PR-linked issues where the PR is already merged
+              import re
+              pr_match = re.search(r'PR #(\d+)', title)
+              if pr_match:
+                  pr_num = pr_match.group(1)
+                  try:
+                      result = subprocess.run(
+                          ['gh', 'pr', 'view', pr_num, '--json', 'state'],
+                          capture_output=True, text=True, timeout=10
+                      )
+                      if result.returncode == 0:
+                          pr_data = json.loads(result.stdout)
+                          if pr_data.get('state') == 'MERGED':
+                              actions.append(f'- #{num}: **close** — PR #{pr_num} already merged')
+                              continue
+                  except Exception:
+                      pass
+
+              # Flag stale issues
+              if updated < stale_threshold:
+                  days = (now - updated).days
+                  actions.append(f'- #{num}: **stale** ({days}d) — {title}')
+
+          if actions:
+              print('\n'.join(actions))
+          else:
+              print('No stale or resolved issues found.')
+          " >> /tmp/arborist.md
+
+          cat /tmp/arborist.md
+
+      - name: Post arborist report
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          EXISTING=$(gh issue list --state open --label "repo-status" \
+            --json number --jq '.[0].number' 2>/dev/null || echo "")
+
+          if [ -n "$EXISTING" ]; then
+            gh issue comment "$EXISTING" --body-file /tmp/arborist.md
+          else
+            gh issue create \
+              --title "Issue Arborist Report — $(date -u +%Y-%m-%d)" \
+              --body-file /tmp/arborist.md \
+              --label "repo-status"
+          fi
