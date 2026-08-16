@@ -1,5 +1,4 @@
 # Install with: pip install -r scripts/pm/requirements.txt
 # Or via: bash scripts/pm/run_pm_script.sh <script.py> (auto-installs)
 md2cf>=2.3.0,<3
-python-dotenv>=1.0.0
 requests>=2.31.0

@@ -25,25 +25,23 @@ jobs:
           echo "## Issue Arborist — $(date -u +%Y-%m-%d)" > /tmp/arborist.md
           echo >> /tmp/arborist.md
 
-          ISSUES=$(gh issue list --state open --json number,title,labels,updatedAt --limit 100)
+          ISSUES=$(gh issue list --state open --json number,title,labels,updatedAt --limit 200)
 
           echo "$ISSUES" | python3 -c "
-          import json, sys, subprocess
+          import json, sys, subprocess, re
           from datetime import datetime, timedelta, timezone
 
           issues = json.load(sys.stdin)
           now = datetime.now(timezone.utc)
           stale_threshold = now - timedelta(days=30)
-          actions = []
+          to_close = []
+          stale = []
 
           for issue in issues:
               num = issue['number']
               title = issue['title']
               updated = datetime.fromisoformat(issue['updatedAt'].replace('Z', '+00:00'))
-              labels = [l['name'] for l in issue.get('labels', [])]
 
-              # Check for PR-linked issues where the PR is already merged
-              import re
               pr_match = re.search(r'PR #(\d+)', title)
               if pr_match:
                   pr_num = pr_match.group(1)
@@ -55,19 +53,27 @@ jobs:
                       if result.returncode == 0:
                           pr_data = json.loads(result.stdout)
                           if pr_data.get('state') == 'MERGED':
-                              actions.append(f'- #{num}: **close** — PR #{pr_num} already merged')
+                              to_close.append((num, f'PR #{pr_num} already merged'))
                               continue
                   except Exception:
                       pass
 
-              # Flag stale issues
               if updated < stale_threshold:
                   days = (now - updated).days
-                  actions.append(f'- #{num}: **stale** ({days}d) — {title}')
+                  stale.append(f'- #{num}: **stale** ({days}d) — {title}')
 
-          if actions:
-              print('\n'.join(actions))
-          else:
+          for num, reason in to_close:
+              subprocess.run(
+                  ['gh', 'issue', 'close', str(num),
+                   '--comment', f'Auto-closed by issue arborist: {reason}.'],
+                  capture_output=True, text=True, timeout=10
+              )
+              print(f'- #{num}: **closed** — {reason}')
+
+          for line in stale:
+              print(line)
+
+          if not to_close and not stale:
               print('No stale or resolved issues found.')
           " >> /tmp/arborist.md
 

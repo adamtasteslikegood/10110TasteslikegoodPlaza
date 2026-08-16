@@ -16,12 +16,13 @@ jobs:
     steps:
       - name: Extract PLZG keys from PR title
         id: keys
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
-          TITLE="${{ github.event.pull_request.title }}"
-          KEYS=$(echo "$TITLE" | grep -oP '\bPLZG-[0-9]+\b' | sort -u | tr '\n' ' ')
+          KEYS=$(printf '%s' "$PR_TITLE" | grep -oP '\bPLZG-[0-9]+\b' | sort -u | tr '\n' ' ')
           echo "keys=$KEYS" >> "$GITHUB_OUTPUT"
           if [ -z "$KEYS" ]; then
-            echo "No PLZG keys found in PR title: $TITLE"
+            echo "No PLZG keys found in PR title: $PR_TITLE"
           else
             echo "Found keys: $KEYS"
           fi
@@ -32,15 +33,24 @@ jobs:
           ATLASSIAN_EMAIL: ${{ secrets.ATLASSIAN_EMAIL }}
           ATLASSIAN_API_TOKEN: ${{ secrets.ATLASSIAN_API_TOKEN }}
           ATLASSIAN_URL: https://tasteslikegood.atlassian.net
+          ISSUE_KEYS: ${{ steps.keys.outputs.keys }}
         run: |
-          for KEY in ${{ steps.keys.outputs.keys }}; do
+          for KEY in $ISSUE_KEYS; do
             echo "Processing $KEY..."
 
-            TRANSITIONS=$(curl -s -u "$ATLASSIAN_EMAIL:$ATLASSIAN_API_TOKEN" \
+            HTTP_RESP=$(mktemp)
+            HTTP_CODE=$(curl -s -o "$HTTP_RESP" -w "%{http_code}" \
+              -u "$ATLASSIAN_EMAIL:$ATLASSIAN_API_TOKEN" \
               "$ATLASSIAN_URL/rest/api/3/issue/$KEY/transitions" \
               -H "Accept: application/json")
 
-            DONE_ID=$(echo "$TRANSITIONS" | python3 -c "
+            if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
+              echo "  $KEY: failed to fetch transitions (HTTP $HTTP_CODE)"
+              rm -f "$HTTP_RESP"
+              continue
+            fi
+
+            DONE_ID=$(cat "$HTTP_RESP" | python3 -c "
           import json, sys
           try:
               data = json.load(sys.stdin)
@@ -54,21 +64,22 @@ jobs:
           except Exception:
               print('')
           ")
+            rm -f "$HTTP_RESP"
 
             if [ -z "$DONE_ID" ]; then
               echo "  No Done/Closed/Resolved transition found for $KEY — skipping"
               continue
             fi
 
-            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+            TRANS_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
               -u "$ATLASSIAN_EMAIL:$ATLASSIAN_API_TOKEN" \
               -X POST "$ATLASSIAN_URL/rest/api/3/issue/$KEY/transitions" \
               -H "Content-Type: application/json" \
               -d "{\"transition\":{\"id\":\"$DONE_ID\"}}")
 
-            if [ "$HTTP_CODE" = "204" ]; then
+            if [ "$TRANS_CODE" = "204" ]; then
               echo "  $KEY transitioned to Done (transition $DONE_ID)"
             else
-              echo "  $KEY transition failed (HTTP $HTTP_CODE)"
+              echo "  $KEY transition failed (HTTP $TRANS_CODE)"
             fi
           done

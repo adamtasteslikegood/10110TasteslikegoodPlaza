@@ -98,18 +98,16 @@ def main() -> None:
         or env.get("ATLASSIAN_CONFLUENCE_PARENT_PAGE_ID")
     )
 
-    space_id = None
-    if parent_id:
-        parent = _request("GET", f"{base}/wiki/api/v2/pages/{parent_id}", auth)
-        space_id = parent.get("spaceId")
+    if not parent_id:
+        raise SystemExit(
+            "No parent page configured. Set ATLASSIAN_CONFLUENCE_SESSION_LOG_PARENT_PAGE_ID "
+            "or ATLASSIAN_CONFLUENCE_PARENT_PAGE_ID in .env or environment."
+        )
 
+    parent = _request("GET", f"{base}/wiki/api/v2/pages/{parent_id}", auth)
+    space_id = parent.get("spaceId")
     if not space_id:
-        spaces = _request("GET", f"{base}/wiki/api/v2/spaces?limit=1", auth)
-        results = spaces.get("results", [])
-        if results:
-            space_id = results[0].get("id")
-        else:
-            raise SystemExit("No Confluence space found")
+        raise SystemExit(f"Could not resolve space from parent page {parent_id}")
 
     title = args.title or default_title(markdown_path)
     body = markdown_to_storage(markdown_path.read_text(encoding="utf-8"))

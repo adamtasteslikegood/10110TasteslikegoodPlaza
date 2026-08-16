@@ -30,7 +30,10 @@ echo "- Branch: \`$BRANCH\`"
 AHEAD=$(_t 10 git -C "$PROJECT_DIR" rev-list --count origin/dev..HEAD 2>/dev/null || echo "")
 [ -n "$AHEAD" ] && echo "- Commits ahead of \`origin/dev\`: $AHEAD"
 
-DIRTY=$(_t 10 git -C "$PROJECT_DIR" status --porcelain 2>/dev/null | wc -l | tr -d ' ')
+DIRTY=$(_t 10 git -C "$PROJECT_DIR" status --porcelain 2>/dev/null \
+  | grep -v '\.claude/session-log' \
+  | grep -v '\.claude/pm-daemon-watcher\.lock' \
+  | wc -l | tr -d ' ')
 [ -n "$DIRTY" ] && echo "- Uncommitted files in working tree: $DIRTY"
 
 CHANGED=$(_t 10 git -C "$PROJECT_DIR" diff --name-only origin/dev...HEAD 2>/dev/null | head -25)

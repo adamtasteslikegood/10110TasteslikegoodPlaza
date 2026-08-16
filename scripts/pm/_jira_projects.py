@@ -34,7 +34,8 @@ def resolve_jira_projects(get: Callable[[str], Optional[str]]) -> list[str]:
     ordered: list[str] = []
     seen: set[str] = set()
     for part in parts:
-        if part and part not in seen:
-            ordered.append(part)
-            seen.add(part)
+        normalized = part.strip().upper()
+        if normalized and normalized not in seen:
+            ordered.append(normalized)
+            seen.add(normalized)
     return validate_jira_project_keys(ordered or DEFAULT_JIRA_PROJECTS, read_only=True)
