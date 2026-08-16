@@ -79,6 +79,13 @@ jobs:
 
           cat /tmp/arborist.md
 
+      - name: Ensure repo-status label exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh label create "repo-status" --color "0e8a16" \
+            --description "Automated repo status reports" 2>/dev/null || true
+
       - name: Post arborist report
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

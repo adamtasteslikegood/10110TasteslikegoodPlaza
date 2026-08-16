@@ -84,7 +84,9 @@ fi
   fi
 
   WORK=$(mktemp -d -t session-log-end-XXXXXX)
-  trap 'rm -rf "$WORK" "${CLAIM:-}"' EXIT
+  # Keep CLAIM dir on exit — stale-claim branch (line 77) removes it after 10 min.
+  # Removing it here would defeat the dedup window.
+  trap 'rm -rf "$WORK"' EXIT
 
   DIGEST="$WORK/digest.txt"
   SUMMARY="$WORK/summary.md"

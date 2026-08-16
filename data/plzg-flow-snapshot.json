@@ -2,44 +2,91 @@
   "$comment": "Committed PLZG flow snapshot. Clause (b) of the delivery gate (scripts/validate_delivery_coordinates.py) requires this file to be FRESH -- as_of inside the sprint window it declares, and that sprint not yet ended -- and HONEST, with work_item_age naming exactly counts.wip items. wip MAY BE 0: the previous wip > 0 rule was removed by owner ruling 2026-08-02 (PLZG-130) because it tested snapshot timing rather than health, and rewarded a fake transition. Shape matches the pm-skills jira_snapshot_bridge.py '--to flow' output so the two are interchangeable. THIS IS A SNAPSHOT, NOT A LIVE READING: it is true as of the as_of timestamp and nowhere else. Re-query Jira before citing any number here -- the board owns these facts, this file does not.",
   "mode": "flow",
   "project": "PLZG",
-  "as_of": "2026-08-02T00:55:00-07:00",
+  "as_of": "2026-08-16T10:00:00-07:00",
   "source": "Atlassian MCP searchJiraIssuesUsingJql against tasteslikegood.atlassian.net, cloudId 029decc8-e09a-4d55-92f8-20d9ca64ca13",
   "regenerate": "project = PLZG (total) / statusCategory = Done (done) / statusCategory = \"In Progress\" (wip), then recompute work_item_age from each WIP item's created date",
   "counts": {
-    "total": 124,
-    "done": 69,
-    "wip": 1
+    "total": 187,
+    "done": 86,
+    "wip": 7
   },
   "work_item_age": [
     {
-      "key": "PLZG-130",
-      "created": "2026-07-31T05:09:25-07:00",
+      "key": "PLZG-129",
+      "created": "2026-07-30T18:07:56-07:00",
+      "age_days": 17,
+      "summary": "PLZG-117-class defect recurs: sprint-2-loop-plan.json's closed.gate hardcodes an unresolved delivery_loop_gate.py path"
+    },
+    {
+      "key": "PLZG-142",
+      "created": "2026-07-31T13:51:18-07:00",
+      "age_days": 16,
+      "summary": "Root-level docs should open like README.md — four of five carry no frontmatter block"
+    },
+    {
+      "key": "PLZG-180",
+      "created": "2026-08-10T09:35:59-07:00",
+      "age_days": 6,
+      "summary": "PR #163: model router template scripts have a broken CLI flag and inverted subscription-priority logic"
+    },
+    {
+      "key": "PLZG-199",
+      "created": "2026-08-13T01:31:13-07:00",
+      "age_days": 3,
+      "summary": "Bridge follow-up: auth docs reframe and .env.example cleanup"
+    },
+    {
+      "key": "PLZG-200",
+      "created": "2026-08-13T01:43:31-07:00",
+      "age_days": 3,
+      "summary": "Bridge follow-up: incorrect env-merge claim in domain_session.py + reference-doc inaccuracies"
+    },
+    {
+      "key": "PLZG-209",
+      "created": "2026-08-14T00:00:00-07:00",
+      "age_days": 2,
+      "summary": "devops foundation — model routing, CI improvements, issue triage, routines, release automation"
+    },
+    {
+      "key": "PLZG-215",
+      "created": "2026-08-15T00:00:00-07:00",
       "age_days": 1,
-      "summary": "validate_delivery_coordinates.py clause (b) passes green on a frozen snapshot"
+      "summary": "PM hooks, session logging, and agentic workflows"
     }
   ],
-  "aging_wip_alerts": [],
+  "aging_wip_alerts": [
+    "PLZG-129: 17 days in progress — predates Sprint 4, carried over from Sprint 3",
+    "PLZG-142: 16 days in progress — predates Sprint 4, carried over from Sprint 3"
+  ],
   "wip_limit": 3,
   "sprint": {
-    "name": "PLZG Sprint 3",
+    "name": "PLZG Sprint 4",
     "board": 169,
-    "id": 45,
-    "start": "2026-07-31",
-    "end": "2026-08-14",
-    "goal": "Every governed document declares which of its claims about state are proven and by what, and the tier ladder gains a home for delivery policy."
+    "id": 48,
+    "start": "2026-08-16",
+    "end": "2026-08-30",
+    "goal": "DevOps foundation: CI improvements, PM hooks, delivery automation, and PR review workflow hardening."
   },
   "at_sprint_start": {
-    "as_of": "2026-07-29",
-    "total": 83,
-    "done": 42,
-    "wip": 0,
-    "work_item_age": [],
-    "note": "WIP was 0 and work_item_age empty because the board used only 'To Do' and 'Done' -- nobody used the In Progress transition, which already existed (status id 3, transition id 21). The fix was behavioural, not structural; no Jira admin change was required."
+    "as_of": "2026-08-16",
+    "total": 187,
+    "done": 86,
+    "wip": 7,
+    "work_item_age": [
+      {"key": "PLZG-129", "age_days": 17},
+      {"key": "PLZG-142", "age_days": 16},
+      {"key": "PLZG-180", "age_days": 6},
+      {"key": "PLZG-199", "age_days": 3},
+      {"key": "PLZG-200", "age_days": 3},
+      {"key": "PLZG-209", "age_days": 2},
+      {"key": "PLZG-215", "age_days": 1}
+    ],
+    "note": "7 WIP items at sprint start, exceeding the wip_limit of 3. Two items (PLZG-129, PLZG-142) carried over from Sprint 3 at 17 and 16 days respectively."
   },
   "forecast": null,
   "forecast_blackout": {
     "in_force": true,
-    "reason": "Sample is large enough (56 completions) but non-stationary: an 11-week zero-throughput gap sits inside it, so Monte Carlo cannot distinguish 'team paused' from 'team is slow' and silently prices dormancy into every forecast. See specs/sprint-2-charter.md section 3.",
+    "reason": "Sample is large enough (86 completions) but non-stationary: an 11-week zero-throughput gap sits inside it, so Monte Carlo cannot distinguish 'team paused' from 'team is slow' and silently prices dormancy into every forecast. See specs/sprint-2-charter.md section 3.",
     "lift_condition": "10+ completions carrying real started->resolved timestamps, drawn from a window containing no zero-throughput weeks."
   }
 }

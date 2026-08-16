@@ -42,13 +42,20 @@ jobs:
             done
             echo
             echo "### Recent commits (last 7 days)"
-            git log --oneline --since="7 days ago" --no-merges | head -20 || echo "None"
+            git log --oneline --since="7 days ago" --no-merges -20 || echo "None"
             echo
             echo "### Submodule status"
             git submodule status || echo "Not initialized"
           } > /tmp/status.md
 
           cat /tmp/status.md
+
+      - name: Ensure repo-status label exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh label create "repo-status" --color "0e8a16" \
+            --description "Automated repo status reports" 2>/dev/null || true
 
       - name: Create or update status issue
         env:
