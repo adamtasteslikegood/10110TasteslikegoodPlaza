@@ -1,0 +1,62 @@
+name: Jira Auto-Transition
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [dev, main]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  transition:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Extract PLZG keys from PR title
+        id: keys
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          KEYS=$(printf '%s' "$PR_TITLE" | grep -oP '\bPLZG-[0-9]+\b' | sort -u | tr '\n' ' ' || true)
+          KEYS=$(echo "$KEYS" | xargs)
+          echo "keys=$KEYS" >> "$GITHUB_OUTPUT"
+          if [ -z "$KEYS" ]; then
+            echo "No PLZG keys found in PR title"
+          else
+            echo "Found keys: $KEYS"
+          fi
+
+      - name: Comment on linked Jira issues
+        if: steps.keys.outputs.keys != ''
+        env:
+          ATLASSIAN_EMAIL: ${{ secrets.ATLASSIAN_EMAIL }}
+          ATLASSIAN_API_TOKEN: ${{ secrets.ATLASSIAN_API_TOKEN }}
+          ISSUE_KEYS: ${{ steps.keys.outputs.keys }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          TARGET_BRANCH: ${{ github.event.pull_request.base.ref }}
+        run: |
+          # Done is a human transition (delivery-coordinates.md §Pull requests
+          # drive status). This step adds a merge comment for visibility only.
+          SITE="https://tasteslikegood.atlassian.net"
+
+          for KEY in $ISSUE_KEYS; do
+            echo "Commenting on $KEY..."
+
+            BODY=$(printf '{"body":{"type":"doc","version":1,"content":[{"type":"paragraph","content":[{"type":"text","text":"PR #%s merged into %s: "},{"type":"text","text":"%s","marks":[{"type":"link","attrs":{"href":"%s"}}]}]}]}}' \
+              "$PR_NUMBER" "$TARGET_BRANCH" "$PR_URL" "$PR_URL")
+
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+              -u "$ATLASSIAN_EMAIL:$ATLASSIAN_API_TOKEN" \
+              -X POST "$SITE/rest/api/3/issue/$KEY/comment" \
+              -H "Content-Type: application/json" \
+              -d "$BODY")
+
+            if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+              echo "  $KEY: merge comment added"
+            else
+              echo "  $KEY: comment failed (HTTP $HTTP_CODE)"
+            fi
+          done

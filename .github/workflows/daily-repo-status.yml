@@ -1,0 +1,74 @@
+name: Daily Repo Status
+
+on:
+  schedule:
+    - cron: "0 9 * * 1-5"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read
+
+jobs:
+  status:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Gather repo status
+        id: status
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          {
+            echo "## Daily Repo Status — $(date -u +%Y-%m-%d)"
+            echo
+            echo "### Open PRs"
+            gh pr list --state open --json number,title,author,updatedAt \
+              --jq '.[] | "- #\(.number) \(.title) (@\(.author.login), updated \(.updatedAt[:10]))"' \
+              || echo "- None"
+            echo
+            echo "### Open Issues"
+            TOTAL=$(gh issue list --state open --limit 500 --json number --jq 'length')
+            echo "Total open: $TOTAL"
+            echo
+            echo "#### By label"
+            for label in bug enhancement ci-review-followup bridge documentation pr-followup; do
+              COUNT=$(gh issue list --state open --limit 500 --label "$label" --json number --jq 'length' 2>/dev/null || echo 0)
+              [ "$COUNT" -gt 0 ] && echo "- \`$label\`: $COUNT"
+            done
+            echo
+            echo "### Recent commits (last 7 days)"
+            git log --oneline --since="7 days ago" --no-merges -20 || echo "None"
+            echo
+            echo "### Submodule status"
+            git submodule status || echo "Not initialized"
+          } > /tmp/status.md
+
+          cat /tmp/status.md
+
+      - name: Ensure repo-status label exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh label create "repo-status" --color "0e8a16" \
+            --description "Automated repo status reports" 2>/dev/null || true
+
+      - name: Create or update status issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          EXISTING=$(gh issue list --state open --label "repo-status" \
+            --json number --jq '.[0].number' 2>/dev/null || echo "")
+
+          if [ -n "$EXISTING" ]; then
+            gh issue comment "$EXISTING" --body-file /tmp/status.md
+          else
+            gh issue create \
+              --title "Daily Repo Status — $(date -u +%Y-%m-%d)" \
+              --body-file /tmp/status.md \
+              --label "repo-status"
+          fi
