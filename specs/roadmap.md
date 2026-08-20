@@ -5,7 +5,7 @@ tier: 3
 authority: derived
 status: ACTIVE
 doc_set_version: 0.2.12
-last_updated: 2026-04
+last_updated: 2026-08
 owner: adamtasteslikegood
 derives_from: [PROJECT-OVERVIEW, DESIGN-25D, SPEC-DRIVERS-025]
 enforcement: asserted
@@ -363,7 +363,7 @@ Everything after this point is polish, expansion of the world, more NPC characte
 ## Install checklist
 
 - [x] Download Godot 4 from godotengine.org
-- [x] Create Godot project with three autoloads
+- [x] Create Godot project with autoloads
 - [x] Player controller (CharacterBody2D, 8-direction)
 - [x] Convert agent .md files to a single agents.json
 - [x] Create AgentRegistry, GameEvents, GameState autoloads

@@ -5,7 +5,7 @@ tier: 4
 authority: summary
 status: ACTIVE
 doc_set_version: 0.2.12
-last_updated: 2026-05
+last_updated: 2026-08
 owner: adamtasteslikegood
 derives_from: [META-SPEC]
 enforcement: asserted
@@ -65,4 +65,4 @@ If the doc is reference material that doesn't expire when the work ships — put
 - Date-stamp the bottom of each file with `*Last updated: <month> <year>*`.
 - When a milestone is done, leave the spec in place as historical record — don't delete it. Mark it `[x] Done`.
 
-*Last updated: May 2026*
+*Last updated: August 2026*
