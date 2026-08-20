@@ -63,8 +63,10 @@ JSON
 fi
 
 # --- gh pr view --comments redirect (wrong tool) ---
-if printf '%s' "$cmd" | grep -Eq 'gh[[:space:]]+pr[[:space:]]+view[[:space:]]' \
-  && printf '%s' "$cmd" | grep -Eq '(^|[[:space:]])--comments([[:space:]]|$)'; then
+# Single regex so the --comments/-c flag is scoped to THIS `gh pr view`
+# invocation: `[^&|;]*` cannot cross a command separator, so a later
+# `bash -c` / `grep -c` in a compound command no longer false-positives.
+if printf '%s' "$cmd" | grep -Eq 'gh[[:space:]]+pr[[:space:]]+view[[:space:]]([^&|;]*[[:space:]])?(--comments|-c)([[:space:]]|$)'; then
   cat <<'JSON'
 {"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"Use gh api instead -- gh pr view --comments misses review-body comments and suppressed co-pilot reviews","additionalContext":"WRONG TOOL: `gh pr view --comments` only shows issue-style comments, NOT inline review comments or suppressed co-pilot reviews. Use ALL THREE gh api endpoints: `gh api repos/{owner}/{repo}/pulls/{number}/comments` (inline diff comments), `gh api repos/{owner}/{repo}/issues/{number}/comments` (top-level conversation comments), and `gh api repos/{owner}/{repo}/pulls/{number}/reviews` (submitted review summaries -- prose feedback in a review `.body` with no inline comments appears in NONE of the others; check both `.body` and `.state`)."}}
 JSON
