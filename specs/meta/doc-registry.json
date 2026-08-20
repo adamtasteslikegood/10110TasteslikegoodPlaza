@@ -97,15 +97,15 @@
       "tier": 3,
       "authority": "derived",
       "status": "ACTIVE",
-      "note": "M1 to M8 milestone structure. Authoritative for sequencing; 3D-specific node names in milestone bodies are deprecated."
+      "note": "M1 to M8 milestone structure. Authoritative for sequencing."
     },
     {
       "doc_id": "TASK-TRACKER",
       "path": "specs/task-tracker.md",
       "tier": 3,
       "authority": "derived",
-      "status": "ACTIVE",
-      "note": "Working checklist. Mirrors Jira project TO."
+      "status": "HISTORICAL",
+      "note": "Historical checklist from early planning. Progress state lives in CLAUDE.md and git history."
     },
     {
       "doc_id": "BRANCHING-STRATEGY",

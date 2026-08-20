@@ -15,13 +15,10 @@ weakest_claim: For now it returns scripted/hardcoded responses.
 
 # 10110 TastesLike Plaza — Prototype Build Roadmap
 
-> ⚠️ **Superseded in part by [`aligned-spec-v0.2.5.md`](aligned-spec-v0.2.5.md).**
-> The **milestone structure** (M1 → M8, critical path M1 → M4 → M8) is still correct.
-> The **3D first-person specifics below** (CharacterBody3D, FPS demo, CSGBox3D, Area3D, NavigationRegion3D) are **deprecated**. The prototype is now 2.5D top-down per [`../docs/designs/2.5D-RPG-Prototype.md`](../docs/designs/2.5D-RPG-Prototype.md) (status `PROMOTED`, 2026-04-27). Read node names as their 2D equivalents (CharacterBody2D, TileMap, Area2D, NavigationRegion2D). 3D first-person is deferred to v2.0–3.0.
-
 > Engine: **Godot 4** (free, MIT license, ~80MB download)
 > Language: **GDScript** (reads like Python — approachable without game dev background)
 > Target: Working 2.5D top-down office world with NPC interaction and live agent output
+> Design: [`docs/designs/2.5D-RPG-Prototype.md`](../docs/designs/2.5D-RPG-Prototype.md) (`PROMOTED`, 2026-04-27)
 
 ---
 
@@ -37,25 +34,16 @@ Everything else can be deferred. If you can walk through a lobby, approach an NP
 
 ---
 
-### Milestone 1 — Install Godot 4 + first-person template
+### Milestone 1 — Godot setup + 2.5D player controller ✅ v0.2.8
 
-**Time estimate:** ~1 hour
-**GDScript required:** Zero to start
-
-**Steps:**
-1. Download Godot 4 from [godotengine.org](https://godotengine.org) (~80MB, no install, just unzip and run)
-2. Open the Asset Library inside Godot → search "First Person"
-3. Download the "First Person Shooter" demo
-4. Hit Play. Walk around. That is your movement system.
-
-**Scene tree you get for free:**
+**Scene tree:**
 ```
-CharacterBody3D   ← your player body
-  Camera3D        ← mounted at head height
-  CollisionShape3D ← prevents walking through walls
+CharacterBody2D   ← player body (scenes/player/player.gd)
+  Sprite2D        ← placeholder sprite, colour-tinted per department
+  CollisionShape2D ← prevents walking through walls
 ```
 
-**Why this matters:** The FPS controller is the hardest part to write from scratch. Godot gives you a working one in 60 seconds. Everything you build from here is on top of this.
+Top-down 8-direction movement, arrows + WASD. ~15 lines of GDScript.
 
 ---
 
@@ -69,10 +57,9 @@ Standard game dev practice — build the entire space with plain grey/white geom
 
 **Godot tools used:**
 ```
-CSGBox3D            ← walls, floors, ceilings (drag to resize)
-CSGCombiner3D       ← group rooms together into a building
-Area3D              ← doorway trigger zones (detects when player enters)
-NavigationRegion3D  ← bake a pathfinding mesh so NPCs can walk around later
+TileMap / StaticBody2D  ← walls, floors (2.5D top-down)
+Area2D                  ← doorway trigger zones (detects when player enters)
+NavigationRegion2D      ← bake a pathfinding mesh so NPCs can walk around later
 ```
 
 **Rooms to block out (Week 1 scope):**
@@ -144,24 +131,23 @@ func get_agent(id: String) -> Dictionary:
 
 **NPC scene tree:**
 ```
-CharacterBody3D  (npc.gd)
-  MeshInstance3D  ← placeholder capsule or box for now
-  Area3D          ← proximity trigger (set radius ~2m)
-    CollisionShape3D
-  Label3D         ← floating name tag above NPC
+CharacterBody2D  (agent_npc.gd)
+  Sprite2D       ← placeholder sprite, colour-tinted per department
+  Area2D         ← proximity trigger
+    CollisionShape2D
+  Label          ← floating name tag above NPC
 ```
 
-**npc.gd:**
+**agent_npc.gd:**
 ```gdscript
-extends CharacterBody3D
+extends CharacterBody2D
 
 @export var agent_id: String = "systems-architect"
 var agent_data: Dictionary
 
 func _ready():
     agent_data = AgentRegistry.get_agent(agent_id)
-    # Set name tag
-    $Label3D.text = agent_data.get("name", agent_id)
+    $Label.text = agent_data.get("name", agent_id)
 
 func _on_proximity_body_entered(body):
     if body.is_in_group("player"):
@@ -363,10 +349,10 @@ Everything after this point is polish, expansion of the world, more NPC characte
 
 | Concept | What it is | When you use it |
 |---------|-----------|-----------------|
-| `Node3D` | Base for anything in 3D space | Rooms, props, NPCs |
-| `CharacterBody3D` | Physics body you control via code | Player, NPCs |
-| `Area3D` | Zone that detects when bodies enter/exit | Proximity triggers |
-| `CanvasLayer` | 2D layer that renders on top of 3D | HUD, chat panels, maps |
+| `Node2D` | Base for anything in 2D space | Rooms, props, NPCs |
+| `CharacterBody2D` | Physics body you control via code | Player, NPCs |
+| `Area2D` | Zone that detects when bodies enter/exit | Proximity triggers |
+| `CanvasLayer` | 2D layer that renders on top of the scene | HUD, chat panels, maps |
 | `Autoload` | Singleton — runs always, accessible anywhere | GameState, AgentRegistry, GameEvents |
 | `Signal` | Event system — emit once, many things can listen | The glue between systems |
 | `@export` | Expose a variable in the Godot editor | Set agent_id per NPC without code |
@@ -376,12 +362,12 @@ Everything after this point is polish, expansion of the world, more NPC characte
 
 ## Install checklist
 
-- [ ] Download Godot 4 from godotengine.org
-- [ ] Open First Person Shooter demo and walk around
+- [x] Download Godot 4 from godotengine.org
+- [x] Create project with three autoloads
 - [ ] Convert agent .md files to a single agents.json
 - [ ] Create new Godot project
-- [ ] Copy FPS controller into new project
-- [ ] Block out lobby with CSGBox3D tools
+- [x] Player controller (CharacterBody2D, 8-direction)
+- [ ] Block out lobby with TileMap / StaticBody2D
 - [ ] Create AgentRegistry autoload
 - [ ] Create GameEvents autoload
 - [ ] Create GameState autoload
@@ -393,4 +379,4 @@ Everything after this point is polish, expansion of the world, more NPC characte
 
 ---
 
-*Last updated: April 2026*
+*Last updated: August 2026*
