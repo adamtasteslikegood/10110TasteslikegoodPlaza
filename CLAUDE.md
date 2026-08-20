@@ -16,7 +16,7 @@ This repo is **a running Godot prototype**. `project.godot` exists and `godot .`
 
 Docs split `docs/` (design and reference) from `specs/` (development process), each with its own `README.md` index. Active design is `docs/designs/2.5D-RPG-Prototype.md`; active work plan is `specs/roadmap.md`.
 
-**M1, M3 and M4 are done** — but `specs/task-tracker.md` is the status of record, so check it rather than this line. The next code milestone is the bridge, M5–M8.
+**M1, M3, M4, M7 and M8 are done.** The proof-of-concept critical path (M1 → M4 → M8) is complete — walk up to an NPC, type a question, get a live Claude response with typewriter effect. The bridge layer shipped in Sprint 4. Next code milestones are **M2** (grey-box office), **M5** (assistant chat UI) and **M6** (unlock + map system). `specs/task-tracker.md` is `HISTORICAL` — a reference checklist, not the status of record.
 
 ## Commands
 
@@ -52,7 +52,7 @@ This has been got wrong at **both** ends of the ladder, and neither was caught b
 
 Every governed doc declares `doc_id`/`tier`/`authority`/`status` in YAML frontmatter, indexed in `specs/meta/doc-registry.json`. Run `python3 scripts/validate_specs.py` before pushing; CI runs it as `Validate Specs`. Never add `decides:` to a `derived`, `summary`, `research` or `historical` doc.
 
-`specs/aligned-spec-v0.2.5.md` is **not** the source of truth — tier-4 research, `SUPERSEDED`; its §01.3 fabricated a 14-scene spine contradicting the real storyboard. Cite it for findings, never as law. Legacy 3D node names (CharacterBody3D, Area3D, …) survive inside `specs/roadmap.md` and `specs/task-tracker.md` — read them as their 2D equivalents; the milestone structure still stands. `docs/storyboard-week1.md` stays authoritative even where a beat is written in legacy 3D terms: adding structure is fine, changing a beat needs human sign-off.
+`specs/aligned-spec-v0.2.5.md` is **not** the source of truth — tier-4 research, `SUPERSEDED`; its §01.3 fabricated a 14-scene spine contradicting the real storyboard. Cite it for findings, never as law. `docs/storyboard-week1.md` stays authoritative even where a beat is written in legacy 3D terms: adding structure is fine, changing a beat needs human sign-off.
 
 ## Architecture: the 4 layers
 
@@ -60,7 +60,7 @@ Every planning doc assumes this model, regardless of 2D/3D:
 
 ```
 Layer 4 — Real agent execution  (EXISTS)   claude-code, gemini-cli, MCP, SSH
-Layer 3 — UI-agnostic bridge    (TODO M5–M8) Python WebSocket → agent CLI, sync w/ timeout
+Layer 3 — UI-agnostic bridge    (DONE M7–M8) Python WebSocket → Claude SDK, sync w/ timeout
 Layer 2 — Current frontend      (PARTIAL)  2.5D Godot; one of several swappable frontends
 Layer 1 — Data + config         (EXISTS)   submodule → agent .md files → agents.json
 ```
@@ -73,9 +73,9 @@ Layer 2 is named for the **role, not the implementation** (`D-020`) — a CLI ha
 
 ## Critical path
 
-The proof-of-concept milestones are **M1 → M4 → M8**. The 2.5D pivot changed M1's *visuals*, not the structure. **M1 done** — `CharacterBody2D`, 8-direction, arrows plus WASD. **M4 done** — proximity-triggered dialogue panel populated from `AgentRegistry`. **M8 next** — player question → WebSocket bridge → real `claude @agent-name` invocation → response rendered with the typewriter effect.
+The proof-of-concept milestones were **M1 → M4 → M8**. **All three are done.** M1 — `CharacterBody2D`, 8-direction, arrows plus WASD. M4 — proximity-triggered dialogue panel populated from `AgentRegistry`. M8 — player question → WebSocket bridge → real Claude SDK invocation → response rendered with typewriter effect. Shipped Sprint 4.
 
-Two of three legs stand, so the risk profile has shifted: protect against **regression**, not just arrival. `tests/smoke_test.tscn` is what protects it — if a change makes that test harder to keep honest, flag it.
+The risk profile is **regression protection**. `tests/smoke_test.tscn` is what protects it — if a change makes that test harder to keep honest, flag it.
 
 ## The `claude-code-tresor` submodule
 
@@ -123,7 +123,8 @@ Root holds the entry points: `README.md` (pitch, 4-layer architecture, departmen
 | `docs/agent-directory.md` | **Taxonomy authority (`D-017`)** — every agent count derives from here. |
 | `docs/delivery-coordinates.md` | **Atlassian taxonomy authority (`D-026`)** — every Jira key, board role, space and page id. |
 | `specs/meta/` | **Start here.** See the section above. |
-| `specs/roadmap.md`, `specs/task-tracker.md` | Milestone structure is authoritative; the 3D node names inside are deprecated. |
+| `specs/roadmap.md` | Milestone structure is authoritative. |
+| `specs/task-tracker.md` | `HISTORICAL` — reference checklist from early planning. Not the status of record. |
 | `specs/aligned-spec-v0.2.5.md` | Tier-4 research, `SUPERSEDED`. Cite for findings, never as law. |
 | `specs/branching-strategy.md` | Intended policy only — says "ClaudeForge", names workflows this repo lacks. |
 
@@ -184,7 +185,7 @@ bridge change, the boundary is broken.
 - **Simplicity first.** Don't invent infrastructure — run the command before recommending it. Saying "there is no Node here" is also inventing infrastructure, in the negative direction, and it was wrong.
 - **Surgical changes.** Never silently reconcile two disagreeing documents — record it in the open-conflict register and raise it. Don't duplicate state: agent facts live in `data/agents.json`, feel values in the scene, project keys in the scripts, and the test derives its bounds from the scene rather than copying them.
 - **Know whose rule it is.** Before enforcing a constraint against a request, check who set it. Owner decisions and `D-nnn` bind; an agent's suggestion written up in a repo file is rationale to weigh, not a gate to refuse with.
-- **Goal-driven execution.** M8 is the goal, `tests/smoke_test.tscn` the evidence. `META-SPEC` §5.8 requires machine-checkable acceptance, so "done" means a gate went green, not that the work looked finished. The user-level `karpathy-guidelines` skill expands on these principles if installed — a per-machine convenience, not a dependency of this repo.
+- **Goal-driven execution.** M8 is done; the next goals are M2/M5/M6. `tests/smoke_test.tscn` is the evidence. `META-SPEC` §5.8 requires machine-checkable acceptance, so "done" means a gate went green, not that the work looked finished. The user-level `karpathy-guidelines` skill expands on these principles if installed — a per-machine convenience, not a dependency of this repo.
 
 ## GBrain semantic search
 

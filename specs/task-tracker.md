@@ -3,31 +3,28 @@ doc_id: TASK-TRACKER
 title: 10110 TastesLike Plaza — PM Task Tracker
 tier: 3
 authority: derived
-status: ACTIVE
+status: HISTORICAL
 doc_set_version: 0.2.12
 last_updated: 2026-08
 owner: adamtasteslikegood
 derives_from: [ROADMAP]
 enforcement: asserted
 gates: [Validate Specs:live, Export Godot 4 Prototype:live]
-weakest_claim: - [x] Vision defined: 3D office GUI over real agent infrastructure
+weakest_claim: Progress state now lives in CLAUDE.md and git history
 ---
 
 # 10110 TastesLike Plaza — PM Task Tracker
 
-> ⚠️ **Superseded in part by [`aligned-spec-v0.2.5.md`](aligned-spec-v0.2.5.md).**
-> The **checklist structure and unchecked-milestone breakdown** are still useful for tracking.
-> The **3D-specific task wording** (Area3D, CharacterBody3D, NavigationRegion3D, FPS demo) is **deprecated**. The prototype is 2.5D top-down; treat those nodes as their 2D equivalents.
-
-> Use this as your working checklist. Copy to Notion, Linear, GitHub Issues, or wherever you track work.
-> Status: [ ] todo  [~] in progress  [x] done
+> **HISTORICAL** — this checklist was the working tracker during early planning.
+> Progress state now lives in CLAUDE.md and git history. Kept as a reference
+> for the milestone structure and open-question table, not as a live tracker.
 
 ---
 
 ## Pre-work (before first line of code)
 
 ### Concept locked
-- [x] Vision defined: 3D office GUI over real agent infrastructure
+- [x] Vision defined: 2.5D office GUI over real agent infrastructure
 - [x] Player framing decided: co-founder, mid-spectrum
 - [x] Tutorial = onboarding confirmed
 - [x] Engine chosen: Godot 4
@@ -59,8 +56,8 @@ weakest_claim: - [x] Vision defined: 3D office GUI over real agent infrastructur
 - [x] Confirm player walks and collides with walls
 
 The FPS-demo steps are dropped rather than ticked: `D-001` pivoted to 2.5D
-top-down, so there is no `CharacterBody3D` controller to import. Top-down movement
-is ~15 lines (`scenes/player/player.gd`) and needed no template.
+top-down. Top-down movement is ~15 lines (`scenes/player/player.gd`) and needed
+no template.
 
 ### M2 — Grey-box office
 - [ ] Block out lobby
@@ -69,8 +66,8 @@ is ~15 lines (`scenes/player/player.gd`) and needed no template.
 - [ ] Block out engineering floor (open plan)
 - [ ] Block out war room / meeting room
 - [ ] Add 2–3 locked corridors (future floors)
-- [ ] Add Area3D doorway triggers on each room entrance
-- [ ] Bake NavigationRegion3D for the full floor
+- [ ] Add Area2D doorway triggers on each room entrance
+- [ ] Bake NavigationRegion2D for the full floor
 - [ ] Playtest: does it feel right to walk through?
 
 ### M3 — Agent data layer ✅
@@ -186,10 +183,10 @@ is ~15 lines (`scenes/player/player.gd`) and needed no template.
 - Godot 4 download: https://godotengine.org
 - Godot docs: https://docs.godotengine.org/en/stable/
 - GDScript reference: https://docs.godotengine.org/en/stable/tutorials/scripting/gdscript/
-- Godot FPS tutorial: https://docs.godotengine.org/en/stable/tutorials/3d/fps_tutorial/
+- Godot 2D tutorial: https://docs.godotengine.org/en/stable/getting_started/first_2d_game/
 - Python websockets: https://websockets.readthedocs.io
 - Source repo (fork): https://github.com/adamtasteslikegood/claude-code-tresor
 
 ---
 
-*Last updated: April 2026*
+*Last updated: August 2026*
