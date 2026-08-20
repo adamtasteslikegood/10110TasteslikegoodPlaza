@@ -4,8 +4,8 @@ This repo is **a running Godot prototype with a live agent bridge**. `godot .`
 opens a walkable 2.5D office; pressing Enter near an NPC lets you ask a question
 that routes through a Python WebSocket bridge to the Claude SDK and back.
 
-For what has actually shipped, read [`specs/task-tracker.md`](specs/task-tracker.md)
-— it is the status of record.
+For what has shipped and what's next, see the § Repository state and § Critical path
+sections in [`CLAUDE.md`](CLAUDE.md).
 
 ## 1. Clone with submodules
 
@@ -139,7 +139,7 @@ Nothing else in the repo needs them.
 | Orient as a developer or agent | [`CLAUDE.md`](CLAUDE.md) |
 | See the active design | [`docs/designs/2.5D-RPG-Prototype.md`](docs/designs/2.5D-RPG-Prototype.md) |
 | Pick up a milestone | [`specs/roadmap.md`](specs/roadmap.md) |
-| Track current work | [`specs/task-tracker.md`](specs/task-tracker.md) |
+| Track current work | [`CLAUDE.md`](CLAUDE.md) § Repository state |
 | Follow the contribution flow | [`CONTRIBUTING.md`](CONTRIBUTING.md) |
 
 *Last updated: August 2026*

@@ -5,7 +5,7 @@ tier: 4
 authority: summary
 status: ACTIVE
 doc_set_version: 0.2.12
-last_updated: 2026-05
+last_updated: 2026-08
 owner: adamtasteslikegood
 derives_from: [META-SPEC]
 enforcement: asserted
@@ -25,8 +25,8 @@ For design-and-reference docs (the *what* and *why*) see [`../docs/`](../docs/RE
 |---|---|
 | [`meta/`](meta/README.md) | **Start here.** The layer above the specs: which document wins, who may decide what, every locked decision, and the CI gate that enforces it. |
 | [`aligned-spec-v0.2.5.md`](aligned-spec-v0.2.5.md) | Research input, `status: SUPERSEDED`. Its normative content was promoted into [`meta/`](meta/README.md); its §01.3 scene spine was a reconstruction that contradicts the real storyboard. Retained for findings, the Document A bridge architecture, the Document B taxonomy, and rationale worth citing. |
-| [`roadmap.md`](roadmap.md) | Work plan. M1 → M8 milestones. The **structure** (critical path **M1 → M4 → M8**) is still authoritative; the **3D-specific node names in milestone bodies are deprecated** — see the promoted 2.5D design for current implementation details. |
-| [`task-tracker.md`](task-tracker.md) | Working checklist across all phases. `[ ]` todo, `[~]` in progress, `[x]` done. Same deprecation caveat as `roadmap.md` for 3D-specific task wording. |
+| [`roadmap.md`](roadmap.md) | Work plan. M1 → M8 milestones. Critical path **M1 → M4 → M8** is authoritative for sequencing. |
+| [`task-tracker.md`](task-tracker.md) | `HISTORICAL` — reference checklist from early planning. Progress state lives in `CLAUDE.md` and git history. |
 | [`branching-strategy.md`](branching-strategy.md) | Branch protection rules, required status checks, CODEOWNERS gating. Intended policy — some referenced workflows don't exist yet. See [`../CONTRIBUTING.md`](../CONTRIBUTING.md) for the everyday flow. |
 
 ## Critical path
@@ -65,4 +65,4 @@ If the doc is reference material that doesn't expire when the work ships — put
 - Date-stamp the bottom of each file with `*Last updated: <month> <year>*`.
 - When a milestone is done, leave the spec in place as historical record — don't delete it. Mark it `[x] Done`.
 
-*Last updated: May 2026*
+*Last updated: August 2026*

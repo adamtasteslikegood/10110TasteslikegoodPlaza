@@ -5,7 +5,7 @@ tier: 3
 authority: derived
 status: ACTIVE
 doc_set_version: 0.2.12
-last_updated: 2026-04
+last_updated: 2026-08
 owner: adamtasteslikegood
 derives_from: [PROJECT-OVERVIEW, DESIGN-25D, SPEC-DRIVERS-025]
 enforcement: asserted
@@ -39,7 +39,7 @@ Everything else can be deferred. If you can walk through a lobby, approach an NP
 **Scene tree:**
 ```
 CharacterBody2D   ← player body (scenes/player/player.gd)
-  Sprite2D        ← placeholder sprite, colour-tinted per department
+  Polygon2D       ← placeholder body shape
   CollisionShape2D ← prevents walking through walls
 ```
 
@@ -132,7 +132,7 @@ func get_agent(id: String) -> Dictionary:
 **NPC scene tree:**
 ```
 CharacterBody2D  (agent_npc.gd)
-  Sprite2D       ← placeholder sprite, colour-tinted per department
+  Polygon2D      ← placeholder body shape, colour-tinted per department
   Area2D         ← proximity trigger
     CollisionShape2D
   Label          ← floating name tag above NPC
@@ -363,19 +363,15 @@ Everything after this point is polish, expansion of the world, more NPC characte
 ## Install checklist
 
 - [x] Download Godot 4 from godotengine.org
-- [x] Create project with three autoloads
-- [ ] Convert agent .md files to a single agents.json
-- [ ] Create new Godot project
+- [x] Create Godot project with autoloads
 - [x] Player controller (CharacterBody2D, 8-direction)
+- [x] Convert agent .md files to a single agents.json
+- [x] Create AgentRegistry, GameEvents, GameState autoloads
+- [x] Place first NPC (Systems Architect) in server room
+- [x] Test proximity trigger → dialogue panel
 - [ ] Block out lobby with TileMap / StaticBody2D
-- [ ] Create AgentRegistry autoload
-- [ ] Create GameEvents autoload
-- [ ] Create GameState autoload
-- [ ] Place first NPC (Systems Architect) in server room
-- [ ] Test proximity trigger → dialogue panel
-- [ ] Install Python websockets: `pip install websockets`
-- [ ] Run bridge.py and test WebSocket connection from Godot
-- [ ] Invoke first real agent through the game
+- [x] Run bridge.py and test WebSocket connection from Godot
+- [x] Invoke first real agent through the game
 
 ---
 
