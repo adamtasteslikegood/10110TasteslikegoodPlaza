@@ -57,16 +57,16 @@ fi
 # --- Merge guard (blocks until user confirms) ---
 if printf '%s' "$cmd" | grep -Eq 'gh[[:space:]]+pr[[:space:]]+merge([[:space:]]|$)'; then
   cat <<'JSON'
-{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"ask","permissionDecisionReason":"Merge guard: have all review comments been addressed?","additionalContext":"STOP -- you are about to merge a PR. Before merging, you MUST check for unanswered review comments. Use `gh api repos/{owner}/{repo}/pulls/{number}/comments` (NOT `gh pr view --comments` which misses review-body comments) and `gh api repos/{owner}/{repo}/issues/{number}/comments` to retrieve ALL review feedback including suppressed co-pilot reviews. Every comment must be addressed with either a fix commit or a concrete technical rebuttal. If any comment is unanswered, deny this merge and address it first."}}
+{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"ask","permissionDecisionReason":"Merge guard: have all review comments been addressed?","additionalContext":"STOP -- you are about to merge a PR. Before merging, you MUST check for unanswered review comments. Use ALL THREE endpoints: `gh api repos/{owner}/{repo}/pulls/{number}/comments` (inline diff comments), `gh api repos/{owner}/{repo}/issues/{number}/comments` (top-level conversation comments), AND `gh api repos/{owner}/{repo}/pulls/{number}/reviews` (submitted review summaries -- a COMMENTED/CHANGES_REQUESTED review can carry prose feedback in its `.body` with no inline comments, invisible to the other two endpoints; check both `.body` and `.state`). This is where suppressed co-pilot reviews hide. NOT `gh pr view --comments`, which misses all of these. Every comment must be addressed with either a fix commit or a concrete technical rebuttal. If any comment is unanswered, deny this merge and address it first."}}
 JSON
   exit 0
 fi
 
 # --- gh pr view --comments redirect (wrong tool) ---
 if printf '%s' "$cmd" | grep -Eq 'gh[[:space:]]+pr[[:space:]]+view[[:space:]]' \
-  && printf '%s' "$cmd" | grep -Eq '(--comments|-c)([[:space:]]|$)'; then
+  && printf '%s' "$cmd" | grep -Eq '(^|[[:space:]])--comments([[:space:]]|$)'; then
   cat <<'JSON'
-{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"Use gh api instead -- gh pr view --comments misses review-body comments and suppressed co-pilot reviews","additionalContext":"WRONG TOOL: `gh pr view --comments` only shows issue-style comments, NOT inline review comments or suppressed co-pilot reviews. Use `gh api repos/{owner}/{repo}/pulls/{number}/comments` to get ALL review comments. Also check `gh api repos/{owner}/{repo}/issues/{number}/comments` for top-level PR comments."}}
+{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"Use gh api instead -- gh pr view --comments misses review-body comments and suppressed co-pilot reviews","additionalContext":"WRONG TOOL: `gh pr view --comments` only shows issue-style comments, NOT inline review comments or suppressed co-pilot reviews. Use ALL THREE gh api endpoints: `gh api repos/{owner}/{repo}/pulls/{number}/comments` (inline diff comments), `gh api repos/{owner}/{repo}/issues/{number}/comments` (top-level conversation comments), and `gh api repos/{owner}/{repo}/pulls/{number}/reviews` (submitted review summaries -- prose feedback in a review `.body` with no inline comments appears in NONE of the others; check both `.body` and `.state`)."}}
 JSON
   exit 0
 fi
@@ -76,7 +76,7 @@ if printf '%s' "$cmd" | grep -Eq 'gh[[:space:]]+api[[:space:]]' \
   && printf '%s' "$cmd" | grep -Eq 'pulls/[0-9]+/comments' \
   && ! printf '%s' "$cmd" | grep -Eq '(-X[[:space:]]*POST|--method[[:space:]]*POST|-f[[:space:]]|-F[[:space:]]|--field[[:space:]]|--input[[:space:]])'; then
   cat <<'JSON'
-{"hookSpecificOutput":{"hookEventName":"PreToolUse","additionalContext":"You are reading PR review comments via the correct API method (gh api). If you have not already this turn, invoke the superpowers:receiving-code-review skill before responding to any feedback. Also check `gh api repos/{owner}/{repo}/issues/{number}/comments` for top-level PR comments, and watch for suppressed co-pilot reviews in the response body -- these are real reviews that should be evaluated with the same rigor."}}
+{"hookSpecificOutput":{"hookEventName":"PreToolUse","additionalContext":"You are reading PR review comments via the correct API method (gh api). If you have not already this turn, invoke the superpowers:receiving-code-review skill before responding to any feedback. This endpoint only returns inline diff comments -- also check `gh api repos/{owner}/{repo}/issues/{number}/comments` for top-level PR comments AND `gh api repos/{owner}/{repo}/pulls/{number}/reviews` for submitted review summaries (a COMMENTED/CHANGES_REQUESTED review can carry prose feedback in its `.body` with no inline comments; check both `.body` and `.state`). This is where suppressed co-pilot reviews hide -- they are real reviews that should be evaluated with the same rigor."}}
 JSON
   exit 0
 fi
