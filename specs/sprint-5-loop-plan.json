@@ -1,0 +1,120 @@
+{
+  "$comment": "Machine-readable Sprint 5 plan. Prose rationale lives in specs/sprint-5-charter.md; this file is the shape delivery_loop_gate.py consumes. That script is NOT in this repo — it ships with the pm-skills plugin. Resolve it: PM_SCRIPTS=$(find ~/.claude/plugins -path '*/pm-skills/scripts' -type d -print -quit) then python3 \"$PM_SCRIPTS/delivery_loop_gate.py\" --plan specs/sprint-5-loop-plan.json --mode plan --output human. Sprint goal: board reconciliation + doc consolidation. Done when (A) board triaged, non-Done ≤ deliberate backlog and (B) validate_specs.py green with ≤14 governed docs. No code milestones — housekeeping sprint. WIP cap 3, 2 attempts/task, 6 iterations. Reviewer: claude-review.yml only (no /codex).",
+  "goal": "Board reconciliation + doc consolidation. Done when: (A) board triaged, non-Done ≤ deliberate backlog; (B) validate_specs.py green with ≤14 governed docs. PLZG Sprint 5.",
+  "budgets": {
+    "max_attempts_per_task": 2,
+    "max_loop_iterations": 6
+  },
+  "iteration": 0,
+  "tasks": [
+    {
+      "id": "T0",
+      "title": "Fetch and reconcile against origin/dev before any other task runs",
+      "owner": "adam schoen",
+      "executor": "agent",
+      "reviewer": "adam schoen",
+      "acceptance": {
+        "cmd": "scripts/check_sync.sh --strict"
+      },
+      "status": "todo",
+      "attempts": 0,
+      "blocks": ["T1", "T3", "T5"],
+      "note": "Blocking precondition, exempt from the attempt cap. No Jira ticket: it is a precondition the SessionStart hook already runs."
+    },
+    {
+      "id": "T1",
+      "jira": "PLZG-230",
+      "title": "Transition 6 false-WIP items to Done (PLZG-221, -215, -209, -200, -199, -180)",
+      "owner": "adam schoen",
+      "executor": "agent",
+      "reviewer": "adam schoen",
+      "acceptance": {
+        "cmd": "source .env && curl -s -H \"Authorization: Basic $ATLASSIAN_API_TOKEN_BASE64\" \"https://$ATLASSIAN_URL/rest/api/3/search?jql=project%3DPLZG%20AND%20status%3D'In%20Progress'%20AND%20key%20in%20(PLZG-221%2CPLZG-215%2CPLZG-209%2CPLZG-200%2CPLZG-199%2CPLZG-180)&fields=key,status\" | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d[\"total\"]==0, f\"{d[\"total\"]} still In Progress\"'"
+      },
+      "status": "todo",
+      "attempts": 0,
+      "depends_on": ["T0"],
+      "blocks": ["T2", "T6"],
+      "note": "These 6 items are false-WIP: work already merged but tickets still In Progress. Transition each to Done via the Jira API."
+    },
+    {
+      "id": "T2",
+      "jira": "PLZG-231",
+      "title": "Three-bucket triage of To Do backlog (Done/Keep/Won't Do)",
+      "owner": "adam schoen",
+      "executor": "agent",
+      "reviewer": "adam schoen",
+      "acceptance": {
+        "cmd": "echo 'Manual verification: every To Do item reviewed and bucketed'"
+      },
+      "status": "todo",
+      "attempts": 0,
+      "depends_on": ["T1"],
+      "blocks": ["T6"],
+      "note": "Review every remaining To Do item. Bucket as Done (already merged), Keep (real remaining work), or Won't Do (stale/duplicate). Do not bulk-close — review each individually."
+    },
+    {
+      "id": "T3",
+      "jira": "PLZG-232",
+      "title": "Ungovern tier-4 docs + mark Sprint 2/3 charters HISTORICAL (27→≤14)",
+      "owner": "adam schoen",
+      "executor": "agent",
+      "reviewer": "adam schoen",
+      "acceptance": {
+        "cmd": "python3 scripts/validate_specs.py 2>&1 | grep -oP '\\d+ governed' | grep -qP '^(\\d|1[0-4]) governed'"
+      },
+      "status": "todo",
+      "attempts": 0,
+      "depends_on": ["T0"],
+      "blocks": ["T4", "T6"],
+      "note": "Move tier-4 docs (summaries, research) from documents to exempt in doc-registry.json. Mark Sprint 2 and Sprint 3 charters HISTORICAL. Grep D-nnn before ungoverning any doc. Target: ≤14 governed docs."
+    },
+    {
+      "id": "T4",
+      "jira": "PLZG-233",
+      "title": "Cross-check surviving docs for state contradictions",
+      "owner": "adam schoen",
+      "executor": "agent",
+      "reviewer": "adam schoen",
+      "acceptance": {
+        "cmd": "echo 'Manual verification: no state claims contradict CLAUDE.md or git history'"
+      },
+      "status": "todo",
+      "attempts": 0,
+      "depends_on": ["T3"],
+      "blocks": ["T6"],
+      "note": "After T3 reduces the governed set, read each surviving doc and verify its state claims against CLAUDE.md and git log. Record any contradictions found and fix them."
+    },
+    {
+      "id": "T5",
+      "jira": "PLZG-229",
+      "title": "Sprint 5 charter (specs/sprint-5-charter.md), loop plan, Jira sprint creation on PLZG board",
+      "owner": "adam schoen",
+      "executor": "agent",
+      "reviewer": "adam schoen",
+      "acceptance": {
+        "cmd": "python3 scripts/validate_specs.py && test -f specs/sprint-5-charter.md && test -f specs/sprint-5-loop-plan.json"
+      },
+      "status": "todo",
+      "attempts": 0,
+      "depends_on": ["T0"],
+      "blocks": ["T6"],
+      "note": "Charter, loop plan, and doc-registry.json update in one PR. Jira sprint 51 created on PLZG board 169 (company-managed Scrum). PLZG-234 is a duplicate of this ticket — created during batch ticket creation, use PLZG-229 as T5."
+    },
+    {
+      "id": "T6",
+      "jira": "PLZG-235",
+      "title": "Sprint close — both gates green",
+      "owner": "adam schoen",
+      "executor": "agent",
+      "reviewer": "adam schoen",
+      "acceptance": {
+        "cmd": "python3 scripts/validate_specs.py && echo 'Gate B: validator green' && echo 'Gate A: board triaged (manual)'"
+      },
+      "status": "todo",
+      "attempts": 0,
+      "depends_on": ["T1", "T2", "T3", "T4", "T5"],
+      "note": "Procedural close. Both gates must pass: (A) board triaged, (B) validate_specs.py green with ≤14 docs. Update charter status to COMPLETED. Run delivery_loop_gate.py --mode close."
+    }
+  ]
+}

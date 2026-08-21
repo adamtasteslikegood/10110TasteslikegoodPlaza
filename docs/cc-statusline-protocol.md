@@ -4,7 +4,7 @@ title: Claude Code Statusline Protocol Reference
 tier: 4
 authority: research
 status: ACTIVE
-doc_set_version: 0.2.12
+doc_set_version: 0.2.13
 last_updated: 2026-08
 owner: adamtasteslikegood
 derives_from: []
