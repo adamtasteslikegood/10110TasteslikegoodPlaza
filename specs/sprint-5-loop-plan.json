@@ -61,7 +61,7 @@
       "executor": "agent",
       "reviewer": "adam schoen",
       "acceptance": {
-        "cmd": "python3 scripts/validate_specs.py 2>&1 | grep -oP '\\d+ governed' | grep -qP '^(\\d|1[0-4]) governed'"
+        "cmd": "python3 -c 'import re,subprocess; out=subprocess.check_output([\"python3\",\"scripts/validate_specs.py\"], stderr=subprocess.STDOUT, text=True); m=re.search(r\"(\\d+) governed\", out); assert m and int(m.group(1))<=14, out; print(out.strip())'"
       },
       "status": "todo",
       "attempts": 0,
@@ -99,7 +99,7 @@
       "attempts": 0,
       "depends_on": ["T0"],
       "blocks": ["T6"],
-      "note": "Charter, loop plan, and doc-registry.json update in one PR. Jira sprint 51 created on PLZG board 169 (company-managed Scrum)."
+      "note": "Charter, loop plan, and doc-registry.json update in one PR. Jira sprint metadata is sourced from docs/delivery-coordinates.md (D-026)."
     },
     {
       "id": "T6",
