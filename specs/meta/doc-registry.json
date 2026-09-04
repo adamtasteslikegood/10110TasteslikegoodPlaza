@@ -185,7 +185,7 @@
       "tier": 3,
       "authority": "delivery",
       "status": "ACTIVE",
-      "note": "Executable context for Sprint 5. Board reconciliation (triage 49 non-Done items, clear 6 false-WIP) and doc consolidation (28 governed docs to ≤14). Housekeeping sprint — no code milestones. Jira sprint 51 on board 169."
+      "note": "Executable context for Sprint 5. Board reconciliation (triage 49 non-Done items, clear 6 false-WIP) and doc consolidation (28 governed docs to ≤14). Housekeeping sprint — no code milestones. Jira sprint metadata is sourced from DELIVERY-COORDINATES (D-026)."
     },
     {
       "doc_id": "GOVERNANCE-TREE",

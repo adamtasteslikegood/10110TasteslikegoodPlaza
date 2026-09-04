@@ -61,7 +61,7 @@
       "executor": "agent",
       "reviewer": "adam schoen",
       "acceptance": {
-        "cmd": "python3 -c 'import re,subprocess; out=subprocess.check_output([\"python3\",\"scripts/validate_specs.py\"], stderr=subprocess.STDOUT, text=True); m=re.search(r\"(\\d+) governed\", out); assert m and int(m.group(1))<=14, out; print(out.strip())'"
+        "cmd": "python3 -c 'import re,subprocess; out=subprocess.check_output([\"python3\",\"scripts/validate_specs.py\"], stderr=subprocess.STDOUT, text=True); assert \"Spec validation passed:\" in out, out; m=re.search(r\"(\\d+) governed\", out); assert m and int(m.group(1))<=14, out; print(out.strip())'"
       },
       "status": "todo",
       "attempts": 0,
@@ -109,7 +109,7 @@
       "executor": "agent",
       "reviewer": "adam schoen",
       "acceptance": {
-        "cmd": "source .env && python3 -c 'import re,subprocess; out=subprocess.check_output([\"python3\",\"scripts/validate_specs.py\"], stderr=subprocess.STDOUT, text=True); m=re.search(r\"(\\d+) governed\", out); assert m and int(m.group(1))<=14, out; print(out.strip())' && test -f specs/evidence/sprint-5-triage.json && curl -s -H \"Authorization: Basic $ATLASSIAN_API_TOKEN_BASE64\" \"https://$ATLASSIAN_URL/rest/api/3/search/jql?jql=project%3DPLZG%20AND%20status%3D'In%20Progress'%20AND%20key%20in%20(PLZG-221%2CPLZG-215%2CPLZG-209%2CPLZG-200%2CPLZG-199%2CPLZG-180)&fields=key,status\" | python3 -c 'import json,sys,pathlib; d=json.load(sys.stdin); assert len(d.get(\"issues\", []))==0, \"false-WIP items remain\"; tri=json.loads(pathlib.Path(\"specs/evidence/sprint-5-triage.json\").read_text()); rows=tri.get(\"items\", []); seen={r.get(\"key\") for r in rows}; todo_query=tri.get(\"todo_query_result\", []); assert all(k in seen for k in todo_query), \"triage evidence missing queried To Do keys\"; assert tri.get(\"review_complete\") is True, \"triage review_complete must be true\"'"
+        "cmd": "source .env && python3 -c 'import re,subprocess; out=subprocess.check_output([\"python3\",\"scripts/validate_specs.py\"], stderr=subprocess.STDOUT, text=True); assert \"Spec validation passed:\" in out, out; m=re.search(r\"(\\d+) governed\", out); assert m and int(m.group(1))<=14, out; print(out.strip())' && test -f specs/evidence/sprint-5-triage.json && curl -s -H \"Authorization: Basic $ATLASSIAN_API_TOKEN_BASE64\" \"https://$ATLASSIAN_URL/rest/api/3/search/jql?jql=project%3DPLZG%20AND%20status%3D'In%20Progress'%20AND%20key%20in%20(PLZG-221%2CPLZG-215%2CPLZG-209%2CPLZG-200%2CPLZG-199%2CPLZG-180)&fields=key,status\" | python3 -c 'import json,sys; d=json.load(sys.stdin); assert len(d.get(\"issues\", []))==0, \"false-WIP items remain\"' && curl -s -H \"Authorization: Basic $ATLASSIAN_API_TOKEN_BASE64\" \"https://$ATLASSIAN_URL/rest/api/3/search/jql?jql=project%3DPLZG%20AND%20status%3D'To%20Do'&fields=key,status\" | python3 -c 'import json,sys,pathlib; tri=json.loads(pathlib.Path(\"specs/evidence/sprint-5-triage.json\").read_text()); rows=tri.get(\"items\", []); seen={r.get(\"key\") for r in rows}; live={i.get(\"key\") for i in json.load(sys.stdin).get(\"issues\", [])}; missing=sorted(k for k in live if k not in seen); assert not missing, f\"unreviewed To Do items: {missing}\"; assert tri.get(\"review_complete\") is True, \"triage review_complete must be true\"'"
       },
       "status": "todo",
       "attempts": 0,
