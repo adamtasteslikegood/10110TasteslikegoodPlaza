@@ -17,6 +17,14 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
 
+### Added — Sprint 5 charter and loop plan (`PLZG-234`)
+
+- Sprint 5 charter (`specs/sprint-5-charter.md`) and machine-readable loop plan
+  (`specs/sprint-5-loop-plan.json`) for board reconciliation and governed-document
+  consolidation.
+- Governing target captured as 28→≤14 documents, with machine-checkable gates for
+  Jira triage evidence and close criteria.
+
 ### Added — DevOps foundation (`PLZG-209`)
 
 - Bridge unit test CI job running 76 tests via `pytest bridge/tests/`.

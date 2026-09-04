@@ -1,6 +1,6 @@
 {
   "$comment": "The index of the 10110 TastesLike Plaza doc set. This file answers 'which document wins' in machine-readable form. Governed by specs/meta/META-SPEC.md; enforced by scripts/validate_specs.py. Every markdown file under docs/, specs/, Docs/, and the root README.md must appear in exactly one of `documents` or `exempt`.",
-  "doc_set_version": "0.2.12",
+  "doc_set_version": "0.2.13",
   "documents": [
     {
       "doc_id": "META-SPEC",
@@ -177,7 +177,15 @@
       "tier": 3,
       "authority": "delivery",
       "status": "HISTORICAL",
-      "note": "Executable context for Sprint 4. Delivered M7 (Python bridge with Claude SDK) and M8 (first live agent output in-world). All 8 tasks (T0-T7, PLZG-170-177) completed. Bridge uses anthropic Python SDK; auth via setup-token OAuth. Closed 2026-08-11."
+      "note": "Executable context for Sprint 4. Delivered M7 (Python bridge with Claude SDK) and M8 (first live agent output in-world). All 9 loop tasks completed (T0, T1, T2, T3a, T3b, T4-T7), spanning 8 Jira-backed tasks (PLZG-170-177). Bridge uses anthropic Python SDK; auth via setup-token OAuth. Closed 2026-08-11."
+    },
+    {
+      "doc_id": "SPRINT-5-CHARTER",
+      "path": "specs/sprint-5-charter.md",
+      "tier": 3,
+      "authority": "delivery",
+      "status": "ACTIVE",
+      "note": "Executable context for Sprint 5. Board reconciliation (triage 49 non-Done items, clear 6 false-WIP) and doc consolidation (28 governed docs to ≤14). Housekeeping sprint — no code milestones. Jira sprint metadata is sourced from DELIVERY-COORDINATES (D-026)."
     },
     {
       "doc_id": "GOVERNANCE-TREE",

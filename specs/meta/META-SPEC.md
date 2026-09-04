@@ -4,7 +4,7 @@ title: Meta-Spec — how the Plaza doc set governs itself
 tier: 0
 authority: constitution
 status: ACTIVE
-doc_set_version: 0.2.12
+doc_set_version: 0.2.13
 last_updated: 2026-07
 owner: adamtasteslikegood
 derives_from: []

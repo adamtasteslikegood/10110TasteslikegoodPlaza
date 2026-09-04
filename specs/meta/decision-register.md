@@ -4,7 +4,7 @@ title: Decision Register — every locked decision, with a citable id
 tier: 0
 authority: constitution
 status: ACTIVE
-doc_set_version: 0.2.12
+doc_set_version: 0.2.13
 last_updated: 2026-08
 owner: adamtasteslikegood
 derives_from: [META-SPEC]
