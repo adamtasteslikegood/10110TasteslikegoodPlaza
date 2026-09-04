@@ -99,8 +99,8 @@ The sprint ends when both gates pass or the iteration cap is hit.
   system). Those come after the board is clean.
 - Bridge evolution (domain-scoped sessions, Agent SDK migration). Documented in
   memory, not this sprint.
-- New governed docs. This sprint reduces the count, it does not add to it (the
-  charter itself is the sole addition).
+- New governed docs beyond this charter. The charter is the only temporary
+  addition; Sprint 5 still targets a net reduction to ≤14 governed documents.
 
 ## 5. Ownership
 

@@ -177,7 +177,7 @@
       "tier": 3,
       "authority": "delivery",
       "status": "HISTORICAL",
-      "note": "Executable context for Sprint 4. Delivered M7 (Python bridge with Claude SDK) and M8 (first live agent output in-world). All 8 tasks (T0-T7, PLZG-170-177) completed. Bridge uses anthropic Python SDK; auth via setup-token OAuth. Closed 2026-08-11."
+      "note": "Executable context for Sprint 4. Delivered M7 (Python bridge with Claude SDK) and M8 (first live agent output in-world). All 9 loop tasks completed (T0, T1, T2, T3a, T3b, T4-T7), spanning 8 Jira-backed tasks (PLZG-170-177). Bridge uses anthropic Python SDK; auth via setup-token OAuth. Closed 2026-08-11."
     },
     {
       "doc_id": "SPRINT-5-CHARTER",
