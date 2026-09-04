@@ -1,5 +1,5 @@
 {
-  "$comment": "Machine-readable Sprint 5 plan. Prose rationale lives in specs/sprint-5-charter.md; this file is the shape delivery_loop_gate.py consumes. That script is NOT in this repo — it ships with the pm-skills plugin. Resolve it: PM_SCRIPTS=$(find ~/.claude/plugins -path '*/pm-skills/scripts' -type d -print -quit) then python3 \"$PM_SCRIPTS/delivery_loop_gate.py\" --plan specs/sprint-5-loop-plan.json --mode plan --output human. Sprint goal: board reconciliation + doc consolidation. Done when (A) board triaged, non-Done ≤ deliberate backlog and (B) validate_specs.py green with ≤14 governed docs. No code milestones — housekeeping sprint. WIP cap 3, 2 attempts/task, 6 iterations. Reviewer: claude-review.yml only (no /codex).",
+  "$comment": "Machine-readable Sprint 5 plan. Prose rationale lives in specs/sprint-5-charter.md; this file is the shape delivery_loop_gate.py consumes. That script is NOT in this repo — it ships with the pm-skills plugin. Resolve it deterministically: mapfile -t G < <(find ~/.claude/plugins -path '*/pm-skills/scripts/delivery_loop_gate.py' | sort); [ ${#G[@]} -ge 1 ] || { echo 'FAIL: no delivery_loop_gate.py found'; exit 1; }; [ \"$(printf \"%s\\n\" \"${G[@]}\" | xargs sha256sum | awk '{print $1}' | sort -u | wc -l)\" = 1 ] || { echo 'FAIL: installs differ -- pin one'; exit 1; }; python3 \"${G[0]}\" --plan specs/sprint-5-loop-plan.json --mode plan --output human. Sprint goal: board reconciliation + doc consolidation. Done when (A) board triaged, non-Done ≤ deliberate backlog and (B) validate_specs.py green with ≤14 governed docs. No code milestones — housekeeping sprint. WIP cap 3, 2 attempts/task, 6 iterations. Reviewer: claude-review.yml only (no /codex).",
   "goal": "Board reconciliation + doc consolidation. Done when: (A) board triaged, non-Done ≤ deliberate backlog; (B) validate_specs.py green with ≤14 governed docs. PLZG Sprint 5.",
   "budgets": {
     "max_attempts_per_task": 2,
@@ -29,7 +29,7 @@
       "executor": "agent",
       "reviewer": "adam schoen",
       "acceptance": {
-        "cmd": "source .env && curl -s -H \"Authorization: Basic $ATLASSIAN_API_TOKEN_BASE64\" \"https://$ATLASSIAN_URL/rest/api/3/search?jql=project%3DPLZG%20AND%20status%3D'In%20Progress'%20AND%20key%20in%20(PLZG-221%2CPLZG-215%2CPLZG-209%2CPLZG-200%2CPLZG-199%2CPLZG-180)&fields=key,status\" | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d[\"total\"]==0, f\"{d[\"total\"]} still In Progress\"'"
+        "cmd": "source .env && curl -s -H \"Authorization: Basic $ATLASSIAN_API_TOKEN_BASE64\" \"https://$ATLASSIAN_URL/rest/api/3/search/jql?jql=project%3DPLZG%20AND%20status%3D'In%20Progress'%20AND%20key%20in%20(PLZG-221%2CPLZG-215%2CPLZG-209%2CPLZG-200%2CPLZG-199%2CPLZG-180)&fields=key,status\" | python3 -c 'import json,sys; d=json.load(sys.stdin); n=len(d.get(\"issues\", [])); assert n==0, f\"{n} still In Progress\"'"
       },
       "status": "todo",
       "attempts": 0,
@@ -45,7 +45,7 @@
       "executor": "agent",
       "reviewer": "adam schoen",
       "acceptance": {
-        "cmd": "echo 'Manual verification: every To Do item reviewed and bucketed'"
+        "cmd": "source .env && test -f specs/evidence/sprint-5-triage.json && curl -s -H \"Authorization: Basic $ATLASSIAN_API_TOKEN_BASE64\" \"https://$ATLASSIAN_URL/rest/api/3/search/jql?jql=project%3DPLZG%20AND%20status%3D'To%20Do'&fields=key,status\" | python3 -c 'import json,sys,pathlib; tri=json.loads(pathlib.Path(\"specs/evidence/sprint-5-triage.json\").read_text()); rows=tri.get(\"items\", []); seen={r.get(\"key\") for r in rows}; allowed={\"done\", \"keep\", \"wont_do\"}; assert all(r.get(\"bucket\") in allowed for r in rows), \"invalid triage bucket\"; assert all(r.get(\"reviewed_at\") for r in rows), \"missing reviewed_at\"; todo={i.get(\"key\") for i in json.load(sys.stdin).get(\"issues\", [])}; missing=sorted(k for k in todo if k not in seen); assert not missing, f\"unreviewed To Do items: {missing}\"'"
       },
       "status": "todo",
       "attempts": 0,
@@ -56,7 +56,7 @@
     {
       "id": "T3",
       "jira": "PLZG-232",
-      "title": "Ungovern tier-4 docs + mark Sprint 2/3 charters HISTORICAL (27→≤14)",
+      "title": "Ungovern tier-4 docs + remove additional low-authority docs from governance (28→≤14)",
       "owner": "adam schoen",
       "executor": "agent",
       "reviewer": "adam schoen",
@@ -67,7 +67,7 @@
       "attempts": 0,
       "depends_on": ["T0"],
       "blocks": ["T4", "T6"],
-      "note": "Move tier-4 docs (summaries, research) from documents to exempt in doc-registry.json. Mark Sprint 2 and Sprint 3 charters HISTORICAL. Grep D-nnn before ungoverning any doc. Target: ≤14 governed docs."
+      "note": "Move tier-4 docs (summaries, research) from documents to exempt in doc-registry.json, then ungovern at least these five additional low-authority docs: TASK-TRACKER, BRANCHING-STRATEGY, DEVOPS-SETUP, SPRINT-2-CHARTER, SPRINT-3-CHARTER. Grep D-nnn before ungoverning any doc. Target: ≤14 governed docs."
     },
     {
       "id": "T4",
@@ -77,7 +77,7 @@
       "executor": "agent",
       "reviewer": "adam schoen",
       "acceptance": {
-        "cmd": "echo 'Manual verification: no state claims contradict CLAUDE.md or git history'"
+        "cmd": "python3 -c 'import json,pathlib; reg=json.loads(pathlib.Path(\"specs/meta/doc-registry.json\").read_text()); manifest=json.loads(pathlib.Path(\"specs/evidence/sprint-5-doc-crosscheck.json\").read_text()); docs={d[\"doc_id\"] for d in reg.get(\"documents\", [])}; reviewed=manifest.get(\"reviewed_docs\", []); covered={d.get(\"doc_id\") for d in reviewed}; missing=sorted(d for d in docs if d not in covered); assert not missing, f\"missing review coverage: {missing}\"; unresolved=[d.get(\"doc_id\") for d in reviewed if d.get(\"contradiction\")]; assert not unresolved, f\"unresolved contradictions: {unresolved}\"; assert all(d.get(\"reviewed_commit\") for d in reviewed), \"each reviewed doc must record reviewed_commit\"'"
       },
       "status": "todo",
       "attempts": 0,
@@ -87,7 +87,7 @@
     },
     {
       "id": "T5",
-      "jira": "PLZG-229",
+      "jira": "PLZG-234",
       "title": "Sprint 5 charter (specs/sprint-5-charter.md), loop plan, Jira sprint creation on PLZG board",
       "owner": "adam schoen",
       "executor": "agent",
@@ -99,7 +99,7 @@
       "attempts": 0,
       "depends_on": ["T0"],
       "blocks": ["T6"],
-      "note": "Charter, loop plan, and doc-registry.json update in one PR. Jira sprint 51 created on PLZG board 169 (company-managed Scrum). PLZG-234 is a duplicate of this ticket — created during batch ticket creation, use PLZG-229 as T5."
+      "note": "Charter, loop plan, and doc-registry.json update in one PR. Jira sprint 51 created on PLZG board 169 (company-managed Scrum)."
     },
     {
       "id": "T6",
@@ -109,7 +109,7 @@
       "executor": "agent",
       "reviewer": "adam schoen",
       "acceptance": {
-        "cmd": "python3 scripts/validate_specs.py && echo 'Gate B: validator green' && echo 'Gate A: board triaged (manual)'"
+        "cmd": "source .env && python3 -c 'import re,subprocess; out=subprocess.check_output([\"python3\",\"scripts/validate_specs.py\"], stderr=subprocess.STDOUT, text=True); m=re.search(r\"(\\d+) governed\", out); assert m and int(m.group(1))<=14, out; print(out.strip())' && test -f specs/evidence/sprint-5-triage.json && curl -s -H \"Authorization: Basic $ATLASSIAN_API_TOKEN_BASE64\" \"https://$ATLASSIAN_URL/rest/api/3/search/jql?jql=project%3DPLZG%20AND%20status%3D'In%20Progress'%20AND%20key%20in%20(PLZG-221%2CPLZG-215%2CPLZG-209%2CPLZG-200%2CPLZG-199%2CPLZG-180)&fields=key,status\" | python3 -c 'import json,sys,pathlib; d=json.load(sys.stdin); assert len(d.get(\"issues\", []))==0, \"false-WIP items remain\"; tri=json.loads(pathlib.Path(\"specs/evidence/sprint-5-triage.json\").read_text()); rows=tri.get(\"items\", []); seen={r.get(\"key\") for r in rows}; todo_query=tri.get(\"todo_query_result\", []); assert all(k in seen for k in todo_query), \"triage evidence missing queried To Do keys\"; assert tri.get(\"review_complete\") is True, \"triage review_complete must be true\"'"
       },
       "status": "todo",
       "attempts": 0,
