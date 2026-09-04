@@ -10,7 +10,7 @@ owner: adamtasteslikegood
 derives_from: [META-SPEC, SPEC-DRIVERS-025, SPRINT-4-CHARTER]
 enforcement: asserted
 gates: [Validate Specs:live]
-weakest_claim: Governed doc count matches the registry after ungoverning
+weakest_claim: with ≤14 governed documents (down from 28).
 ---
 
 # Sprint 5 charter — board reconciliation and doc consolidation
@@ -119,7 +119,8 @@ Two acceptance gates, both must pass for the sprint to close:
   closed. The 6 false-WIP items (PLZG-221, -215, -209, -200, -199, -180) are
   transitioned to Done. Every remaining To Do item has been reviewed.
 - **Gate B — Doc consolidation:** `python3 scripts/validate_specs.py` passes
-  with ≤14 governed documents (down from 28). Governed doc count matches the registry after ungoverning.
+  with ≤14 governed documents (down from 28). Governed doc count matches the
+  registry after ungoverning.
 
 ## 7. Risks
 
