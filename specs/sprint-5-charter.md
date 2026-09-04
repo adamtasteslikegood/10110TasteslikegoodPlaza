@@ -73,7 +73,7 @@ The sprint ends when both gates pass or the iteration cap is hit.
 
 | Budget | Cap |
 |---|---|
-| Retry cap per task | 2 attempts |
+| Retry cap per task | 2 attempts (T0 precondition exempt) |
 | Iteration cap (sprint) | 6 iterations |
 | WIP cap | 3 |
 | API cost cap | None — Claude Max 5x subscription |
