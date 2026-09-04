@@ -86,12 +86,12 @@ The sprint ends when both gates pass or the iteration cap is hit.
 | Task | Title | Jira | Acceptance | Depends on |
 |---|---|---|---|---|
 | T0 | Fetch and reconcile against origin/dev | — | `scripts/check_sync.sh --strict` | — |
-| T1 | Transition 6 false-WIP items to Done | PLZG-230 | JQL `project=PLZG AND status='In Progress'` returns 0 for PLZG-221, -215, -209, -200, -199, -180 | T0 |
-| T2 | Three-bucket triage of To Do backlog (Done/Keep/Won't Do) | PLZG-231 | Every To Do item reviewed and bucketed | T1 |
+| T1 | Transition 6 false-WIP items to Done | PLZG-230 | JQL `project=PLZG AND status='Done' AND key in (...)` returns PLZG-221, -215, -209, -200, -199, -180 | T0 |
+| T2 | Three-bucket triage of To Do backlog (Done/Keep/Won't Do) | PLZG-231 | `specs/evidence/sprint-5-triage.json` exists and covers every live To Do key with bucket + reviewed timestamp | T1 |
 | T3 | Ungovern tier-4 docs + remove additional low-authority docs from governance (28→≤14) | PLZG-232 | `python3 scripts/validate_specs.py` green with ≤14 docs | T0 |
-| T4 | Cross-check surviving docs for state contradictions | PLZG-233 | No state claims in governed docs contradict CLAUDE.md or git history | T3 |
+| T4 | Cross-check surviving docs for state contradictions | PLZG-233 | `specs/evidence/sprint-5-doc-crosscheck.json` covers every governed doc with `reviewed_commit` and no unresolved contradiction | T3 |
 | T5 | Sprint 5 charter and loop plan | PLZG-234 | `python3 scripts/validate_specs.py && test -f specs/sprint-5-charter.md && test -f specs/sprint-5-loop-plan.json` | T0 |
-| T6 | Sprint close — both gates green | PLZG-235 | `python3 scripts/validate_specs.py` (≤14 docs) AND board WIP triaged | T1, T2, T3, T4, T5 |
+| T6 | Sprint close — both gates green | PLZG-235 | `validate_specs.py` reports ≤14 docs; the 6 false-WIP keys are in Done; live To Do keys are fully covered in triage evidence (`review_complete=true`) | T1, T2, T3, T4, T5 |
 
 ### 4.2 Out of scope
 
