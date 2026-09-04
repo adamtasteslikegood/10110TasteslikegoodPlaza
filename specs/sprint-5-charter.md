@@ -20,7 +20,7 @@ weakest_claim: with ≤14 governed documents (down from 28).
 > produced it.
 
 Sprint 5 is the Jira sprint recorded in `docs/delivery-coordinates.md`
-(`D-026`), state future (created 2026-08-20).
+(`D-026`), status FUTURE (created 2026-08-20).
 The forecast blackout from Sprint 3 §1.3 carries forward — no date commitment.
 
 **Sprint goal:** reconcile the board and consolidate the governed doc set. Done
