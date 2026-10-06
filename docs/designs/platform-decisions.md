@@ -5,7 +5,7 @@ tier: 2
 authority: implementation
 status: ACTIVE
 doc_set_version: 0.2.13
-last_updated: 2026-08
+last_updated: 2026-10
 owner: adamtasteslikegood
 derives_from: [META-SPEC]
 supersedes: []
@@ -17,7 +17,7 @@ weakest_claim: Nine of these were already made, already evidenced,
 
 # Platform Decisions
 
-> **One line:** the ten project-level decisions that are neither concept nor
+> **One line:** the eleven project-level decisions that are neither concept nor
 > prototype design — engine, bridge boundary, transport, data layer, licence, and
 > repository policy — and the document entitled to originate them.
 
@@ -40,9 +40,10 @@ rather than the decision — the decisions themselves were never in doubt.
 and already being acted on.** What changed is which document is entitled to hold
 them — `PROJECT-OVERVIEW` goes back to being purely the reconciliation of the two
 axes, which is what `META-SPEC` §2 already said it was, and `META-SPEC` goes back to
-deciding only about documents. `D-029` is the exception: it is a new decision,
-registered here in v0.2.12 because it passes the scope test in §1 (the bridge
-agent store survives replacing the frontend).
+deciding only about documents. `D-029` and `D-030` are the exceptions: both are new decisions
+registered here because they pass the scope test in §1 — `D-029` in v0.2.12 (the
+bridge agent store survives replacing the frontend), `D-030` from the `PLZG-199`
+review (a review-round bound has nothing to do with the frontend).
 
 ## 1. Scope — what belongs in this document
 
@@ -128,6 +129,12 @@ so the tables cannot rot in place.
 **Before renaming or removing an agent, grep `commands/`** — 19 of the 24
 orchestration commands reference agents by id, covering 26 of the 132.
 
+> **These counts are disputed and have not been reproduced.**
+> `docs/agent-directory.md` gives different numbers for the same fact, and a recount
+> at the current pin matched neither. Open conflict §4.12 in
+> `specs/meta/spec-drivers-v0.2.5.md`, issue #113. The instruction stands whatever
+> the count is: grep `commands/` rather than trusting a number.
+
 ### `D-018` — Licence: MIT, © 2026 Adam Schoen
 
 Matches the attribution the project already carries and the upstream
@@ -174,7 +181,7 @@ path to a structured store (database, wikilink markdown, gbrain-style index).
 
 Passes the §1 scope test: replacing the frontend changes nothing about how the
 bridge loads agent definitions. Registered in Sprint 4 (`specs/sprint-4-charter.md`
-§1.4); implementation is T3a/T3b.
+§1.4) and implemented there: T3a is `bridge/sync.py`, T3b is `bridge/agents.py`.
 
 ### `D-030` — PR review round bounds
 
@@ -211,4 +218,4 @@ not here. Add the `D-nnn` to this file's `decides:` list and to
 `scripts/validate_specs.py` fails the build if the two disagree, and now also fails
 if a document declares `decides:` without an authority licensed to originate.
 
-*Doc set version: 0.2.13 · Last updated: August 2026*
+*Doc set version: 0.2.13 · Last updated: October 2026*

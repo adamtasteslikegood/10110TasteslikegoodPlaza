@@ -1,5 +1,5 @@
 {
-  "$comment": "Machine-readable Sprint 5 plan. Prose rationale lives in specs/sprint-5-charter.md; this file is the shape delivery_loop_gate.py consumes. That script is NOT in this repo — it ships with the pm-skills plugin. Resolve it deterministically: mapfile -t G < <(find ~/.claude/plugins -path '*/pm-skills/scripts/delivery_loop_gate.py' | sort); [ ${#G[@]} -ge 1 ] || { echo 'FAIL: no delivery_loop_gate.py found'; exit 1; }; [ \"$(printf \"%s\\n\" \"${G[@]}\" | xargs sha256sum | awk '{print $1}' | sort -u | wc -l)\" = 1 ] || { echo 'FAIL: installs differ -- pin one'; exit 1; }; python3 \"${G[0]}\" --plan specs/sprint-5-loop-plan.json --mode plan --output human. Acceptance commands live in scripts/sprint_5_gate.py, one subcommand per task; it reads the sprint, board and ticket keys from THIS file and holds none of its own. Sprint goal: board reconciliation + doc consolidation. Done when (A) board triaged, non-Done ≤ deliberate backlog and (B) validate_specs.py green with ≤19 governed docs. The limit was ≤14 until 2026-10-05; that was unreachable -- 28 governed docs, 9 of them tier-4 -- and the owner re-scoped to the 9 tier-4 removals. No code milestones — housekeeping sprint. WIP cap 3, 2 attempts/task, 6 iterations. Reviewer: claude-review.yml only (no /codex).",
+  "$comment": "Machine-readable Sprint 5 plan. Prose rationale lives in specs/sprint-5-charter.md; this file is the shape delivery_loop_gate.py consumes. That script is NOT in this repo — it ships with the pm-skills plugin. Resolve it deterministically: mapfile -t G < <(find ~/.claude/plugins -path '*/pm-skills/scripts/delivery_loop_gate.py' | sort); [ ${#G[@]} -ge 1 ] || { echo 'FAIL: no delivery_loop_gate.py found'; exit 1; }; [ \"$(printf \"%s\\n\" \"${G[@]}\" | xargs sha256sum | awk '{print $1}' | sort -u | wc -l)\" = 1 ] || { echo 'FAIL: installs differ -- pin one'; exit 1; }; python3 \"${G[0]}\" --plan specs/sprint-5-loop-plan.json --mode plan --output human. Acceptance commands live in scripts/sprint_5_gate.py, one subcommand per task; it reads the sprint, board and ticket keys from THIS file and holds none of its own. Sprint goal: board reconciliation + doc consolidation. Done when (A) board triaged, non-Done ≤ deliberate backlog and (B) validate_specs.py green with ≤19 governed docs. The limit was ≤14 until 2026-10-05; that was unreachable -- 28 governed docs, 9 of them tier-4 -- and the owner re-scoped to the 9 tier-4 removals. No code milestones — housekeeping sprint. WIP cap 3, 2 attempts/task, 6 iterations. Reviewers: claude-review.yml and GitHub Copilot code review (dev ruleset), both advisory (no /codex).",
   "goal": "Board reconciliation + doc consolidation. Done when: (A) board triaged, non-Done ≤ deliberate backlog; (B) validate_specs.py green with ≤19 governed docs. PLZG Sprint 5.",
   "jira": {
     "project": "PLZG",
@@ -12,7 +12,7 @@
     "max_attempts_per_task": 2,
     "max_loop_iterations": 6
   },
-  "iteration": 2,
+  "iteration": 3,
   "tasks": [
     {
       "id": "T0",
@@ -65,7 +65,7 @@
       "depends_on": ["T1"],
       "blocks": ["T6"],
       "note": "Review every non-Done item individually -- To Do and In Progress alike; only the sprint's own tickets are exempt. Bucket as done (already merged -- verify against the file), keep (real remaining work), or wont_do (stale or duplicate). Do not bulk-close. BEFORE moving anything, record the non-Done set (project = PLZG AND statusCategory != Done, minus the sprint's own tickets) as baseline_keys with baseline_captured_at in specs/evidence/sprint-5-triage.json: coverage is measured against that baseline, because a closed item leaves the live column and could not otherwise be shown to have been skipped. Each row carries key, bucket, reviewed_at and reason. The gate then re-reads Jira: keep must still be open, done and wont_do must be Done, wont_do must carry the wont-do label, and done must not.",
-      "evidence": "sprint_5_gate.py t2 exit 0 via loop_controller verify, 2026-10-06, at 106 rows: 106 triage row(s) cover 106 baseline key(s). Re-run by hand after review added the PLZG-247 row: 107 triage row(s) cover 106 baseline key(s), exit 0. 60 keep, 42 done, 4 wont_do of the baseline, plus one keep row for PLZG-247; owner approved applying the buckets. Evidence: specs/evidence/sprint-5-triage.json."
+      "evidence": "sprint_5_gate.py t2 exit 0 via loop_controller verify, 2026-10-06, at 106 rows: 106 triage row(s) cover 106 baseline key(s). Re-run by hand after review added the PLZG-247 row: 107 triage row(s) cover 106 baseline key(s), exit 0. 60 keep, 42 done, 4 wont_do of the baseline, plus one keep row for PLZG-247; owner approved applying the buckets. Rows added since for tickets filed during the sprint (PLZG-248 to PLZG-251); the gate was re-run at each addition and the row count in this string is the count at T2's close, not now. Evidence: specs/evidence/sprint-5-triage.json."
     },
     {
       "id": "T3",
@@ -98,11 +98,12 @@
       "acceptance": {
         "cmd": "python3 scripts/sprint_5_gate.py t4"
       },
-      "status": "todo",
-      "attempts": 0,
+      "status": "done",
+      "attempts": 1,
       "depends_on": ["T3"],
       "blocks": ["T6"],
-      "note": "After T3, read each surviving governed doc and verify every claim it makes about state against the system that OWNS that state: git for code and history, Jira for board state, GitHub for repository settings and checks, CI for what a job does. CLAUDE.md is not an owner -- agreeing with it only shows two documents match. Fix what is wrong, then record one row per doc in specs/evidence/sprint-5-doc-crosscheck.json: doc_id, contradiction (explicitly false), verified_against (the owners consulted, or [\"none\"] for a doc with no state claims) and reviewed_blob (git hash-object of the file as reviewed). The gate recomputes the blob, so editing a doc after its review invalidates its row."
+      "note": "After T3, read each surviving governed doc and verify every claim it makes about state against the system that OWNS that state: git for code and history, Jira for board state, GitHub for repository settings and checks, CI for what a job does. CLAUDE.md is not an owner -- agreeing with it only shows two documents match. Fix what is wrong, then record one row per doc in specs/evidence/sprint-5-doc-crosscheck.json: doc_id, contradiction (explicitly false), verified_against (the owners consulted, or [\"none\"] for a doc with no state claims) and reviewed_blob (git hash-object of the file as reviewed). The gate recomputes the blob, so editing a doc after its review invalidates its row.",
+      "evidence": "sprint_5_gate.py t4 exit 0, 2026-10-06: 19 governed document(s) cross-checked at current content; open conflict(s) still carried: ['4.11', '4.12']. Four read-only audits covered all 19 documents against git, CI, GitHub and Jira, and the Jira automation rules were re-read through their API in review; one claim has no readable owner (Linear's sync settings) and is labelled in the document as recorded, not re-verified; 16 documents were corrected and three had nothing to fix. Two things were recorded rather than resolved: the disputed command counts (open conflict 4.12, issue #113) and the storyboard's seven unmatched references (PLZG-251). Evidence: specs/evidence/sprint-5-doc-crosscheck.json."
     },
     {
       "id": "T5",

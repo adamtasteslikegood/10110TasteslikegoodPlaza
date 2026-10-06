@@ -191,6 +191,7 @@ class GateCase(unittest.TestCase):
             / "specs"
             / "evidence"
             / "sprint-5-doc-crosscheck.json",
+            "CONFLICT_REGISTER_PATH": self.root / "specs" / "meta" / "register.md",
             "jira_get": lambda endpoint, params=None: self.jira.get(endpoint, params),
             "governed_count": lambda: self.governed,
             "check_snapshot": lambda: "flow snapshot fresh",
@@ -382,6 +383,43 @@ class T4(GateCase):
     def test_contradiction_omitted(self):
         del self.crosscheck["reviewed_docs"][0]["contradiction"]
         self.fails(gate.check_t4, "ROADMAP: contradiction must be recorded as false")
+
+    def register(self, text):
+        (self.root / "specs" / "meta" / "register.md").write_text(text, "utf-8")
+
+    def test_open_conflict_is_carried_and_named(self):
+        self.register("### 4.12 Counts disagree — **OPEN**\n")
+        self.crosscheck["reviewed_docs"][0]["open_conflicts"] = ["4.12"]
+        self.write()
+        self.assertIn("still carried: ['4.12']", gate.check_t4(self.plan))
+
+    def test_document_cites_an_open_conflict_its_row_omits(self):
+        self.register("### 4.12 Counts disagree — **OPEN**\n")
+        path = self.root / "docs" / "roadmap.md"
+        path.write_text("# roadmap\nDisputed: open conflict §4.12.\n", "utf-8")
+        self.crosscheck["reviewed_docs"][0]["reviewed_blob"] = self.blob(
+            "docs/roadmap.md"
+        )
+        self.fails(gate.check_t4, "ROADMAP: cites open conflict(s) ['4.12']")
+
+    def test_citing_a_resolved_conflict_needs_no_declaration(self):
+        self.register("### 4.12 Counts disagree — **RESOLVED**\n")
+        path = self.root / "docs" / "roadmap.md"
+        path.write_text("# roadmap\nSettled in §4.12.\n", "utf-8")
+        self.crosscheck["reviewed_docs"][0]["reviewed_blob"] = self.blob(
+            "docs/roadmap.md"
+        )
+        self.write()
+        self.assertNotIn("still carried", gate.check_t4(self.plan))
+
+    def test_conflict_the_register_has_resolved(self):
+        self.register("### 4.12 Counts disagree — **RESOLVED**\n")
+        self.crosscheck["reviewed_docs"][0]["open_conflicts"] = ["4.12"]
+        self.fails(gate.check_t4, "ROADMAP: open_conflicts names ['4.12'], not OPEN")
+
+    def test_conflict_the_register_never_held(self):
+        self.crosscheck["reviewed_docs"][0]["open_conflicts"] = ["9.9"]
+        self.fails(gate.check_t4, "ROADMAP: open_conflicts names ['9.9'], not OPEN")
 
     def test_unknown_owning_system(self):
         self.crosscheck["reviewed_docs"][0]["verified_against"] = ["memory"]

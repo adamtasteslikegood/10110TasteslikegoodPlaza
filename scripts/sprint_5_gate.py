@@ -45,6 +45,9 @@ PLAN_PATH = REPO_ROOT / "specs" / "sprint-5-loop-plan.json"
 REGISTRY_PATH = REPO_ROOT / "specs" / "meta" / "doc-registry.json"
 TRIAGE_PATH = REPO_ROOT / "specs" / "evidence" / "sprint-5-triage.json"
 CROSSCHECK_PATH = REPO_ROOT / "specs" / "evidence" / "sprint-5-doc-crosscheck.json"
+CONFLICT_REGISTER_PATH = REPO_ROOT / "specs" / "meta" / "spec-drivers-v0.2.5.md"
+SECTION_CITATION = re.compile(r"§\s?(\d+\.\d+)\b")
+OPEN_CONFLICT_HEADING = re.compile(r"^### (\d+\.\d+) .*\*\*OPEN\*\*\s*$", re.M)
 
 TOKEN_VARS = ("ATLASSIAN_API_TOKEN_BASE64", "ATLASSIAN_API_TOKEN_BASE64_USEREMAIL")
 BUCKETS = ("done", "keep", "wont_do")
@@ -368,6 +371,14 @@ def check_t3(plan: dict) -> str:
     )
 
 
+def open_conflict_sections() -> set:
+    """Section numbers the open-conflict register currently holds OPEN."""
+    if not CONFLICT_REGISTER_PATH.is_file():
+        return set()
+    text = CONFLICT_REGISTER_PATH.read_text(encoding="utf-8")
+    return set(OPEN_CONFLICT_HEADING.findall(text))
+
+
 def check_t4(plan: dict) -> str:
     """Every governed document was cross-checked at its current content."""
     registry = load_json(REGISTRY_PATH)
@@ -385,6 +396,8 @@ def check_t4(plan: dict) -> str:
     missing = sorted(set(paths) - set(by_id))
     require(not missing, f"governed documents with no cross-check row: {missing}")
 
+    open_sections = open_conflict_sections()
+    carried = set()
     for doc_id, path in sorted(paths.items()):
         row = by_id[doc_id]
         # Explicit, because an omitted key reads as "no contradiction".
@@ -401,6 +414,33 @@ def check_t4(plan: dict) -> str:
             f"{doc_id}: verified_against must name one or more of "
             f"{list(OWNING_SYSTEMS)}",
         )
+        # A disagreement the document labels as disputed is not hidden, but it is
+        # not settled either. It may ride on a clean row only while the register
+        # holds it OPEN; otherwise "recorded" is just a word in a note.
+        conflicts = row.get("open_conflicts", [])
+        require(
+            isinstance(conflicts, list) and all(isinstance(c, str) for c in conflicts),
+            f"{doc_id}: open_conflicts must be a list of register section numbers",
+        )
+        stale = sorted(set(conflicts) - open_sections)
+        require(
+            not stale,
+            f"{doc_id}: open_conflicts names {stale}, not OPEN in the conflict register",
+        )
+        # The declaration is not trusted on its own: deleting it would silence the
+        # gate while the document went on saying "open conflict §4.12". Whatever
+        # OPEN section the document cites, its row must list. The register is
+        # exempt -- it is where the sections live.
+        doc_path = REPO_ROOT / path
+        if doc_path.is_file() and doc_path != CONFLICT_REGISTER_PATH:
+            cited = set(SECTION_CITATION.findall(doc_path.read_text(encoding="utf-8")))
+            undeclared = sorted((cited & open_sections) - set(conflicts))
+            require(
+                not undeclared,
+                f"{doc_id}: cites open conflict(s) {undeclared} that its row "
+                "does not list in open_conflicts",
+            )
+        carried.update(conflicts)
         # A row is evidence about one version of the file. If the file changed
         # since, the row describes something that no longer exists.
         blob = subprocess.run(
@@ -411,7 +451,10 @@ def check_t4(plan: dict) -> str:
             row.get("reviewed_blob") == blob.stdout.strip(),
             f"{doc_id}: {path} changed since it was reviewed -- re-check it",
         )
-    return f"{len(paths)} governed document(s) cross-checked at current content"
+    summary = f"{len(paths)} governed document(s) cross-checked at current content"
+    if carried:
+        summary += f"; open conflict(s) still carried: {sorted(carried)}"
+    return summary
 
 
 def check_t5(plan: dict) -> str:

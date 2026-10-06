@@ -26,7 +26,7 @@ Version semantics: `0` = pre-prototype · `.2` = second aligned concept revision
 ---
 
 > **Filename note.** This file still carries `v0.2.5` in its name while holding live
-> v0.2.8 content — the open-conflict register is the working copy, not a frozen
+> content at the current set version — the open-conflict register is the working copy, not a frozen
 > record. Splitting it (or renaming to an unversioned `spec-drivers.md`) is worth
 > doing at v0.3; renaming a `doc_id` one PR after shipping it costs more than it
 > saves.
@@ -99,11 +99,11 @@ entitled tier first.
 D-nnn  (decision-register.md — who decided, and why)
   └─▶ SB-nn  (concept-driver.md — which beat of the story it serves)
         └─▶ M1..M8  (specs/roadmap.md — which milestone proves it)
-              └─▶ TO-nnn  (Jira / specs/task-tracker.md — the unit of work)
+              └─▶ Jira issue  (the unit of work; keys are defined in docs/delivery-coordinates.md)
 ```
 
 Not every task touches a scene — bridge and tooling work often traces
-`D-nnn → M-n → TO-nnn` with no `SB-nn`. That is fine and expected. What is never
+`D-nnn → M-n → Jira issue` with no `SB-nn`. That is fine and expected. What is never
 fine is a task with no `D-nnn`.
 
 **Task template** — each task carries:
@@ -117,8 +117,9 @@ reflected upward in the correct document at the correct tier; and
 
 ## 3. Stage plan
 
-Rounds 1 and 2 are done. Later rounds are named so tasks can be filed against them
-now; neither is started.
+Rounds 1 to 3 are done. Round 4 is partly delivered: M7 and M8 shipped in Sprint 4.
+M5 is not started. M6 has groundwork only — `GameState` tracks unlocks and the
+server-room door already asks it — with no gate table and no map.
 
 | Stage | Scope | Advance when |
 |---|---|---|
@@ -132,8 +133,8 @@ now; neither is started.
 ## 4. Open-conflict register
 
 Per [`META-SPEC.md`](META-SPEC.md) §4, conflicts are recorded rather than silently
-resolved. **Ten resolved, one open** as of v0.2.13 — §4.10 closed by amendment in
-`PLZG-137`; §4.11 opened in `PLZG-232`. Resolved entries are kept,
+resolved. **Ten resolved, two open** as of v0.2.13 — §4.10 closed by amendment in
+`PLZG-137`; §4.11 opened in `PLZG-232` and §4.12 in `PLZG-233`. Resolved entries are kept,
 not deleted — the record of *how* a conflict was settled is what stops it reopening.
 
 ### 4.1 `ALIGNED-SPEC-025` §01.3 versus `STORYBOARD-W1` — **RESOLVED**
@@ -142,8 +143,9 @@ not deleted — the record of *how* a conflict was settled is what stops it reop
 assistant's introduction, player configuration, and the coding lesson, and pulled a
 deferred RA/QM department into the tutorial. Storyboard wins on the concept axis
 (tier 1 beats tier 4). Full side-by-side in
-[`concept-driver.md`](concept-driver.md) §4. `ALIGNED-SPEC-025` is now
-`authority: research`, `status: SUPERSEDED`.
+[`concept-driver.md`](concept-driver.md) §4. `specs/aligned-spec-v0.2.5.md` was
+made `authority: research`, `status: SUPERSEDED`, and has been exempt from governance
+since `PLZG-232`.
 
 ### 4.2 Agent counts disagreed across four documents — **RESOLVED**
 
@@ -202,11 +204,13 @@ copied from the upstream fork intending to modify it, and that accuracy about th
 repository matters more than anything the inherited text says — so the upstream
 content was dropped rather than preserved and fenced.
 
-What it says now is checked against the repo: the real branch list (including the
+What it said after that rewrite was checked against the repo as it stood: the real branch list (including the
 long-lived `feature/TO-1-prototype-initialization` and its `scripts/` tree), `dev`
 as the default branch, the actual CI jobs, the real submodule-bump procedure, and
 an honest "no tags cut yet" release section. The branch-protection settings are
 labelled as a setup to apply, not as current state, and carry the correct job names.
+(Both have moved since: tags exist and the `dev` ruleset is live.
+`specs/branching-strategy.md` is the current statement, not this entry.)
 `status: DRAFT` → `ACTIVE`. A §9 provenance note records where the document came
 from so the question does not get re-litigated.
 
@@ -225,7 +229,7 @@ Resolved in favour of the documentation and the upstream attribution:
 head of `10110TLGP/dev` after upstream was merged into it, and the owner confirmed
 that branch is the fork's default — as does `origin/HEAD`. Registered as **`D-021`**
 in [`decision-register.md`](decision-register.md): **the gitlink tracks
-`10110TLGP/dev`**. `CLAUDE.md` names both the commit and the branch.
+`10110TLGP/dev`**. `CLAUDE.md` names the branch; the commit is the gitlink itself.
 
 **Closed on 2026-07-26.** The owner confirmed `10110TLGP/main` is **reserved as the
 fork's release branch** — dormant until the fork has a `release.yml` and tagged
@@ -437,12 +441,36 @@ resolutions, for a human call:
 2. Amend `D-028` to say a delivery policy holds until a later charter replaces it,
    which is how it has been treated in practice.
 
+### 4.12 Two tier-2 documents count the orchestration commands differently — **OPEN**
+
+Raised 2026-08-01 as
+[issue #113](https://github.com/adamtasteslikegood/10110TasteslikegoodPlaza/issues/113)
+and never logged here; recorded 2026-10-06 during Sprint 5 T4 (`PLZG-233`).
+
+- `PLATFORM-DECISIONS` `D-024`, mirrored in the decision register and quoted as the
+  register's `weakest_claim`: "19 of the 24 orchestration commands reference agents
+  by id, covering 26 of the 132."
+- `AGENT-DIRECTORY`, the `D-017` authority for counts: "The 19 orchestration commands
+  reference agents by id; 24 of 132 are referenced by at least one."
+
+Same tier, different authorities, so the ladder does not pick a winner. A recount at
+pin `b7ec149` during T4 matched **neither**: 18 command files naming 23 agents, or
+20 naming 24 when each command's README is counted. Upstream's own README says 19
+commands in total, ten of them orchestration. Neither document records how it
+counted.
+
+**Not resolved here.** Both documents now carry a note that the figure is disputed
+and point at this entry. Resolving it needs one stated counting method, applied
+once, and then both sentences and the `weakest_claim` quote changed together —
+`D-024` is `LOCKED`, so that edit is the owner's.
+
 ## 5. Exit criteria to v1.0.0
 
 `1.0.0` is cut when **M8 is demonstrable in-engine** — a player question travels
-through the bridge to a real `claude @agent-name` invocation and the response
-renders in the dialogue panel. That is the repo's own stated first-tag trigger and
-this version does not move it.
+through the bridge to a real Claude invocation of that agent and the response
+renders in the dialogue panel. That is the doc set's `1.0.0` trigger; the application's
+`v0.1.x` tags are a separate axis (`CHANGELOG.md`). **M8 shipped in Sprint 4 and the
+cut has not been made** — the set is still `0.2.13`. Making it is the owner's call.
 
 Between here and there, each round closes with the same check: the register has no
 conflict that has been open longer than the round that discovered it.

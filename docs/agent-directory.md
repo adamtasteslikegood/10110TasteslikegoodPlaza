@@ -5,13 +5,13 @@ tier: 2
 authority: taxonomy
 status: ACTIVE
 doc_set_version: 0.2.13
-last_updated: 2026-07
+last_updated: 2026-10
 owner: adamtasteslikegood
 derives_from: [PROJECT-OVERVIEW]
 decides: [D-017]
 enforcement: asserted
 gates: [Validate Agent Data:live, Validate Specs:live]
-weakest_claim: quote 133 when you mean roles, NPCs, or rows in
+weakest_claim: quote 133 when you mean upstream roles, and 132 when you mean NPCs or rows
 ---
 
 # 10110_TastesLikePlaza - 'Employee' Directory
@@ -61,10 +61,9 @@ subagents/
 │   ├── security/
 │   ├── testing/
 │   ├── data/
-│   ├── languages/                     # 16 language specialists
+│   ├── languages/                     # 15 language specialists
 │   ├── architecture/
 │   ├── code-quality/
-│   ├── performance/
 │   ├── debugging/
 │   └── documentation/
 │
@@ -92,15 +91,13 @@ subagents/
 │   ├── risk/
 │   └── compliance/
 │
-├── 🌊 operations/                     # Operations Team (6 roles)
+├── 🌊 operations/                     # Operations Team (6 files; 5 roles after curation)
 │   ├── analytics/
 │   ├── infrastructure/
-│   ├── support/
-│   └── project-management/
+│   └── support/
 │
 ├── 🔶 research/                       # Research Team (7 roles)
 │   ├── market/
-│   ├── user/
 │   └── data/
 │
 ├── 🧠 ai-automation/                  # AI & Automation (9 roles)
@@ -116,14 +113,14 @@ subagents/
 │   └── sales/
 │
 └── ⭐ core/                           # Core roles (8 production-ready)
-    ├── systems-architect.md
-    ├── config-safety-reviewer.md
-    ├── root-cause-analyzer.md
-    ├── security-auditor.md
-    ├── test-engineer.md
-    ├── performance-tuner.md
-    ├── refactor-expert.md
-    └── docs-writer.md
+    ├── systems-architect/agent.md
+    ├── config-safety-reviewer/agent.md
+    ├── root-cause-analyzer/agent.md
+    ├── security-auditor/agent.md
+    ├── test-engineer/agent.md
+    ├── performance-tuner/agent.md
+    ├── refactor-expert/agent.md
+    └── docs-writer/agent.md
 ```
 
 ---
@@ -142,10 +139,9 @@ subagents/
 - Security (OWASP, secure coding, compliance)
 - Testing & QA (test automation, quality assurance)
 - Data Engineering (ETL, pipelines, analytics)
-- Language Specialists (16 languages)
+- Language Specialists (15 languages)
 - Architecture (system design, patterns)
 - Code Quality (reviews, refactoring)
-- Performance (optimization, profiling)
 - Debugging (RCA, troubleshooting)
 - Documentation (technical writing, API docs)
 
@@ -193,7 +189,7 @@ first — it is empty in fresh checkouts).
 - Product Research (trend analysis, user feedback)
 - Product Analytics (metrics, KPIs, dashboards)
 
-**Key roles**: product-manager-orchestrator, sprint-prioritizer, prd-writer, feedback-synthesizer, trend-researcher
+**Key roles**: product-manager, sprint-prioritizer, prd-writer, feedback-synthesizer, trend-researcher
 
 ---
 
@@ -207,11 +203,11 @@ first — it is empty in fresh checkouts).
 - Risk Management (portfolio risk, hedging, assessment)
 - Compliance & Legal (regulatory compliance, legal docs)
 
-**Key roles**: financial-analyst-fs, business-strategist-fs, risk-manager, compliance-officer-fs, legal-advisor
+**Key roles**: financial-analyst, business-strategist, risk-manager, compliance-officer, legal-advisor
 
 ---
 
-### 6. 🌊 Operations (6 roles)
+### 6. 🌊 Operations (5 roles)
 **Color**: Teal (#14B8A6)
 **Path**: `subagents/operations/`
 
@@ -219,9 +215,8 @@ first — it is empty in fresh checkouts).
 - Business Analytics (reporting, insights)
 - Infrastructure Operations (maintenance, optimization)
 - Support Operations (customer support, tickets)
-- Project Management (delivery, tracking)
 
-**Key roles**: analytics-reporter, infrastructure-maintainer, support-responder, studio-producer
+**Key roles**: analytics-reporter, operations-optimizer, support-responder
 
 ---
 
@@ -231,10 +226,9 @@ first — it is empty in fresh checkouts).
 
 **Specializations**:
 - Market Research (competitive intelligence, market sizing)
-- User Research (experience analysis, user insights)
 - Data Research (deep research, web search)
 
-**Key roles**: competitive-intelligence-mx, market-research-analyst, tam-market-sizing-mx, search-specialist
+**Key roles**: competitive-intelligence, market-research-analyst, tam-market-sizing, search-specialist
 
 ---
 
@@ -248,7 +242,7 @@ first — it is empty in fresh checkouts).
 - Automation (workflow automation, integration)
 - Prompt Engineering (prompt optimization, LLM tuning)
 
-**Key roles**: ai-engineer, ml-engineer, mlops-engineer, ai-workflow-designer-aa, automation-architect-aa
+**Key roles**: ai-engineer, ml-engineer, mlops-engineer, ai-workflow-designer, automation-architect
 
 ---
 
@@ -262,7 +256,7 @@ first — it is empty in fresh checkouts).
 - Customer Support (support specialists)
 - Sales Engineering (technical sales, demos)
 
-**Key roles**: account-executive-revenue-at, customer-success-manager, sales-engineer-gr
+**Key roles**: account-executive, customer-success-manager, sales-engineer
 
 ---
 
@@ -376,7 +370,7 @@ $charactor invoke agent-skills automatically for quick checks before deep analys
    ├─ Frontend work? → engineering/frontend/
    ├─ Security? → engineering/security/
    ├─ Testing? → engineering/testing/
-   ├─ Performance? → engineering/performance/
+   ├─ Performance? → core/performance-tuner/
    ├─ Debugging? → engineering/debugging/
    └─ Architecture? → engineering/architecture/
 
@@ -430,12 +424,13 @@ not automatically invalidate them** — verify against the trees, not the commit
 | **Distinct roles** | **133** | The core eight appear in both trees. |
 
 **Both numbers are correct — they measure different things.** Quote 141 when you
-mean files on disk; quote 133 when you mean roles, NPCs, or rows in
-`data/agents.json`. Say which you mean.
+mean files on disk; quote 133 when you mean upstream roles, and 132 when you mean NPCs or rows
+in `data/agents.json` (the curation below removes one). Say which you mean.
 
 Three things that make a naïve count wrong:
 
-- Agents nest **three levels down** — `subagents/<category>/<subcategory>/<agent-name>/agent.md`.
+- Agents nest **three levels down** — `subagents/<category>/<subcategory>/<agent-name>/agent.md`
+  (the core eight are two levels down, `subagents/core/<agent-name>/agent.md`).
   A `maxdepth 1` count returns zero. Use `find subagents -name 'agent.md' | wc -l`.
 - `agents/` and `subagents/core/` hold the **same eight roles** — byte-identical
   `name:` and `description:` for `systems-architect`, `config-safety-reviewer`,
@@ -473,7 +468,10 @@ tables live in `scripts/generate_agents_json.py`, keyed by source path so an ups
 move fails the build rather than silently mis-applying.
 
 **Before renaming or removing an agent, grep `commands/`.** The 19 orchestration
-commands reference agents by id; 24 of 132 are referenced by at least one. None of
+commands reference agents by id; 24 of 132 are referenced by at least one.
+(**Disputed:** `docs/designs/platform-decisions.md` `D-024` gives different counts
+for the same fact and a recount at the current pin matched neither — open conflict
+§4.12 in `specs/meta/spec-drivers-v0.2.5.md`, issue #113.) None of
 the four ids touched above appears in any command, which is why this curation was
 safe. The most-referenced agents are the core eight (`security-auditor` in 11
 commands, `systems-architect` 10, `test-engineer` 9, `performance-tuner` 8) — a
@@ -490,29 +488,22 @@ authority — every other mention of a count derives from here.
 ### Full Installation
 
 ```bash
-# Install all roles (recommended)
-./scripts/install.sh
+# Install everything (recommended). The script lives in the submodule.
+./claude-code-tresor/scripts/install.sh
 
-# This installs:
-# - 8 core agents (to ~/.claude/agents/)
-# - 133 specialized agents (to .claude/agents/)
-# - Skills (8 autonomous helpers)
-# - Commands (4 workflow orchestrators)
+# This installs agents (133), skills, commands (19, ten of them orchestration)
+# and resources.
 ```
 
 ### Selective Installation
 
 ```bash
-# Install specific categories
-./scripts/install.sh --category engineering
-./scripts/install.sh --category design
-./scripts/install.sh --category marketing
-
-# Install core agents for core  roles only
-./scripts/install.sh --core
-
-# Install skills only
-./scripts/install.sh --skills
+# One kind of thing at a time. There is no per-category or core-only flag.
+./claude-code-tresor/scripts/install.sh --agents-only
+./claude-code-tresor/scripts/install.sh --skills-only
+./claude-code-tresor/scripts/install.sh --commands-only
+./claude-code-tresor/scripts/install.sh --orchestration
+./claude-code-tresor/scripts/install.sh --resources-only
 ```
 
 ### Directory Locations
@@ -564,7 +555,7 @@ subcategory: backend
 - **name**: kebab-case identifier
 - **description**: When to use this agent
 - **tools**: Accessible tools (Read, Write, Edit, etc.)
-- **model**: Always `inherit`
+- **model**: `inherit` in the eight legacy `agents/*.md`; `claude-opus-4` in the catalog under `subagents/`
 
 ### Optional Fields
 
@@ -601,7 +592,7 @@ These standards act as Standard Operating Procedures (SOPs) for consistent quali
 @config-safety-reviewer Review database pool settings in config.js
 
 # General code review
-@code-reviewer Review this React component for best practices
+@refactor-expert Review this React component for best practices
 
 # Security-focused review
 @security-auditor Full security audit of authentication system
@@ -640,7 +631,7 @@ These standards act as Standard Operating Procedures (SOPs) for consistent quali
 @root-cause-analyzer Production API timing out under load
 
 # Quick debugging
-@debugger Fix error in payment processing
+@code-analyzer-debugger Fix error in payment processing
 
 # Error patterns
 @error-detective Analyze recurring 500 errors in logs

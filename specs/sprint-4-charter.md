@@ -5,7 +5,7 @@ tier: 3
 authority: delivery
 status: HISTORICAL
 doc_set_version: 0.2.13
-last_updated: 2026-08
+last_updated: 2026-10
 owner: adamtasteslikegood
 derives_from: [META-SPEC, SPEC-DRIVERS-025, SPRINT-3-CHARTER]
 enforcement: asserted
@@ -14,6 +14,11 @@ weakest_claim: Sprint 4 is Jira sprint 48 on board 169, state future
 ---
 
 # Sprint 4 charter — the agent bridge layer
+
+> **HISTORICAL.** Sprint 4 is closed (Jira `completeDate` 2026-08-21T03:44Z, the
+> evening of 2026-08-20 PDT). Everything below is as written while it was planned
+> and run — "state future" and other present-tense statements about the sprint and
+> the board describe that time, not now.
 
 > **One line:** this document is the complete executable context for Sprint 4. A
 > session that has read this file needs nothing from the conversation that
@@ -135,4 +140,4 @@ Adam owns and reviews all tasks. Three review layers:
 
 R6 (API cost runaway) retired — Claude Max 5x subscription with opus-4-6 to opus-5 band.
 
-*Last updated: August 2026*
+*Last updated: October 2026*

@@ -5,7 +5,7 @@ tier: 3
 authority: derived
 status: ACTIVE
 doc_set_version: 0.2.13
-last_updated: 2026-08
+last_updated: 2026-10
 owner: adamtasteslikegood
 derives_from: []
 enforcement: asserted
@@ -86,13 +86,13 @@ unaffected by the router.
 | `spec-enforcement-matrix` | Enforcement-axis non-vacuity |
 | `validate-agent-data` | agents.json matches submodule |
 | `python-lint` | Black formatting + flake8 syntax errors |
-| `bridge-tests` | pytest bridge/tests/ (76 tests) |
+| `bridge-tests` | pytest bridge/tests/ |
 | `godot-build` | Import + headless smoke test (cached binary) |
 
 **Godot caching:** The Godot binary is cached by version. On cache
 hit the ~80MB download is skipped. To bust the cache (e.g. after a
-Godot version bump), update `GODOT_VERSION` in ci.yml and the cache
-key changes automatically.
+Godot version bump), update `GODOT_VERSION` and the pinned `GODOT_SHA512`
+in ci.yml — both are in the cache key, and the download is checked against the hash.
 
 ## 3. Issue Triage
 
@@ -151,4 +151,4 @@ Google's `release-please` reads conventional commits on `main` and:
 When `dev` merges to `main`, release-please creates a Release PR.
 Merging that PR publishes the GitHub Release.
 
-*Last updated: August 2026*
+*Last updated: October 2026*

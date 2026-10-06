@@ -10,7 +10,7 @@ owner: adamtasteslikegood
 derives_from: [META-SPEC, SPEC-DRIVERS-025, SPRINT-4-CHARTER]
 enforcement: asserted
 gates: [Validate Specs:live]
-weakest_claim: The board had 114 non-Done items when measured on 2026-10-05
+weakest_claim: The board had 114 non-Done items at the start of 2026-10-05
 ---
 
 # Sprint 5 charter — board reconciliation and doc consolidation
@@ -54,11 +54,15 @@ box office), M5 (assistant chat UI) and M6 (unlock + map system).
 
 ### 1.2 Why housekeeping before code
 
-The board had 114 non-Done items when measured on 2026-10-05
-(`project = PLZG AND statusCategory != Done`), ten of them In Progress. An
+The board had 114 non-Done items at the start of 2026-10-05
+(`project = PLZG AND statusCategory != Done`), ten of them In Progress. By 20:08
+PDT that day it was 111 — five closed by T1, two filed — which is the figure
+`data/plzg-flow-snapshot.json` recorded then; both numbers are right for their hour
+(`PLZG-248`, from Jira's status history). An
 earlier draft of this charter said 49; that figure was never re-measured and was
-wrong by more than half. The governed doc set has 28 documents — nine of them
-tier-4 summaries and research that disagree with each other and with CLAUDE.md.
+wrong by more than half. The governed doc set had 28 documents when this sprint was
+planned — nine of them tier-4 summaries and research that disagreed with each other
+and with CLAUDE.md. T3 took it to 19.
 The roast-me finding: 28 governed docs that disagree is more maintenance than a
 solo dev needs; the meta-specs system is valuable but oversized.
 
@@ -67,8 +71,10 @@ trustworthy when code work resumes.
 
 ### 1.3 Forecast blackout (carried from Sprint 3)
 
-Still in force. Only 5 of the 10 required `started→resolved` timestamps exist
-(4 from Sprint 3 + 1 from Sprint 2). Sprint 5 carries **no date commitment**.
+Still in force, carried forward by owner decision. The lift condition was **not
+re-measured** for Sprint 5: the last count, taken before Sprint 4 ran, was 5 of the
+10 required `started→resolved` timestamps (4 from Sprint 3 + 1 from Sprint 2).
+Sprint 5 carries **no date commitment**.
 The sprint ends when both gates pass or the iteration cap is hit.
 
 ## 2. Relevant decisions
@@ -76,11 +82,11 @@ The sprint ends when both gates pass or the iteration cap is hit.
 | Id | Decision | Enforced by |
 |---|---|---|
 | `D-016` | Agent data generated, never hand-edited | CI: Validate Agent Data |
-| `D-017` | Agent directory is taxonomy authority | `docs/agent-directory.md` |
+| `D-017` | Agent directory is taxonomy authority | Policy — origin `docs/agent-directory.md`; `Validate Agent Data` backs the 132 total only |
 | `D-023` | Merge commits only, squash/rebase disabled | Repository merge method settings |
 | `D-026` | `docs/delivery-coordinates.md` owns Atlassian identifiers | Policy |
-| `D-028` | Delivery authority for time-boxed sprint policy | META-SPEC |
-| `D-030` | PR review round bounds: minimum 2, maximum 3, with exemptions | `docs/designs/platform-decisions.md` |
+| `D-028` | Delivery authority for time-boxed sprint policy | CI: Validate Specs (the authority-to-originate check) |
+| `D-030` | PR review round bounds: minimum 2, maximum 3, with exemptions | Policy, applied by hand — origin `docs/designs/platform-decisions.md` |
 
 ## 3. Budgets
 
@@ -102,7 +108,7 @@ The sprint ends when both gates pass or the iteration cap is hit.
 | T1 | Clear the 7 stale In Progress items | PLZG-230 | `python3 scripts/sprint_5_gate.py t1` — PLZG-129, -199, -200, -209, -215, -221 are Done and PLZG-180 is Done with the `wont-do` label | T0 |
 | T2 | Three-bucket triage of every non-Done item (Done/Keep/Won't Do) | PLZG-231 | `python3 scripts/sprint_5_gate.py t2` — the triage evidence covers every key in the pre-triage baseline and every key still open (To Do or In Progress, the sprint's own tickets excepted), and each bucket matches the ticket's status and label in Jira | T1 |
 | T3 | Ungovern the 9 tier-4 docs + mark Sprint 2/3 charters HISTORICAL (28→≤19) | PLZG-232 | `python3 scripts/sprint_5_gate.py t3` — `validate_specs.py` green with ≤19 docs, all 19 documents that are not tier-4 still governed, and the Sprint 2 and 3 charters `HISTORICAL` | T0 |
-| T4 | Cross-check surviving docs for state contradictions | PLZG-233 | `python3 scripts/sprint_5_gate.py t4` — every governed doc has a cross-check row with `contradiction: false`, the owning systems consulted, and a `reviewed_blob` matching the file's current content | T3 |
+| T4 | Cross-check surviving docs for state contradictions | PLZG-233 | `python3 scripts/sprint_5_gate.py t4` — every governed doc has a cross-check row with `contradiction: false`, the owning systems consulted, and a `reviewed_blob` matching the file's current content; a row may carry a dispute the document labels as such only while the conflict register holds it `OPEN`, must list every `OPEN` conflict its document cites, and the gate names what is carried | T3 |
 | T5 | Sprint 5 charter and loop plan | PLZG-234 | `python3 scripts/sprint_5_gate.py t5` — the validator passes, both files exist, and Jira confirms sprint `51` is on board `169` holding every task ticket | T0 |
 | T6 | Sprint close — both gates green | PLZG-235 | `python3 scripts/sprint_5_gate.py t6` — re-runs T1–T4, requires `review_complete: true` in the triage evidence, and requires `validate_delivery_coordinates.py` to pass on a refreshed flow snapshot | T1, T2, T3, T4, T5 |
 
@@ -134,12 +140,14 @@ title.
 
 ## 5. Ownership
 
-Adam owns and reviews all tasks. One review layer:
+Adam owns and reviews all tasks. Two automated review layers, both advisory:
 
-1. **`claude-review.yml`** — automated independent reviewer on every PR.
+1. **`claude-review.yml`** — independent reviewer on non-draft, same-repo PRs.
+2. **GitHub Copilot code review** — set by the ruleset on `dev`; reviews each push.
 
 No `/codex` adversarial reviewer this sprint — the work is docs and board
-operations, not code.
+operations, not code. (The Codex connector is installed but only reports that its
+usage limit is reached.)
 
 ## 6. Gates
 

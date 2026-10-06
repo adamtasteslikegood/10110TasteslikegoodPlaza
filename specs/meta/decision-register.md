@@ -5,7 +5,7 @@ tier: 0
 authority: constitution
 status: ACTIVE
 doc_set_version: 0.2.13
-last_updated: 2026-08
+last_updated: 2026-10
 owner: adamtasteslikegood
 derives_from: [META-SPEC]
 supersedes: []
@@ -75,6 +75,11 @@ sensible it reads — it is `PROPOSED` until ratified at the right tier.
 | `D-030` | PR review round bounds | **Minimum 2 rounds of reading and replying to bot/human review comments before merge. Maximum 3 rounds before deciding: merge, close, revert to draft and elevate to owner.** Security findings, branch-protection failures and ticket-linked blockers are exempt from the max — they run until resolved or elevated. | One round of reading missed a fixable finding that the owner then had to redirect on (PLZG-199: symlink-follow in `/tmp` cache rebutted instead of fixed, because the code is bridge-bound and bots re-flag it every push). The min prevents premature merge; the max prevents infinite review loops on cosmetic or contested findings. The escalation path — close PR or revert to draft — keeps the owner's queue clean. | `PLATFORM-DECISIONS` | `LOCKED` |
 | `D-026` | Delivery coordinates authority | **`DELIVERY-COORDINATES` is the single origin of every Atlassian identifier** — Jira keys, Confluence space and page ids. **A key may be named anywhere, but only this file may DEFINE one** — a guide mentioning `PLZG` while pointing here is citing; a guide asserting what `PLZG` is, or introducing a coordinate this table does not carry, is originating, and that is what is forbidden. **No script is a second source any more** either: since `PLZG-109` (2026-07-31) both read their coordinates from the environment and hold none. *Historical, and retained deliberately: this clause once read "the two Python scripts are the only other legitimate copy, because they execute the values", which was true while they hardcoded them.* | Recorded because the absence of this rule caused real, shipped drift in both directions. `post_to_confluence.py` published Plaza status reports into `TLG`, a sibling product's space, behind a silent fallback. Then `CLAUDE.md` came to hold, simultaneously, a rule forbidding copies of the project key into that file and a table copying the project key into that file — two agent-authored statements, each defensible alone, in direct contradiction. A reference mapping needs an entitled home, not a convention, which is the same reasoning as `D-017`. Placed at tier 2 `taxonomy` deliberately: a board key is a reference mapping, not a rule about documents, so tier 0 may not originate it — the trap `D-005` fell into and v0.2.9 fixed. ***Retired 2026-08-03, kept as history:*** *"When a script and the table disagree, the script is the fact and the table is the bug."* That tie-break settled a disagreement that can no longer happen — neither script holds a coordinate since `PLZG-109`, so there is nothing left to arbitrate and the table is simply the fact. **Kept rather than deleted because it is *why* the coordinates were centralised, and a future hardcoded coordinate is the failure it was written against** — delete the reasoning and the next agent re-adds the hardcoding without knowing what it cost. The DECISION is untouched and stays `LOCKED`: `DELIVERY-COORDINATES` is still the single origin. Only part of the rationale aged out. Raised on GitHub #96 (2026-07-31), which recommended option (2) but explicitly left the call open — *"it is a register edit, so it is the owner's call."* The ruling that selected it is recorded in `specs/sprint-3-loop-plan.json`, T7's note, dated 2026-08-01; applied in `PLZG-137`. The register has no status for this shape — the owner comment on GitHub #96 names it: *"The register has no vocabulary for 'the decision holds; part of its reasoning is now historical.'"* Not raised anywhere as its own item. | `DELIVERY-COORDINATES` | `LOCKED` |
 
+> **`D-024`'s command counts are disputed.** "19 of the 24 … covering 26 of the 132"
+> has not been reproduced and `AGENT-DIRECTORY` states different numbers — open
+> conflict §4.12 in [`spec-drivers-v0.2.5.md`](spec-drivers-v0.2.5.md), issue #113.
+> The decision itself (curate collisions, never auto-suffix) is not in question.
+
 ## Constitution — origin `META-SPEC` (tier 0)
 
 Rules about documents, which is the one thing tier 0 is entitled to originate
@@ -133,4 +138,4 @@ point of the tier ladder.
    `SUPERSEDED` — do not delete it — and bump `doc_set_version` across the set.
 4. Add the `D-nnn` to the origin document's `decides:` frontmatter list.
 
-*Doc set version: 0.2.13 · Last updated: August 2026*
+*Doc set version: 0.2.13 · Last updated: October 2026*

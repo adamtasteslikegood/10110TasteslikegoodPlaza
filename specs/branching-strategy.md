@@ -5,7 +5,7 @@ tier: 3
 authority: derived
 status: ACTIVE
 doc_set_version: 0.2.13
-last_updated: 2026-08
+last_updated: 2026-10
 owner: adamtasteslikegood
 derives_from: [META-SPEC]
 enforcement: asserted
@@ -36,13 +36,13 @@ Most branching docs describe an aspiration. This section is the honest split.
 | `claude-review.yml` — independent review | **Runs on PRs to `main` and `dev`**; see its `on:` block for the exact trigger set. Advisory, never a required check |
 | Branch protection on `dev` | **Active** — ruleset `18798438`: PR required, deletion and force-push blocked, code scanning gates merge, and **`Spec Enforcement Matrix` is a required status check**. See §5 |
 | Branch protection on `main` | **Not configured.** §5 "Still to apply" |
-| Required status checks by name | **One:** `Spec Enforcement Matrix`, required since 2026-08-02. Every other CI job — `Validate Specs`, `Lint Python Bridge`, `Validate Agent Data`, `Validate Delivery Coordinates`, `Check Sync Matrix`, `Export Godot 4 Prototype` — still reports without gating the merge |
+| Required status checks by name | **One:** `Spec Enforcement Matrix`, required since 2026-08-02. Every other CI job — `Validate Specs`, `Lint Python Bridge`, `Validate Agent Data`, `Validate Delivery Coordinates`, `Check Sync Matrix`, `Bridge Unit Tests`, `Export Godot 4 Prototype` — still reports without gating the merge |
 | CODEOWNERS gating | **No `CODEOWNERS` file exists** |
 | Required linked issue | Convention at best |
 
-`Validate Specs` is the one gate with real teeth today: it fails any PR that lets
-the governed document set drift out of the hierarchy in
-[`meta/META-SPEC.md`](meta/META-SPEC.md).
+`Spec Enforcement Matrix` is the one check that blocks a merge. `Validate Specs`
+fails any PR that lets the governed document set drift out of the hierarchy in
+[`meta/META-SPEC.md`](meta/META-SPEC.md), but it reports — it does not gate.
 
 ## 2. The branch model
 
@@ -51,8 +51,9 @@ feature/* | fix/* | hotfix/*  →  dev  →  main
         (your work)          (integration)  (release)
 ```
 
-- **`main`** — release line. Updated only when cutting a release. No releases have
-  been cut yet; the first tag lands when M8 is demonstrable in-engine.
+- **`main`** — release line. Updated only when cutting a release. It has not
+  been updated since 2026-04-28: tags `v0.0.0`–`v0.1.22` and the one published
+  release (`v0.1.22`, 2026-07-30) were all cut on `dev`. See §7.
 - **`dev`** — integration branch, and the repository's **default branch**. All new
   work targets `dev`.
 - **Short-lived branches** — `feature/<name>`, `fix/<name>`, `hotfix/<name>`,
@@ -61,27 +62,34 @@ feature/* | fix/* | hotfix/*  →  dev  →  main
 - **`claude/<task-slug>`** — task-assigned working branches for Claude Code
   sessions. Same flow; the session is told its branch name up front.
 
-**Never commit directly to `main` or `dev`.** Go through a PR. This is convention
-until §5 is applied — nothing currently blocks a direct push.
+**Never commit directly to `main` or `dev`.** Go through a PR. On `dev` the
+ruleset enforces it (§5). On `main` it is still convention — nothing blocks a
+direct push there.
 
-### Long-lived branches that exist right now
+### Long-lived branches worth knowing about
 
-Worth knowing about, because they are not short-lived and will not simply merge:
+Not an inventory — `git branch -r` is. The remote also carries a couple of dozen
+merged or abandoned task branches (`feat/PLZG-170-…`, `docs/PLZG-131-…` and the
+like) that are simply awaiting a prune. These two are named because they are not
+short-lived and will not simply merge:
 
 | Branch | What it is |
 |---|---|
 | `feature/TO-1-prototype-initialization` | Carries a substantial `scripts/` tree (Jira PM daemon, ahead-behind tooling, shell/Python helpers) that does not exist on `dev`. **Check here before adding anything to `scripts/`** — an equivalent may already be written. |
-| `sync-main-to-dev`, `adamtasteslikegood-patch-1`, `copilot/set-up-dependabot-yaml` | In-flight or stale. Prune when their PRs land or close. |
+| `copilot/set-up-dependabot-yaml` | Stale. Prune when its PR lands or closes. |
 
 ## 3. What runs on a pull request
 
-From [`../.github/workflows/ci.yml`](../.github/workflows/ci.yml):
+From [`../.github/workflows/ci.yml`](../.github/workflows/ci.yml), which has eight
+jobs. These are the three you can run locally in one go; the others are
+`Validate Delivery Coordinates`, `Check Sync Matrix`, `Spec Enforcement Matrix`,
+`Validate Agent Data` and `Bridge Unit Tests`:
 
 | Job | Hard fails on |
 |---|---|
 | `Validate Specs` | `python3 scripts/validate_specs.py` — missing or malformed frontmatter, unregistered documents, authority disagreeing with the registry, `doc_set_version` skew, broken relative links, unknown `D-nnn`, scene ids with no matching scene. Standard library only; no `pip install` step. |
-| `Lint Python Bridge` | `black --check .` and `flake8 --select=E9,F63,F7,F82`. A third `flake8` pass runs `--exit-zero` and is advisory only. |
-| `Export Godot 4 Prototype` | **Runs `godot --headless tests/smoke_test.tscn`** (`ci.yml:184`). Despite the name it does not export. It was a stub echo when this row was written; `project.godot` has existed since M1 and the job became a real gate in v0.2.8. Corrected 2026-08-02. |
+| `Lint Python Bridge` | `black --check .` and `flake8 --select=E9,F63,F7,F82`. A second `flake8` pass runs `--exit-zero` and is advisory only. |
+| `Export Godot 4 Prototype` | **Runs `godot --headless tests/smoke_test.tscn`** (the `Headless smoke test` step). Despite the name it does not export. It was a stub echo when this row was written; `project.godot` has existed since M1 and the job became a real gate in v0.2.8. Corrected 2026-08-02. |
 
 Run all three locally before pushing. See
 [`../CONTRIBUTING.md`](../CONTRIBUTING.md) § CI expectations for the commands.
@@ -268,15 +276,20 @@ Closed in [`meta/spec-drivers-v0.2.5.md`](meta/spec-drivers-v0.2.5.md) §4.7.
 
 ## 7. Release flow
 
-Not automated, and not yet exercised — there are no tags.
+**The `dev` → `main` step has never been exercised.** `main` was last updated
+2026-04-28. The 24 existing tags (`v0.0.0`–`v0.1.22`) and the one published
+release were cut on `dev`, outside the flow below.
 
-1. `dev` is ready: features merged, `CHANGELOG.md` `[Unreleased]` promoted to a
-   version section, `doc_set_version` consistent across the governed set.
+1. `dev` is ready: features merged, `doc_set_version` consistent across the
+   governed set.
 2. PR `dev` → `main`. Merge commit, per §4.
-3. Tag `main` and write GitHub release notes from the CHANGELOG section.
+3. [`release-please.yml`](../.github/workflows/release-please.yml) runs on push to
+   `main` and opens the release PR; merging that tags `main` and publishes the
+   GitHub release. That workflow is on `dev` only so far, so it has never run.
 
-First tag is cut when **M8 is demonstrable in-engine** — the exit criterion in
-[`meta/spec-drivers-v0.2.5.md`](meta/spec-drivers-v0.2.5.md) §5.
+The doc set's own `1.0.0` trigger — **M8 demonstrable in-engine**, the exit
+criterion in [`meta/spec-drivers-v0.2.5.md`](meta/spec-drivers-v0.2.5.md) §5 — is a
+separate axis from these application tags.
 
 ## 8. Intended, not yet active
 
@@ -288,11 +301,10 @@ Nothing here is enforced. Do not cite it as a rule or block a PR on it.
 | `dev-to-main.yml` | Source-branch validation, CHANGELOG check, version consistency on `dev` → `main` |
 | `release.yml` | Version-format validation, CHANGELOG extraction, GitHub release, tagging |
 
-Also absent: branch protection (§5), a `CODEOWNERS` file, and any enforcement of
+Also absent: protection on `main` (§5), a `CODEOWNERS` file, and any enforcement of
 linked issues.
 
-Building these is deliberately deferred — there is no application code to gate yet,
-and the gate that matters now (`Validate Specs`) already exists.
+Building these is deliberately deferred — the CI jobs in §3 cover today's gating.
 
 ## 9. Provenance
 
@@ -374,4 +386,4 @@ to re-run. Two things follow:
 · **Related:** [`../CONTRIBUTING.md`](../CONTRIBUTING.md) ·
 [`meta/META-SPEC.md`](meta/META-SPEC.md) · [`../CHANGELOG.md`](../CHANGELOG.md)
 
-*Last updated: August 2026*
+*Last updated: October 2026*
