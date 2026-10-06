@@ -40,7 +40,7 @@ tier 2  docs/designs/*         how to build   ·   docs/agent-directory  taxonom
         README.md              reconciles both axes for public consumption
 tier 3  specs/roadmap, task-tracker, branching-strategy    sequencing only
 tier 4  quick-reference, aligned-spec-v0.2.5, indexes      authoritative over nothing;
-                                                           exempt, not registered (PLZG-232)
+                                                           registered as exempt (PLZG-232)
 ```
 
 Lower tier wins. Concept flows down from tier 1; implementation flows down from

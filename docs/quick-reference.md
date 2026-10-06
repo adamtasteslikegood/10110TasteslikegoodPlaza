@@ -4,7 +4,7 @@ title: 10110 TastesLike Plaza — Quick Reference
 tier: 4
 authority: summary
 status: ACTIVE
-last_updated: 2026-07
+last_updated: 2026-10
 owner: adamtasteslikegood
 governed: false  # exempt in specs/meta/doc-registry.json since PLZG-232; the keys above describe the file, nothing validates them
 ---
@@ -106,4 +106,4 @@ Everything else is built on top of those three.
 
 ---
 
-*Last updated: April 2026*
+*Last updated: October 2026*

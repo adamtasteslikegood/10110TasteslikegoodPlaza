@@ -4,7 +4,7 @@ title: Claude Code Statusline Protocol Reference
 tier: 4
 authority: research
 status: ACTIVE
-last_updated: 2026-08
+last_updated: 2026-10
 owner: adamtasteslikegood
 governed: false  # exempt in specs/meta/doc-registry.json since PLZG-232; the keys above describe the file, nothing validates them
 ---
@@ -79,4 +79,4 @@ The script outputs one JSON line per row to stdout:
 
 Omitting a task ID keeps the default rendering for that row.
 
-*Last updated: August 2026*
+*Last updated: October 2026*

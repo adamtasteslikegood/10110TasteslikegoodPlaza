@@ -4,7 +4,7 @@ title: docs/ — design and reference index
 tier: 4
 authority: summary
 status: ACTIVE
-last_updated: 2026-07
+last_updated: 2026-10
 owner: adamtasteslikegood
 governed: false  # exempt in specs/meta/doc-registry.json since PLZG-232; the keys above describe the file, nothing validates them
 ---
@@ -50,4 +50,4 @@ If the doc instead tracks **active work**, lives or dies with a milestone, or ch
 - Cross-link freely. Use relative paths so links survive directory moves.
 - Don't propagate the `{{rolels}}` / `{{charactors}}` template placeholders left over from the upstream fork — clean them up locally when editing the section they're in.
 
-*Last updated: July 2026*
+*Last updated: October 2026*

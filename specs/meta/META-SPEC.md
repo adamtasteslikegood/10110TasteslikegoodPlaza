@@ -176,7 +176,7 @@ tier 2   DESIGN-25D (how to build)   AGENT-DIRECTORY (taxonomy)
 tier 3   ROADMAP → TASK-TRACKER → Jira TO
                         │
 tier 4   quick-reference · aligned-spec-v0.2.5 · indexes · history
-         (exempt since PLZG-232: unregistered, authoritative over nothing)
+         (exempt since PLZG-232: registered under `exempt`, authoritative over nothing)
 ```
 
 Decisions flow one direction only. A tier-3 task may not invent a rule that a

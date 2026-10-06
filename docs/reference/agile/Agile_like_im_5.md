@@ -4,7 +4,7 @@ title: Explain "Agile" to a 5yr old
 tier: 4
 authority: research
 status: ACTIVE
-last_updated: 2026-07
+last_updated: 2026-10
 owner: adamtasteslikegood
 governed: false  # exempt in specs/meta/doc-registry.json since PLZG-232; the keys above describe the file, nothing validates them
 ---

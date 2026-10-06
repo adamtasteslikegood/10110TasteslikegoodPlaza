@@ -295,7 +295,8 @@ The Sprint 3 amendment, end to end. `D-027` and `D-028` are registered against
   product is (tiers 1–2) and what order it is built in (tier 3), with no authority
   for *how work is governed while it is built*, so charters were setting budgets
   nothing else set while declaring `derived` — licensed to originate nothing.
-  `spec-drivers-v0.2.5.md` §4 now reads **ten resolved, none open**.
+  `spec-drivers-v0.2.5.md` §4 read **ten resolved, none open** when this landed;
+  §4.11 has opened since (`PLZG-232`, above).
 - **`spec-frontmatter.schema.json`** gains the `enforcement` enum, `weakest_claim`,
   and `authority` += `delivery` with `x-may-originate: true`. `gates` are
   **`job:type` strings** — `[Validate Specs:live]` — deliberately **not**

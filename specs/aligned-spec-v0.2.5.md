@@ -4,7 +4,7 @@ title: Aligned Specification Set v0.2.5 (research input)
 tier: 4
 authority: research
 status: SUPERSEDED
-last_updated: 2026-07
+last_updated: 2026-10
 owner: adamtasteslikegood
 governed: false  # exempt in specs/meta/doc-registry.json since PLZG-232; the keys above describe the file, nothing validates them
 ---

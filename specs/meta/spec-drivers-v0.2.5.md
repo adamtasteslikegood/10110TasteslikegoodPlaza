@@ -407,7 +407,8 @@ Sprint 3, and the constitution is what was edited.
 ### 4.11 A retired charter is still the origin of rules in force — **OPEN**
 
 Raised 2026-10-06 during Sprint 5 T3 (`PLZG-232`), which marked `SPRINT-2-CHARTER`
-and `SPRINT-3-CHARTER` `HISTORICAL` by owner decision.
+and `SPRINT-3-CHARTER` `HISTORICAL` by owner decision. Tracked as
+[issue #269](https://github.com/adamtasteslikegood/10110TasteslikegoodPlaza/issues/269).
 
 `D-028` licenses the `delivery` authority to originate "time-boxed operational
 policy that expires with its artifact". Two policies have outlived the sprint that
