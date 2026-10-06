@@ -17,6 +17,17 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
 
+### Fixed — bridge env docstring and SDK reference doc (`PLZG-200`)
+
+- `bridge/domain_session.py`: `_resolve_sdk_env()`'s docstring said
+  `ClaudeAgentOptions.env` replaces the child environment. The pinned SDK merges
+  it over the inherited one; the docstring now says so. No behaviour change.
+- `docs/reference/using_agents_sdk_with_claude_code.md`: removed a nonexistent
+  `skills_dir` option (the SDK field is `skills`) and a 124-line duplicated,
+  garbled copy of the earlier sections.
+- `bridge/tests/test_server.py`: the shared fixture now mocks the synchronous
+  `get_domain_state`, so the resume test no longer leaks an un-awaited coroutine.
+
 ### Added — DevOps foundation (`PLZG-209`)
 
 - Bridge unit test CI job running 76 tests via `pytest bridge/tests/`.

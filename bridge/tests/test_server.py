@@ -27,6 +27,10 @@ def mock_engines(monkeypatch):
         }
     )
     domain_mgr.handle_resume = MagicMock(return_value=[])
+    # Synchronous in DomainManager. Left as the AsyncMock default it returns an
+    # un-awaited coroutine, which is truthy, so the resume branch passed by
+    # accident and leaked a RuntimeWarning.
+    domain_mgr.get_domain_state = MagicMock(return_value=None)
     domain_mgr.background_domain = MagicMock(
         return_value={
             "type": "domain_state",
