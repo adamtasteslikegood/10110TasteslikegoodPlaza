@@ -102,6 +102,16 @@ Derived, not guessed — Little's Law: `WIP = throughput × cycle time`
 ≈ `2.75/wk × ~1wk target` ≈ 3. The spreadsheet of record is
 `docs/assets/agile-littles-law.ods`.
 
+### Clause (b) as amended again — between-sprints state added, 2026-10-05
+
+> **Owner ruling on `PLZG-239`.** The 2026-08-02 wording below defines freshness
+> only against a sprint window, so with no sprint active the gate could not pass
+> on any branch — and did not, from Sprint 4's end until this ruling. A snapshot
+> may now declare `"sprint": null`; it is then fresh while `as_of` is not in the
+> future and no more than **14 days** old. The key must be present and null: a
+> missing or malformed `sprint` still fails. The honesty rule is unchanged.
+> The earlier ruling stands as written for a snapshot that does declare a sprint.
+
 ### Clause (b) as amended — `wip > 0` removed, 2026-08-02
 
 > **Owner ruling on `PLZG-130`.** Clause (b) no longer requires `wip > 0`. It
