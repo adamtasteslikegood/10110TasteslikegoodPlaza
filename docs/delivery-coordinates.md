@@ -159,9 +159,13 @@ them still syncs.
 
 ### Pull requests drive status, and no longer drive `Done`
 
-Configured by the owner across 2026-08-08/09 — Linear rules on both teams, the old Jira
-merge rule disabled, and **two new Jira automations: one on branch creation, one on PR
-creation**, each moving `To Do` items to `In Progress`.
+**Today (2026-10-06) only branch creation is automated in Jira**: a branch carrying
+the key moves a `To Do` item to `In Progress`. Merging moves nothing.
+
+As configured by the owner across 2026-08-08/09 it was more — Linear rules on both
+teams, the old Jira merge rule disabled, and **two new Jira automations: one on branch
+creation, one on PR creation**, each moving `To Do` items to `In Progress`. The table
+and the test record below are from that configuration.
 
 | GitHub event | Intended status | Verified 2026-08-10 |
 |---|---|---|

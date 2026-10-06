@@ -57,13 +57,14 @@ Layer 2 — Current frontend  (PARTIAL)
   Player + HUD      → CharacterBody2D top-down controller, UI overlays
   Event bus         → tasks, unlocks, chat notifications
 
-Layer 1 — Data + config  (EXISTS)
+Layer 1 — Data + config  (PARTIAL — the employee directory exists)
   Employee directory  → 132 agents as JSON (generated from .md files)
   Scene / story data  → dialogue, unlock gates, tutorial flow   (not built yet)
   Player profile      → progress, preferences, config        (not built yet)
 ```
 
-**Critical insight:** Layers 1, 3 and 4 all exist. The proof pipe is complete:
+**Critical insight:** Layers 3 and 4 exist, and so does the part of Layer 1 the
+proof pipe needs — the employee directory. The proof pipe is complete:
 walk up to an NPC, type a question, get a real Claude response. See
 [`QUICKSTART.md`](QUICKSTART.md) for how to run it.
 

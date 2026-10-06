@@ -95,7 +95,7 @@
         "git",
         "ci"
       ],
-      "reviewed_blob": "31eabd56f3dee773c61f9da4ffe0054450e027dc",
+      "reviewed_blob": "746840b000d31677f0d9ed5581e09bb16719f0d0",
       "note": "Fixed: Layer 1 said 133 roles as JSON (132 entries); story data and player profile were under an EXISTS heading though neither is built; update date. Department counts and colours match data/agents.json."
     },
     {
@@ -119,7 +119,7 @@
         "jira",
         "github"
       ],
-      "reviewed_blob": "0d088cee7c4e6308ae2d548cb0c2839ba37b56e5",
+      "reviewed_blob": "476fee97b89a2aa77445a6a2b761b048b76df3a2",
       "note": "Fixed: a line citation, and the claim that every branch carries the key. Projects, sprint ids and states, and the Confluence page verified against Jira. Jira automation re-read through its API on 2026-10-06: three branch-created rules (PLZG, RCP, KAN), no PR-creation or merge rule, and the PR over-match did not reproduce — the document now says so beside its 2026-08-10 table. One claim has no owner this repo can read: the Linear sync topology and key prefix (the Linear API here returns neither). The document now labels it as the owner's statement, recorded and not re-verified."
     },
     {
