@@ -61,8 +61,9 @@ spec-set versions, and no application release existed before `v0.1.22`.
 - `scripts/sprint_5_gate.py t2` exempted every issue Jira reported in the sprint
   from triage, so a backlog item added to Sprint 5 after the baseline skipped
   review, and T6 inherited the hole. The exemption is now the loop plan's own
-  task tickets that Jira confirms are in the sprint. Found by review on #241
-  after it merged.
+  task tickets that Jira confirms are in the sprint. Review raised it on #241
+  nine minutes before the merge; #241 merged without the review surfaces being
+  re-read after its last push.
 
 ### Fixed — delivery-coordinates gate was unpassable between sprints (`PLZG-239`)
 
