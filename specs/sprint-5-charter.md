@@ -110,7 +110,7 @@ The sprint ends when both gates pass or the iteration cap is hit.
 | T3 | Ungovern the 9 tier-4 docs + mark Sprint 2/3 charters HISTORICAL (28→≤19) | PLZG-232 | `python3 scripts/sprint_5_gate.py t3` — `validate_specs.py` green with ≤19 docs, all 19 documents that are not tier-4 still governed, and the Sprint 2 and 3 charters `HISTORICAL` | T0 |
 | T4 | Cross-check surviving docs for state contradictions | PLZG-233 | `python3 scripts/sprint_5_gate.py t4` — every governed doc has a cross-check row with `contradiction: false`, the owning systems consulted, and a `reviewed_blob` matching the file's current content; a row may carry a dispute the document labels as such only while the conflict register holds it `OPEN`, must list every `OPEN` conflict its document cites, and the gate names what is carried | T3 |
 | T5 | Sprint 5 charter and loop plan | PLZG-234 | `python3 scripts/sprint_5_gate.py t5` — the validator passes, both files exist, and Jira confirms sprint `51` is on board `169` holding every task ticket | T0 |
-| T6 | Sprint close — both gates green (charter retirement and the between-sprints snapshot follow the Jira close, `PLZG-255`) | PLZG-235 | `python3 scripts/sprint_5_gate.py t6` — re-runs T1–T4, requires `review_complete: true` in the triage evidence, and requires `validate_delivery_coordinates.py` to pass on a refreshed flow snapshot | T1, T2, T3, T4, T5 |
+| T6 | Sprint close — both gates green | PLZG-235 | `python3 scripts/sprint_5_gate.py t6` — re-runs T1–T4, requires `review_complete: true` in the triage evidence, and requires `validate_delivery_coordinates.py` to pass on a refreshed flow snapshot | T1, T2, T3, T4, T5 |
 
 **The acceptance commands need a working Jira credential.** `sprint_5_gate.py`
 reads `ATLASSIAN_URL`, `ATLASSIAN_EMAIL` and `ATLASSIAN_API_TOKEN` from `./.env`,
@@ -162,6 +162,12 @@ Two acceptance gates, both must pass for the sprint to close:
 - **Gate B — Doc consolidation:** `python3 scripts/validate_specs.py` passes
   with ≤19 governed documents (down from 28), none of the 19 non-tier-4
   documents among those removed.
+
+**Close sequence.** T6's change lands with this charter still `ACTIVE` and the flow
+snapshot still declaring Sprint 5 active, because both are true until the Jira
+sprint is closed — which happens only once T6 is on `dev`. Retiring this charter to
+`HISTORICAL` and re-declaring the snapshot as between sprints then move together
+(`PLZG-255`).
 
 ## 7. Risks
 
