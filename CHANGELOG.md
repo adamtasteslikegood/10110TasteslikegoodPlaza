@@ -27,6 +27,8 @@ spec-set versions, and no application release existed before `v0.1.22`.
   garbled copy of the earlier sections.
 - `bridge/tests/test_server.py`: the shared fixture now mocks the synchronous
   `get_domain_state`, so the resume test no longer leaks an un-awaited coroutine.
+  A second resume test covers the branch that fixture had been hiding: a known
+  domain is refocused, an unknown one is not.
 
 ### Added — DevOps foundation (`PLZG-209`)
 

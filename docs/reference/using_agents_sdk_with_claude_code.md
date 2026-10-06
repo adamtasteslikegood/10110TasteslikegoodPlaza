@@ -129,14 +129,13 @@ The SDK spawns a system subprocess mapping directly to the underlying `claude` e
 This is where you implement your state logic. To capture that "magic moment" where the SDK handles session persistence natively, **do not use `query()`** (which acts as a one-shot query). Instead, instantiate the stateful `ClaudeSDKClient`.
 
 ```python
-import os
 from claude_agent_sdk import ClaudeSDKClient, ClaudeAgentOptions
 
 class AgentSessionManager:
     def __init__(self, worktree_root: str):
         self.worktree_root = worktree_root
         
-    async def initialize_agent_session(self, session_id: str, agent_path: str):
+    async def initialize_agent_session(self, session_id: str):
         # Configure local execution properties for this specific agent's sandbox
         options = ClaudeAgentOptions(
             # Enable the skills discovered under cwd's .claude/skills. There is
