@@ -142,7 +142,9 @@ title.
 
 Adam owns and reviews all tasks. Two automated review layers, both advisory:
 
-1. **`claude-review.yml`** — independent reviewer on non-draft, same-repo PRs.
+1. **`claude-review.yml`** — independent reviewer. On pull-request events it runs
+   for non-draft, same-repo PRs and skips Dependabot's PRs and bot-triggered events; a
+   manual `workflow_dispatch` always runs.
 2. **GitHub Copilot code review** — set by the ruleset on `dev`; reviews each push.
 
 No `/codex` adversarial reviewer this sprint — the work is docs and board
@@ -160,6 +162,12 @@ Two acceptance gates, both must pass for the sprint to close:
 - **Gate B — Doc consolidation:** `python3 scripts/validate_specs.py` passes
   with ≤19 governed documents (down from 28), none of the 19 non-tier-4
   documents among those removed.
+
+**Close sequence.** T6's change lands with this charter still `ACTIVE` and the flow
+snapshot still declaring Sprint 5 active, because both are true until the Jira
+sprint is closed — which happens only once T6 is on `dev`. Retiring this charter to
+`HISTORICAL` and re-declaring the snapshot as between sprints then move together
+(`PLZG-255`).
 
 ## 7. Risks
 

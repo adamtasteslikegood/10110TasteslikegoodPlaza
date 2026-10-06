@@ -1,5 +1,5 @@
 {
-  "$comment": "Evidence for Sprint 5 T2 (PLZG-231). baseline_keys is every PLZG issue that was not Done when triage began, minus the sprint's own task tickets; it was captured before any item was moved. scripts/sprint_5_gate.py t2 reads this file and re-reads Jira. Each row was reviewed individually against the files on dev at 92cb11d, not inferred from a merged PR; `reason` carries the evidence. The owner approved applying the buckets on 2026-10-06 and the board was moved to match the same day; the gate fails on any row whose bucket and live status disagree. PLZG-247 is not in baseline_keys: it was filed during review to carry the one unbuilt M8 step, and has a row because the gate requires one for every open ticket.",
+  "$comment": "Evidence for Sprint 5 T2 (PLZG-231). baseline_keys is every PLZG issue that was not Done when triage began, minus the sprint's own task tickets; it was captured before any item was moved. scripts/sprint_5_gate.py t2 reads this file and re-reads Jira. Each baseline row was reviewed individually against the files on dev at 92cb11d, not inferred from a merged PR; `reason` carries the evidence. Rows for keys outside baseline_keys were filed later and were reviewed against dev as it stood when each was added or re-bucketed; their `reason` names the pull request or issue relied on. The owner approved applying the buckets on 2026-10-06 and the board was moved to match the same day; the gate fails on any row whose bucket and live status disagree. PLZG-247 to PLZG-255 are not in baseline_keys: they were filed during the sprint (PLZG-247 to carry the one unbuilt M8 step, the rest from review), and each has a row because the gate requires one for every open ticket.",
   "baseline_captured_at": "2026-10-06T04:08:15-07:00",
   "baseline_query": "project = PLZG AND statusCategory != Done",
   "baseline_keys": [
@@ -962,19 +962,19 @@
     },
     {
       "key": "PLZG-247",
-      "bucket": "keep",
+      "bucket": "done",
       "reviewed_at": "2026-10-06",
       "confidence": "high",
       "github_issue": 265,
-      "reason": "Filed after the baseline, during review of PR #264: M8 step 8 (specs/roadmap.md:340, response logged to the inbox) has no implementation, and roadmap.md, CLAUDE.md and the design doc disagree on whether it is M8 scope. Needs an owner ruling. Owner ruling 2026-10-06: the inbox is built when the game is ready for one, so it is not M8 scope; the ticket stays open until the roadmap edit that says so, made in T4, is on dev."
+      "reason": "Done on dev by PR #273 (96ba1e4, 2026-10-06). Owner ruling 2026-10-06: the inbox is built when the game is ready for one, so it is not M8 scope. specs/roadmap.md no longer lists inbox logging as an M8 step and says it is deferred, citing SB-11 and SB-14. No milestone schedules the inbox yet; that is a planning decision for when M5/M6 are scoped, not remaining work on this ticket."
     },
     {
       "key": "PLZG-248",
-      "bucket": "keep",
+      "bucket": "done",
       "reviewed_at": "2026-10-06",
       "confidence": "high",
       "github_issue": 267,
-      "reason": "Filed 2026-10-06 from the independent review of PR #264, after the baseline: the Sprint 5 charter's weakest_claim says 114 non-Done items on 2026-10-05 while the flow snapshot recorded 111 that day. Real and unresolved; the charter is a governed document, so the re-measurement belongs to T4's cross-check (PLZG-233). T4 re-measured it from Jira's status history: 114 at the start of the day, 111 by 20:08 PDT; the charter now says which. Stays open until that correction is on dev."
+      "reason": "Done on dev by PR #273 (96ba1e4, 2026-10-06). Re-measured from Jira's status history: 114 non-Done at 00:01 and 12:00 PDT on 2026-10-05, 111 at 20:08 PDT (five closed by T1, two filed). Both figures were right for their hour. specs/sprint-5-charter.md and the registry note now say 'at the start of 2026-10-05' and name the 111."
     },
     {
       "key": "PLZG-249",
@@ -999,6 +999,38 @@
       "confidence": "high",
       "github_issue": 271,
       "reason": "Filed 2026-10-06 from the T4 cross-check: the storyboard names five agent ids and two counts that data/agents.json does not have. Changing a beat needs owner sign-off, so T4 left the storyboard untouched and this carries the decision."
+    },
+    {
+      "key": "PLZG-252",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 274,
+      "reason": "Filed 2026-10-06 from the last review pass on PR #273: the T4 gate does not fail a row that declares an open conflict its document never cites. Real, small, not a blocker; arrived after D-030's third round so it was ticketed. The gate is Sprint 5 only, so this is Won't Do if nobody picks it up before the gate is retired."
+    },
+    {
+      "key": "PLZG-253",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 276,
+      "reason": "Filed 2026-10-06 from the review of PR #273: the Sprint 5 charter's description of claude-review.yml's trigger omitted that it skips Dependabot PRs and bot-triggered events (claude-review.yml:171-183). Corrected in the sprint-close change; stays open until that is on dev."
+    },
+    {
+      "key": "PLZG-254",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 277,
+      "reason": "Filed 2026-10-06 after PR #273 merged: the three documents carrying open conflict 4.12 still declare enforcement: asserted, which means a human verified the claim. Whether a disputed figure should lower a document's enforcement value is a question about the D-027 axis; it belongs with the owner's resolution of 4.12, not with sprint close."
+    },
+    {
+      "key": "PLZG-255",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 279,
+      "reason": "Filed 2026-10-06 by the review of PR #278: the follow-up owed after sprint close -- retire the Sprint 5 charter to HISTORICAL and re-declare the flow snapshot as between sprints, together, once the Jira sprint is closed. Planned work, done immediately after T6 merges."
     }
   ]
 }
