@@ -23,8 +23,8 @@ spec-set versions, and no application release existed before `v0.1.22`.
   tree, requires the triage to be complete, and requires a fresh flow snapshot.
 - **Gate A, board triaged.** Of the 106 items that were not Done when triage began,
   47 are closed with evidence (43 done, 4 won't do) and 59 are kept as deliberate
-  backlog. Eight tickets filed during the sprint each have a row; three of those
-  are already closed.
+  backlog. Nine tickets filed during the sprint (`PLZG-247`–`PLZG-255`) each have a row;
+  three of those are already closed.
 - **Gate B, doc consolidation.** 19 governed documents, down from 28, each
   cross-checked at its current content.
 - **Carried out of the sprint, not resolved:** open conflicts §4.11 (does a rule
