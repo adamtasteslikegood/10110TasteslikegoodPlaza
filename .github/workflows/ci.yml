@@ -83,6 +83,12 @@ jobs:
       - name: Run the enforcement-axis matrix
         run: tests/spec_enforcement_matrix.sh
 
+      # Same idea for scripts/sprint_5_gate.py, which decides whether each
+      # Sprint 5 task is done (PLZG-245). Fake Jira and a temp dir, stdlib only.
+      # It rides this job because this is the check the dev ruleset requires.
+      - name: Run the Sprint 5 gate regression tests
+        run: python3 -m unittest tests/test_sprint_5_gate.py
+
   validate-agent-data:
     name: Validate Agent Data
     runs-on: ubuntu-latest
