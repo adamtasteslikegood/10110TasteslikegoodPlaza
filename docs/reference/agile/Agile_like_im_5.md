@@ -4,11 +4,9 @@ title: Explain "Agile" to a 5yr old
 tier: 4
 authority: research
 status: ACTIVE
-doc_set_version: 0.2.13
 last_updated: 2026-07
 owner: adamtasteslikegood
-derives_from: [AGILE-EXPLAINED]
-enforcement: n/a
+governed: false  # exempt in specs/meta/doc-registry.json since PLZG-232; the keys above describe the file, nothing validates them
 ---
 
 # Explain "Agile" to a 5yr old:

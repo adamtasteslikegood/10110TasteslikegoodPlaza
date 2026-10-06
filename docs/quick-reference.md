@@ -4,13 +4,9 @@ title: 10110 TastesLike Plaza — Quick Reference
 tier: 4
 authority: summary
 status: ACTIVE
-doc_set_version: 0.2.13
 last_updated: 2026-07
 owner: adamtasteslikegood
-derives_from: [PROJECT-OVERVIEW, STORYBOARD-W1, ROADMAP]
-enforcement: asserted
-gates: [Validate Specs:live]
-weakest_claim: 133 roles from .md files
+governed: false  # exempt in specs/meta/doc-registry.json since PLZG-232; the keys above describe the file, nothing validates them
 ---
 
 # 10110 TastesLike Plaza — Quick Reference

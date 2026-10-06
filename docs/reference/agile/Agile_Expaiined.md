@@ -4,12 +4,9 @@ title: Agile — A Practical Explanation
 tier: 4
 authority: research
 status: ACTIVE
-doc_set_version: 0.2.13
 last_updated: 2026-07
 owner: adamtasteslikegood
-enforcement: asserted
-gates: [Validate Specs:live]
-weakest_claim: Adopted as foundational onboarding reading for humans and agents alike.
+governed: false  # exempt in specs/meta/doc-registry.json since PLZG-232; the keys above describe the file, nothing validates them
 ---
 
 # Agile — A Practical Explanation

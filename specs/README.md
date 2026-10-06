@@ -4,13 +4,9 @@ title: specs/ — development process index
 tier: 4
 authority: summary
 status: ACTIVE
-doc_set_version: 0.2.13
 last_updated: 2026-10
 owner: adamtasteslikegood
-derives_from: [META-SPEC]
-enforcement: asserted
-gates: [Validate Specs:live]
-weakest_claim: `META-SPEC.md` §8 is the four-step checklist.
+governed: false  # exempt in specs/meta/doc-registry.json since PLZG-232; the keys above describe the file, nothing validates them
 ---
 
 # specs/

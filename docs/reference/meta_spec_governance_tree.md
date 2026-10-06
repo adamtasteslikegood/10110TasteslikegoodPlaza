@@ -4,13 +4,9 @@ title: Meta-specs — the governed tree
 tier: 4
 authority: summary
 status: ACTIVE
-doc_set_version: 0.2.13
 last_updated: 2026-07
 owner: adamtasteslikegood
-derives_from: [META-SPEC]
-enforcement: asserted
-gates: [Validate Specs:live]
-weakest_claim: Every line of it was wrong by the time anyone read it
+governed: false  # exempt in specs/meta/doc-registry.json since PLZG-232; the keys above describe the file, nothing validates them
 ---
 
 # Meta-specs — the governed tree

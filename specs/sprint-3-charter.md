@@ -3,9 +3,9 @@ doc_id: SPRINT-3-CHARTER
 title: Sprint 3 charter — the doc set declares what is proven
 tier: 3
 authority: delivery
-status: ACTIVE
+status: HISTORICAL
 doc_set_version: 0.2.13
-last_updated: 2026-08
+last_updated: 2026-10
 owner: adamtasteslikegood
 derives_from: [META-SPEC, SPEC-DRIVERS-025, SPRINT-2-CHARTER]
 enforcement: asserted
@@ -14,6 +14,12 @@ weakest_claim: PLZG issue is `To Do` today: **live WIP is 0.**
 ---
 
 # Sprint 3 charter — the doc set declares what is proven
+
+> **HISTORICAL since 2026-10-06 (`PLZG-232`).** Sprint 3 is closed. Everything
+> below is as written while it ran — present-tense statements about the sprint,
+> the board and WIP describe that time, not now. Its §1.3 forecast blackout is still cited as in force by the Sprint 5 charter.
+> Whether a rule can outlive the charter that originated it is open conflict
+> §4.11 in [`meta/spec-drivers-v0.2.5.md`](meta/spec-drivers-v0.2.5.md).
 
 > **One line:** this document is the complete executable context for Sprint 3. A
 > session that has read this file needs nothing from the conversation that
@@ -429,4 +435,4 @@ than as sequence.
 
 ---
 
-*Last updated: August 2026*
+*Last updated: October 2026*

@@ -17,6 +17,34 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
 
+### Changed — nine tier-4 documents leave governance; Sprint 2 and 3 charters retired (`PLZG-232`)
+
+- The governed set is **19 documents, down from 28** (Sprint 5 gate B, owner
+  decision 2026-10-05). The nine tier-4 documents — `docs/quick-reference.md`,
+  `docs/README.md`, `specs/README.md`, `specs/aligned-spec-v0.2.5.md`,
+  `Docs/files/README.md`, `docs/reference/meta_spec_governance_tree.md`, both
+  files under `docs/reference/agile/` and `docs/cc-statusline-protocol.md` — moved
+  from `documents` to `exempt` in `specs/meta/doc-registry.json`. They stay in the
+  tree, authoritative over nothing, as tier 4 always was.
+- Their frontmatter is trimmed, not deleted. The validator-only keys
+  (`doc_set_version`, `derives_from`, `enforcement`, `gates`, `weakest_claim`) are
+  gone and `governed: false` is added. `status:` stays because
+  `validate_delivery_coordinates.py` reads it to exempt `HISTORICAL` and
+  `SUPERSEDED` files from its deprecated-key check.
+- `SPRINT-2-CHARTER` and `SPRINT-3-CHARTER` are `HISTORICAL`. They stay governed:
+  `SPRINT-3-CHARTER` and `SPRINT-4-CHARTER` derive from them, and the validator
+  rejects a `derives_from` that points outside the registry.
+- **Open conflict §4.11, not resolved here.** `D-028` says delivery policy expires
+  with its artifact, but two retired charters are still the origin of rules in
+  force — Sprint 2 §1's reference rules, which `validate_delivery_coordinates.py`
+  enforces, and Sprint 3 §1.3's forecast blackout, which Sprint 5 carries
+  forward. Recorded in `specs/meta/spec-drivers-v0.2.5.md` for an owner call.
+- `doc_set_version` stays `0.2.13`: `META-SPEC` §8 asks for a bump when a locked
+  decision changes, and none did.
+- Triage evidence follows the board: `PLZG-242` is re-bucketed `keep` → `done`
+  now that its fix is on `dev` (#264), and `PLZG-248`, filed from the review of
+  #264, gets a `keep` row. 108 rows: 61 keep, 43 done, 4 won't-do.
+
 ### Added — Sprint 5 charter and loop plan (`PLZG-234`)
 
 - Sprint 5 charter (`specs/sprint-5-charter.md`) and machine-readable loop plan

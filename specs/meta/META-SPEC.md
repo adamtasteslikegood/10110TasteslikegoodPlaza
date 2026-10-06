@@ -5,7 +5,7 @@ tier: 0
 authority: constitution
 status: ACTIVE
 doc_set_version: 0.2.13
-last_updated: 2026-07
+last_updated: 2026-10
 owner: adamtasteslikegood
 derives_from: []
 supersedes: []
@@ -175,7 +175,8 @@ tier 2   DESIGN-25D (how to build)   AGENT-DIRECTORY (taxonomy)
                         │
 tier 3   ROADMAP → TASK-TRACKER → Jira TO
                         │
-tier 4   QUICK-REFERENCE · ALIGNED-SPEC-025 · indexes · history
+tier 4   quick-reference · aligned-spec-v0.2.5 · indexes · history
+         (exempt since PLZG-232: unregistered, authoritative over nothing)
 ```
 
 Decisions flow one direction only. A tier-3 task may not invent a rule that a
@@ -283,4 +284,4 @@ These are hard gates, not preferences. A change that breaks one fails review.
    [`decision-register.md`](decision-register.md) and bump `doc_set_version`
    everywhere in the same commit.
 
-*Doc set version: 0.2.13 · Last updated: August 2026*
+*Doc set version: 0.2.13 · Last updated: October 2026*
