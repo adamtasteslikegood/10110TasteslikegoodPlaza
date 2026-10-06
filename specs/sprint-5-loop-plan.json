@@ -65,7 +65,7 @@
       "depends_on": ["T1"],
       "blocks": ["T6"],
       "note": "Review every non-Done item individually -- To Do and In Progress alike; only the sprint's own tickets are exempt. Bucket as done (already merged -- verify against the file), keep (real remaining work), or wont_do (stale or duplicate). Do not bulk-close. BEFORE moving anything, record the non-Done set (project = PLZG AND statusCategory != Done, minus the sprint's own tickets) as baseline_keys with baseline_captured_at in specs/evidence/sprint-5-triage.json: coverage is measured against that baseline, because a closed item leaves the live column and could not otherwise be shown to have been skipped. Each row carries key, bucket, reviewed_at and reason. The gate then re-reads Jira: keep must still be open, done and wont_do must be Done, wont_do must carry the wont-do label, and done must not.",
-      "evidence": "sprint_5_gate.py t2 exit 0 via loop_controller verify, 2026-10-06: 106 triage row(s) cover 106 baseline key(s). 60 keep, 42 done, 4 wont_do; owner approved applying the buckets. Evidence: specs/evidence/sprint-5-triage.json."
+      "evidence": "sprint_5_gate.py t2 exit 0 via loop_controller verify, 2026-10-06: 106 triage row(s) cover 106 baseline key(s). 59 keep, 43 done, 4 wont_do of the baseline, plus one keep row for PLZG-247 filed in review; owner approved applying the buckets. Evidence: specs/evidence/sprint-5-triage.json."
     },
     {
       "id": "T3",

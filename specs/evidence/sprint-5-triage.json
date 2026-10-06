@@ -1,5 +1,5 @@
 {
-  "$comment": "Evidence for Sprint 5 T2 (PLZG-231). baseline_keys is every PLZG issue that was not Done when triage began, minus the sprint's own task tickets; it was captured before any item was moved. scripts/sprint_5_gate.py t2 reads this file and re-reads Jira. Each row was reviewed individually against the files on dev at 92cb11d, not inferred from a merged PR; `reason` carries the evidence. The owner approved applying the buckets on 2026-10-06 and the board was moved to match the same day; the gate fails on any row whose bucket and live status disagree.",
+  "$comment": "Evidence for Sprint 5 T2 (PLZG-231). baseline_keys is every PLZG issue that was not Done when triage began, minus the sprint's own task tickets; it was captured before any item was moved. scripts/sprint_5_gate.py t2 reads this file and re-reads Jira. Each row was reviewed individually against the files on dev at 92cb11d, not inferred from a merged PR; `reason` carries the evidence. The owner approved applying the buckets on 2026-10-06 and the board was moved to match the same day; the gate fails on any row whose bucket and live status disagree. PLZG-247 is not in baseline_keys: it was filed during review to carry the one unbuilt M8 step, and has a row because the gate requires one for every open ticket.",
   "baseline_captured_at": "2026-10-06T04:08:15-07:00",
   "baseline_query": "project = PLZG AND statusCategory != Done",
   "baseline_keys": [
@@ -318,7 +318,7 @@
       "reviewed_at": "2026-10-06",
       "confidence": "medium",
       "github_issue": null,
-      "reason": "Phase 2 = M7+M8, both on dev: bridge/server.py:28 LISTEN_PORT=8765, scenes/bridge/ws_client.gd:9, dialogue_panel.gd:95-113 query->response->typewriter, specs/roadmap.md:373-374 checked. Caveats: board children PLZG-92 and PLZG-93 (M8, not in this batch) are still To Do and must be closed with it; tests/smoke_test.gd:289-294 simulates the bridge response rather than calling the bridge (GitHub #159 open)."
+      "reason": "Phase 2 = M7+M8, both on dev: bridge/server.py:28 LISTEN_PORT=8765, scenes/bridge/ws_client.gd:9, dialogue_panel.gd:95-113 query->response->typewriter, specs/roadmap.md:373-374 checked. Caveats: board children PLZG-92 and PLZG-93 (M8, not in this batch) are still To Do and must be closed with it; tests/smoke_test.gd:289-294 simulates the bridge response rather than calling the bridge (GitHub #159 open). The one M8 step not on dev (roadmap.md:340, inbox logging) is carried by PLZG-247."
     },
     {
       "key": "PLZG-92",
@@ -334,7 +334,7 @@
       "reviewed_at": "2026-10-06",
       "confidence": "medium",
       "github_issue": null,
-      "reason": "M8 pipe is on dev: scenes/hud/dialogue_panel.gd:103 calls BridgeClient.send_query, autoload at project.godot:24 (scenes/bridge/ws_client.gd), bridge/ package present, response+typewriter asserted in tests/smoke_test.gd:274-294. Caveat: the ticket's last clause ('response also logged to inbox', specs/roadmap.md:340) has no implementation anywhere in scenes/ autoload/ bridge/ - the active 2.5D design doc does not mention an inbox, and the bridge uses the SDK rather than the CLI."
+      "reason": "M8 pipe is on dev: scenes/hud/dialogue_panel.gd:103 calls BridgeClient.send_query, autoload at project.godot:24 (scenes/bridge/ws_client.gd), bridge/ package present, response+typewriter asserted in tests/smoke_test.gd:274-294. Caveat: the ticket's last clause ('response also logged to inbox', specs/roadmap.md:340) has no implementation anywhere in scenes/ autoload/ bridge/ - the active 2.5D design doc does not mention an inbox, and the bridge uses the SDK rather than the CLI. The unbuilt step 8 is carried by PLZG-247, filed 2026-10-06 so that closing this ticket does not drop it; the owner approved closing with the gap stated."
     },
     {
       "key": "PLZG-101",
@@ -930,11 +930,11 @@
     },
     {
       "key": "PLZG-242",
-      "bucket": "keep",
+      "bucket": "done",
       "reviewed_at": "2026-10-06",
       "confidence": "high",
       "github_issue": 254,
-      "reason": "Not resolved: data/plzg-flow-snapshot.json still has as_of 2026-10-05 and the between-sprints shape although Sprint 5 started 2026-10-06. scripts/validate_delivery_coordinates.py exits 0 today, but the 14-day window lapses 2026-10-19 unless the snapshot is refreshed with the sprint window."
+      "reason": "Sprint 5 was started on 2026-10-06 and data/plzg-flow-snapshot.json was refreshed in PR #264 to declare the active sprint (sprint 51, 2026-10-06 to 2026-10-13) instead of sprint: null; validate_delivery_coordinates.py exits 0 on it. Both of the ticket's alternatives are met. Transitioned when #264 merged."
     },
     {
       "key": "PLZG-243",
@@ -959,6 +959,14 @@
       "confidence": "high",
       "github_issue": 261,
       "reason": "Fixed in PR #262 (merged 2026-10-06): scripts/sprint_5_gate.py:285-286 builds the exemption from the plan's task keys intersected with live sprint membership; regression tests at tests/test_sprint_5_gate.py:306 (unrelated issue cannot skip triage by joining the sprint) and :310. GitHub twin #261 closed."
+    },
+    {
+      "key": "PLZG-247",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": null,
+      "reason": "Filed after the baseline, during review of PR #264: M8 step 8 (specs/roadmap.md:340, response logged to the inbox) has no implementation, and roadmap.md, CLAUDE.md and the design doc disagree on whether it is M8 scope. Needs an owner ruling."
     }
   ]
 }

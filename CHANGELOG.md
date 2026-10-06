@@ -54,9 +54,11 @@ spec-set versions, and no application release existed before `v0.1.22`.
   say so; the snapshot no longer declares the between-sprints state.
 - `specs/evidence/sprint-5-triage.json` — the T2 record. All 106 tickets that
   were not Done when triage began, each reviewed against the files on `dev`:
-  60 keep, 42 done, 4 Won't Do. The owner approved applying the buckets and the
+  59 keep, 43 done, 4 Won't Do. The owner approved applying the buckets and the
   board was moved to match; open GitHub issue twins were closed with the same
-  evidence. Non-Done fell from 111 to 64.
+  evidence. Non-Done fell from 111 to 64. `PLZG-247` was filed during review to
+  carry the one M8 step that was never built (inbox logging), so closing the M8
+  ticket does not drop it.
 - `specs/sprint-5-loop-plan.json` records T0, T1, T5 and T2 as done, each with
   the gate output observed by the harness controller.
 
