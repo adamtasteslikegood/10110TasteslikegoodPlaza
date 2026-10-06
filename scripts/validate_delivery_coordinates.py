@@ -13,6 +13,9 @@ board.
 **(b)** A committed PLZG snapshot is FRESH and HONEST: its ``as_of`` falls
 inside the sprint window it declares, that sprint has not ended, and its
 ``work_item_age`` names exactly as many items as ``counts.wip`` claims.
+BETWEEN SPRINTS the snapshot declares ``"sprint": null`` instead, and is fresh
+while ``as_of`` is no more than ``BETWEEN_SPRINTS_MAX_AGE_DAYS`` old (owner
+ruling 2026-10-05, ``PLZG-239``).
 
 Clause (b) is the one that matters. Without it a rename-only sundown passes
 green while flow stays unmeasurable, because clause (a) is satisfied by a
@@ -49,6 +52,15 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 SNAPSHOT_PATH = REPO_ROOT / "data" / "plzg-flow-snapshot.json"
+
+# How long a snapshot declaring `"sprint": null` stays fresh. A sprint window
+# supplies its own expiry; between sprints there is no window, so the expiry has
+# to be a number. Without this state the check was unpassable from the day one
+# sprint ended until the next was started -- red on every branch for five weeks
+# after Sprint 4, for a reason no diff could fix (PLZG-239). Fourteen days is
+# one sprint length: a board left unread for longer than that is not being
+# measured, and the gate should say so.
+BETWEEN_SPRINTS_MAX_AGE_DAYS = 14
 
 # Trees whose .md files are governed documents (mirrors validate_specs.py).
 GOVERNED_TREES = ("docs", "specs", "Docs")
@@ -236,6 +248,10 @@ def check_clause_b() -> list[Failure]:
     # three type guards in validate_specs.py: every value here is hand-written
     # and arrives unconstrained.
     sprint = snapshot.get("sprint")
+    # BETWEEN SPRINTS is declared, never inferred: the key must be PRESENT and
+    # null. A missing key or a malformed value still fails below, so deleting
+    # the window is not a way out of the expiry it carries.
+    between_sprints = "sprint" in snapshot and sprint is None
     if not isinstance(sprint, dict):
         sprint = {}
     start, _ = parse_instant(sprint.get("start", ""))
@@ -243,6 +259,28 @@ def check_clause_b() -> list[Failure]:
 
     if as_of is None:
         failures.append(Failure("b", str(rel), "as_of is missing or not a timestamp"))
+    elif between_sprints:
+        now = datetime.now(timezone.utc)
+        max_age = timedelta(days=BETWEEN_SPRINTS_MAX_AGE_DAYS)
+        if as_of > now:
+            failures.append(
+                Failure(
+                    "b",
+                    str(rel),
+                    f"as_of {snapshot.get('as_of')} is in the future; a snapshot "
+                    "cannot postdate the reading it records",
+                )
+            )
+        elif now - as_of > max_age:
+            failures.append(
+                Failure(
+                    "b",
+                    str(rel),
+                    f"as_of {snapshot.get('as_of')} is more than "
+                    f"{BETWEEN_SPRINTS_MAX_AGE_DAYS} days old and the snapshot "
+                    "declares no sprint; it cannot report current flow -- refresh it",
+                )
+            )
     elif start is None or end is None:
         failures.append(
             Failure(
@@ -330,7 +368,8 @@ def main() -> int:
         print(
             "\nClause (a): no live script or ACTIVE governed doc may reference Jira TO."
             "\nClause (b): the committed PLZG snapshot must be fresh -- as_of inside"
-            "\n            the sprint window it declares, and that sprint not yet ended --"
+            "\n            the sprint window it declares, and that sprint not yet ended;"
+            f"\n            or, with sprint null, no older than {BETWEEN_SPRINTS_MAX_AGE_DAYS} days --"
             "\n            and honest, with work_item_age naming exactly counts.wip items."
             "\n            wip may be 0 (owner ruling 2026-08-02, PLZG-130).",
             file=sys.stderr,

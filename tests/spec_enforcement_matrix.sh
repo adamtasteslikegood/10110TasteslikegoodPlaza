@@ -468,6 +468,22 @@ coord_expect "sprint window missing" 1 "cannot be dated against a sprint window"
 # A truthy non-dict sprint used to reach .get() and raise AttributeError.
 d=$(new_coord_case); snapshot_py "$d" "s['sprint'] = 'unknown'"
 coord_expect "sprint present but not an object" 1 "cannot be dated against a sprint window" "$d"
+# BETWEEN SPRINTS (PLZG-239). `"sprint": null` is a declared state with its own
+# expiry, not an escape from one. The stale and future cases are what keep it
+# from being a snapshot that stays green forever; the two cases above (key
+# missing, key malformed) are what keep it from being reachable by accident.
+# Ages are computed at run time for the same reason the base fixture's are.
+recent=$(date -u -d '3 days ago' +%Y-%m-%dT00:00:00+00:00 2>/dev/null || date -u -v-3d +%Y-%m-%dT00:00:00+00:00)
+stale=$(date -u -d '20 days ago' +%Y-%m-%dT00:00:00+00:00 2>/dev/null || date -u -v-20d +%Y-%m-%dT00:00:00+00:00)
+future=$(date -u -d '2 days' +%Y-%m-%dT00:00:00+00:00 2>/dev/null || date -u -v+2d +%Y-%m-%dT00:00:00+00:00)
+d=$(new_coord_case); snapshot_py "$d" "s['sprint'] = None; s['as_of'] = '$recent'"
+coord_expect "between sprints, recent snapshot" 0 "" "$d"
+d=$(new_coord_case); snapshot_py "$d" "s['sprint'] = None; s['as_of'] = '$stale'"
+coord_expect "between sprints, stale snapshot" 1 "declares no sprint" "$d"
+d=$(new_coord_case); snapshot_py "$d" "s['sprint'] = None; s['as_of'] = '$future'"
+coord_expect "between sprints, as_of in the future" 1 "is in the future" "$d"
+d=$(new_coord_case); snapshot_py "$d" "s['sprint'] = None; s['as_of'] = '$recent'; s['counts']['wip'] = 3"
+coord_expect "between sprints still checks honesty" 1 "must name it" "$d"
 # A full-timestamp end must be the boundary AS GIVEN. Adding a day to it kept
 # snapshots valid for 24 hours past expiry.
 #
