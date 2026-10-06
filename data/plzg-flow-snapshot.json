@@ -2,21 +2,15 @@
   "$comment": "Committed PLZG flow snapshot. Clause (b) of the delivery gate (scripts/validate_delivery_coordinates.py) requires this file to be FRESH -- as_of inside the sprint window it declares, and that sprint not yet ended; or, BETWEEN SPRINTS, \"sprint\": null with as_of no more than 14 days old (PLZG-239) -- and HONEST, with work_item_age naming exactly counts.wip items. wip MAY BE 0: the previous wip > 0 rule was removed by owner ruling 2026-08-02 (PLZG-130) because it tested snapshot timing rather than health, and rewarded a fake transition. Shape matches the pm-skills jira_snapshot_bridge.py '--to flow' output so the two are interchangeable. THIS IS A SNAPSHOT, NOT A LIVE READING: it is true as of the as_of timestamp and nowhere else. Re-query Jira before citing any number here -- the board owns these facts, this file does not.",
   "mode": "flow",
   "project": "PLZG",
-  "as_of": "2026-10-06T11:13:08-07:00",
+  "as_of": "2026-10-06T13:50:57-07:00",
   "source": "Jira REST /rest/api/3/search/jql against tasteslikegood.atlassian.net, read with scripts/sprint_5_gate.py's client",
   "regenerate": "project = PLZG (total) / statusCategory = Done (done) / statusCategory = \"In Progress\" (wip), then recompute work_item_age from each WIP item's created date",
   "counts": {
-    "total": 223,
-    "done": 159,
-    "wip": 2
+    "total": 225,
+    "done": 161,
+    "wip": 1
   },
   "work_item_age": [
-    {
-      "key": "PLZG-235",
-      "created": "2026-08-20T22:31:46-07:00",
-      "age_days": 46,
-      "summary": "T6: Sprint close — both gates green"
-    },
     {
       "key": "PLZG-236",
       "created": "2026-08-21T02:11:10-07:00",
@@ -25,18 +19,10 @@
     }
   ],
   "aging_wip_alerts": [
-    "PLZG-235: age is from creation; it entered In Progress on 2026-10-06 for the sprint-close change that carries this snapshot, and closes when that change is on dev",
     "PLZG-236: mirror of the rolling daily-status issue, not a unit of work"
   ],
   "wip_limit": 3,
-  "sprint": {
-    "name": "Sprint 5",
-    "id": 51,
-    "state": "active",
-    "start": "2026-10-06T04:10:00-07:00",
-    "end": "2026-10-13T17:00:00-07:00",
-    "goal": "Board reconciliation + doc consolidation"
-  },
+  "sprint": null,
   "forecast": null,
   "forecast_blackout": {
     "in_force": true,

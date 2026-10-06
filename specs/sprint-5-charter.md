@@ -3,7 +3,7 @@ doc_id: SPRINT-5-CHARTER
 title: Sprint 5 charter — board reconciliation and doc consolidation
 tier: 3
 authority: delivery
-status: ACTIVE
+status: HISTORICAL
 doc_set_version: 0.2.13
 last_updated: 2026-10
 owner: adamtasteslikegood
@@ -14,6 +14,13 @@ weakest_claim: The board had 114 non-Done items at the start of 2026-10-05
 ---
 
 # Sprint 5 charter — board reconciliation and doc consolidation
+
+> **HISTORICAL.** Sprint 5 is closed (Jira `completeDate` 2026-10-06T20:50Z, the
+> afternoon of 2026-10-06 PDT), with both gates green and all seven tickets in the
+> Jira sprint Done — `PLZG-229`, which carried this charter, and the six task
+> tickets `PLZG-230`–`PLZG-235`. Everything below is as written while it was planned and run — "started",
+> "still in force" and other present-tense statements about the sprint and the
+> board describe that time, not now.
 
 > **One line:** this document is the complete executable context for Sprint 5. A
 > session that has read this file needs nothing from the conversation that

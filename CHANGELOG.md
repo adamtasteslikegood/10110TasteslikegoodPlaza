@@ -17,6 +17,21 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
 
+### Changed — Sprint 5 charter retired; board is between sprints (`PLZG-255`)
+
+- Jira sprint `51` was closed on 2026-10-06 (`completeDate` 20:50Z) once the
+  sprint-close change was on `dev`, with all seven of its tickets Done: `PLZG-229`,
+  which carried the charter, and the six task tickets `PLZG-230`–`PLZG-235`.
+- `specs/sprint-5-charter.md` is `HISTORICAL`, with a banner saying its present
+  tense describes the sprint as it ran. It stays governed.
+- `data/plzg-flow-snapshot.json` declares `"sprint": null`, read at
+  2026-10-06T13:50 PDT: 225 total, 161 done, 1 in progress. Between sprints it
+  stays fresh for 14 days (`PLZG-239`), so it needs a re-read or a new sprint by
+  2026-10-20.
+- `docs/delivery-coordinates.md` § *Board and sprints* records Sprint 5 as closed.
+- `PLZG-253` re-bucketed `keep` → `done` in the triage evidence: its fix reached
+  `dev` in the sprint-close change.
+
 ### Changed — Sprint 5 close: both gates green (`PLZG-235`)
 
 - `python3 scripts/sprint_5_gate.py t6` passes: it re-reads T1–T4 from Jira and the
