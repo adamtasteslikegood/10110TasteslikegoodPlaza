@@ -101,8 +101,10 @@ _SDK_ENV_PASSTHROUGH = [
 def _resolve_sdk_env() -> dict:
     """Pass bridge auth env vars through to the Agent SDK subprocess.
 
-    ClaudeAgentOptions.env replaces the child process environment rather
-    than merging with it, so this must be assembled explicitly per D-005's
+    The SDK merges ClaudeAgentOptions.env over the inherited parent
+    environment (claude-agent-sdk 0.2.136, subprocess_cli.py), so the child
+    would see these variables anyway. Passing them explicitly is
+    belt-and-suspenders, not the mechanism that delivers them. Per D-005's
     neighbor concern here: the bridge stays auth-agnostic about *which*
     credential is present, it just forwards whatever is set.
     """
