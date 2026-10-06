@@ -5,12 +5,12 @@ tier: 3
 authority: delivery
 status: ACTIVE
 doc_set_version: 0.2.13
-last_updated: 2026-08
+last_updated: 2026-10
 owner: adamtasteslikegood
 derives_from: [META-SPEC, SPEC-DRIVERS-025, SPRINT-4-CHARTER]
 enforcement: asserted
 gates: [Validate Specs:live]
-weakest_claim: with ≤14 governed documents (down from 28).
+weakest_claim: The board had 114 non-Done items when measured on 2026-10-05
 ---
 
 # Sprint 5 charter — board reconciliation and doc consolidation
@@ -19,14 +19,23 @@ weakest_claim: with ≤14 governed documents (down from 28).
 > session that has read this file needs nothing from the conversation that
 > produced it.
 
-Sprint 5 is the Jira sprint recorded in `docs/delivery-coordinates.md`
-(`D-026`), status FUTURE (created 2026-08-20).
+Sprint 5 is Jira sprint `51` on board `169`, state `future` (created
+2026-08-20, not yet started). `docs/delivery-coordinates.md` § *Board and
+sprints* owns those identifiers (`D-026`); `python3 scripts/sprint_5_gate.py t5`
+re-reads them from Jira.
 The forecast blackout from Sprint 3 §1.3 carries forward — no date commitment.
 
 **Sprint goal:** reconcile the board and consolidate the governed doc set. Done
 when (A) the board is triaged — non-Done items are either genuine backlog or
-closed — and (B) `python3 scripts/validate_specs.py` passes with ≤14 governed
+closed — and (B) `python3 scripts/validate_specs.py` passes with ≤19 governed
 documents.
+
+> **Re-scoped 2026-10-05, owner decision.** Gate B read ≤14 until review showed
+> it could not be reached: the registry holds 28 governed documents and only 9
+> are tier-4, so removing every one leaves 19. The five further removals the
+> earlier draft listed included the Sprint 2 and 3 charters, which
+> `SPRINT-4-CHARTER` and `SPRINT-3-CHARTER` derive from — ungoverning them fails
+> the validator. The target is now the nine tier-4 documents and nothing else.
 
 The machine-readable half is [`sprint-5-loop-plan.json`](sprint-5-loop-plan.json),
 the shape `delivery_loop_gate.py` consumes. **The two must agree. A disagreement
@@ -44,8 +53,10 @@ box office), M5 (assistant chat UI) and M6 (unlock + map system).
 
 ### 1.2 Why housekeeping before code
 
-The board has 49 non-Done items (6 false-WIP still marked In Progress for work
-already merged, the rest To Do). The governed doc set has 28 documents — many
+The board had 114 non-Done items when measured on 2026-10-05
+(`project = PLZG AND statusCategory != Done`), ten of them In Progress. An
+earlier draft of this charter said 49; that figure was never re-measured and was
+wrong by more than half. The governed doc set has 28 documents — nine of them
 tier-4 summaries and research that disagree with each other and with CLAUDE.md.
 The roast-me finding: 28 governed docs that disagree is more maintenance than a
 solo dev needs; the meta-specs system is valuable but oversized.
@@ -86,12 +97,27 @@ The sprint ends when both gates pass or the iteration cap is hit.
 | Task | Title | Jira | Acceptance | Depends on |
 |---|---|---|---|---|
 | T0 | Fetch and reconcile against origin/dev | — | `scripts/check_sync.sh --strict` | — |
-| T1 | Transition 6 false-WIP items to Done | PLZG-230 | JQL `project=PLZG AND status='Done' AND key in (...)` returns PLZG-221, -215, -209, -200, -199, -180 | T0 |
-| T2 | Three-bucket triage of To Do backlog (Done/Keep/Won't Do) | PLZG-231 | `specs/evidence/sprint-5-triage.json` exists and covers every live To Do key with bucket + reviewed timestamp | T1 |
-| T3 | Ungovern tier-4 docs + remove additional low-authority docs from governance (28→≤14) | PLZG-232 | `python3 scripts/validate_specs.py` green with ≤14 docs | T0 |
-| T4 | Cross-check surviving docs for state contradictions | PLZG-233 | `specs/evidence/sprint-5-doc-crosscheck.json` covers every governed doc with `reviewed_commit` and no unresolved contradiction | T3 |
-| T5 | Sprint 5 charter and loop plan | PLZG-234 | `python3 scripts/validate_specs.py && test -f specs/sprint-5-charter.md && test -f specs/sprint-5-loop-plan.json` | T0 |
-| T6 | Sprint close — both gates green | PLZG-235 | `validate_specs.py` reports ≤14 docs; the 6 false-WIP keys are in Done; live To Do keys are fully covered in triage evidence (`review_complete=true`) | T1, T2, T3, T4, T5 |
+| T1 | Clear the 7 stale In Progress items | PLZG-230 | `python3 scripts/sprint_5_gate.py t1` — PLZG-129, -199, -200, -209, -215, -221 are Done and PLZG-180 is Done with the `wont-do` label | T0 |
+| T2 | Three-bucket triage of To Do backlog (Done/Keep/Won't Do) | PLZG-231 | `python3 scripts/sprint_5_gate.py t2` — the triage evidence covers every key in the pre-triage baseline and every live To Do key, and each bucket matches the ticket's status in Jira | T1 |
+| T3 | Ungovern the 9 tier-4 docs + mark Sprint 2/3 charters HISTORICAL (28→≤19) | PLZG-232 | `python3 scripts/sprint_5_gate.py t3` — `validate_specs.py` green with ≤19 docs | T0 |
+| T4 | Cross-check surviving docs for state contradictions | PLZG-233 | `python3 scripts/sprint_5_gate.py t4` — every governed doc has a cross-check row with `contradiction: false`, the owning systems consulted, and a `reviewed_blob` matching the file's current content | T3 |
+| T5 | Sprint 5 charter and loop plan | PLZG-234 | `python3 scripts/sprint_5_gate.py t5` — the validator passes, both files exist, and Jira confirms sprint `51` is on board `169` holding every task ticket | T0 |
+| T6 | Sprint close — both gates green | PLZG-235 | `python3 scripts/sprint_5_gate.py t6` — re-runs T1–T4 and requires `review_complete: true` in the triage evidence | T1, T2, T3, T4, T5 |
+
+**The acceptance commands need a working Jira credential.** `sprint_5_gate.py`
+reads `ATLASSIAN_URL` and `ATLASSIAN_API_TOKEN_BASE64` from the environment or
+`./.env`, and proves the credential before trusting any search: Jira answers an
+unauthenticated search with an empty list rather than a refusal, so a revoked
+token would otherwise read as "no ticket matches". It exits 2, not 1, when it
+cannot authenticate. On 2026-10-05 the token in the working `.env` returned 401.
+
+**T1 was planned on a wrong assumption and has already run.** It was "transition
+6 false-WIP items to Done", taking a merged PR that carries a ticket's key as
+proof the ticket's work was done. Checked against `dev` on 2026-10-05, two of the
+six were not done — `PLZG-180` and `PLZG-200` had their keys reused by unrelated
+PRs. The outcome is in the loop plan's T1 note. The lesson generalises the one in
+`docs/delivery-coordinates.md`: verify a ticket against the file, not the PR
+title.
 
 ### 4.2 Out of scope
 
@@ -100,7 +126,7 @@ The sprint ends when both gates pass or the iteration cap is hit.
 - Bridge evolution (domain-scoped sessions, Agent SDK migration). Documented in
   memory, not this sprint.
 - New governed docs beyond this charter. The charter is the only temporary
-  addition; Sprint 5 still targets a net reduction to ≤14 governed documents.
+  addition; Sprint 5 still targets a net reduction to ≤19 governed documents.
 
 ## 5. Ownership
 
@@ -116,18 +142,18 @@ operations, not code.
 Two acceptance gates, both must pass for the sprint to close:
 
 - **Gate A — Board triaged:** non-Done items are either deliberate backlog or
-  closed. The 6 false-WIP items (PLZG-221, -215, -209, -200, -199, -180) are
-  transitioned to Done. Every remaining To Do item has been reviewed.
+  closed. The 7 stale In Progress items are resolved (PLZG-129, -199, -200,
+  -209, -215, -221 Done; PLZG-180 Won't Do). Every To Do item in the pre-triage
+  baseline has been reviewed.
 - **Gate B — Doc consolidation:** `python3 scripts/validate_specs.py` passes
-  with ≤14 governed documents (down from 28). Governed doc count matches the
-  registry after ungoverning.
+  with ≤19 governed documents (down from 28).
 
 ## 7. Risks
 
 | # | Failure mode | Likelihood | Mitigation |
 |---|---|---|---|
-| R1 | Ungovern a doc that carries a live `D-nnn` decision. | Medium | Grep `D-nnn` references before removing any doc from governance. If a doc originates a decision, the decision must be migrated first. |
-| R2 | Bulk-close real work on the board. | Medium | Three-bucket triage (Done/Keep/Won't Do), not bulk-close. Each item reviewed individually. |
-| R3 | Surviving docs still contain state contradictions. | Medium | T4 cross-check task explicitly verifies against CLAUDE.md and git history. |
+| R1 | Ungovern a doc that carries a live `D-nnn` decision, or that another governed doc derives from. | Medium | Grep both `D-nnn` references and the doc's `doc_id` in other documents' `derives_from` before removing it from governance. A decision must be migrated first; a `derives_from` target stays governed. |
+| R2 | Bulk-close real work on the board. | Medium | Three-bucket triage (Done/Keep/Won't Do), not bulk-close. Each item reviewed individually; the To Do column is recorded as a baseline first, so an item closed without a triage row fails T2. |
+| R3 | Surviving docs still contain state contradictions. | Medium | T4 verifies each claim against the system that owns it — git, Jira, GitHub or CI — and records which. Agreement with CLAUDE.md is not verification. |
 
-*Last updated: August 2026*
+*Last updated: October 2026*

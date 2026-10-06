@@ -22,8 +22,17 @@ spec-set versions, and no application release existed before `v0.1.22`.
 - Sprint 5 charter (`specs/sprint-5-charter.md`) and machine-readable loop plan
   (`specs/sprint-5-loop-plan.json`) for board reconciliation and governed-document
   consolidation.
-- Governing target captured as 28→≤14 documents, with machine-checkable gates for
-  Jira triage evidence and close criteria.
+- Governing target captured as 28→≤19 documents: the nine tier-4 documents. An
+  earlier draft said ≤14, which the registry could not reach.
+- `scripts/sprint_5_gate.py` carries the acceptance check for each task, replacing
+  shell one-liners embedded in the loop plan. It pages through Jira searches,
+  proves the credential before trusting an empty result, measures triage coverage
+  against a pre-triage baseline, and checks cross-check rows against each
+  document's current git blob.
+- `docs/delivery-coordinates.md` gains a *Board and sprints* table (board `169`,
+  sprint ids `10`–`51`).
+- Six `Doc set version` footers and `META-SPEC` §8's prose moved to `0.2.13` to
+  match the frontmatter bump.
 
 ### Added — DevOps foundation (`PLZG-209`)
 

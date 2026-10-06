@@ -1,6 +1,13 @@
 {
-  "$comment": "Machine-readable Sprint 5 plan. Prose rationale lives in specs/sprint-5-charter.md; this file is the shape delivery_loop_gate.py consumes. That script is NOT in this repo — it ships with the pm-skills plugin. Resolve it deterministically: mapfile -t G < <(find ~/.claude/plugins -path '*/pm-skills/scripts/delivery_loop_gate.py' | sort); [ ${#G[@]} -ge 1 ] || { echo 'FAIL: no delivery_loop_gate.py found'; exit 1; }; [ \"$(printf \"%s\\n\" \"${G[@]}\" | xargs sha256sum | awk '{print $1}' | sort -u | wc -l)\" = 1 ] || { echo 'FAIL: installs differ -- pin one'; exit 1; }; python3 \"${G[0]}\" --plan specs/sprint-5-loop-plan.json --mode plan --output human. Sprint goal: board reconciliation + doc consolidation. Done when (A) board triaged, non-Done ≤ deliberate backlog and (B) validate_specs.py green with ≤14 governed docs. No code milestones — housekeeping sprint. WIP cap 3, 2 attempts/task, 6 iterations. Reviewer: claude-review.yml only (no /codex).",
-  "goal": "Board reconciliation + doc consolidation. Done when: (A) board triaged, non-Done ≤ deliberate backlog; (B) validate_specs.py green with ≤14 governed docs. PLZG Sprint 5.",
+  "$comment": "Machine-readable Sprint 5 plan. Prose rationale lives in specs/sprint-5-charter.md; this file is the shape delivery_loop_gate.py consumes. That script is NOT in this repo — it ships with the pm-skills plugin. Resolve it deterministically: mapfile -t G < <(find ~/.claude/plugins -path '*/pm-skills/scripts/delivery_loop_gate.py' | sort); [ ${#G[@]} -ge 1 ] || { echo 'FAIL: no delivery_loop_gate.py found'; exit 1; }; [ \"$(printf \"%s\\n\" \"${G[@]}\" | xargs sha256sum | awk '{print $1}' | sort -u | wc -l)\" = 1 ] || { echo 'FAIL: installs differ -- pin one'; exit 1; }; python3 \"${G[0]}\" --plan specs/sprint-5-loop-plan.json --mode plan --output human. Acceptance commands live in scripts/sprint_5_gate.py, one subcommand per task; it reads the sprint, board and ticket keys from THIS file and holds none of its own. Sprint goal: board reconciliation + doc consolidation. Done when (A) board triaged, non-Done ≤ deliberate backlog and (B) validate_specs.py green with ≤19 governed docs. The limit was ≤14 until 2026-10-05; that was unreachable -- 28 governed docs, 9 of them tier-4 -- and the owner re-scoped to the 9 tier-4 removals. No code milestones — housekeeping sprint. WIP cap 3, 2 attempts/task, 6 iterations. Reviewer: claude-review.yml only (no /codex).",
+  "goal": "Board reconciliation + doc consolidation. Done when: (A) board triaged, non-Done ≤ deliberate backlog; (B) validate_specs.py green with ≤19 governed docs. PLZG Sprint 5.",
+  "jira": {
+    "project": "PLZG",
+    "board_id": 169,
+    "sprint_id": 51,
+    "source": "docs/delivery-coordinates.md (D-026) owns these; this is the machine-readable copy the gate reads"
+  },
+  "governed_doc_limit": 19,
   "budgets": {
     "max_attempts_per_task": 2,
     "max_loop_iterations": 6
@@ -24,18 +31,22 @@
     {
       "id": "T1",
       "jira": "PLZG-230",
-      "title": "Transition 6 false-WIP items to Done (PLZG-221, -215, -209, -200, -199, -180)",
+      "title": "Clear the 7 stale In Progress items (PLZG-129, -199, -209, -215, -221 Done; -200 fixed by PR #252; -180 Won't Do)",
       "owner": "adam schoen",
       "executor": "agent",
       "reviewer": "adam schoen",
       "acceptance": {
-        "cmd": "source .env && curl -s -H \"Authorization: Basic $ATLASSIAN_API_TOKEN_BASE64\" \"https://$ATLASSIAN_URL/rest/api/3/search/jql?jql=project%3DPLZG%20AND%20status%3D'Done'%20AND%20key%20in%20(PLZG-221%2CPLZG-215%2CPLZG-209%2CPLZG-200%2CPLZG-199%2CPLZG-180)&fields=key,status\" | python3 -c 'import json,sys; expected={\"PLZG-221\",\"PLZG-215\",\"PLZG-209\",\"PLZG-200\",\"PLZG-199\",\"PLZG-180\"}; seen={i.get(\"key\") for i in json.load(sys.stdin).get(\"issues\", [])}; missing=sorted(expected-seen); assert not missing, f\"not Done: {missing}\"'"
+        "cmd": "python3 scripts/sprint_5_gate.py t1"
+      },
+      "acceptance_inputs": {
+        "done": ["PLZG-129", "PLZG-199", "PLZG-200", "PLZG-209", "PLZG-215", "PLZG-221"],
+        "wont_do": ["PLZG-180"]
       },
       "status": "todo",
       "attempts": 0,
       "depends_on": ["T0"],
       "blocks": ["T2", "T6"],
-      "note": "These 6 items are false-WIP: work already merged but tickets still In Progress. Transition each to Done via the Jira API."
+      "note": "Originally 'transition 6 false-WIP items to Done' on the assumption that a merged PR carrying a ticket's key meant the ticket's work was done. Checked against dev on 2026-10-05, that held for four of the six. PLZG-180 and PLZG-200 had their keys reused by unrelated PRs (#178; #199/#203) and their defects were still in the code. Outcome: PLZG-129, -199, -209, -215, -221 verified and transitioned with evidence comments; PLZG-200 fixed by PR #252 and Done when that merges; PLZG-180 closed Won't Do by owner decision (Done plus the wont-do label, since the workflow has no Won't Do status). PLZG-142 had no work behind it and returned to To Do, where T2 triages it. Verify a ticket against the file, never against the PR title."
     },
     {
       "id": "T2",
@@ -45,29 +56,29 @@
       "executor": "agent",
       "reviewer": "adam schoen",
       "acceptance": {
-        "cmd": "source .env && test -f specs/evidence/sprint-5-triage.json && curl -fsS -H \"Authorization: Basic $ATLASSIAN_API_TOKEN_BASE64\" \"https://$ATLASSIAN_URL/rest/api/3/search/jql?jql=project%3DPLZG%20AND%20status%3D'To%20Do'&fields=key,status\" | python3 -c 'import json,sys,pathlib; tri=json.loads(pathlib.Path(\"specs/evidence/sprint-5-triage.json\").read_text()); rows=tri.get(\"items\", []); seen={r.get(\"key\") for r in rows}; allowed={\"done\", \"keep\", \"wont_do\"}; assert all(r.get(\"bucket\") in allowed for r in rows), \"invalid triage bucket\"; assert all(r.get(\"reviewed_at\") for r in rows), \"missing reviewed_at\"; payload=json.load(sys.stdin); assert isinstance(payload.get(\"issues\"), list), \"Jira response missing issues\"; todo={i.get(\"key\") for i in payload[\"issues\"]}; missing=sorted(k for k in todo if k not in seen); assert not missing, f\"unreviewed To Do items: {missing}\"'"
+        "cmd": "python3 scripts/sprint_5_gate.py t2"
       },
       "status": "todo",
       "attempts": 0,
       "depends_on": ["T1"],
       "blocks": ["T6"],
-      "note": "Review every remaining To Do item. Bucket as Done (already merged), Keep (real remaining work), or Won't Do (stale/duplicate). Do not bulk-close — review each individually."
+      "note": "Review every To Do item individually. Bucket as done (already merged -- verify against the file), keep (real remaining work), or wont_do (stale or duplicate). Do not bulk-close. BEFORE moving anything, record the To Do column as baseline_keys with baseline_captured_at in specs/evidence/sprint-5-triage.json: coverage is measured against that baseline, because a closed item leaves the live column and could not otherwise be shown to have been skipped. Each row carries key, bucket, reviewed_at and reason. The gate then re-reads Jira: keep must still be open, done and wont_do must be Done, and wont_do must carry the wont-do label."
     },
     {
       "id": "T3",
       "jira": "PLZG-232",
-      "title": "Ungovern tier-4 docs + remove additional low-authority docs from governance (28→≤14)",
+      "title": "Ungovern the 9 tier-4 docs + mark Sprint 2/3 charters HISTORICAL (28→≤19)",
       "owner": "adam schoen",
       "executor": "agent",
       "reviewer": "adam schoen",
       "acceptance": {
-        "cmd": "python3 -c 'import re,subprocess; r=subprocess.run([\"python3\",\"scripts/validate_specs.py\"], capture_output=True, text=True); out=f\"{r.stdout}{r.stderr}\"; assert r.returncode==0, out; assert \"Spec validation passed:\" in out, out; m=re.search(r\"(\\d+) governed\", out); assert m and int(m.group(1))<=14, out; print(out.strip())'"
+        "cmd": "python3 scripts/sprint_5_gate.py t3"
       },
       "status": "todo",
       "attempts": 0,
       "depends_on": ["T0"],
       "blocks": ["T4", "T6"],
-      "note": "Move tier-4 docs (summaries, research) from documents to exempt in doc-registry.json, then ungovern at least these five additional low-authority docs: TASK-TRACKER, BRANCHING-STRATEGY, DEVOPS-SETUP, SPRINT-2-CHARTER, SPRINT-3-CHARTER. Grep D-nnn before ungoverning any doc. Target: ≤14 governed docs."
+      "note": "Move the nine tier-4 documents (summaries, research, historical) from documents to exempt in doc-registry.json. Sprint 2 and 3 charters STAY governed and become status HISTORICAL: SPRINT-4-CHARTER derives_from SPRINT-3-CHARTER, and validate_specs.py rejects a derives_from that points outside documents. Before ungoverning any doc, grep for BOTH its D-nnn decisions and its doc_id in other documents' derives_from. Known case: AGILE-LIKE-IM-5 derives from AGILE-EXPLAINED -- both leave together. TASK-TRACKER, BRANCHING-STRATEGY and DEVOPS-SETUP were on an earlier removal list and are no longer in scope."
     },
     {
       "id": "T4",
@@ -77,13 +88,13 @@
       "executor": "agent",
       "reviewer": "adam schoen",
       "acceptance": {
-        "cmd": "python3 -c 'import json,pathlib; reg=json.loads(pathlib.Path(\"specs/meta/doc-registry.json\").read_text()); manifest=json.loads(pathlib.Path(\"specs/evidence/sprint-5-doc-crosscheck.json\").read_text()); docs={d[\"doc_id\"] for d in reg.get(\"documents\", [])}; reviewed=manifest.get(\"reviewed_docs\", []); covered={d.get(\"doc_id\") for d in reviewed}; missing=sorted(d for d in docs if d not in covered); assert not missing, f\"missing review coverage: {missing}\"; unresolved=[d.get(\"doc_id\") for d in reviewed if d.get(\"contradiction\")]; assert not unresolved, f\"unresolved contradictions: {unresolved}\"; assert all(d.get(\"reviewed_commit\") for d in reviewed), \"each reviewed doc must record reviewed_commit\"'"
+        "cmd": "python3 scripts/sprint_5_gate.py t4"
       },
       "status": "todo",
       "attempts": 0,
       "depends_on": ["T3"],
       "blocks": ["T6"],
-      "note": "After T3 reduces the governed set, read each surviving doc and verify its state claims against CLAUDE.md and git log. Record any contradictions found and fix them."
+      "note": "After T3, read each surviving governed doc and verify every claim it makes about state against the system that OWNS that state: git for code and history, Jira for board state, GitHub for repository settings and checks, CI for what a job does. CLAUDE.md is not an owner -- agreeing with it only shows two documents match. Fix what is wrong, then record one row per doc in specs/evidence/sprint-5-doc-crosscheck.json: doc_id, contradiction (explicitly false), verified_against (the owners consulted, or [\"none\"] for a doc with no state claims) and reviewed_blob (git hash-object of the file as reviewed). The gate recomputes the blob, so editing a doc after its review invalidates its row."
     },
     {
       "id": "T5",
@@ -93,13 +104,13 @@
       "executor": "agent",
       "reviewer": "adam schoen",
       "acceptance": {
-        "cmd": "python3 scripts/validate_specs.py && test -f specs/sprint-5-charter.md && test -f specs/sprint-5-loop-plan.json"
+        "cmd": "python3 scripts/sprint_5_gate.py t5"
       },
       "status": "todo",
       "attempts": 0,
       "depends_on": ["T0"],
       "blocks": ["T6"],
-      "note": "Charter, loop plan, and doc-registry.json update in one PR. Jira sprint metadata is sourced from docs/delivery-coordinates.md (D-026)."
+      "note": "Charter, loop plan, gate script and doc-registry.json update in one PR. The gate also asks Jira that the sprint exists on the board and holds every task ticket."
     },
     {
       "id": "T6",
@@ -109,12 +120,12 @@
       "executor": "agent",
       "reviewer": "adam schoen",
       "acceptance": {
-        "cmd": "source .env && python3 -c 'import re,subprocess; r=subprocess.run([\"python3\",\"scripts/validate_specs.py\"], capture_output=True, text=True); out=f\"{r.stdout}{r.stderr}\"; assert r.returncode==0, out; assert \"Spec validation passed:\" in out, out; m=re.search(r\"(\\d+) governed\", out); assert m and int(m.group(1))<=14, out; print(out.strip())' && test -f specs/evidence/sprint-5-triage.json && curl -s -H \"Authorization: Basic $ATLASSIAN_API_TOKEN_BASE64\" \"https://$ATLASSIAN_URL/rest/api/3/search/jql?jql=project%3DPLZG%20AND%20status%3D'Done'%20AND%20key%20in%20(PLZG-221%2CPLZG-215%2CPLZG-209%2CPLZG-200%2CPLZG-199%2CPLZG-180)&fields=key,status\" | python3 -c 'import json,sys; expected={\"PLZG-221\",\"PLZG-215\",\"PLZG-209\",\"PLZG-200\",\"PLZG-199\",\"PLZG-180\"}; seen={i.get(\"key\") for i in json.load(sys.stdin).get(\"issues\", [])}; missing=sorted(expected-seen); assert not missing, f\"not Done: {missing}\"' && curl -s -H \"Authorization: Basic $ATLASSIAN_API_TOKEN_BASE64\" \"https://$ATLASSIAN_URL/rest/api/3/search/jql?jql=project%3DPLZG%20AND%20status%3D'To%20Do'&fields=key,status\" | python3 -c 'import json,sys,pathlib; tri=json.loads(pathlib.Path(\"specs/evidence/sprint-5-triage.json\").read_text()); rows=tri.get(\"items\", []); seen={r.get(\"key\") for r in rows}; live={i.get(\"key\") for i in json.load(sys.stdin).get(\"issues\", [])}; missing=sorted(k for k in live if k not in seen); assert not missing, f\"unreviewed To Do items: {missing}\"; assert tri.get(\"review_complete\") is True, \"triage review_complete must be true\"'"
+        "cmd": "python3 scripts/sprint_5_gate.py t6"
       },
       "status": "todo",
       "attempts": 0,
       "depends_on": ["T1", "T2", "T3", "T4", "T5"],
-      "note": "Procedural close. Both gates must pass: (A) board triaged, (B) validate_specs.py green with ≤14 docs. Update charter status to HISTORICAL. Run delivery_loop_gate.py --mode close."
+      "note": "Procedural close. Re-runs T1-T4 against their owners and requires triage review_complete. Both gates must pass: (A) board triaged, (B) validate_specs.py green with ≤19 docs. Update charter status to HISTORICAL. Run delivery_loop_gate.py --mode close."
     }
   ]
 }
