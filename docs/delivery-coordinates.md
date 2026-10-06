@@ -201,7 +201,8 @@ data trustworthy currently pollutes it.**
 requires the key in the PR **title** and recommends it in the branch name ("Put it in the
 branch name and commit messages too"). In practice most branches in this repo carry the
 key (`type/PLZG-###-description`), so the branch rule fires for those — but not all:
-merged PRs such as #184 (`fix/escape-focus-lock`) and #217 came from keyless branches. Either disable the
+merged PRs such as #184 (`fix/dialog-overflow`) and #217 (`worktree-pm-hooks`) came
+from keyless branches. Either disable the
 PR-creation rule, or condition it on the key appearing in `{{pullRequest.title}}` or
 `{{branch.name}}` rather than merely being linked.
 

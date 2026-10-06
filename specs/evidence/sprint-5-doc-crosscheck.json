@@ -110,7 +110,7 @@
         "jira",
         "github"
       ],
-      "reviewed_blob": "85f55d76a414effa353062f53ff6117866bd7fb5",
+      "reviewed_blob": "ffb6c5b5f70fa42ab948e5a3a6b63e7a674af8cf",
       "note": "Fixed: a line citation, and the claim that every branch carries the key. Projects, sprint ids and states, and the Confluence page verified against Jira. Not re-verified this pass: the Linear sync topology and the two Jira automations (lines 144-168, 198), which no tool here can read."
     },
     {
