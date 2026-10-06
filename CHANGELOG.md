@@ -31,7 +31,7 @@ spec-set versions, and no application release existed before `v0.1.22`.
   document's current git blob.
 - `docs/delivery-coordinates.md` gains a *Board and sprints* table (board `169`,
   sprint ids `10`–`51`).
-- Six `Doc set version` footers and `META-SPEC` §8's prose moved to `0.2.13` to
+- Six `Doc set version` footers and `META-SPEC` §7's prose moved to `0.2.13` to
   match the frontmatter bump.
 
 ### Fixed — bridge env docstring and SDK reference doc (`PLZG-200`)
