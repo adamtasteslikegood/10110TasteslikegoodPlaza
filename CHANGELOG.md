@@ -47,6 +47,24 @@ spec-set versions, and no application release existed before `v0.1.22`.
   A second resume test covers the branch that fixture had been hiding: a known
   domain is refocused, an unknown one is not.
 
+### Added — regression tests for the Sprint 5 gate (`PLZG-245`)
+
+- `tests/test_sprint_5_gate.py` — 48 network-free cases against a fake Jira and
+  a temp directory: pagination, T1–T5 passing and failing, T6 propagating every
+  failure, credential resolution, and the 0/1/2 exit codes. Stdlib `unittest`.
+- CI runs them inside `Spec Enforcement Matrix`, the check the `dev` ruleset
+  requires, so they gate merges without a ruleset change. Run locally with
+  `python3 -m unittest tests/test_sprint_5_gate.py`.
+
+### Fixed — Sprint 5 triage gate exempted the whole sprint (`PLZG-237`)
+
+- `scripts/sprint_5_gate.py t2` exempted every issue Jira reported in the sprint
+  from triage, so a backlog item added to Sprint 5 after the baseline skipped
+  review, and T6 inherited the hole. The exemption is now the loop plan's own
+  task tickets that Jira confirms are in the sprint. Review raised it on #241
+  nine minutes before the merge; #241 merged without the review surfaces being
+  re-read after its last push.
+
 ### Fixed — delivery-coordinates gate was unpassable between sprints (`PLZG-239`)
 
 - `scripts/validate_delivery_coordinates.py` clause (b) gains a declared

@@ -277,10 +277,13 @@ def check_t2(plan: dict, require_complete: bool = False) -> str:
     # Every open item, not only To Do: Gate A is about all non-Done work, and an
     # In Progress ticket nobody triaged is exactly what T1 found seven of. The
     # sprint's own tickets are exempt -- they are the work, and T6's is open
-    # while T6 runs.
+    # while T6 runs. "Own" means a task ticket the PLAN names that Jira confirms
+    # is in the sprint: sprint membership alone would let any backlog item skip
+    # triage by being dragged into the sprint after the baseline.
     sprint_id = plan.get("jira", {}).get("sprint_id")
     require(isinstance(sprint_id, int), "the loop plan declares no jira.sprint_id")
-    own = set(jira_search(f"sprint = {sprint_id}"))
+    planned = {t["jira"] for t in plan.get("tasks", []) if t.get("jira")}
+    own = planned & set(jira_search(f"sprint = {sprint_id}"))
     live_open = jira_search(f"project = {project} AND statusCategory != Done")
     unreviewed = sorted(set(live_open) - set(keys) - own)
     require(not unreviewed, f"open keys with no triage row: {unreviewed}")
