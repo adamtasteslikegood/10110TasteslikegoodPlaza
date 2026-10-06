@@ -34,6 +34,18 @@ spec-set versions, and no application release existed before `v0.1.22`.
 - Six `Doc set version` footers and `META-SPEC` §8's prose moved to `0.2.13` to
   match the frontmatter bump.
 
+### Fixed — delivery-coordinates gate was unpassable between sprints (`PLZG-239`)
+
+- `scripts/validate_delivery_coordinates.py` clause (b) gains a declared
+  between-sprints state: a snapshot with `"sprint": null` is fresh while `as_of`
+  is at most 14 days old. Previously the check required an un-ended sprint
+  window, so it was red on every branch from Sprint 4's end (2026-08-30) until a
+  new sprint was started. A missing or malformed `sprint` still fails.
+- `data/plzg-flow-snapshot.json` refreshed from the live board (2026-10-05):
+  210 total, 99 done, 2 in progress, no active sprint.
+- Four matrix cases cover the new state: recent, stale, future-dated, and
+  dishonest `wip`.
+
 ### Added — DevOps foundation (`PLZG-209`)
 
 - Bridge unit test CI job running 76 tests via `pytest bridge/tests/`.
