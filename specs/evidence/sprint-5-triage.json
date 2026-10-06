@@ -930,11 +930,11 @@
     },
     {
       "key": "PLZG-242",
-      "bucket": "keep",
+      "bucket": "done",
       "reviewed_at": "2026-10-06",
       "confidence": "high",
       "github_issue": 254,
-      "reason": "Both of the ticket's alternatives are met on the PR #264 branch -- Sprint 5 started 2026-10-06 and data/plzg-flow-snapshot.json declares the active sprint -- but not on dev until that PR merges, so the ticket is open and this row says keep. Re-bucket to done, and close the ticket and GitHub #254, in the first evidence change after #264 merges; the gate holds a keep row open until its row changes."
+      "reason": "Both of the ticket's alternatives are met on dev since PR #264 merged (29c28ae, 2026-10-06): Sprint 5 was started and data/plzg-flow-snapshot.json declares the active sprint (sprint 51, 2026-10-06 to 2026-10-13) instead of sprint: null; validate_delivery_coordinates.py exits 0 on it. Re-bucketed from keep and closed in the T3 change, as its earlier row said it would be."
     },
     {
       "key": "PLZG-243",
@@ -966,7 +966,15 @@
       "reviewed_at": "2026-10-06",
       "confidence": "high",
       "github_issue": null,
-      "reason": "Filed after the baseline, during review of PR #264: M8 step 8 (specs/roadmap.md:340, response logged to the inbox) has no implementation, and roadmap.md, CLAUDE.md and the design doc disagree on whether it is M8 scope. Needs an owner ruling."
+      "reason": "Filed after the baseline, during review of PR #264: M8 step 8 (specs/roadmap.md:340, response logged to the inbox) has no implementation, and roadmap.md, CLAUDE.md and the design doc disagree on whether it is M8 scope. Needs an owner ruling. Owner ruling 2026-10-06: the inbox is built when the game is ready for one, so it is not M8 scope; the ticket stays open for the roadmap edit that says so (T4)."
+    },
+    {
+      "key": "PLZG-248",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": null,
+      "reason": "Filed 2026-10-06 from the independent review of PR #264, after the baseline: the Sprint 5 charter's weakest_claim says 114 non-Done items on 2026-10-05 while the flow snapshot recorded 111 that day. Real and unresolved; the charter is a governed document, so the re-measurement belongs to T4's cross-check (PLZG-233)."
     }
   ]
 }

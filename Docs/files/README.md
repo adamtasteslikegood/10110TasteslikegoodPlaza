@@ -4,13 +4,9 @@ title: Docs/files — relocation signpost
 tier: 4
 authority: historical
 status: HISTORICAL
-doc_set_version: 0.2.13
-last_updated: 2026-07
+last_updated: 2026-10
 owner: adamtasteslikegood
-derives_from: []
-enforcement: asserted
-gates: [Validate Specs:live]
-weakest_claim: Story board and the concept still mostly unchanged.
+governed: false  # exempt in specs/meta/doc-registry.json since PLZG-232; the keys above describe the file, nothing validates them
 ---
 
 # Important - about these files: 

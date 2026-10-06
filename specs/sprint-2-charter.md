@@ -3,7 +3,7 @@ doc_id: SPRINT-2-CHARTER
 title: Sprint 2 charter — delivery decisions locked 2026-07-30
 tier: 3
 authority: delivery
-status: ACTIVE
+status: HISTORICAL
 doc_set_version: 0.2.13
 last_updated: 2026-10
 owner: adamtasteslikegood
@@ -14,6 +14,12 @@ weakest_claim: Measured 2026-07-29 via `jira_snapshot_bridge.py --to flow`, befo
 ---
 
 # Sprint 2 charter — delivery decisions locked 2026-07-30
+
+> **HISTORICAL since 2026-10-06 (`PLZG-232`).** Sprint 2 is closed. Everything
+> below is as written while it ran — present-tense statements about the sprint,
+> the board and WIP describe that time, not now. Its §1 done-clauses (a) and (b) are still what `scripts/validate_delivery_coordinates.py` enforces on every PR.
+> Whether a rule can outlive the charter that originated it is open conflict
+> §4.11 in [`meta/spec-drivers-v0.2.5.md`](meta/spec-drivers-v0.2.5.md).
 
 > **One line:** this document is the complete executable context for Sprint 2. A
 > session that has read this file needs nothing from the conversation that

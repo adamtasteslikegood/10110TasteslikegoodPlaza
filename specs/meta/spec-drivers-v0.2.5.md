@@ -5,7 +5,7 @@ tier: 0
 authority: constitution
 status: ACTIVE
 doc_set_version: 0.2.13
-last_updated: 2026-08
+last_updated: 2026-10
 owner: adamtasteslikegood
 derives_from: [META-SPEC]
 supersedes: []
@@ -132,7 +132,8 @@ now; neither is started.
 ## 4. Open-conflict register
 
 Per [`META-SPEC.md`](META-SPEC.md) §4, conflicts are recorded rather than silently
-resolved. **Ten resolved, none open** as of v0.2.11 — §4.10 closed by amendment in `PLZG-137`. Resolved entries are kept,
+resolved. **Ten resolved, one open** as of v0.2.13 — §4.10 closed by amendment in
+`PLZG-137`; §4.11 opened in `PLZG-232`. Resolved entries are kept,
 not deleted — the record of *how* a conflict was settled is what stops it reopening.
 
 ### 4.1 `ALIGNED-SPEC-025` §01.3 versus `STORYBOARD-W1` — **RESOLVED**
@@ -404,6 +405,38 @@ raised on every sprint charter, and that recurrence is the signal that the
 constitution — not the charter — is what needs the edit." It was raised again in
 Sprint 3, and the constitution is what was edited.
 
+### 4.11 A retired charter is still the origin of rules in force — **OPEN**
+
+Raised 2026-10-06 during Sprint 5 T3 (`PLZG-232`), which marked `SPRINT-2-CHARTER`
+and `SPRINT-3-CHARTER` `HISTORICAL` by owner decision. Tracked as
+[issue #269](https://github.com/adamtasteslikegood/10110TasteslikegoodPlaza/issues/269).
+
+`D-028` licenses the `delivery` authority to originate "time-boxed operational
+policy that expires with its artifact". Two policies have outlived the sprint that
+set them:
+
+- **Sprint 2 §1, done-clauses (a) and (b).** `scripts/validate_delivery_coordinates.py`
+  enforces them on every PR and cites the Sprint 2 charter as their definition.
+  Clause (b) was amended there as recently as 2026-10-05 (`PLZG-239`), seven weeks
+  after the sprint closed.
+- **Sprint 3 §1.3, the forecast blackout.** The Sprint 4 and Sprint 5 charters each
+  say it "carries forward".
+
+So either the policies expired with their sprints and a CI job is enforcing a rule
+nothing in force originates, or they did not expire and `D-028`'s "expires with its
+artifact" does not describe them. Marking the charters `HISTORICAL` did not create
+this; it made it visible.
+
+**Not resolved here.** Both charters stay governed, so every citation still
+resolves, and each carries a banner naming what is still enforced from it. Candidate
+resolutions, for a human call:
+
+1. Promote the two standing rules to a document that does not expire — a `D-nnn`
+   for the delivery-coordinates gate, and a standing home for the forecast blackout
+   — and let the charters be history in full.
+2. Amend `D-028` to say a delivery policy holds until a later charter replaces it,
+   which is how it has been treated in practice.
+
 ## 5. Exit criteria to v1.0.0
 
 `1.0.0` is cut when **M8 is demonstrable in-engine** — a player question travels
@@ -414,4 +447,4 @@ this version does not move it.
 Between here and there, each round closes with the same check: the register has no
 conflict that has been open longer than the round that discovered it.
 
-*Doc set version: 0.2.13 · Last updated: August 2026*
+*Doc set version: 0.2.13 · Last updated: October 2026*

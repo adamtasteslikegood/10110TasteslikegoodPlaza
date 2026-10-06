@@ -12,7 +12,7 @@
     "max_attempts_per_task": 2,
     "max_loop_iterations": 6
   },
-  "iteration": 1,
+  "iteration": 2,
   "tasks": [
     {
       "id": "T0",
@@ -81,11 +81,12 @@
         "must_stay_governed": ["META-SPEC", "CONCEPT-DRIVER", "DECISION-REGISTER", "SPEC-DRIVERS-025", "META-INDEX", "STORYBOARD-W1", "DESIGN-25D", "PLATFORM-DECISIONS", "PROJECT-OVERVIEW", "AGENT-DIRECTORY", "DELIVERY-COORDINATES", "ROADMAP", "TASK-TRACKER", "BRANCHING-STRATEGY", "SPRINT-2-CHARTER", "SPRINT-3-CHARTER", "SPRINT-4-CHARTER", "SPRINT-5-CHARTER", "DEVOPS-SETUP"],
         "must_be_historical": ["SPRINT-2-CHARTER", "SPRINT-3-CHARTER"]
       },
-      "status": "todo",
-      "attempts": 0,
+      "status": "done",
+      "attempts": 1,
       "depends_on": ["T0"],
       "blocks": ["T4", "T6"],
-      "note": "Move the nine tier-4 documents (summaries, research, historical) from documents to exempt in doc-registry.json. Sprint 2 and 3 charters STAY governed and become status HISTORICAL: SPRINT-4-CHARTER derives_from SPRINT-3-CHARTER, and validate_specs.py rejects a derives_from that points outside documents. Before ungoverning any doc, grep for BOTH its D-nnn decisions and its doc_id in other documents' derives_from. Known case: AGILE-LIKE-IM-5 derives from AGILE-EXPLAINED -- both leave together. TASK-TRACKER, BRANCHING-STRATEGY and DEVOPS-SETUP were on an earlier removal list and are no longer in scope. The gate enforces this: must_stay_governed names the 19 documents that are not tier-4, and T3 fails if any of them has left the registry, whatever the count. must_be_historical names the two retired charters; T3 also fails while either is still ACTIVE in the registry."
+      "note": "Move the nine tier-4 documents (summaries, research, historical) from documents to exempt in doc-registry.json. Sprint 2 and 3 charters STAY governed and become status HISTORICAL: SPRINT-4-CHARTER derives_from SPRINT-3-CHARTER, and validate_specs.py rejects a derives_from that points outside documents. Before ungoverning any doc, grep for BOTH its D-nnn decisions and its doc_id in other documents' derives_from. Known case: AGILE-LIKE-IM-5 derives from AGILE-EXPLAINED -- both leave together. TASK-TRACKER, BRANCHING-STRATEGY and DEVOPS-SETUP were on an earlier removal list and are no longer in scope. The gate enforces this: must_stay_governed names the 19 documents that are not tier-4, and T3 fails if any of them has left the registry, whatever the count. must_be_historical names the two retired charters; T3 also fails while either is still ACTIVE in the registry.",
+      "evidence": "sprint_5_gate.py t3 exit 0, 2026-10-06: 19 governed document(s), limit 19; all 19 protected, 2 retired. validate_specs.py: 19 governed document(s), doc set v0.2.13. The nine tier-4 documents are in exempt; the rule-outlives-its-charter question this raised is open conflict 4.11 in spec-drivers-v0.2.5.md."
     },
     {
       "id": "T4",

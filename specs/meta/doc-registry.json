@@ -116,60 +116,20 @@
       "note": "Branching policy. Corrected in v0.2.6 to describe this repo: the aspirational workflows and branch-protection rules are fenced in a dedicated 'Intended, not yet active' section."
     },
     {
-      "doc_id": "QUICK-REFERENCE",
-      "path": "docs/quick-reference.md",
-      "tier": 4,
-      "authority": "summary",
-      "status": "ACTIVE",
-      "note": "One page, derived, regenerable. Never authoritative - if it disagrees with anything, it is wrong."
-    },
-    {
-      "doc_id": "DOCS-INDEX",
-      "path": "docs/README.md",
-      "tier": 4,
-      "authority": "summary",
-      "status": "ACTIVE",
-      "note": "Folder index for docs/."
-    },
-    {
-      "doc_id": "SPECS-INDEX",
-      "path": "specs/README.md",
-      "tier": 4,
-      "authority": "summary",
-      "status": "ACTIVE",
-      "note": "Folder index for specs/."
-    },
-    {
-      "doc_id": "ALIGNED-SPEC-025",
-      "path": "specs/aligned-spec-v0.2.5.md",
-      "tier": 4,
-      "authority": "research",
-      "status": "SUPERSEDED",
-      "note": "Research input. Its normative content was promoted into the meta layer; its section 01.3 fabricated a 14-scene spine that contradicts STORYBOARD-W1 and is superseded by CONCEPT-DRIVER. Retained for findings, rationale, and citations."
-    },
-    {
-      "doc_id": "LEGACY-SIGNPOST",
-      "path": "Docs/files/README.md",
-      "tier": 4,
-      "authority": "historical",
-      "status": "HISTORICAL",
-      "note": "Migration signpost left behind when Docs/files/00-04 were relocated in PR #5. Retained so old links land somewhere useful."
-    },
-    {
       "doc_id": "SPRINT-2-CHARTER",
       "path": "specs/sprint-2-charter.md",
       "tier": 3,
       "authority": "delivery",
-      "status": "ACTIVE",
-      "note": "Executable context for PLZG Sprint 2 (board 169, sprint 44, 2026-07-30 to 2026-08-13). Locks the delivery decisions reached in the 2026-07-30 grill so they survive the session that produced them. Derives from ROADMAP and DELIVERY-COORDINATES; originates time-boxed delivery policy under D-028 -- WIP limits, retry budgets, review gates, forecast blackouts -- which expires with the sprint and is deliberately not registered as a D-nnn."
+      "status": "HISTORICAL",
+      "note": "Executable context for PLZG Sprint 2, now closed (board 169, sprint 44, 2026-07-30 to 2026-08-13). Locks the delivery decisions reached in the 2026-07-30 grill so they survive the session that produced them. Derives from ROADMAP and DELIVERY-COORDINATES; originates time-boxed delivery policy under D-028 -- WIP limits, retry budgets, review gates, forecast blackouts -- which expires with the sprint and is deliberately not registered as a D-nnn. HISTORICAL since Sprint 5 T3 (PLZG-232). Stays governed: SPRINT-3-CHARTER derives from it, and its section 1 clauses are still what scripts/validate_delivery_coordinates.py enforces -- see open conflict 4.11."
     },
     {
       "doc_id": "SPRINT-3-CHARTER",
       "path": "specs/sprint-3-charter.md",
       "tier": 3,
       "authority": "delivery",
-      "status": "ACTIVE",
-      "note": "Executable context for Sprint 3. Follows up Sprint 2's close and plans the enforcement-axis amendment (D-027) plus the delivery authority that closes open conflict 4.10 (D-028). Declared 'derived' until T7: D-028 created 'delivery' at T1 with META-SPEC as its origin, but the frontmatter schema rejected the value until T2 extended the enum, so it was undeclarable for one more task -- see its section 7. Now declares 'delivery' and originates the same class of time-boxed policy as SPRINT-2-CHARTER: budgets, gates and blackouts that expire with the sprint and are deliberately not registered as D-nnn."
+      "status": "HISTORICAL",
+      "note": "Executable context for Sprint 3, now closed. Follows up Sprint 2's close and plans the enforcement-axis amendment (D-027) plus the delivery authority that closes open conflict 4.10 (D-028). Declared 'derived' until T7: D-028 created 'delivery' at T1 with META-SPEC as its origin, but the frontmatter schema rejected the value until T2 extended the enum, so it was undeclarable for one more task -- see its section 7. Now declares 'delivery' and originates the same class of time-boxed policy as SPRINT-2-CHARTER: budgets, gates and blackouts that expire with the sprint and are deliberately not registered as D-nnn. HISTORICAL since Sprint 5 T3 (PLZG-232). Stays governed: SPRINT-4-CHARTER derives from it, and its section 1.3 forecast blackout is still cited as in force by the Sprint 5 charter -- see open conflict 4.11."
     },
     {
       "doc_id": "SPRINT-4-CHARTER",
@@ -186,40 +146,6 @@
       "authority": "delivery",
       "status": "ACTIVE",
       "note": "Executable context for Sprint 5. Board reconciliation (triage the 114 non-Done items measured 2026-10-05, clear 7 stale In Progress) and doc consolidation (28 governed docs to ≤19, the nine tier-4 documents). Housekeeping sprint — no code milestones. Acceptance checks live in scripts/sprint_5_gate.py; sprint and board ids are recorded in DELIVERY-COORDINATES (D-026)."
-    },
-    {
-      "doc_id": "GOVERNANCE-TREE",
-      "path": "docs/reference/meta_spec_governance_tree.md",
-      "tier": 4,
-      "authority": "summary",
-      "status": "ACTIVE",
-      "note": "Visual restatement of the tier ladder META-SPEC owns. Authoritative over nothing; if it disagrees with META-SPEC it is the bug."
-    },
-    {
-      "doc_id": "AGILE-EXPLAINED",
-      "path": "docs/reference/agile/Agile_Expaiined.md",
-      "tier": 4,
-      "authority": "research",
-      "status": "ACTIVE",
-      "note": "Foundational onboarding reading on agile practice, for humans and agents. Explains a general methodology; specifies nothing about Plaza and originates nothing. Cite for rationale, never as law -- same standing as ALIGNED-SPEC-025."
-    },
-    {
-      "doc_id": "AGILE-LIKE-IM-5",
-      "path": "docs/reference/agile/Agile_like_im_5.md",
-      "tier": 4,
-      "authority": "research",
-      "status": "ACTIVE",
-      "note": "Plain-language companion to AGILE-EXPLAINED. Same standing: authoritative over nothing.",
-      "enforcement_na_reason": "Plain-language companion to AGILE-EXPLAINED. General education, no claim about this repository -- checked explicitly during PLZG-136 review, which found AGILE-EXPLAINED does carry one ('Adopted as foundational onboarding reading') and rescored it asserted. This file carries no equivalent."
-    },
-    {
-      "doc_id": "CC-STATUSLINE-PROTOCOL",
-      "path": "docs/cc-statusline-protocol.md",
-      "tier": 4,
-      "authority": "research",
-      "status": "ACTIVE",
-      "note": "Claude Code statusline protocol reference. Documents Anthropic's shipped JSON schema for statusline scripts and annotates bridge relevance per field. External protocol, asserts nothing about this repository.",
-      "enforcement_na_reason": "External protocol documentation. Describes Anthropic's shipped CC statusline feature; asserts nothing about this repository's code or state."
     },
     {
       "doc_id": "DEVOPS-SETUP",
@@ -270,6 +196,42 @@
     {
       "path": "docs/superpowers/plans/2026-08-13-cc-tui-statusline.md",
       "reason": "Superpowers-generated implementation plan. Execution artifact, not a governed spec."
+    },
+    {
+      "path": "docs/quick-reference.md",
+      "reason": "Was governed as QUICK-REFERENCE (tier 4, summary) until Sprint 5 T3 (PLZG-232, owner decision 2026-10-05): a tier-4 document is authoritative over nothing, so the frontmatter contract bought no protection. One page, derived, regenerable. Never authoritative - if it disagrees with anything, it is wrong."
+    },
+    {
+      "path": "docs/README.md",
+      "reason": "Was governed as DOCS-INDEX (tier 4, summary) until Sprint 5 T3 (PLZG-232, owner decision 2026-10-05): a tier-4 document is authoritative over nothing, so the frontmatter contract bought no protection. Folder index for docs/."
+    },
+    {
+      "path": "specs/README.md",
+      "reason": "Was governed as SPECS-INDEX (tier 4, summary) until Sprint 5 T3 (PLZG-232, owner decision 2026-10-05): a tier-4 document is authoritative over nothing, so the frontmatter contract bought no protection. Folder index for specs/."
+    },
+    {
+      "path": "specs/aligned-spec-v0.2.5.md",
+      "reason": "Was governed as ALIGNED-SPEC-025 (tier 4, research) until Sprint 5 T3 (PLZG-232, owner decision 2026-10-05): a tier-4 document is authoritative over nothing, so the frontmatter contract bought no protection. Research input. Its normative content was promoted into the meta layer; its section 01.3 fabricated a 14-scene spine that contradicts STORYBOARD-W1 and is superseded by CONCEPT-DRIVER. Retained for findings, rationale, and citations."
+    },
+    {
+      "path": "Docs/files/README.md",
+      "reason": "Was governed as LEGACY-SIGNPOST (tier 4, historical) until Sprint 5 T3 (PLZG-232, owner decision 2026-10-05): a tier-4 document is authoritative over nothing, so the frontmatter contract bought no protection. Migration signpost left behind when Docs/files/00-04 were relocated in PR #5. Retained so old links land somewhere useful."
+    },
+    {
+      "path": "docs/reference/meta_spec_governance_tree.md",
+      "reason": "Was governed as GOVERNANCE-TREE (tier 4, summary) until Sprint 5 T3 (PLZG-232, owner decision 2026-10-05): a tier-4 document is authoritative over nothing, so the frontmatter contract bought no protection. Visual restatement of the tier ladder META-SPEC owns. Authoritative over nothing; if it disagrees with META-SPEC it is the bug."
+    },
+    {
+      "path": "docs/reference/agile/Agile_Expaiined.md",
+      "reason": "Was governed as AGILE-EXPLAINED (tier 4, research) until Sprint 5 T3 (PLZG-232, owner decision 2026-10-05): a tier-4 document is authoritative over nothing, so the frontmatter contract bought no protection. Foundational onboarding reading on agile practice, for humans and agents. Explains a general methodology; specifies nothing about Plaza and originates nothing. Cite for rationale, never as law -- same standing as ALIGNED-SPEC-025."
+    },
+    {
+      "path": "docs/reference/agile/Agile_like_im_5.md",
+      "reason": "Was governed as AGILE-LIKE-IM-5 (tier 4, research) until Sprint 5 T3 (PLZG-232, owner decision 2026-10-05): a tier-4 document is authoritative over nothing, so the frontmatter contract bought no protection. Plain-language companion to AGILE-EXPLAINED. Same standing: authoritative over nothing."
+    },
+    {
+      "path": "docs/cc-statusline-protocol.md",
+      "reason": "Was governed as CC-STATUSLINE-PROTOCOL (tier 4, research) until Sprint 5 T3 (PLZG-232, owner decision 2026-10-05): a tier-4 document is authoritative over nothing, so the frontmatter contract bought no protection. Claude Code statusline protocol reference. Documents Anthropic's shipped JSON schema for statusline scripts and annotates bridge relevance per field. External protocol, asserts nothing about this repository."
     }
   ]
 }
