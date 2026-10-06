@@ -19,8 +19,9 @@ weakest_claim: The board had 114 non-Done items when measured on 2026-10-05
 > session that has read this file needs nothing from the conversation that
 > produced it.
 
-Sprint 5 is Jira sprint `51` on board `169`, state `future` (created
-2026-08-20, not yet started). `docs/delivery-coordinates.md` § *Board and
+Sprint 5 is Jira sprint `51` on board `169`, started 2026-10-06 with a
+one-week window ending 2026-10-13 (owner decision; the window is Jira's
+required end date, not a delivery forecast). `docs/delivery-coordinates.md` § *Board and
 sprints* owns those identifiers (`D-026`); `python3 scripts/sprint_5_gate.py t5`
 re-reads them from Jira.
 The forecast blackout from Sprint 3 §1.3 carries forward — no date commitment.

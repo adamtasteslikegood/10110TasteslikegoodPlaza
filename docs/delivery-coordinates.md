@@ -94,13 +94,13 @@ Board **`169`** is the `PLZG` Scrum board. A sprint id is a coordinate like any
 other, and until 2026-10-05 none was recorded here — each charter stated its own,
 and the Sprint 5 charter cited this document for an id it did not contain.
 
-| Sprint | Id | State, read 2026-10-05 |
+| Sprint | Id | State, read 2026-10-06 |
 |---|---|---|
 | PLZG Sprint 1 | `10` | closed |
 | PLZG Sprint 2 | `44` | closed |
 | PLZG Sprint 3 | `45` | closed |
 | Sprint 4 | `48` | closed 2026-08-21 |
-| Sprint 5 | `51` | `future` — created 2026-08-20, not started |
+| Sprint 5 | `51` | `active` — started 2026-10-06, ends 2026-10-13 |
 
 The ids are stable; the state column is a reading and goes stale. Re-read it from
 the board (`listJiraBoardSprints` on board `169`) before citing it.
