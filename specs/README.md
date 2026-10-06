@@ -5,7 +5,7 @@ tier: 4
 authority: summary
 status: ACTIVE
 doc_set_version: 0.2.13
-last_updated: 2026-08
+last_updated: 2026-10
 owner: adamtasteslikegood
 derives_from: [META-SPEC]
 enforcement: asserted
@@ -27,6 +27,7 @@ For design-and-reference docs (the *what* and *why*) see [`../docs/`](../docs/RE
 | [`aligned-spec-v0.2.5.md`](aligned-spec-v0.2.5.md) | Research input, `status: SUPERSEDED`. Its normative content was promoted into [`meta/`](meta/README.md); its §01.3 scene spine was a reconstruction that contradicts the real storyboard. Retained for findings, the Document A bridge architecture, the Document B taxonomy, and rationale worth citing. |
 | [`roadmap.md`](roadmap.md) | Work plan. M1 → M8 milestones. Critical path **M1 → M4 → M8** is authoritative for sequencing. |
 | [`task-tracker.md`](task-tracker.md) | `HISTORICAL` — reference checklist from early planning. Progress state lives in `CLAUDE.md` and git history. |
+| [`evidence/`](evidence/) | Machine-read evidence a sprint gate checks against the live board or tree — not governed documents and not narrative. `sprint-5-triage.json` is the Sprint 5 T2 record: the pre-triage baseline and one reviewed row per ticket, read by `scripts/sprint_5_gate.py t2`. |
 | [`branching-strategy.md`](branching-strategy.md) | Branch protection rules, required status checks, CODEOWNERS gating. Intended policy — some referenced workflows don't exist yet. See [`../CONTRIBUTING.md`](../CONTRIBUTING.md) for the everyday flow. |
 
 ## Critical path
@@ -65,4 +66,4 @@ If the doc is reference material that doesn't expire when the work ships — put
 - Date-stamp the bottom of each file with `*Last updated: <month> <year>*`.
 - When a milestone is done, leave the spec in place as historical record — don't delete it. Mark it `[x] Done`.
 
-*Last updated: August 2026*
+*Last updated: October 2026*

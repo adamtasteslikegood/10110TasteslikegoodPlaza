@@ -12,7 +12,7 @@
     "max_attempts_per_task": 2,
     "max_loop_iterations": 6
   },
-  "iteration": 0,
+  "iteration": 1,
   "tasks": [
     {
       "id": "T0",
@@ -23,10 +23,11 @@
       "acceptance": {
         "cmd": "scripts/check_sync.sh --strict"
       },
-      "status": "todo",
-      "attempts": 0,
+      "status": "done",
+      "attempts": 1,
       "blocks": ["T1", "T3", "T5"],
-      "note": "Blocking precondition, exempt from the attempt cap. No Jira ticket: it is a precondition the SessionStart hook already runs."
+      "note": "Blocking precondition, exempt from the attempt cap. No Jira ticket: it is a precondition the SessionStart hook already runs.",
+      "evidence": "scripts/check_sync.sh --strict exit 0 via loop_controller verify, 2026-10-06 (ahead of origin/dev, 0 behind)"
     },
     {
       "id": "T1",
@@ -42,11 +43,12 @@
         "done": ["PLZG-129", "PLZG-199", "PLZG-200", "PLZG-209", "PLZG-215", "PLZG-221"],
         "wont_do": ["PLZG-180"]
       },
-      "status": "todo",
-      "attempts": 0,
+      "status": "done",
+      "attempts": 1,
       "depends_on": ["T0"],
       "blocks": ["T2", "T6"],
-      "note": "Originally 'transition 6 false-WIP items to Done' on the assumption that a merged PR carrying a ticket's key meant the ticket's work was done. Checked against dev on 2026-10-05, that held for four of the six. PLZG-180 and PLZG-200 had their keys reused by unrelated PRs (#178; #199/#203) and their defects were still in the code. Outcome: PLZG-129, -199, -209, -215, -221 verified and transitioned with evidence comments; PLZG-200 fixed by PR #252, merged 2026-10-06 UTC, and transitioned then; PLZG-180 closed Won't Do by owner decision (Done plus the wont-do label, since the workflow has no Won't Do status). PLZG-142 had no work behind it and returned to To Do, where T2 triages it. Verify a ticket against the file, never against the PR title."
+      "note": "Originally 'transition 6 false-WIP items to Done' on the assumption that a merged PR carrying a ticket's key meant the ticket's work was done. Checked against dev on 2026-10-05, that held for four of the six. PLZG-180 and PLZG-200 had their keys reused by unrelated PRs (#178; #199/#203) and their defects were still in the code. Outcome: PLZG-129, -199, -209, -215, -221 verified and transitioned with evidence comments; PLZG-200 fixed by PR #252, merged 2026-10-06 UTC, and transitioned then; PLZG-180 closed Won't Do by owner decision (Done plus the wont-do label, since the workflow has no Won't Do status). PLZG-142 had no work behind it and returned to To Do, where T2 triages it. Verify a ticket against the file, never against the PR title.",
+      "evidence": "sprint_5_gate.py t1 exit 0 via loop_controller verify, 2026-10-06: 7 key(s) Done, 1 of them labelled Won't Do. PLZG-230 Done."
     },
     {
       "id": "T2",
@@ -58,11 +60,12 @@
       "acceptance": {
         "cmd": "python3 scripts/sprint_5_gate.py t2"
       },
-      "status": "todo",
-      "attempts": 0,
+      "status": "done",
+      "attempts": 1,
       "depends_on": ["T1"],
       "blocks": ["T6"],
-      "note": "Review every non-Done item individually -- To Do and In Progress alike; only the sprint's own tickets are exempt. Bucket as done (already merged -- verify against the file), keep (real remaining work), or wont_do (stale or duplicate). Do not bulk-close. BEFORE moving anything, record the non-Done set (project = PLZG AND statusCategory != Done, minus the sprint's own tickets) as baseline_keys with baseline_captured_at in specs/evidence/sprint-5-triage.json: coverage is measured against that baseline, because a closed item leaves the live column and could not otherwise be shown to have been skipped. Each row carries key, bucket, reviewed_at and reason. The gate then re-reads Jira: keep must still be open, done and wont_do must be Done, wont_do must carry the wont-do label, and done must not."
+      "note": "Review every non-Done item individually -- To Do and In Progress alike; only the sprint's own tickets are exempt. Bucket as done (already merged -- verify against the file), keep (real remaining work), or wont_do (stale or duplicate). Do not bulk-close. BEFORE moving anything, record the non-Done set (project = PLZG AND statusCategory != Done, minus the sprint's own tickets) as baseline_keys with baseline_captured_at in specs/evidence/sprint-5-triage.json: coverage is measured against that baseline, because a closed item leaves the live column and could not otherwise be shown to have been skipped. Each row carries key, bucket, reviewed_at and reason. The gate then re-reads Jira: keep must still be open, done and wont_do must be Done, wont_do must carry the wont-do label, and done must not.",
+      "evidence": "sprint_5_gate.py t2 exit 0 via loop_controller verify, 2026-10-06, at 106 rows: 106 triage row(s) cover 106 baseline key(s). Re-run by hand after review added the PLZG-247 row: 107 triage row(s) cover 106 baseline key(s), exit 0. 60 keep, 42 done, 4 wont_do of the baseline, plus one keep row for PLZG-247; owner approved applying the buckets. Evidence: specs/evidence/sprint-5-triage.json."
     },
     {
       "id": "T3",
@@ -110,11 +113,12 @@
       "acceptance": {
         "cmd": "python3 scripts/sprint_5_gate.py t5"
       },
-      "status": "todo",
-      "attempts": 0,
+      "status": "done",
+      "attempts": 1,
       "depends_on": ["T0"],
       "blocks": ["T6"],
-      "note": "Charter, loop plan, gate script and doc-registry.json update in one PR. The gate also asks Jira that the sprint exists on the board and holds every task ticket."
+      "note": "Charter, loop plan, gate script and doc-registry.json update in one PR. The gate also asks Jira that the sprint exists on the board and holds every task ticket.",
+      "evidence": "sprint_5_gate.py t5 exit 0 via loop_controller verify, 2026-10-06: sprint 51 (Sprint 5, active) on board 169 holds all 6 task tickets. Sprint started 2026-10-06, ends 2026-10-13."
     },
     {
       "id": "T6",
