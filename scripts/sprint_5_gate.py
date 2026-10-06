@@ -20,14 +20,15 @@ Jira, document content from git, the governed count from ``validate_specs.py``.
 
 Identifiers are NOT held here. The sprint, the board and every ticket key are
 read from the loop plan, which records what ``docs/delivery-coordinates.md``
-(``D-026``) owns. Credentials come from the environment, then ``./.env``, the
-same way ``generate_report.py`` reads them.
+(``D-026``) owns. Credentials come from ``./.env``, then the environment:
+``ATLASSIAN_EMAIL`` plus ``ATLASSIAN_API_TOKEN``, or a pre-encoded base64 value.
 
 Stdlib only. Exit codes: 0 pass, 1 the check failed, 2 it could not be run.
 """
 
 from __future__ import annotations
 
+import base64
 import json
 import os
 import re
@@ -104,8 +105,27 @@ def load_env() -> dict:
             if line and not line.startswith("#") and "=" in line:
                 key, value = line.split("=", 1)
                 env[key.strip()] = value.strip()
-    env.update({k: v for k, v in os.environ.items() if k.startswith("ATLASSIAN_")})
+    # ./.env WINS over the shell. direnv exports .env into the shell and keeps
+    # exporting a value after it is deleted from the file, so the environment
+    # can hold a revoked token the file no longer names. The environment is the
+    # fallback, for a runner that has no .env at all.
+    for key, value in os.environ.items():
+        if key.startswith("ATLASSIAN_"):
+            env.setdefault(key, value)
     return env
+
+
+def basic_credential(env: dict) -> str | None:
+    """The Basic credential: email plus API token, else a pre-encoded value.
+
+    Email plus token comes first because it is what Atlassian issues; the
+    base64 variables are a derived copy, and a derived copy is the one left
+    stale when the token is rotated.
+    """
+    email, api_token = env.get("ATLASSIAN_EMAIL"), env.get("ATLASSIAN_API_TOKEN")
+    if email and api_token:
+        return base64.b64encode(f"{email}:{api_token}".encode()).decode()
+    return next((env[v] for v in TOKEN_VARS if env.get(v)), None)
 
 
 _authenticated = False
@@ -123,12 +143,12 @@ def jira_get(endpoint: str, params: dict | None = None) -> dict:
         _authenticated = True
     env = load_env()
     site = env.get("ATLASSIAN_URL")
-    token = next((env[v] for v in TOKEN_VARS if env.get(v)), None)
+    token = basic_credential(env)
     if not site or not token:
         raise GateError(
-            "ATLASSIAN_URL and one of "
-            + " / ".join(TOKEN_VARS)
-            + " must be set in the environment or ./.env"
+            "ATLASSIAN_URL plus either ATLASSIAN_EMAIL and ATLASSIAN_API_TOKEN, or "
+            "one of " + " / ".join(TOKEN_VARS) + ", must be set in ./.env or the "
+            "environment"
         )
     url = f"https://{site}{endpoint}"
     if params:

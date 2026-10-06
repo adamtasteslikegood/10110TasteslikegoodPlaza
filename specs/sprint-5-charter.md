@@ -105,11 +105,13 @@ The sprint ends when both gates pass or the iteration cap is hit.
 | T6 | Sprint close — both gates green | PLZG-235 | `python3 scripts/sprint_5_gate.py t6` — re-runs T1–T4 and requires `review_complete: true` in the triage evidence | T1, T2, T3, T4, T5 |
 
 **The acceptance commands need a working Jira credential.** `sprint_5_gate.py`
-reads `ATLASSIAN_URL` and `ATLASSIAN_API_TOKEN_BASE64` from the environment or
-`./.env`, and proves the credential before trusting any search: Jira answers an
-unauthenticated search with an empty list rather than a refusal, so a revoked
-token would otherwise read as "no ticket matches". It exits 2, not 1, when it
-cannot authenticate. On 2026-10-05 the token in the working `.env` returned 401.
+reads `ATLASSIAN_URL`, `ATLASSIAN_EMAIL` and `ATLASSIAN_API_TOKEN` from `./.env`,
+then the environment, and proves the credential before trusting any search: Jira
+answers an unauthenticated search with an empty list rather than a refusal, so a
+revoked token would otherwise read as "no ticket matches". It exits 2, not 1,
+when it cannot authenticate. That is not hypothetical: on 2026-10-05 the token
+in the working `.env` had been revoked, and the first run reported all seven T1
+keys as not Done.
 
 **T1 was planned on a wrong assumption and has already run.** It was "transition
 6 false-WIP items to Done", taking a merged PR that carries a ticket's key as
