@@ -142,7 +142,8 @@ title.
 
 Adam owns and reviews all tasks. Two automated review layers, both advisory:
 
-1. **`claude-review.yml`** — independent reviewer on non-draft, same-repo PRs.
+1. **`claude-review.yml`** — independent reviewer on non-draft, same-repo PRs; it
+   skips Dependabot's PRs and events triggered by a bot.
 2. **GitHub Copilot code review** — set by the ruleset on `dev`; reviews each push.
 
 No `/codex` adversarial reviewer this sprint — the work is docs and board

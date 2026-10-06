@@ -200,7 +200,7 @@
         "github",
         "jira"
       ],
-      "reviewed_blob": "524ebddd821d97c5faf05eb99f18730238c57011",
+      "reviewed_blob": "d0e05608dc3dfe9af682674cf5596244d23a7252",
       "note": "Fixed: 114 non-Done was true at the start of 2026-10-05 and 111 by evening (PLZG-248, from Jira status history); one review layer (two); 28 documents stated as current; timestamp count stated as current though not re-measured; three 'Enforced by' cells that named the origin, not an enforcer. Acceptance text matches sprint_5_gate.py."
     },
     {

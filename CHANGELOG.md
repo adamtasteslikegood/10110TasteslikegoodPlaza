@@ -17,6 +17,24 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
 
+### Changed — Sprint 5 close: both gates green (`PLZG-235`)
+
+- `python3 scripts/sprint_5_gate.py t6` passes: it re-reads T1–T4 from Jira and the
+  tree, requires the triage to be complete, and requires a fresh flow snapshot.
+- **Gate A, board triaged.** Of the 106 items that were not Done when triage began,
+  47 are closed with evidence (43 done, 4 won't do) and 59 are kept as deliberate
+  backlog. Eight tickets filed during the sprint each have a row; three of those
+  are already closed.
+- **Gate B, doc consolidation.** 19 governed documents, down from 28, each
+  cross-checked at its current content.
+- **Carried out of the sprint, not resolved:** open conflicts §4.11 (does a rule
+  outlive its charter) and §4.12 (orchestration command counts), the storyboard
+  references (`PLZG-251`), and two late review findings (`PLZG-252`, `PLZG-254`).
+- `data/plzg-flow-snapshot.json` refreshed at 2026-10-06T11:13 PDT: 223 total,
+  159 done, 2 in progress.
+- `specs/sprint-5-charter.md` now says the Claude reviewer skips Dependabot PRs and
+  bot-triggered events (`PLZG-253`).
+
 ### Fixed — state claims in the 19 governed documents, checked against what owns them (`PLZG-233`)
 
 Sprint 5 T4. Every governed document was read in full and each claim about the
