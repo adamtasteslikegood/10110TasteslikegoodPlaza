@@ -1,5 +1,5 @@
 {
-  "$comment": "Evidence for Sprint 5 T2 (PLZG-231). baseline_keys is every PLZG issue that was not Done when triage began, minus the sprint's own task tickets; it was captured before any item was moved. scripts/sprint_5_gate.py t2 reads this file and re-reads Jira.",
+  "$comment": "Evidence for Sprint 5 T2 (PLZG-231). baseline_keys is every PLZG issue that was not Done when triage began, minus the sprint's own task tickets; it was captured before any item was moved. scripts/sprint_5_gate.py t2 reads this file and re-reads Jira. Each row was reviewed individually against the files on dev at 92cb11d, not inferred from a merged PR; `reason` carries the evidence. Buckets are PROPOSED until the board matches them -- the gate fails on any row whose bucket and live status disagree.",
   "baseline_captured_at": "2026-10-06T04:08:15-07:00",
   "baseline_query": "project = PLZG AND statusCategory != Done",
   "baseline_keys": [
@@ -111,5 +111,854 @@
     "PLZG-246"
   ],
   "review_complete": false,
-  "items": []
+  "items": [
+    {
+      "key": "PLZG-2",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": null,
+      "reason": "Phase 3 story; none of its scope exists on dev (office.gd:3-7 has only lobby/corridor/server room, no animations/pathfinding/audio in scenes/) and its child PLZG-5 is To Do."
+    },
+    {
+      "key": "PLZG-3",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": null,
+      "reason": "Phase 1 story with unfinished children PLZG-13 (M2), PLZG-30 (M5), PLZG-35 (M6); specs/roadmap.md:66-70 room checklist unchecked, scenes/hud/ holds only dialogue_panel, GameState.gd UNLOCK_GATES = {}."
+    },
+    {
+      "key": "PLZG-4",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": null,
+      "reason": "Root epic; child stories PLZG-2 and PLZG-3 are unfinished (M2/M5/M6 not built, Phase 3 not started)."
+    },
+    {
+      "key": "PLZG-5",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": null,
+      "reason": "Phase 3 breakdown was explicitly gated on M8; M8 now works (scenes/hud/dialogue_panel.gd:9, roadmap.md:373-374 checked) so the ticket is unblocked, but no Phase 3 breakdown exists in specs/roadmap.md (it ends at Milestone 8) or on the board (PLZG-2 has only this child)."
+    },
+    {
+      "key": "PLZG-13",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": null,
+      "reason": "M2 partially delivered only: scenes/world/office.gd:3-7 builds lobby, corridor and server room and says the remaining rooms are M2; specs/roadmap.md:66-70 (player's office, engineering floor, war room) unchecked; no locked corridors."
+    },
+    {
+      "key": "PLZG-25",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": null,
+      "reason": "No multiplayer decision recorded: grep for 'multiplayer' across specs/meta/decision-register.md (D-001..D-030), docs/designs/*, storyboard and roadmap returns nothing."
+    },
+    {
+      "key": "PLZG-26",
+      "bucket": "done",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": null,
+      "reason": "Settled by D-013 'Wait or delegate' (decision-register.md:55, LOCKED; design doc Scope Decision #2 ACCEPTED) with D-006 sync+timeout and D-007 typewriter; implemented at scenes/hud/dialogue_panel.gd:100 ('Thinking...' status, input locked while waiting). Background-delegation UI is explicitly a future phase in the design doc."
+    },
+    {
+      "key": "PLZG-28",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "medium",
+      "github_issue": null,
+      "reason": "De facto resolved as freeform single-question input (dialogue_panel.gd:9,26 LineEdit -> BridgeClient.send_query) but no D-nnn and nothing in docs/designs/2.5D-RPG-Prototype.md records the branching model; scripted-opening/hybrid is not ruled out. Remaining work is registering the decision. 'blocks-m4' label is stale (M4 shipped)."
+    },
+    {
+      "key": "PLZG-30",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": null,
+      "reason": "M5 not built: scenes/hud/ contains only dialogue_panel.{gd,tscn}; no assistant overlay scene/script, no Tab/tilde toggle anywhere in scenes/ or project.godot; GameState.gd:19 comment says 'Empty until M5 introduces real tasks'."
+    },
+    {
+      "key": "PLZG-31",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": null,
+      "reason": "No in-game time model decision: nothing in decision-register.md or the design doc; storyboard uses Day 0-5 beats but does not define how time advances."
+    },
+    {
+      "key": "PLZG-35",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": null,
+      "reason": "M6 not done: autoload/GameState.gd has complete_task()/unlock()/is_unlocked() wiring but UNLOCK_GATES = {} (line 20), office.gd:107-113 leaves the only door open, and no building-map widget exists in scenes/hud/."
+    },
+    {
+      "key": "PLZG-54",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "medium",
+      "github_issue": null,
+      "reason": "Company name: docs/storyboard-week1.md:210-215 'Still to define' still unchecked and specs/meta/concept-driver.md:138-143 lists it as an open concept question that only the human owner may close (landing in the storyboard first). SB-01 (storyboard:43) names the building, not the company, and no founder name exists. Note board twin PLZG-89 'Define tutorial startup - company name and backstory' is marked Done, which the storyboard contradicts - possible false-Done / duplicate pair for the owner to reconcile."
+    },
+    {
+      "key": "PLZG-56",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": null,
+      "reason": "Player name/customisation: docs/storyboard-week1.md:210-215 'Still to define' still unchecked and specs/meta/concept-driver.md:138-143 lists it as an open concept question that only the human owner may close (landing in the storyboard first); GameState.gd:23 player_config is an empty Dictionary with no consumer. D-002 fixes framing (co-founder) only."
+    },
+    {
+      "key": "PLZG-58",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": null,
+      "reason": "Day 0 script: docs/storyboard-week1.md:210-215 'Still to define' still unchecked and specs/meta/concept-driver.md:138-143 lists it as an open concept question that only the human owner may close (landing in the storyboard first) ('Specific dialogue scripts for Day 0 and Day 1'); storyboard:40-43 SB-01 has only a beat summary, no script, and no dialogue data file exists in data/."
+    },
+    {
+      "key": "PLZG-60",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": null,
+      "reason": "Day 1 scripts: docs/storyboard-week1.md:210-215 'Still to define' still unchecked and specs/meta/concept-driver.md:138-143 lists it as an open concept question that only the human owner may close (landing in the storyboard first). Both NPCs are placed (scenes/world/office.tscn:9,13) and the 'scripted responses to queries' part is superseded by the live bridge (M8, D-006), but intro and handoff lines are unwritten."
+    },
+    {
+      "key": "PLZG-62",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "medium",
+      "github_issue": null,
+      "reason": "Assistant name/personality: docs/storyboard-week1.md:210-215 'Still to define' still unchecked and specs/meta/concept-driver.md:138-143 lists it as an open concept question that only the human owner may close (landing in the storyboard first); D-010 fixes only that it is a scripted guide, not a name. Note board twin PLZG-88 'Define in-world assistant - name and personality' is marked Done, contradicted by the storyboard - possible false-Done / duplicate pair."
+    },
+    {
+      "key": "PLZG-63",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "medium",
+      "github_issue": null,
+      "reason": "Art direction: docs/storyboard-week1.md:210-215 'Still to define' still unchecked and specs/meta/concept-driver.md:138-143 lists it as an open concept question that only the human owner may close (landing in the storyboard first) ('Visual style for grey-box vs final art'); D-001/D-011/D-012 fix register and placeholder sprites only, no moodboard/palette doc in docs/. Note board twin PLZG-91 'Define art direction and rough visual moodboard' is marked Done - possible false-Done / duplicate pair."
+    },
+    {
+      "key": "PLZG-65",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": null,
+      "reason": "Sound direction: docs/storyboard-week1.md:210-215 'Still to define' still unchecked and specs/meta/concept-driver.md:138-143 lists it as an open concept question that only the human owner may close (landing in the storyboard first) ('Sound design / music direction'); no direction doc, no audio referenced by any scene, and Soundtrack/*.wav.import files are untracked in the working tree, not a decision on dev."
+    },
+    {
+      "key": "PLZG-68",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "medium",
+      "github_issue": null,
+      "reason": "No save-format decision in decision-register.md or the design doc; roadmap.md:246 only has a code comment 'Use ConfigFile or JSON'; GameState.gd has no save/load. Overlaps PLZG-73 (same question plus implementation) - a consolidation candidate, 73 being the superset, but filed as a deliberate decision/implementation pair. 'blocks-m3' label stale (M3 shipped)."
+    },
+    {
+      "key": "PLZG-69",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "medium",
+      "github_issue": null,
+      "reason": "De facto implemented as an out-of-world status line (scenes/hud/dialogue_panel.gd:116-121 sets 'Error: <message>'; ws_client.gd:89-100 maps error_type/message) but no D-nnn or design-doc entry records the error-UX decision. Remaining work is registering it. 'blocks-m8' label stale."
+    },
+    {
+      "key": "PLZG-70",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": null,
+      "reason": "No platform-target decision in decision-register.md or docs/designs/platform-decisions.md; no export_presets.cfg in the repo; CI 'Export Godot 4 Prototype' job only runs the Linux headless smoke test."
+    },
+    {
+      "key": "PLZG-72",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": null,
+      "reason": "No dialogue data format defined: data/ holds only agents.json and plzg-flow-snapshot.json, no dialogue files, no writer doc; dialogue panel renders agent description + live bridge output only."
+    },
+    {
+      "key": "PLZG-73",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": null,
+      "reason": "No save format decided and no load/save in autoload/GameState.gd (state is in-memory arrays reset in _ready()); see PLZG-68 for the decision half."
+    },
+    {
+      "key": "PLZG-74",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "medium",
+      "github_issue": null,
+      "reason": "Desktop is implied (D-015 local Python WebSocket bridge cannot run in a web export) but no web-vs-desktop decision is logged in decision-register.md or platform-decisions.md, and the deliverable's export templates/presets do not exist (no export_presets.cfg). 'blocks-m1' label is stale (M1 shipped)."
+    },
+    {
+      "key": "PLZG-86",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "low",
+      "github_issue": null,
+      "reason": "Phase 0 story: all board children (PLZG-88/89/90/91) are Done and data/agents.json exists (D-016/D-024), but its content-definition scope (assistant name, company name, art direction, data formats) is still open per docs/storyboard-week1.md:210-215 and tracked by open PLZG-54/62/63/72/73. Close only if the owner accepts those as the carriers."
+    },
+    {
+      "key": "PLZG-87",
+      "bucket": "done",
+      "reviewed_at": "2026-10-06",
+      "confidence": "medium",
+      "github_issue": null,
+      "reason": "Phase 2 = M7+M8, both on dev: bridge/server.py:28 LISTEN_PORT=8765, scenes/bridge/ws_client.gd:9, dialogue_panel.gd:95-113 query->response->typewriter, specs/roadmap.md:373-374 checked. Caveats: board children PLZG-92 and PLZG-93 (M8, not in this batch) are still To Do and must be closed with it; tests/smoke_test.gd:289-294 simulates the bridge response rather than calling the bridge (GitHub #159 open)."
+    },
+    {
+      "key": "PLZG-92",
+      "bucket": "done",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": null,
+      "reason": "M7 present: bridge/server.py:28 LISTEN_PORT = 8765 (D-015), bridge/bridge.py, scenes/bridge/ws_client.gd:9 BRIDGE_URL ws://localhost:8765 registered as the BridgeClient autoload (smoke_test.gd:66); roadmap.md:373 checked. Implementation uses the Claude SDK (bridge/domain_session.py:19 ClaudeSDKClient) rather than a raw CLI subprocess."
+    },
+    {
+      "key": "PLZG-93",
+      "bucket": "done",
+      "reviewed_at": "2026-10-06",
+      "confidence": "medium",
+      "github_issue": null,
+      "reason": "M8 pipe is on dev: scenes/hud/dialogue_panel.gd:103 calls BridgeClient.send_query, autoload at project.godot:24 (scenes/bridge/ws_client.gd), bridge/ package present, response+typewriter asserted in tests/smoke_test.gd:274-294. Caveat: the ticket's last clause ('response also logged to inbox', specs/roadmap.md:340) has no implementation anywhere in scenes/ autoload/ bridge/ - the active 2.5D design doc does not mention an inbox, and the bridge uses the SDK rather than the CLI."
+    },
+    {
+      "key": "PLZG-101",
+      "bucket": "done",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 30,
+      "reason": "PR #28 MERGED 2026-07-29 (464239a); all four deliverables present on dev: .claude/skills/grill-with-specs/SKILL.md, package.json task facade (test = validate && import && smoke), PR policy in .claude/pr-workflow.md:12-14, and post_to_confluence.py:47-57 has no fallback and no TLG page ids (now env-driven per PLZG-109)."
+    },
+    {
+      "key": "PLZG-102",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 31,
+      "reason": "Still undecided: .claude/settings.json extraKnownMarketplaces.claude-code-skills.source has only source+repo, no ref/sha, and .claude/README.md carries no statement accepting drift; the unpinned surface has grown to five claude-code-skills plugins. GitHub twin #31 (and duplicate #26) both open."
+    },
+    {
+      "key": "PLZG-113",
+      "bucket": "done",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 53,
+      "reason": "PR #54 MERGED 2026-07-30 (7e82da8, c8ef46d). Sync contract lives in .claude/gbrain.md:21-37,86 (strategy auto, overlap rule, quota trap); report.md is untracked (git ls-files empty) and in .gitignore:28. Index itself is per-machine and not checkable from the repo."
+    },
+    {
+      "key": "PLZG-118",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "medium",
+      "github_issue": 61,
+      "reason": "Half done. Part 1 fixed: CLAUDE.md:144 now reads ~/.claude/plugins/cache/<marketplace>/<plugin>/<version>/ (8b5e0a9). Part 2 not fixed in the file the ticket names: specs/sprint-2-charter.md:388 still resolves with `find ... -print -quit`; only specs/sprint-2-loop-plan.json:143 got a sorted, sha256-asserting resolver (PLZG-129, 5a90615)."
+    },
+    {
+      "key": "PLZG-120",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 66,
+      "reason": "Not fixed: CLAUDE.md:15 still says 'real gates since v0.2.8' and CLAUDE.md:99 'passed vacuously until v0.2.8', while CHANGELOG.md:15-16 still says citing v0.2.8 as a software release is conflating the two axes. No commit or PR carries the key."
+    },
+    {
+      "key": "PLZG-122",
+      "bucket": "done",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 71,
+      "reason": "scripts/check_sync.sh:135-142 now resolves PLZG_BASE_REF -> own upstream only when HEAD is dev/main -> origin/dev; @{upstream} is no longer consulted for feature branches (comment :117-129). The stray `set -u` in --help is gone too (:41 uses awk instead of a sed line range)."
+    },
+    {
+      "key": "PLZG-123",
+      "bucket": "done",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 72,
+      "reason": "CHANGELOG.md:467-477 now states the shipped precedence ('own upstream only when HEAD is itself dev or main') and adds 'A release branch needs PLZG_BASE_REF ... the script does not infer it'; the phrase 'stays correct on a release branch' no longer appears. Commit a40ecb0 (on dev)."
+    },
+    {
+      "key": "PLZG-126",
+      "bucket": "done",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 78,
+      "reason": "scripts/check_sync.sh:86-95 tracks FETCH_OK and :155 gates the origin/HEAD fallback on FETCH_OK=1 rather than $FETCH (6217dfd, on dev); tests/check_sync_matrix.sh:140-157 adds the real unreachable-remote case asserting UNKNOWN."
+    },
+    {
+      "key": "PLZG-127",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 79,
+      "reason": "Not fixed: scripts/check_sync.sh:109 is still `git fetch origin --quiet \"${candidate#origin/}\"` with no `--`, there is no rejection of a leading '-' in PLZG_BASE_REF (:135-136), and tests/check_sync_matrix.sh has no such case. No commit or PR carries the key."
+    },
+    {
+      "key": "PLZG-139",
+      "bucket": "done",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 94,
+      "reason": "QUICKSTART.md no longer mentions requests at all (pip lines :60-62 are websockets/anthropic/claude-agent-sdk, flake8/black, pyyaml) and ci.yml:132 installs flake8 black websockets only. Fixed by ce1abf0 'stop installing requests, which nothing in this repo imports' (PLZG-109, on dev)."
+    },
+    {
+      "key": "PLZG-140",
+      "bucket": "done",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 96,
+      "reason": "Option A taken: specs/meta/decision-register.md:76 (D-026) now says 'No script is a second source any more ... since PLZG-109' and marks the arbitration clause 'Retired 2026-08-03, kept as history' (PR #136)."
+    },
+    {
+      "key": "PLZG-142",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 98,
+      "reason": "Not started: only README.md opens with frontmatter; CLAUDE.md, QUICKSTART.md, CONTRIBUTING.md, CHANGELOG.md open with a bare H1, scripts/validate_specs.py:37 still has GOVERNED_ROOT_FILES = (\"README.md\",) and all four remain in doc-registry.json's exempt block. Owner-requested; needs the cosmetic-vs-governed decision."
+    },
+    {
+      "key": "PLZG-143",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 100,
+      "reason": "Not done: CLAUDE.md is 201 lines and still carries the summarising sections the ticket lists (Atlassian coordinates, submodule, Which document wins, Doc layout table). Owner-requested structural change; no commit or PR carries the key."
+    },
+    {
+      "key": "PLZG-146",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 110,
+      "reason": "Still wrong and now worse: CLAUDE.md:92 says 'Four jobs' while .github/workflows/ci.yml defines eight (adds Validate Delivery Coordinates, Check Sync Matrix, Spec Enforcement Matrix, Bridge Unit Tests). GitHub #110 open, with later duplicate rounds #209 and #210 for the same defect."
+    },
+    {
+      "key": "PLZG-147",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 111,
+      "reason": "Undecided: the enum is still four values (specs/meta/spec-frontmatter.schema.json:98; META-SPEC.md:105-109 'intended = Aspiration. Explicitly not yet true') and the D-027 row (decision-register.md:88) records none of options a/b/c. Needs an owner decision on a LOCKED row."
+    },
+    {
+      "key": "PLZG-148",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 112,
+      "reason": "Not fixed: CLAUDE.md:129 still reads 'Intended policy only - says \"ClaudeForge\", names workflows this repo lacks' and CLAUDE.md:157 still says it 'says \"ClaudeForge\" throughout ... intended policy, not active rules', while specs/branching-strategy.md:33-39 documents enforced rules."
+    },
+    {
+      "key": "PLZG-149",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 113,
+      "reason": "Conflict still standing: docs/agent-directory.md:475-476 says 'The 19 orchestration commands ... 24 of 132', docs/designs/platform-decisions.md:128-129 and decision-register.md:14,72 say '19 of the 24 ... covering 26 of the 132'. The submodule at pin b7ec149 has 24 non-README files under commands/, so agent-directory looks like the wrong one; not logged in spec-drivers-v0.2.5.md section 4 ('none open')."
+    },
+    {
+      "key": "PLZG-153",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 121,
+      "reason": "Not fixed: scripts/validate_specs.py:826-827 still call json.loads on the schema and registry with no try/except JSONDecodeError, and tests/spec_enforcement_matrix.sh has no malformed-registry fixture."
+    },
+    {
+      "key": "PLZG-156",
+      "bucket": "done",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 127,
+      "reason": "specs/branching-strategy.md:13 weakest_claim is now 'Convention, followed in practice' and :84 reads 'Runs godot --headless tests/smoke_test.tscn ... It was a stub echo when this row was written ... Corrected 2026-08-02' (c6a6ef5, on dev). GitHub twin #127 was never closed."
+    },
+    {
+      "key": "PLZG-157",
+      "bucket": "done",
+      "reviewed_at": "2026-10-06",
+      "confidence": "medium",
+      "github_issue": 128,
+      "reason": "specs/branching-strategy.md:163-171 (section 5) now records allowed_merge_methods [merge, rebase] vs repo settings, dated 'read from the API 2026-08-02', and names tightening it an owner call (c6a6ef5, on dev). It is prose under the rules table rather than a table row; GitHub #128 was closed NOT_PLANNED."
+    },
+    {
+      "key": "PLZG-159",
+      "bucket": "done",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 131,
+      "reason": "scripts/validate_delivery_coordinates.py:250-256 guards with `if not isinstance(sprint, dict): sprint = {}` and tests/spec_enforcement_matrix.sh:468-469 adds the s['sprint'] = 'unknown' fixture (fb640be, on dev)."
+    },
+    {
+      "key": "PLZG-160",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 134,
+      "reason": "Not implemented: scripts/validate_specs.py has no reference to the 'Doc set version' footer (grep for footer/FOOTER/'Doc set version' is empty) and tests/spec_enforcement_matrix.sh has no fixture for it. Only the five stale footers were corrected in PR #133."
+    },
+    {
+      "key": "PLZG-161",
+      "bucket": "done",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 135,
+      "reason": "Both fixed in 3e55bb3 (on dev): doc-registry.json's SPRINT-3-CHARTER note now says 'Declared derived until T7 ... Now declares delivery', and spec-drivers-v0.2.5.md:369,376-378 say D-028 was 'registered in v0.2.10' and taken up by the charters in v0.2.11."
+    },
+    {
+      "key": "PLZG-162",
+      "bucket": "done",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 137,
+      "reason": "docs/delivery-coordinates.md:26-35 now says 'No script is a second source any more' and quotes the old clause under 'Retired 2026-08-03, kept as history' (08ac94c, on dev), consistent with :358."
+    },
+    {
+      "key": "PLZG-163",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 138,
+      "reason": "Not fixed: CONTRIBUTING.md:15 still reads 'Match it to a Jira ticket in project `TO` if one exists'. Clause-(a) coverage of exempt process docs is also still undecided. Older GitHub duplicate rounds #35 and #45 cover the same line."
+    },
+    {
+      "key": "PLZG-164",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "low",
+      "github_issue": 143,
+      "reason": "Probably closable but not verifiable from the repo: docs/delivery-coordinates.md:157-170 (PR #145, merged 2026-08-10) records the old Jira merge rule disabled and 'PR merged -> nothing, Done is a human transition - holds', which meets acceptance 1 and deliberately supersedes acceptance 2. The automation lives in Jira, which I could not inspect, and the same section (:187-205) records the replacement PR-creation rule still over-matching on prose mentions (false In Progress), with the title/branch narrowing this ticket proposed still not applied."
+    },
+    {
+      "key": "PLZG-165",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 147,
+      "reason": "Half fixed. specs/sprint-2-loop-plan.json:143 now asserts EXPECT=34c869f2... and exits 1 on mismatch (15412b2), but specs/sprint-3-loop-plan.json:190 still only checks installs agree with each other and never compares against gate_sha256 (line 191); the ticket says the fix must cover both. GitHub twin #147 was auto-closed by the 'issue arborist' bot (PR merged), not by a fix."
+    },
+    {
+      "key": "PLZG-166",
+      "bucket": "done",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 148,
+      "reason": "CHANGELOG.md:155 '### Fixed — Sprint 2's close gate now runs from a fresh checkout (PLZG-129)' exists under [Unreleased], added by 15412b2."
+    },
+    {
+      "key": "PLZG-167",
+      "bucket": "done",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 149,
+      "reason": "Corroborated first-hand: PR #144 (merged 2026-08-08T23:20:42Z) body reads '...consistent with PLZG-142, which tracks the frontmatter gap across root-level docs and is untouched here', matching docs/delivery-coordinates.md:225-228; a comment on GitHub #143 records the fifth false-Done (auto-closed 23:20:47Z), so the doc and the issue are reconciled."
+    },
+    {
+      "key": "PLZG-168",
+      "bucket": "done",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 150,
+      "reason": "CHANGELOG.md:140 '### Changed — PR-driven status automation and the Linear OFFICE rename (PLZG-164)' exists under [Unreleased], added by 7888c5e."
+    },
+    {
+      "key": "PLZG-169",
+      "bucket": "done",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 152,
+      "reason": "Both defects fixed (1425295): docs/designs/platform-decisions.md:39-43 now reads 'Nine of these were already made... D-029 is the exception: it is a new decision'; specs/sprint-4-charter.md:101 T1 acceptance now includes 'test -f specs/sprint-4-loop-plan.json', identical to the loop plan's T1 cmd."
+    },
+    {
+      "key": "PLZG-178",
+      "bucket": "wont_do",
+      "reviewed_at": "2026-10-06",
+      "confidence": "medium",
+      "github_issue": 161,
+      "reason": "Superseded by 906d055 ('restore setup-token as primary auth path', PLZG-170). The requested rewording to ANTHROPIC_API_KEY-only was applied in b0a48ae and then deliberately reversed: specs/sprint-4-charter.md:49-51, sprint-4-loop-plan.json line 2 and line 57, and doc-registry.json:180 now all agree on setup-token OAuth primary / ANTHROPIC_API_KEY fallback, so no drift remains."
+    },
+    {
+      "key": "PLZG-179",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 162,
+      "reason": "Both defects still live on dev. specs/meta/decision-register.md:73-76 orders D-023, D-029, D-030, D-026 (not ascending). specs/sprint-4-charter.md:102,105-107 still give T2 as bare py_compile and T4/T5/T6 without 'godot --headless --import', while sprint-4-loop-plan.json T2/T4/T5/T6 carry the import check / --import step. GitHub #162 was bot-auto-closed on PR merge only."
+    },
+    {
+      "key": "PLZG-181",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 166,
+      "reason": "Partially fixed. Fixed: path traversal (bridge/agents.py:16-30 slug regex + realpath check; raw-file fallback gone), Opus IDs (scripts/ANTHROPIC_MODEL_ROUTER_*.py now claude-opus-4-6/4-8), content[0].text (HOOKSANDLOGGING.py:62). Still open: no origins= allowlist on websockets.serve (bridge/server.py:123-127, CSWSH), MODEL_HAIKU='claude-3-5-haiku-latest' in both router scripts, and the inverted branch at Template.py:106-116 (subscription is used only when no API client exists; paid API goes first otherwise). GitHub #166 bot-auto-closed."
+    },
+    {
+      "key": "PLZG-182",
+      "bucket": "done",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 168,
+      "reason": ".github/workflows/ci.yml:147-164 has a 'Bridge Unit Tests' job running 'pytest bridge/tests/ -v' (ada9d56, PLZG-209); CHANGELOG.md records it under 'Added — DevOps foundation'."
+    },
+    {
+      "key": "PLZG-183",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 169,
+      "reason": "Finding 1 still live: bridge/conversation.py:33-43 builds Anthropic(...) with default max_retries and line 95 passes a per-attempt timeout, so total latency is not bounded to 60s (no max_retries=0 / wait_for anywhere in bridge/). Findings 2-3 are fixed: bridge/bridge.py:18 inserts the repo root on sys.path and conversation.py:14 imports load_agent unconditionally; the call now runs via asyncio.to_thread (server.py:65). GitHub #169 still OPEN."
+    },
+    {
+      "key": "PLZG-184",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 170,
+      "reason": "Not fixed. bridge/sync.py has no EXCLUDED/RENAMES table (only the 'collision ... skipping duplicate' path at lines 64-65); bridge/agents/ holds 130 files with no support-ticket-handler.md or educational-content-writer.md, and infrastructure-maintainer/customer-support/tutorial-engineer present once each. GitHub #170 bot-auto-closed on PR merge only."
+    },
+    {
+      "key": "PLZG-185",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 172,
+      "reason": "Unreconciled and explicitly a human call. D-025 (specs/meta/decision-register.md:58) still says 'the three autoloads stay in autoload/' while project.godot:24 registers a fourth autoload BridgeClient at res://scenes/bridge/ws_client.gd (no .tscn beside it); no amendment to D-025 and no open-conflict-register entry found. The secondary godot-conventions.md staleness note is fixed (.claude/godot-conventions.md:21,25,48). GitHub #172 bot-auto-closed."
+    },
+    {
+      "key": "PLZG-186",
+      "bucket": "done",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 173,
+      "reason": "CHANGELOG.md:113-129 'Added — M7 + M8 agent bridge layer (PLZG-171–PLZG-176)' lists scenes/bridge/ws_client.gd, the BridgeClient autoload and the three GameEvents signals. It cites the key range rather than PR #171 by number."
+    },
+    {
+      "key": "PLZG-188",
+      "bucket": "done",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 179,
+      "reason": "Both asks met: PR #178 is now titled 'fix(hud): PLZG-180 Escape releases LineEdit focus...' (merged 2026-08-11) and CHANGELOG.md:101-110 has 'Fixed — Escape now reliably releases LineEdit focus (PLZG-180)'."
+    },
+    {
+      "key": "PLZG-189",
+      "bucket": "done",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 180,
+      "reason": "scenes/hud/dialogue_panel.gd:26 field renamed _question_input; :40-44 uses _input(event) guarded on _panel.visible and _question_input.has_focus() (8be86bc, merged via PR #178). All three required-fix bullets present."
+    },
+    {
+      "key": "PLZG-190",
+      "bucket": "done",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 181,
+      "reason": "CLAUDE.md now says M7/M8 done and 'Layer 3 — UI-agnostic bridge (DONE M7–M8)'; .claude/godot-conventions.md:25 'bridge/ # Python bridge layer (M7–M8, done — Sprint 4)' and :36 'shipped in Sprint 4 (M7–M8)'."
+    },
+    {
+      "key": "PLZG-192",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 185,
+      "reason": "PLZG-key half is done (PR #184 retitled 'fix(hud): PLZG-202 ...', merged 2026-08-13), but CHANGELOG.md has no entry for either bundled change: grep for scroll/overflow/RichTextLabel/PLZG-202/OAuth returns nothing. GitHub #185 bot-auto-closed on PR merge only."
+    },
+    {
+      "key": "PLZG-193",
+      "bucket": "wont_do",
+      "reviewed_at": "2026-10-06",
+      "confidence": "medium",
+      "github_issue": 186,
+      "reason": "Moot: the ask was to rebase fix/dialog-overflow off PR #182 before merge. PR #184 merged 2026-08-13 with the OAuth commits (2149c17 and 7dd7297 are both ancestors of origin/dev) and PR #182 was CLOSED unmerged; merge commits cannot be un-stacked (D-023). The OAuth code's own review findings (0AUTH typo alias, sk-ant- prefix check, still at bridge/conversation.py:30-41) are not tracked by this ticket."
+    },
+    {
+      "key": "PLZG-196",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 190,
+      "reason": "CHANGELOG.md still has no entry for the domain architecture: no PLZG-197, domain_manager, two-engine or 'domain architecture' hit; the only domain_session mention (line 39) is the later PLZG-200 docstring fix. PR #188 merged 2026-08-13. GitHub #190 bot-auto-closed on PR merge only."
+    },
+    {
+      "key": "PLZG-197",
+      "bucket": "done",
+      "reviewed_at": "2026-10-06",
+      "confidence": "medium",
+      "github_issue": 191,
+      "reason": "All five deliverables are on dev via PR #188 (merged 2026-08-13, title carries PLZG-197): bridge/protocol.py, bridge/conversation.py, bridge/domain_session.py, bridge/domain_manager.py, bridge/server.py (dispatch routes conversation vs domain_query vs lifecycle), with tests in bridge/tests/ run by CI. Jira JQL 'parent = PLZG-197' returns no children; follow-ups PLZG-198 and the missing CHANGELOG entry (PLZG-196) are separate tickets that stay open."
+    },
+    {
+      "key": "PLZG-198",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 192,
+      "reason": "None of the five items is done: bridge/domain_session.py:178-193 _execute_query has no try/except and no ResultMessage.is_error check; bridge/server.py:51-52 calls data.get() with no dict check; _handle_lifecycle (server.py:83-98) has no exception handling; domain_manager.py:80-89 background_domain calls session.background() unguarded."
+    },
+    {
+      "key": "PLZG-201",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 195,
+      "reason": "Not restored: project.godot:1-7 is still the Godot-generated boilerplate header, and the D-001 / ui_* input-map rationale was not folded into .claude/godot-conventions.md (no ui_left or D-001 hit there). GitHub #195 bot-auto-closed on PR merge only."
+    },
+    {
+      "key": "PLZG-202",
+      "bucket": "done",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 196,
+      "reason": "scenes/hud/dialogue_panel.tscn:66-69 BodyLabel is a RichTextLabel with scroll_active=true; dialogue_panel.gd:55-60 drives the scrollbar to follow the reveal and :130-132 resets it on new text; tests/smoke_test.gd:271-272 asserts scroll_active. Merged via PR #184 (2026-08-13). GitHub #196 is still OPEN."
+    },
+    {
+      "key": "PLZG-203",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 197,
+      "reason": "Finding 1 fixed (d8a7417): dialogue_panel.gd:58-60 now targets frac * (max_value - page). Finding 2 not fixed: tests/smoke_test.gd:271-272 still only asserts body_label.scroll_active, the sole 'scroll' reference in the test, so the auto-follow block remains unguarded. GitHub #197 bot-auto-closed."
+    },
+    {
+      "key": "PLZG-204",
+      "bucket": "done",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 200,
+      "reason": "CHANGELOG.md:90-99 'Added — Claude Code TUI statusline customization (PLZG-200)' covers the statusline scripts, cc_session.py and docs/cc-statusline-protocol.md."
+    },
+    {
+      "key": "PLZG-205",
+      "bucket": "done",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 201,
+      "reason": "CHANGELOG.md:90 heading now cites PLZG-200, corrected by 4100126 ('fix(docs): PLZG-200 correct Jira key in CHANGELOG entry'). The original commit 7690d3d's subject still says PLZG-199, which the ticket itself treats as optional."
+    },
+    {
+      "key": "PLZG-206",
+      "bucket": "done",
+      "reviewed_at": "2026-10-06",
+      "confidence": "medium",
+      "github_issue": 202,
+      "reason": "doc_set_version is now 0.2.13 across the set (specs/meta/doc-registry.json:3; validate_specs.py prints 'doc set v0.2.13', 28 docs), bumped in 3d0b73b (PLZG-229). The bump came with the Sprint 5 charter rather than in D-030's own commit, so the same-commit rule was not met retroactively, but the requested end state exists."
+    },
+    {
+      "key": "PLZG-207",
+      "bucket": "wont_do",
+      "reviewed_at": "2026-10-06",
+      "confidence": "medium",
+      "github_issue": 205,
+      "reason": "PR #204 merged 2026-08-14 with title 'chore: set advisorModel to fable in project settings' (still no key); the change is live at .claude/settings.json:27 and GitHub twin #205 was closed. Retro-keying a merged one-line settings PR is moot; no CHANGELOG entry exists for it either (grep advisorModel/#204 in CHANGELOG.md = 0 hits). Note: GitHub still technically allows editing a merged PR title."
+    },
+    {
+      "key": "PLZG-208",
+      "bucket": "done",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 207,
+      "reason": "Duplicate of PLZG-209 (Jira status Done), shipped by PR #208 (merged 2026-08-15, ada9d56). Verified on dev: ci.yml:146 bridge-tests job, .github/workflows/issue-triage.yml, .claude/routines/ (3 files), release-please.yml + release-please-config.json, docs/devops-setup.md covering all five areas. .claude-code-router.json was deliberately dropped in 69e4245 (routing is configured via the ccr UI, devops-setup.md section 1)."
+    },
+    {
+      "key": "PLZG-210",
+      "bucket": "wont_do",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 209,
+      "reason": "Duplicate of PLZG-211 (same defect; 211 carries the acceptance command). The defect itself is still live: CLAUDE.md:15 and :92 say four jobs, ci.yml has 8."
+    },
+    {
+      "key": "PLZG-211",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 210,
+      "reason": "Not fixed: CLAUDE.md:15 ('whose four jobs') and CLAUDE.md:92 ('Four jobs:') still present while .github/workflows/ci.yml defines 8 jobs (lines 25, 41, 59, 71, 92, 118, 146, 166). The acceptance grep would return 2, not 0."
+    },
+    {
+      "key": "PLZG-212",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 211,
+      "reason": "Precondition not reached: release-please has never run on main (origin/main tip 40ba080, no release PR, .release-please-manifest.json still 0.1.22, latest release v0.1.22 2026-07-30) and CHANGELOG.md:18 [Unreleased] is populated. Work remains for the first dev->main release."
+    },
+    {
+      "key": "PLZG-213",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "low",
+      "github_issue": 212,
+      "reason": "Could not verify: .claude/routines/ holds the 3 prompt templates, but whether they are registered in the Claude routines list is account state not visible from the repo."
+    },
+    {
+      "key": "PLZG-214",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 213,
+      "reason": "Not fixed: docs/devops-setup.md:71-73 still names only ~/.claude/settings.json for advisorModel, with no mention of the project-scoped value at .claude/settings.json:27 or of precedence."
+    },
+    {
+      "key": "PLZG-216",
+      "bucket": "done",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 218,
+      "reason": "Both criticals fixed on dev: jira-auto-transition.yml:19-22 passes the PR title via env PR_TITLE and uses \"$PR_TITLE\" (no expression interpolation in run:); .env.example:60-69 documents ATLASSIAN_EMAIL, ATLASSIAN_API_TOKEN and ATLASSIAN_CONFLUENCE_SESSION_LOG_PARENT_PAGE_ID under 'Required by scripts/pm/' and the 'read by nothing here' line is gone (c2b7832, PR #217)."
+    },
+    {
+      "key": "PLZG-217",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 219,
+      "reason": "Partially fixed by a9536f4 (repo-status label step at daily-repo-status.yml:53 and issue-arborist.yml:82; .gitignore:36 covers session-log-hook.log). Still open: jira-auto-transition.yml:43 hardcodes SITE=https://tasteslikegood.atlassian.net; .env.example:5-7 header still says only the two root Atlassian scripts need .env; scripts/pm/_watcher_lock.py and _jira_projects.py still have no caller. GitHub twin #219 was auto-closed by the arborist ('PR #217 already merged'), not by a fix."
+    },
+    {
+      "key": "PLZG-219",
+      "bucket": "done",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 221,
+      "reason": "Shipped by PR #222 (da25318, merged 2026-08-20; the PR was keyed PLZG-221). Verified: specs/task-tracker.md frontmatter status HISTORICAL, specs/meta/doc-registry.json:107 HISTORICAL, 0 hits for CharacterBody3D/Area3D/Node3D/Camera3D in specs/roadmap.md and specs/task-tracker.md, CLAUDE.md states M7/M8 done and next milestones M2/M5/M6."
+    },
+    {
+      "key": "PLZG-220",
+      "bucket": "done",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 223,
+      "reason": "specs/README.md:28 now reads 'Work plan. M1 -> M8 milestones...' with no 3D deprecation caveat, and :29 describes task-tracker.md as a HISTORICAL reference checklist rather than a working checklist."
+    },
+    {
+      "key": "PLZG-222",
+      "bucket": "done",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 226,
+      "reason": ".claude/hooks/pretooluse-pr-review-nudge.sh:63-65 merge guard returns permissionDecision ask; :55-57 denies gh pr view --comments and redirects to gh api; :97 read nudge mentions suppressed co-pilot reviews (a6dda00, PR #227 merged 2026-08-20). Reproduced live: merge -> ask, view --comments -> deny."
+    },
+    {
+      "key": "PLZG-223",
+      "bucket": "done",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 228,
+      "reason": "pulls/{number}/reviews with .body and .state is now in all three additionalContext strings: .claude/hooks/pretooluse-pr-review-nudge.sh:57 (view redirect), :65 (merge guard), :97 (read nudge) (ad6b0ad, PR #227)."
+    },
+    {
+      "key": "PLZG-224",
+      "bucket": "done",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 229,
+      "reason": ".claude/pr-workflow.md:13 now lists the three gh api endpoints and says not to rely on gh pr view --comments because the review hook denies it (b09fde7, PR #227)."
+    },
+    {
+      "key": "PLZG-225",
+      "bucket": "done",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 230,
+      "reason": "Hook reordered strongest-first (605bb68, PR #227): deny branch at .claude/hooks/pretooluse-pr-review-nudge.sh:55, ask at :63, nudges from :74. Reproduced: 'gh pr comment ... && gh pr merge ...' -> ask; 'gh pr view N --comments && gh pr comment ...' -> deny."
+    },
+    {
+      "key": "PLZG-226",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 231,
+      "reason": "Both defects reproduce on dev against .claude/hooks/pretooluse-pr-review-nudge.sh:55: a gh pr comment whose --body quotes 'gh pr view --comments' is denied (over-match; it also denied this review's own shell commands twice), and 'gh pr view 227 -wc' produces no output at all (under-match)."
+    },
+    {
+      "key": "PLZG-227",
+      "bucket": "done",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 232,
+      "reason": ".claude/pr-workflow.md:13 has --paginate on all three gh api endpoints (0d991cd, PR #227)."
+    },
+    {
+      "key": "PLZG-236",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 242,
+      "reason": "Automation-owned daily-status mirror of the rolling GitHub issue #242 (still OPEN); no evidence it is obsolete. .github/workflows/daily-repo-status.yml still exists and maintains the repo-status issue."
+    },
+    {
+      "key": "PLZG-237",
+      "bucket": "done",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 244,
+      "reason": "All three gaps closed in scripts/sprint_5_gate.py: check_t2 (lines 291-311) fails a keep row that is closed and a done/wont_do row still open, and check_t6 reuses it with require_complete; check_t4 (lines 406-411) recomputes git hash-object and compares reviewed_blob instead of a truthy reviewed_commit; check_t5 (lines 424-438) queries /rest/agile/1.0/sprint/{id} for board and sprint membership. Covered by tests/test_sprint_5_gate.py:326, :330, :390, :399 (PRs #241, #262). Ticket is In Progress and GitHub twin #244 is still open."
+    },
+    {
+      "key": "PLZG-238",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "low",
+      "github_issue": 246,
+      "reason": "Secret-scanning hit in a different repository (adamtasteslikegood/tasteslikegood.com); cannot be verified from this repo."
+    },
+    {
+      "key": "PLZG-241",
+      "bucket": "done",
+      "reviewed_at": "2026-10-06",
+      "confidence": "medium",
+      "github_issue": 253,
+      "reason": "check_t3 is no longer count-only: scripts/sprint_5_gate.py:342-355 fails if any doc in the plan's must_stay_governed list has left the registry (specs/sprint-5-loop-plan.json:78; test at tests/test_sprint_5_gate.py:353). Every Origin doc_id named in decision-register.md (PLATFORM-DECISIONS, AGENT-DIRECTORY, DELIVERY-COORDINATES, META-SPEC) is in that list, as are the concept and design owners. Caveat: the list is hand-maintained, not parsed from the Origin column as the ticket suggested."
+    },
+    {
+      "key": "PLZG-242",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 254,
+      "reason": "Not resolved: data/plzg-flow-snapshot.json still has as_of 2026-10-05 and the between-sprints shape although Sprint 5 started 2026-10-06. scripts/validate_delivery_coordinates.py exits 0 today, but the 14-day window lapses 2026-10-19 unless the snapshot is refreshed with the sprint window."
+    },
+    {
+      "key": "PLZG-243",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 255,
+      "reason": "Neither option implemented: .github/workflows/claude-review.yml has no install step for black/flake8 and its prompt (lines 415-416) still tells the reviewer Python must pass flake8; the file was last changed in PR #22, long before the ticket."
+    },
+    {
+      "key": "PLZG-244",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "medium",
+      "github_issue": 258,
+      "reason": "Entry still present at bridge/domain_session.py:97. Not simply a typo to delete: bridge/conversation.py:28 and :38 read CLAUDE_CODE_0AUTH_TOKEN on purpose as an 'alternate spelling', so removal needs an owner call covering both files."
+    },
+    {
+      "key": "PLZG-246",
+      "bucket": "done",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 261,
+      "reason": "Fixed in PR #262 (merged 2026-10-06): scripts/sprint_5_gate.py:285-286 builds the exemption from the plan's task keys intersected with live sprint membership; regression tests at tests/test_sprint_5_gate.py:306 (unrelated issue cannot skip triage by joining the sprint) and :310. GitHub twin #261 closed."
+    }
+  ]
 }
