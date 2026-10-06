@@ -52,8 +52,9 @@ spec-set versions, and no application release existed before `v0.1.22`.
 - Sprint 5 (Jira sprint `51`) started 2026-10-06 with a one-week window. The
   charter, `docs/delivery-coordinates.md` and `data/plzg-flow-snapshot.json` now
   say so; the snapshot no longer declares the between-sprints state.
-- `specs/evidence/sprint-5-triage.json` — the T2 record. All 106 tickets that
-  were not Done when triage began, each reviewed against the files on `dev`:
+- `specs/evidence/sprint-5-triage.json` — the T2 record. 111 tickets were not
+  Done when triage began; five were Sprint 5's own task tickets, which T2
+  exempts. The other 106 were each reviewed against the files on `dev`:
   60 keep, 42 done, 4 Won't Do. The owner approved applying the buckets and the
   board was moved to match; open GitHub issue twins were closed with the same
   evidence. Non-Done fell from 111 to 64. `PLZG-247` was filed during review to
