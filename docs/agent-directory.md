@@ -91,7 +91,7 @@ subagents/
 │   ├── risk/
 │   └── compliance/
 │
-├── 🌊 operations/                     # Operations Team (6 roles)
+├── 🌊 operations/                     # Operations Team (6 files; 5 roles after curation)
 │   ├── analytics/
 │   ├── infrastructure/
 │   └── support/
@@ -142,7 +142,6 @@ subagents/
 - Language Specialists (15 languages)
 - Architecture (system design, patterns)
 - Code Quality (reviews, refactoring)
-- Performance (optimization, profiling)
 - Debugging (RCA, troubleshooting)
 - Documentation (technical writing, API docs)
 
@@ -208,7 +207,7 @@ first — it is empty in fresh checkouts).
 
 ---
 
-### 6. 🌊 Operations (6 roles)
+### 6. 🌊 Operations (5 roles)
 **Color**: Teal (#14B8A6)
 **Path**: `subagents/operations/`
 
@@ -216,9 +215,8 @@ first — it is empty in fresh checkouts).
 - Business Analytics (reporting, insights)
 - Infrastructure Operations (maintenance, optimization)
 - Support Operations (customer support, tickets)
-- Project Management (delivery, tracking)
 
-**Key roles**: analytics-reporter, infrastructure-maintainer, support-responder
+**Key roles**: analytics-reporter, operations-optimizer, support-responder
 
 ---
 
@@ -228,7 +226,6 @@ first — it is empty in fresh checkouts).
 
 **Specializations**:
 - Market Research (competitive intelligence, market sizing)
-- User Research (experience analysis, user insights)
 - Data Research (deep research, web search)
 
 **Key roles**: competitive-intelligence, market-research-analyst, tam-market-sizing, search-specialist

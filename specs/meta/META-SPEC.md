@@ -173,7 +173,7 @@ tier 2   DESIGN-25D (how to build)   AGENT-DIRECTORY (taxonomy)
                         ▼
              PROJECT-OVERVIEW  ← reconciles both axes for public consumption
                         │
-tier 3   ROADMAP → sprint charters → Jira PLZG
+tier 3   ROADMAP → sprint charters → Jira issues
                         │
 tier 4   quick-reference · aligned-spec-v0.2.5 · indexes · history
          (exempt since PLZG-232: registered under `exempt`, authoritative over nothing)

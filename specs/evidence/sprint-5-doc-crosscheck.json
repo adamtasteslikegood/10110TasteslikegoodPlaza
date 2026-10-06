@@ -10,8 +10,8 @@
         "ci",
         "github"
       ],
-      "reviewed_blob": "2064657d0e06e245f784c8e5237881133147faa0",
-      "note": "Fixed: tier-3 line of the ladder named Jira TO and the HISTORICAL task tracker; tier-3 row omitted the delivery authority section 2.2 licenses; binding rule cited an exempt document by doc_id."
+      "reviewed_blob": "8a69f000878e8ba8dd0adde65c02ba624453b7de",
+      "note": "Fixed: tier-3 line of the ladder named Jira TO and the HISTORICAL task tracker; tier-3 row omitted the delivery authority section 2.2 licenses; binding rule cited an exempt document by doc_id. The ladder names no Jira key (D-026)."
     },
     {
       "doc_id": "CONCEPT-DRIVER",
@@ -40,8 +40,8 @@
         "ci",
         "github"
       ],
-      "reviewed_blob": "3435eab668795c5ed91acb5cea5c4f9bb27f6f00",
-      "note": "Fixed: stage plan said rounds 3 and 4 were unstarted; traceability chain named TO; CLAUDE.md does not name the pin commit; the 1.0.0 trigger was called the first-tag trigger though 24 tags exist. Added conflict 4.12. Noted, not actioned: M8 shipped and the 1.0.0 cut has not been made."
+      "reviewed_blob": "762ae62c384e81b1bbfe3042ab3cacbd29e816bd",
+      "note": "Fixed: stage plan said rounds 3 and 4 were unstarted; traceability chain named TO, now key-neutral per D-026; CLAUDE.md does not name the pin commit; the 1.0.0 trigger was called the first-tag trigger though 24 tags exist. Added conflict 4.12. Noted, not actioned: M8 shipped and the 1.0.0 cut has not been made."
     },
     {
       "doc_id": "META-INDEX",
@@ -99,8 +99,8 @@
         "git",
         "github"
       ],
-      "reviewed_blob": "c90ce601636d1cb45b959183835f14ff20fd9f60",
-      "note": "Fixed: ten role slugs with suffixes that exist nowhere, three directories that do not exist, core shown as flat files, 16 language agents (15), install flags the script does not have, model field, two example agents that do not exist, and the 133-rows guidance (132). Command counts annotated as disputed, conflict 4.12."
+      "reviewed_blob": "ef40760abb0d3963c49a327020fd660e99a09c09",
+      "note": "Fixed: ten role slugs with suffixes that exist nowhere, three directories that do not exist, core shown as flat files, 16 language agents (15), install flags the script does not have, model field, two example agents that do not exist, and the 133-rows guidance (132). Command counts annotated as disputed, conflict 4.12. Review round 1 added: three specialization bullets for the removed directories, and Operations is 5 roles after D-024's curation, not 6."
     },
     {
       "doc_id": "DELIVERY-COORDINATES",
@@ -110,8 +110,8 @@
         "jira",
         "github"
       ],
-      "reviewed_blob": "ffb6c5b5f70fa42ab948e5a3a6b63e7a674af8cf",
-      "note": "Fixed: a line citation, and the claim that every branch carries the key. Projects, sprint ids and states, and the Confluence page verified against Jira. Not re-verified this pass: the Linear sync topology and the two Jira automations (lines 144-168, 198), which no tool here can read."
+      "reviewed_blob": "9e69c5db2f72235e438b4ed7dc4636ef867f4bbb",
+      "note": "Fixed: a line citation, and the claim that every branch carries the key. Projects, sprint ids and states, and the Confluence page verified against Jira. Jira automation re-read through its API on 2026-10-06: three branch-created rules (PLZG, RCP, KAN), no PR-creation or merge rule, and the PR over-match did not reproduce — the document now says so beside its 2026-08-10 table. One claim has no owner this repo can read: the Linear sync topology and key prefix (the Linear API here returns neither). The document now labels it as the owner's statement, recorded and not re-verified."
     },
     {
       "doc_id": "ROADMAP",
@@ -142,8 +142,8 @@
         "ci",
         "github"
       ],
-      "reviewed_blob": "aead096d40a9f43caac43a0fd03fc88c2634f59e",
-      "note": "Fixed: said no tags or releases exist (24 tags, one release, all cut on dev), that nothing blocks a direct push (the dev ruleset does), that Validate Specs is the gate with teeth (only Spec Enforcement Matrix is required), listed two deleted branches, three of eight CI jobs. Ruleset 18798438 rows all match GitHub."
+      "reviewed_blob": "f4e77be22f82d16bd0596eed38d3fa0c7d873e96",
+      "note": "Fixed: said no tags or releases exist (24 tags, one release, all cut on dev), that nothing blocks a direct push (the dev ruleset does), that Validate Specs is the gate with teeth (only Spec Enforcement Matrix is required), listed two deleted branches, three of eight CI jobs. Ruleset 18798438 rows all match GitHub. The long-lived branch table is now explicitly not an inventory."
     },
     {
       "doc_id": "SPRINT-2-CHARTER",

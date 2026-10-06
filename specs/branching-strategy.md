@@ -66,9 +66,12 @@ feature/* | fix/* | hotfix/*  →  dev  →  main
 ruleset enforces it (§5). On `main` it is still convention — nothing blocks a
 direct push there.
 
-### Long-lived branches that exist right now
+### Long-lived branches worth knowing about
 
-Worth knowing about, because they are not short-lived and will not simply merge:
+Not an inventory — `git branch -r` is. The remote also carries a couple of dozen
+merged or abandoned task branches (`feat/PLZG-170-…`, `docs/PLZG-131-…` and the
+like) that are simply awaiting a prune. These two are named because they are not
+short-lived and will not simply merge:
 
 | Branch | What it is |
 |---|---|

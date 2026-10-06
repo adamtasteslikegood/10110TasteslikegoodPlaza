@@ -139,7 +139,10 @@ document said there was no Linear board at all; that was wrong, and wrong in the
 direction this repo keeps failing in — asserting infrastructure is absent is
 still a claim about state, and it was the mechanism behind the drift below.
 
-Corrected topology, set by the owner on 2026-07-29:
+Corrected topology, set by the owner on 2026-07-29. This is the owner's statement of
+Linear's configuration, which no tool available to this repo can read back — the
+Linear API here returns team names but not sync settings or the key prefix — so it
+is recorded, not re-verified:
 
 | Link | Direction | Purpose |
 |---|---|---|
@@ -166,6 +169,18 @@ creation**, each moving `To Do` items to `In Progress`.
 | PR opened | `In Progress` | works, but **over-matches** — see below |
 | Ready to merge / review requested | `In Review` | not yet tested |
 | PR merged | **nothing** — `Done` is a human transition | holds |
+
+> **Re-read 2026-10-06 (`PLZG-233`) — the table above is the 2026-08-10 reading and
+> two of its rows have moved.** Jira's automation API lists three rules that act on
+> development events, all enabled, all "branch created → `In Progress`", one each
+> scoped to `PLZG`, `RCP` and `KAN`. **It lists no PR-creation rule and no merge
+> rule.** Consistent with that, PR #273 cited three `To Do` tickets in its body and
+> none moved. So the over-match described below did not reproduce today; read it as
+> the record of what was observed on 2026-08-10. (A Linear-side rule could still
+> produce it through the sync, and Linear's rules are not readable from here.) The "merged → nothing" row still holds:
+> `.github/workflows/jira-auto-transition.yml` only comments on merge. The
+> `In Review` row is still untested. Whether the PR rule was removed on purpose is
+> not recorded anywhere this repo can read.
 
 **Tested deliberately, not inferred.** `PLZG-129` was fixed on branch
 `fix/PLZG-129-sprint-2-gate-resolver`, whose *name* carries only `PLZG-129` while its
@@ -195,7 +210,7 @@ one of the Kanban Guide's four mandatory measures and the quantity
 `validate_delivery_coordinates.py` clause (b) requires to agree with `work_item_age`. It
 also stamps a false `started` timestamp, the input to cycle time and therefore to the
 `specs/sprint-3-charter.md` §1.3 forecast blackout. **The mechanism meant to make flow
-data trustworthy currently pollutes it.**
+data trustworthy polluted it** when this was measured — see the 2026-10-06 re-read above.
 
 **The fix is small, and the branch rule is the reason.** `.claude/pr-workflow.md`
 requires the key in the PR **title** and recommends it in the branch name ("Put it in the

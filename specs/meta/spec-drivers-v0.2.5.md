@@ -99,11 +99,11 @@ entitled tier first.
 D-nnn  (decision-register.md — who decided, and why)
   └─▶ SB-nn  (concept-driver.md — which beat of the story it serves)
         └─▶ M1..M8  (specs/roadmap.md — which milestone proves it)
-              └─▶ PLZG-nnn  (Jira — the unit of work)
+              └─▶ Jira issue  (the unit of work; keys are defined in docs/delivery-coordinates.md)
 ```
 
 Not every task touches a scene — bridge and tooling work often traces
-`D-nnn → M-n → PLZG-nnn` with no `SB-nn`. That is fine and expected. What is never
+`D-nnn → M-n → Jira issue` with no `SB-nn`. That is fine and expected. What is never
 fine is a task with no `D-nnn`.
 
 **Task template** — each task carries:
