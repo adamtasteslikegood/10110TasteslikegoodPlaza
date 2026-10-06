@@ -5,7 +5,7 @@ tier: 3
 authority: delivery
 status: ACTIVE
 doc_set_version: 0.2.12
-last_updated: 2026-08
+last_updated: 2026-10
 owner: adamtasteslikegood
 derives_from: [ROADMAP, DELIVERY-COORDINATES, META-SPEC]
 enforcement: asserted
@@ -423,4 +423,4 @@ whose whole purpose is that sentence.
 
 ---
 
-*Last updated: August 2026*
+*Last updated: October 2026*
