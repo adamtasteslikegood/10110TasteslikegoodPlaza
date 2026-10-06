@@ -1,5 +1,5 @@
 {
-  "$comment": "Evidence for Sprint 5 T2 (PLZG-231). baseline_keys is every PLZG issue that was not Done when triage began, minus the sprint's own task tickets; it was captured before any item was moved. scripts/sprint_5_gate.py t2 reads this file and re-reads Jira. Each row was reviewed individually against the files on dev at 92cb11d, not inferred from a merged PR; `reason` carries the evidence. The owner approved applying the buckets on 2026-10-06 and the board was moved to match the same day; the gate fails on any row whose bucket and live status disagree. PLZG-247 is not in baseline_keys: it was filed during review to carry the one unbuilt M8 step, and has a row because the gate requires one for every open ticket.",
+  "$comment": "Evidence for Sprint 5 T2 (PLZG-231). baseline_keys is every PLZG issue that was not Done when triage began, minus the sprint's own task tickets; it was captured before any item was moved. scripts/sprint_5_gate.py t2 reads this file and re-reads Jira. Each baseline row was reviewed individually against the files on dev at 92cb11d, not inferred from a merged PR; `reason` carries the evidence. Rows for keys outside baseline_keys were filed later and were reviewed against dev as it stood when each was added or re-bucketed; their `reason` names the pull request or issue relied on. The owner approved applying the buckets on 2026-10-06 and the board was moved to match the same day; the gate fails on any row whose bucket and live status disagree. PLZG-247 to PLZG-255 are not in baseline_keys: they were filed during the sprint (PLZG-247 to carry the one unbuilt M8 step, the rest from review), and each has a row because the gate requires one for every open ticket.",
   "baseline_captured_at": "2026-10-06T04:08:15-07:00",
   "baseline_query": "project = PLZG AND statusCategory != Done",
   "baseline_keys": [
@@ -1021,7 +1021,7 @@
       "bucket": "keep",
       "reviewed_at": "2026-10-06",
       "confidence": "high",
-      "github_issue": null,
+      "github_issue": 277,
       "reason": "Filed 2026-10-06 after PR #273 merged: the three documents carrying open conflict 4.12 still declare enforcement: asserted, which means a human verified the claim. Whether a disputed figure should lower a document's enforcement value is a question about the D-027 axis; it belongs with the owner's resolution of 4.12, not with sprint close."
     },
     {
