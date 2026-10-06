@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Re-stamp reviewed_blob in the Sprint 5 T4 cross-check evidence.
+"""List, and on request re-stamp, stale rows in the Sprint 5 T4 cross-check evidence.
 
 `sprint_5_gate.py t4` fails a row whose document changed after it was reviewed.
-Run this only after re-reading the documents it reports as changed: it prints
-each one so the re-stamp is a decision, not a reflex.
+Run with no arguments to see which documents those are; it writes nothing and
+exits 1 if any row is stale. Re-read them, then run with --write to re-stamp.
 """
 
 import json
@@ -21,6 +21,11 @@ def main() -> int:
         d["doc_id"]: d["path"] for d in json.loads(REGISTRY.read_text())["documents"]
     }
     evidence = json.loads(EVIDENCE.read_text())
+    write = sys.argv[1:] == ["--write"]
+    if sys.argv[1:] and not write:
+        print("usage: sprint_5_crosscheck_rehash.py [--write]", file=sys.stderr)
+        return 2
+    stale = 0
     for row in evidence["reviewed_docs"]:
         blob = subprocess.run(
             ["git", "hash-object", paths[row["doc_id"]]],
@@ -30,10 +35,18 @@ def main() -> int:
             check=True,
         ).stdout.strip()
         if row.get("reviewed_blob") != blob:
-            print(f"re-stamped {row['doc_id']}: {paths[row['doc_id']]}")
+            stale += 1
+            verb = "re-stamped" if write else "changed since review"
+            print(f"{verb}: {row['doc_id']} ({paths[row['doc_id']]})")
             row["reviewed_blob"] = blob
-    EVIDENCE.write_text(json.dumps(evidence, indent=2, ensure_ascii=False) + "\n")
-    return 0
+    if write:
+        EVIDENCE.write_text(json.dumps(evidence, indent=2, ensure_ascii=False) + "\n")
+        return 0
+    if stale:
+        print(
+            f"{stale} row(s) stale; re-read those documents, then re-run with --write"
+        )
+    return 1 if stale else 0
 
 
 if __name__ == "__main__":

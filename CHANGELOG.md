@@ -56,8 +56,10 @@ Recorded, not resolved:
 
 Evidence is `specs/evidence/sprint-5-doc-crosscheck.json`, one row per document
 with what was fixed, left, or could not be checked.
-`scripts/sprint_5_crosscheck_rehash.py` re-stamps a row after a document is
-re-read. Triage evidence gains rows for `PLZG-249`–`PLZG-251`, filed today.
+`scripts/sprint_5_crosscheck_rehash.py` lists rows whose document changed since
+review and re-stamps them only with `--write`. A row may list `open_conflicts`;
+the T4 gate fails it unless the register still holds that section `OPEN`, and
+prints every conflict still carried, so a pass cannot read as "nothing in dispute". Triage evidence gains rows for `PLZG-249`–`PLZG-251`, filed today.
 
 ### Changed — nine tier-4 documents leave governance; Sprint 2 and 3 charters retired (`PLZG-232`)
 

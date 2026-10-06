@@ -1,5 +1,5 @@
 {
-  "$comment": "Evidence for Sprint 5 T4 (PLZG-233). One row per governed document: every claim it makes about repository, CI, GitHub or board state was checked against the system that owns that state, on 2026-10-06, and what was wrong was fixed in the same change. contradiction: false means none is left that this pass found; `note` says what was fixed, what was deliberately left, and what could not be checked. reviewed_blob is `git hash-object` of the file as reviewed — scripts/sprint_5_gate.py t4 recomputes it, so an edit after review invalidates the row. scripts/sprint_5_crosscheck_rehash.py re-stamps rows after a re-read.",
+  "$comment": "Evidence for Sprint 5 T4 (PLZG-233). One row per governed document: every claim it makes about repository, CI, GitHub or board state was checked against the system that owns that state, on 2026-10-06, and what was wrong was fixed in the same change. contradiction: false means the document makes no unlabelled claim that an owning system contradicts. It does NOT mean nothing is in dispute: a figure the document itself marks as disputed is listed in open_conflicts by its section in specs/meta/spec-drivers-v0.2.5.md, and scripts/sprint_5_gate.py t4 fails the row unless the register still holds that section OPEN, and names every carried conflict in its output. `note` says what was fixed, what was deliberately left, and what could not be checked. reviewed_blob is `git hash-object` of the file as reviewed; the gate recomputes it, so an edit after review invalidates the row. scripts/sprint_5_crosscheck_rehash.py lists the rows that have gone stale and re-stamps them only with --write.",
   "reviewed_at": "2026-10-06",
   "reviewed_docs": [
     {
@@ -28,6 +28,9 @@
       "verified_against": [
         "git",
         "github"
+      ],
+      "open_conflicts": [
+        "4.12"
       ],
       "reviewed_blob": "06e64b3ceec074b3b76572c3ee1c67a16b30aea8",
       "note": "D-024's command counts could not be reproduced and AGENT-DIRECTORY disagrees: annotated as disputed and recorded as open conflict 4.12 (issue #113), not changed, because the row is LOCKED. Every other origin matches a decides: list."
@@ -79,6 +82,9 @@
         "ci",
         "github"
       ],
+      "open_conflicts": [
+        "4.12"
+      ],
       "reviewed_blob": "c96997baa4bbad5d1b9d9e1f11d517bd78602218",
       "note": "Fixed: said ten decisions (eleven), named D-029 as the only new one (D-030 too), called D-029 unimplemented. D-024 counts annotated as disputed, conflict 4.12. Merge-method settings and fork branches verified against GitHub."
     },
@@ -98,6 +104,9 @@
       "verified_against": [
         "git",
         "github"
+      ],
+      "open_conflicts": [
+        "4.12"
       ],
       "reviewed_blob": "ef40760abb0d3963c49a327020fd660e99a09c09",
       "note": "Fixed: ten role slugs with suffixes that exist nowhere, three directories that do not exist, core shown as flat files, 16 language agents (15), install flags the script does not have, model field, two example agents that do not exist, and the 133-rows guidance (132). Command counts annotated as disputed, conflict 4.12. Review round 1 added: three specialization bullets for the removed directories, and Operations is 5 roles after D-024's curation, not 6."
@@ -185,7 +194,7 @@
         "github",
         "jira"
       ],
-      "reviewed_blob": "5036e5ec05b2d3d2cfae0dbd8e285456f322e15d",
+      "reviewed_blob": "3f679f43b1e2a8228676311a1f2458533c3c8df0",
       "note": "Fixed: 114 non-Done was true at the start of 2026-10-05 and 111 by evening (PLZG-248, from Jira status history); one review layer (two); 28 documents stated as current; timestamp count stated as current though not re-measured; three 'Enforced by' cells that named the origin, not an enforcer. Acceptance text matches sprint_5_gate.py."
     },
     {
@@ -197,7 +206,7 @@
         "github"
       ],
       "reviewed_blob": "302c0e08d2f0f810eeeb5ec720d433a5447877d3",
-      "note": "Fixed: bridge test count (77, now uncounted) and the cache-bust instruction, which omitted the pinned hash. Eight CI jobs, labels and routines verified."
+      "note": "Fixed: bridge test count (the document said 76; there are 77; now uncounted) and the cache-bust instruction, which omitted the pinned hash. Eight CI jobs, labels and routines verified."
     }
   ]
 }
