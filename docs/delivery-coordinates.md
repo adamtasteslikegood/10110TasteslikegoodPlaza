@@ -199,8 +199,9 @@ data trustworthy currently pollutes it.**
 
 **The fix is small, and the branch rule is the reason.** `.claude/pr-workflow.md`
 requires the key in the PR **title** and recommends it in the branch name ("Put it in the
-branch name and commit messages too"). In practice every branch in this repo carries the
-key (`type/PLZG-###-description`), so the branch rule fires. Either disable the
+branch name and commit messages too"). In practice most branches in this repo carry the
+key (`type/PLZG-###-description`), so the branch rule fires for those — but not all:
+merged PRs such as #184 (`fix/escape-focus-lock`) and #217 came from keyless branches. Either disable the
 PR-creation rule, or condition it on the key appearing in `{{pullRequest.title}}` or
 `{{branch.name}}` rather than merely being linked.
 
@@ -337,7 +338,7 @@ them first.
   the rescan picks it up.
 - **`generate_report.py` holds no Jira key at all.** It reads
   `ATLASSIAN_JIRA_PROJECT_KEY` and exits 1 if unset — the `missing_vars` guard
-  (line 27), the `sys.exit(1)` (line 39), and `project_key = env_vars[...]`
+  (built at line 25, tested at line 32), the `sys.exit(1)` (line 39), and `project_key = env_vars[...]`
   (line 45). *Cite the symbol, not just the line:* this PR's own `black` reformat
   moved all three, and **not by a constant** — expanding one comprehension pushed
   the guard 25→27 but the other two 35→39 and 41→45. An earlier draft of this

@@ -38,7 +38,8 @@ tier 0  this folder            governs the doc set; decides nothing about the pr
 tier 1  docs/storyboard-week1  the ONLY origin of concept and narrative decisions
 tier 2  docs/designs/*         how to build   ·   docs/agent-directory  taxonomy
         README.md              reconciles both axes for public consumption
-tier 3  specs/roadmap, task-tracker, branching-strategy    sequencing only
+tier 3  specs/roadmap, branching-strategy, sprint charters   sequencing; charters also
+                                                           set delivery policy
 tier 4  quick-reference, aligned-spec-v0.2.5, indexes      authoritative over nothing;
                                                            registered as exempt (PLZG-232)
 ```

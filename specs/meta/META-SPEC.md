@@ -57,7 +57,7 @@ Every governed document declares a `tier`. **Lower tier wins.**
 | **0** | This meta layer | Rules about documents. Never product decisions. |
 | **1** | Concept source of truth | Concept and narrative decisions. |
 | **2** | Implementation designs, canonical reference | How to build; reference mappings. |
-| **3** | Derived plans — roadmap, tracker, policy | Sequencing and task breakdown only. |
+| **3** | Derived plans — roadmap, tracker, policy | Sequencing and task breakdown; time-boxed delivery policy (`delivery`, §2.2). |
 | **4** | Summaries, research, history | Nothing. Restates what tiers 0–2 decided. |
 
 Alongside `tier`, each document declares an `authority` — what it is licensed to
@@ -173,7 +173,7 @@ tier 2   DESIGN-25D (how to build)   AGENT-DIRECTORY (taxonomy)
                         ▼
              PROJECT-OVERVIEW  ← reconciles both axes for public consumption
                         │
-tier 3   ROADMAP → TASK-TRACKER → Jira TO
+tier 3   ROADMAP → sprint charters → Jira PLZG
                         │
 tier 4   quick-reference · aligned-spec-v0.2.5 · indexes · history
          (exempt since PLZG-232: registered under `exempt`, authoritative over nothing)
@@ -212,8 +212,8 @@ These are hard gates, not preferences. A change that breaks one fails review.
    task, or line of code may make the agent bridge (Layer 3) aware of Godot,
    scenes, sprites, HUD, rooms, or any rendering concept. It exchanges intents and
    results only. *Swap test:* if replacing Godot with a CLI would require a bridge
-   change, the boundary is broken. See `ALIGNED-SPEC-025` Document A for the
-   conceptual message flow.
+   change, the boundary is broken. See `specs/aligned-spec-v0.2.5.md` Document A
+   (research, exempt from governance) for the conceptual message flow.
 
    This rule **cites** `D-005`; it does not make it. Until v0.2.9 the register
    named this section as the decision's origin, which put a product decision in

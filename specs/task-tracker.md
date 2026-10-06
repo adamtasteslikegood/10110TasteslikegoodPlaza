@@ -5,7 +5,7 @@ tier: 3
 authority: derived
 status: HISTORICAL
 doc_set_version: 0.2.13
-last_updated: 2026-08
+last_updated: 2026-10
 owner: adamtasteslikegood
 derives_from: [ROADMAP]
 enforcement: asserted
@@ -40,8 +40,8 @@ weakest_claim: Progress state now lives in CLAUDE.md and git history
 - [ ] Sound direction (ambient office sounds? music tone?)
 
 ### Data prep
-- [ ] Export all 133 agent .md files to a single `agents.json`
-- [ ] Verify JSON structure matches planned schema (name, role, dept, color, description, tools)
+- [x] Export all 133 agent .md files to a single `agents.json` — done as M3 below (132 entries)
+- [x] Verify JSON structure matches planned schema (name, role, dept, color, description, tools) — the generator emits that shape
 - [ ] Define scene/dialogue data format (separate JSON or GDScript Resources?)
 - [ ] Define player profile save format
 
@@ -189,4 +189,4 @@ no template.
 
 ---
 
-*Last updated: August 2026*
+*Last updated: October 2026*

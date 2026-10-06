@@ -5,7 +5,7 @@ tier: 3
 authority: derived
 status: ACTIVE
 doc_set_version: 0.2.13
-last_updated: 2026-08
+last_updated: 2026-10
 owner: adamtasteslikegood
 derives_from: [PROJECT-OVERVIEW, DESIGN-25D, SPEC-DRIVERS-025]
 enforcement: asserted
@@ -51,6 +51,8 @@ Top-down 8-direction movement, arrows + WASD. ~15 lines of GDScript.
 
 **Time estimate:** 4–6 hours
 **GDScript required:** Minimal (door trigger logic only)
+**Status:** partial — the lobby, a corridor and the server room are grey-boxed in
+`scenes/world/office.gd`; the other rooms, door triggers and navigation mesh are open.
 
 **What "grey-boxing" means:**
 Standard game dev practice — build the entire space with plain grey/white geometry boxes before spending any time on textures, lighting, or art. Walk through it. Does the lobby feel right? Are the corridors the right width? Is the server room in a sensible place? Validate the space before investing in visuals.
@@ -63,9 +65,9 @@ NavigationRegion2D      ← bake a pathfinding mesh so NPCs can walk around late
 ```
 
 **Rooms to block out (Week 1 scope):**
-- [ ] Lobby / entrance
+- [x] Lobby / entrance
 - [ ] Player's office
-- [ ] Server room (Core agents)
+- [x] Server room (Core agents)
 - [ ] Engineering floor (open plan)
 - [ ] War room / meeting room
 - 2–3 locked corridors leading to future floors
@@ -82,7 +84,7 @@ func _on_player_entered():
 
 ---
 
-### Milestone 3 — Load employee directory as game data
+### Milestone 3 — Load employee directory as game data ✅
 
 **Time estimate:** ~2 hours
 **GDScript required:** One autoload script
@@ -122,7 +124,7 @@ func get_agent(id: String) -> Dictionary:
 
 ---
 
-### Milestone 4 — First NPC + proximity dialogue
+### Milestone 4 — First NPC + proximity dialogue ✅
 
 **Time estimate:** ~3 hours
 **GDScript required:** NPC script + HUD listener
@@ -255,12 +257,18 @@ func save():
 
 ---
 
-### Milestone 7 — Python WebSocket bridge
+### Milestone 7 — Python WebSocket bridge ✅
 
 **Time estimate:** ~1 day
 **Languages:** Python (bridge) + GDScript (Godot side)
 
-**What this is:** A small Python process that runs alongside the game on the same machine. Godot sends task requests over a local WebSocket; the bridge spawns your agent CLI process, captures stdout, and returns the result as JSON. No cloud, no deployment, no auth needed for the prototype.
+**What this is:** A small Python process that runs alongside the game on the same machine. Godot sends task requests over a local WebSocket; the bridge calls the Claude API — the Messages API for NPC conversation, the Agent SDK for domain sessions — and returns the result as JSON. It runs locally and needs Anthropic credentials.
+
+> **The two code blocks below are the original sketch, kept for the shape of the idea.**
+> The shipped code is `bridge/server.py`, `bridge/conversation.py` and
+> `scenes/bridge/ws_client.gd` (autoload `BridgeClient`); the wire format is
+> `bridge/PROTOCOL.md`. The sketch shells out to a CLI and sends `{"agent", "task"}`;
+> the shipped bridge does neither.
 
 **bridge.py:**
 ```python
@@ -325,7 +333,7 @@ func send_task(agent_id: String, task: String):
 
 ---
 
-### Milestone 8 — First live agent output in-world
+### Milestone 8 — First live agent output in-world ✅
 
 **Time estimate:** 2–4 hours (integration + testing)
 
@@ -334,10 +342,14 @@ func send_task(agent_id: String, task: String):
 2. Proximity trigger fires → dialogue panel opens
 3. Player types a real question or selects a task
 4. Godot sends request to WebSocket bridge
-5. Bridge invokes `@systems-architect` via CLI
+5. Bridge loads the agent definition from its own store and calls the Claude API
 6. Response JSON returns to Godot
 7. Output appears in dialogue panel
-8. Response is also logged to the inbox
+
+Logging the response to an inbox was step 8 of this list. It is **not part of M8 and
+is not built** — deferred until the game is ready for an inbox (owner ruling
+2026-10-06, `PLZG-247`). The inbox itself is introduced by `SB-11` and used by
+`SB-14`; no milestone here schedules it yet.
 
 **This is the milestone where the game becomes the tool.**
 
@@ -369,10 +381,10 @@ Everything after this point is polish, expansion of the world, more NPC characte
 - [x] Create AgentRegistry, GameEvents, GameState autoloads
 - [x] Place first NPC (Systems Architect) in server room
 - [x] Test proximity trigger → dialogue panel
-- [ ] Block out lobby with TileMap / StaticBody2D
+- [x] Block out lobby with StaticBody2D
 - [x] Run bridge.py and test WebSocket connection from Godot
 - [x] Invoke first real agent through the game
 
 ---
 
-*Last updated: August 2026*
+*Last updated: October 2026*

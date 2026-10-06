@@ -17,6 +17,48 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
 
+### Fixed — state claims in the 19 governed documents, checked against what owns them (`PLZG-233`)
+
+Sprint 5 T4. Every governed document was read in full and each claim about the
+repository, CI, GitHub settings or the board was checked against that system — not
+against another document. Sixteen were corrected. The larger ones:
+
+- **`specs/roadmap.md`** — inbox logging is struck from M8: it was never built and
+  is deferred until the game is ready for an inbox (owner ruling 2026-10-06,
+  `PLZG-247`). M7 described a bridge that spawns a CLI; the shipped one calls the
+  Claude API. M3, M4, M7 and M8 are marked done; the lobby and server room are
+  marked built.
+- **`specs/branching-strategy.md`** — said no tags or releases exist (24 tags and
+  one release, all cut on `dev`; `main` untouched since 2026-04-28), that nothing
+  blocks a direct push (the `dev` ruleset does), and that `Validate Specs` is the
+  gate with teeth (only `Spec Enforcement Matrix` is required).
+- **`docs/agent-directory.md`** — ten role slugs carried suffixes that exist
+  nowhere (`financial-analyst-fs`, `automation-architect-aa`, …), three directories
+  in the tree do not exist, and the install section documented flags the script
+  does not have.
+- **`specs/sprint-5-charter.md`** — "114 non-Done on 2026-10-05" was true at the
+  start of that day and 111 by evening; the charter now says which (`PLZG-248`).
+  It named one review layer; there are two.
+- **`README.md`** — Layer 1 said 133 roles as JSON (132 entries), and listed story
+  data and a player profile under `EXISTS`; neither is built.
+- `specs/sprint-4-charter.md` gains the `HISTORICAL` banner its frontmatter
+  already implied.
+
+Recorded, not resolved:
+
+- **Open conflict §4.12** (issue #113). `D-024` and `docs/agent-directory.md` give
+  different counts of orchestration commands, and a recount matched neither. Both
+  now say the figure is disputed. `D-024` is `LOCKED`; the fix is the owner's.
+- **The storyboard is untouched.** Five character ids and two counts in its beats
+  do not match `data/agents.json`; changing a beat needs sign-off (`PLZG-251`).
+- The doc set's `1.0.0` trigger — M8 demonstrable in-engine — has fired and the
+  cut has not been made. Now stated in `spec-drivers-v0.2.5.md` §5.
+
+Evidence is `specs/evidence/sprint-5-doc-crosscheck.json`, one row per document
+with what was fixed, left, or could not be checked.
+`scripts/sprint_5_crosscheck_rehash.py` re-stamps a row after a document is
+re-read. Triage evidence gains rows for `PLZG-249`–`PLZG-251`, filed today.
+
 ### Changed — nine tier-4 documents leave governance; Sprint 2 and 3 charters retired (`PLZG-232`)
 
 - The governed set is **19 documents, down from 28** (Sprint 5 gate B, owner

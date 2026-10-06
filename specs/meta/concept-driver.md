@@ -5,7 +5,7 @@ tier: 0
 authority: constitution
 status: ACTIVE
 doc_set_version: 0.2.13
-last_updated: 2026-07
+last_updated: 2026-10
 owner: adamtasteslikegood
 derives_from: [META-SPEC]
 supersedes: []
@@ -102,7 +102,8 @@ the lobby, talk to someone real, get real output back.
 
 ## 4. Reconciliation record — `ALIGNED-SPEC-025` §01.3
 
-**Status: resolved. `STORYBOARD-W1` wins. §01.3 is `SUPERSEDED`.**
+**Status: resolved. `STORYBOARD-W1` wins. §01.3 is `SUPERSEDED`, and the file it
+sits in has been exempt from governance since `PLZG-232`.**
 
 [`specs/aligned-spec-v0.2.5.md`](../aligned-spec-v0.2.5.md) §01.3 proposed a
 14-scene spine and labelled itself, honestly, a "proposed reconstruction" because
@@ -145,4 +146,4 @@ scene-level acceptance criteria and therefore block tasks:
 These are concept decisions. Only the human owner may close them, and the close
 lands in `STORYBOARD-W1` first — never here, and never in a task.
 
-*Doc set version: 0.2.13 · Last updated: August 2026*
+*Doc set version: 0.2.13 · Last updated: October 2026*

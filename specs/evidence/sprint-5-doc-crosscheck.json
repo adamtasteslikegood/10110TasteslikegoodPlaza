@@ -1,0 +1,203 @@
+{
+  "$comment": "Evidence for Sprint 5 T4 (PLZG-233). One row per governed document: every claim it makes about repository, CI, GitHub or board state was checked against the system that owns that state, on 2026-10-06, and what was wrong was fixed in the same change. contradiction: false means none is left that this pass found; `note` says what was fixed, what was deliberately left, and what could not be checked. reviewed_blob is `git hash-object` of the file as reviewed — scripts/sprint_5_gate.py t4 recomputes it, so an edit after review invalidates the row. scripts/sprint_5_crosscheck_rehash.py re-stamps rows after a re-read.",
+  "reviewed_at": "2026-10-06",
+  "reviewed_docs": [
+    {
+      "doc_id": "META-SPEC",
+      "contradiction": false,
+      "verified_against": [
+        "git",
+        "ci",
+        "github"
+      ],
+      "reviewed_blob": "2064657d0e06e245f784c8e5237881133147faa0",
+      "note": "Fixed: tier-3 line of the ladder named Jira TO and the HISTORICAL task tracker; tier-3 row omitted the delivery authority section 2.2 licenses; binding rule cited an exempt document by doc_id."
+    },
+    {
+      "doc_id": "CONCEPT-DRIVER",
+      "contradiction": false,
+      "verified_against": [
+        "git"
+      ],
+      "reviewed_blob": "d35903d9372bd137b43f5309e7b5befeb0511a58",
+      "note": "Fixed: last_updated disagreed with the footer; section 4 now says the aligned spec is exempt. All 18 SB titles match the storyboard."
+    },
+    {
+      "doc_id": "DECISION-REGISTER",
+      "contradiction": false,
+      "verified_against": [
+        "git",
+        "github"
+      ],
+      "reviewed_blob": "06e64b3ceec074b3b76572c3ee1c67a16b30aea8",
+      "note": "D-024's command counts could not be reproduced and AGENT-DIRECTORY disagrees: annotated as disputed and recorded as open conflict 4.12 (issue #113), not changed, because the row is LOCKED. Every other origin matches a decides: list."
+    },
+    {
+      "doc_id": "SPEC-DRIVERS-025",
+      "contradiction": false,
+      "verified_against": [
+        "git",
+        "ci",
+        "github"
+      ],
+      "reviewed_blob": "3435eab668795c5ed91acb5cea5c4f9bb27f6f00",
+      "note": "Fixed: stage plan said rounds 3 and 4 were unstarted; traceability chain named TO; CLAUDE.md does not name the pin commit; the 1.0.0 trigger was called the first-tag trigger though 24 tags exist. Added conflict 4.12. Noted, not actioned: M8 shipped and the 1.0.0 cut has not been made."
+    },
+    {
+      "doc_id": "META-INDEX",
+      "contradiction": false,
+      "verified_against": [
+        "git",
+        "ci"
+      ],
+      "reviewed_blob": "c25b14a26148db54ca4992d912bdafbe89b44fb1",
+      "note": "Fixed: tier-3 line listed the task tracker and omitted the charters. The six validator failure modes it lists all exist."
+    },
+    {
+      "doc_id": "STORYBOARD-W1",
+      "contradiction": false,
+      "verified_against": [
+        "git"
+      ],
+      "reviewed_blob": "773ead7086788d6142f66a4f086034037303fd9a",
+      "note": "Declares enforcement n/a and asserts no repository state. Not edited: seven narrative references inside beats (five character ids, two role counts) do not match data/agents.json, and changing a beat needs owner sign-off — carried by PLZG-251."
+    },
+    {
+      "doc_id": "DESIGN-25D",
+      "contradiction": false,
+      "verified_against": [
+        "git"
+      ],
+      "reviewed_blob": "630c3320e4cbe6d4f31a53f93d5ff622a44f3ff3",
+      "note": "Fixed: D-025 spoke of three autoloads; project.godot registers four. The dated 2026-04-27 record (137 agents, TODOS.md) is marked as frozen history by the document itself and was left."
+    },
+    {
+      "doc_id": "PLATFORM-DECISIONS",
+      "contradiction": false,
+      "verified_against": [
+        "git",
+        "ci",
+        "github"
+      ],
+      "reviewed_blob": "c96997baa4bbad5d1b9d9e1f11d517bd78602218",
+      "note": "Fixed: said ten decisions (eleven), named D-029 as the only new one (D-030 too), called D-029 unimplemented. D-024 counts annotated as disputed, conflict 4.12. Merge-method settings and fork branches verified against GitHub."
+    },
+    {
+      "doc_id": "PROJECT-OVERVIEW",
+      "contradiction": false,
+      "verified_against": [
+        "git",
+        "ci"
+      ],
+      "reviewed_blob": "31eabd56f3dee773c61f9da4ffe0054450e027dc",
+      "note": "Fixed: Layer 1 said 133 roles as JSON (132 entries); story data and player profile were under an EXISTS heading though neither is built; update date. Department counts and colours match data/agents.json."
+    },
+    {
+      "doc_id": "AGENT-DIRECTORY",
+      "contradiction": false,
+      "verified_against": [
+        "git",
+        "github"
+      ],
+      "reviewed_blob": "c90ce601636d1cb45b959183835f14ff20fd9f60",
+      "note": "Fixed: ten role slugs with suffixes that exist nowhere, three directories that do not exist, core shown as flat files, 16 language agents (15), install flags the script does not have, model field, two example agents that do not exist, and the 133-rows guidance (132). Command counts annotated as disputed, conflict 4.12."
+    },
+    {
+      "doc_id": "DELIVERY-COORDINATES",
+      "contradiction": false,
+      "verified_against": [
+        "git",
+        "jira",
+        "github"
+      ],
+      "reviewed_blob": "85f55d76a414effa353062f53ff6117866bd7fb5",
+      "note": "Fixed: a line citation, and the claim that every branch carries the key. Projects, sprint ids and states, and the Confluence page verified against Jira. Not re-verified this pass: the Linear sync topology and the two Jira automations (lines 144-168, 198), which no tool here can read."
+    },
+    {
+      "doc_id": "ROADMAP",
+      "contradiction": false,
+      "verified_against": [
+        "git",
+        "ci",
+        "github"
+      ],
+      "reviewed_blob": "881a3267c09be4c687dc8caef501c20e8339ed69",
+      "note": "Fixed: inbox logging struck from M8 by owner ruling 2026-10-06 (PLZG-247); M7 described a CLI-spawning bridge that was never shipped; done milestones unmarked; lobby and server room shown as unbuilt. The code samples are now labelled as the original sketch."
+    },
+    {
+      "doc_id": "TASK-TRACKER",
+      "contradiction": false,
+      "verified_against": [
+        "git",
+        "ci"
+      ],
+      "reviewed_blob": "f26c3ac501fc7b941d0ef2b6ecd86010ae1a882b",
+      "note": "HISTORICAL with a banner. Fixed one internal contradiction: two data-prep items unchecked above the M3 section that records them done."
+    },
+    {
+      "doc_id": "BRANCHING-STRATEGY",
+      "contradiction": false,
+      "verified_against": [
+        "git",
+        "ci",
+        "github"
+      ],
+      "reviewed_blob": "aead096d40a9f43caac43a0fd03fc88c2634f59e",
+      "note": "Fixed: said no tags or releases exist (24 tags, one release, all cut on dev), that nothing blocks a direct push (the dev ruleset does), that Validate Specs is the gate with teeth (only Spec Enforcement Matrix is required), listed two deleted branches, three of eight CI jobs. Ruleset 18798438 rows all match GitHub."
+    },
+    {
+      "doc_id": "SPRINT-2-CHARTER",
+      "contradiction": false,
+      "verified_against": [
+        "git",
+        "ci",
+        "github"
+      ],
+      "reviewed_blob": "c17e4d6781833ca45667d6680ecd86794f4eb301",
+      "note": "HISTORICAL with a banner. No contradictions; the banner's claim that its done-clauses are still enforced on every PR is true."
+    },
+    {
+      "doc_id": "SPRINT-3-CHARTER",
+      "contradiction": false,
+      "verified_against": [
+        "git",
+        "ci"
+      ],
+      "reviewed_blob": "71e089400c0e7e77f9e5e54fa456ba7caa78e9f6",
+      "note": "HISTORICAL with a banner. No contradictions."
+    },
+    {
+      "doc_id": "SPRINT-4-CHARTER",
+      "contradiction": false,
+      "verified_against": [
+        "git",
+        "jira"
+      ],
+      "reviewed_blob": "8345f754d1119b39fe0eb49cac913c147b8c4057",
+      "note": "Fixed: was HISTORICAL in frontmatter with no banner, so 'state future' read as current; banner added with the close date from Jira. Registry note said closed 2026-08-11; Jira says 2026-08-21 UTC."
+    },
+    {
+      "doc_id": "SPRINT-5-CHARTER",
+      "contradiction": false,
+      "verified_against": [
+        "git",
+        "ci",
+        "github",
+        "jira"
+      ],
+      "reviewed_blob": "5036e5ec05b2d3d2cfae0dbd8e285456f322e15d",
+      "note": "Fixed: 114 non-Done was true at the start of 2026-10-05 and 111 by evening (PLZG-248, from Jira status history); one review layer (two); 28 documents stated as current; timestamp count stated as current though not re-measured; three 'Enforced by' cells that named the origin, not an enforcer. Acceptance text matches sprint_5_gate.py."
+    },
+    {
+      "doc_id": "DEVOPS-SETUP",
+      "contradiction": false,
+      "verified_against": [
+        "git",
+        "ci",
+        "github"
+      ],
+      "reviewed_blob": "302c0e08d2f0f810eeeb5ec720d433a5447877d3",
+      "note": "Fixed: bridge test count (77, now uncounted) and the cache-bust instruction, which omitted the pinned hash. Eight CI jobs, labels and routines verified."
+    }
+  ]
+}

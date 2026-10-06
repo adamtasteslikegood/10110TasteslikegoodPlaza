@@ -5,12 +5,12 @@ tier: 2
 authority: derived
 status: ACTIVE
 doc_set_version: 0.2.13
-last_updated: 2026-07
+last_updated: 2026-10
 owner: adamtasteslikegood
 derives_from: [STORYBOARD-W1, DESIGN-25D, PLATFORM-DECISIONS]
 enforcement: asserted
 gates: [Validate Specs:live, Validate Agent Data:live]
-weakest_claim: 133 roles as JSON (from .md files)
+weakest_claim: 132 agents as JSON (generated from .md files)
 ---
 
 # 10110 TastesLike Plaza — Project Overview
@@ -58,9 +58,9 @@ Layer 2 — Current frontend  (PARTIAL)
   Event bus         → tasks, unlocks, chat notifications
 
 Layer 1 — Data + config  (EXISTS)
-  Employee directory  → 133 roles as JSON (from .md files)
-  Scene / story data  → dialogue, unlock gates, tutorial flow
-  Player profile      → progress, preferences, config
+  Employee directory  → 132 agents as JSON (generated from .md files)
+  Scene / story data  → dialogue, unlock gates, tutorial flow   (not built yet)
+  Player profile      → progress, preferences, config        (not built yet)
 ```
 
 **Critical insight:** Layers 1, 3 and 4 all exist. The proof pipe is complete:
@@ -132,4 +132,4 @@ Original contributions and changes © 2026 Adam Schoen. MIT License.
 
 ---
 
-*Last updated: August 2026*
+*Last updated: October 2026*

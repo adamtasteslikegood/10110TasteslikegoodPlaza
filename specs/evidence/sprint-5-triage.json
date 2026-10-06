@@ -965,16 +965,40 @@
       "bucket": "keep",
       "reviewed_at": "2026-10-06",
       "confidence": "high",
-      "github_issue": null,
-      "reason": "Filed after the baseline, during review of PR #264: M8 step 8 (specs/roadmap.md:340, response logged to the inbox) has no implementation, and roadmap.md, CLAUDE.md and the design doc disagree on whether it is M8 scope. Needs an owner ruling. Owner ruling 2026-10-06: the inbox is built when the game is ready for one, so it is not M8 scope; the ticket stays open for the roadmap edit that says so (T4)."
+      "github_issue": 265,
+      "reason": "Filed after the baseline, during review of PR #264: M8 step 8 (specs/roadmap.md:340, response logged to the inbox) has no implementation, and roadmap.md, CLAUDE.md and the design doc disagree on whether it is M8 scope. Needs an owner ruling. Owner ruling 2026-10-06: the inbox is built when the game is ready for one, so it is not M8 scope; the ticket stays open until the roadmap edit that says so, made in T4, is on dev."
     },
     {
       "key": "PLZG-248",
       "bucket": "keep",
       "reviewed_at": "2026-10-06",
       "confidence": "high",
-      "github_issue": null,
-      "reason": "Filed 2026-10-06 from the independent review of PR #264, after the baseline: the Sprint 5 charter's weakest_claim says 114 non-Done items on 2026-10-05 while the flow snapshot recorded 111 that day. Real and unresolved; the charter is a governed document, so the re-measurement belongs to T4's cross-check (PLZG-233)."
+      "github_issue": 267,
+      "reason": "Filed 2026-10-06 from the independent review of PR #264, after the baseline: the Sprint 5 charter's weakest_claim says 114 non-Done items on 2026-10-05 while the flow snapshot recorded 111 that day. Real and unresolved; the charter is a governed document, so the re-measurement belongs to T4's cross-check (PLZG-233). T4 re-measured it from Jira's status history: 114 at the start of the day, 111 by 20:08 PDT; the charter now says which. Stays open until that correction is on dev."
+    },
+    {
+      "key": "PLZG-249",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 269,
+      "reason": "Filed 2026-10-06 by the review of PR #268: open conflict 4.11, whether a retired charter's delivery policy survives the charter. An owner decision between two recorded options; nothing to close until it is made."
+    },
+    {
+      "key": "PLZG-250",
+      "bucket": "done",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 270,
+      "reason": "Fixed on dev by PR #268 (commit 422b2bf, merged as 2f26d95 on 2026-10-06): specs/meta/spec-drivers-v0.2.5.md section 4's summary line no longer says none open; it counts the open entries by name. Filed from the review of #268 and fixed in the same PR's second round."
+    },
+    {
+      "key": "PLZG-251",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 271,
+      "reason": "Filed 2026-10-06 from the T4 cross-check: the storyboard names five agent ids and two counts that data/agents.json does not have. Changing a beat needs owner sign-off, so T4 left the storyboard untouched and this carries the decision."
     }
   ]
 }
