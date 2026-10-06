@@ -1,5 +1,5 @@
 {
-  "$comment": "Evidence for Sprint 5 T4 (PLZG-233). One row per governed document: every claim it makes about repository, CI, GitHub or board state was checked against the system that owns that state, on 2026-10-06, and what was wrong was fixed in the same change. contradiction: false means the document makes no unlabelled claim that an owning system contradicts. It does NOT mean nothing is in dispute: a figure the document itself marks as disputed is listed in open_conflicts by its section in specs/meta/spec-drivers-v0.2.5.md, and scripts/sprint_5_gate.py t4 fails the row unless the register still holds that section OPEN, and names every carried conflict in its output. `note` says what was fixed, what was deliberately left, and what could not be checked. reviewed_blob is `git hash-object` of the file as reviewed; the gate recomputes it, so an edit after review invalidates the row. scripts/sprint_5_crosscheck_rehash.py lists the rows that have gone stale and re-stamps them only with --write.",
+  "$comment": "Evidence for Sprint 5 T4 (PLZG-233). One row per governed document: every claim it makes about repository, CI, GitHub or board state was checked against the system that owns that state, on 2026-10-06, and what was wrong was fixed in the same change. contradiction: false means the document makes no unlabelled claim that an owning system contradicts. It does NOT mean nothing is in dispute: a figure the document itself marks as disputed is listed in open_conflicts by its section in specs/meta/spec-drivers-v0.2.5.md, and scripts/sprint_5_gate.py t4 fails the row unless the register still holds that section OPEN, fails a row that omits an OPEN section its document cites, and names every carried conflict in its output. `note` says what was fixed, what was deliberately left, and what could not be checked. reviewed_blob is `git hash-object` of the file as reviewed; the gate recomputes it, so an edit after review invalidates the row. scripts/sprint_5_crosscheck_rehash.py lists the rows that have gone stale and re-stamps them only with --write.",
   "reviewed_at": "2026-10-06",
   "reviewed_docs": [
     {
@@ -43,7 +43,7 @@
         "ci",
         "github"
       ],
-      "reviewed_blob": "762ae62c384e81b1bbfe3042ab3cacbd29e816bd",
+      "reviewed_blob": "7a8c9f35c73a334396b6d214fa68b8b785662e99",
       "note": "Fixed: stage plan said rounds 3 and 4 were unstarted; traceability chain named TO, now key-neutral per D-026; CLAUDE.md does not name the pin commit; the 1.0.0 trigger was called the first-tag trigger though 24 tags exist. Added conflict 4.12. Noted, not actioned: M8 shipped and the 1.0.0 cut has not been made."
     },
     {
@@ -119,7 +119,7 @@
         "jira",
         "github"
       ],
-      "reviewed_blob": "9e69c5db2f72235e438b4ed7dc4636ef867f4bbb",
+      "reviewed_blob": "0d088cee7c4e6308ae2d548cb0c2839ba37b56e5",
       "note": "Fixed: a line citation, and the claim that every branch carries the key. Projects, sprint ids and states, and the Confluence page verified against Jira. Jira automation re-read through its API on 2026-10-06: three branch-created rules (PLZG, RCP, KAN), no PR-creation or merge rule, and the PR over-match did not reproduce — the document now says so beside its 2026-08-10 table. One claim has no owner this repo can read: the Linear sync topology and key prefix (the Linear API here returns neither). The document now labels it as the owner's statement, recorded and not re-verified."
     },
     {
@@ -162,8 +162,11 @@
         "ci",
         "github"
       ],
+      "open_conflicts": [
+        "4.11"
+      ],
       "reviewed_blob": "c17e4d6781833ca45667d6680ecd86794f4eb301",
-      "note": "HISTORICAL with a banner. No contradictions; the banner's claim that its done-clauses are still enforced on every PR is true."
+      "note": "HISTORICAL with a banner. No contradictions; its banner cites open conflict 4.11, which the row carries; the banner's claim that its done-clauses are still enforced on every PR is true."
     },
     {
       "doc_id": "SPRINT-3-CHARTER",
@@ -172,8 +175,11 @@
         "git",
         "ci"
       ],
+      "open_conflicts": [
+        "4.11"
+      ],
       "reviewed_blob": "71e089400c0e7e77f9e5e54fa456ba7caa78e9f6",
-      "note": "HISTORICAL with a banner. No contradictions."
+      "note": "HISTORICAL with a banner. No contradictions; its banner cites open conflict 4.11, which the row carries."
     },
     {
       "doc_id": "SPRINT-4-CHARTER",
@@ -194,7 +200,7 @@
         "github",
         "jira"
       ],
-      "reviewed_blob": "3f679f43b1e2a8228676311a1f2458533c3c8df0",
+      "reviewed_blob": "524ebddd821d97c5faf05eb99f18730238c57011",
       "note": "Fixed: 114 non-Done was true at the start of 2026-10-05 and 111 by evening (PLZG-248, from Jira status history); one review layer (two); 28 documents stated as current; timestamp count stated as current though not re-measured; three 'Enforced by' cells that named the origin, not an enforcer. Acceptance text matches sprint_5_gate.py."
     },
     {

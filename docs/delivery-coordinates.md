@@ -217,9 +217,10 @@ requires the key in the PR **title** and recommends it in the branch name ("Put 
 branch name and commit messages too"). In practice most branches in this repo carry the
 key (`type/PLZG-###-description`), so the branch rule fires for those — but not all:
 merged PRs such as #184 (`fix/dialog-overflow`) and #217 (`worktree-pm-hooks`) came
-from keyless branches. Either disable the
+from keyless branches. The recommendation at the time was to disable the
 PR-creation rule, or condition it on the key appearing in `{{pullRequest.title}}` or
-`{{branch.name}}` rather than merely being linked.
+`{{branch.name}}` rather than merely being linked. Jira lists no such rule as of
+2026-10-06 (above); the advice applies only if one is reintroduced.
 
 **No retroactive firing**, which is why an earlier revision of this section recorded the
 `In Progress` half as *"did not fire"*. It was tested on PR #145, whose branch and PR

@@ -46,6 +46,7 @@ REGISTRY_PATH = REPO_ROOT / "specs" / "meta" / "doc-registry.json"
 TRIAGE_PATH = REPO_ROOT / "specs" / "evidence" / "sprint-5-triage.json"
 CROSSCHECK_PATH = REPO_ROOT / "specs" / "evidence" / "sprint-5-doc-crosscheck.json"
 CONFLICT_REGISTER_PATH = REPO_ROOT / "specs" / "meta" / "spec-drivers-v0.2.5.md"
+SECTION_CITATION = re.compile(r"§\s?(\d+\.\d+)\b")
 OPEN_CONFLICT_HEADING = re.compile(r"^### (\d+\.\d+) .*\*\*OPEN\*\*\s*$", re.M)
 
 TOKEN_VARS = ("ATLASSIAN_API_TOKEN_BASE64", "ATLASSIAN_API_TOKEN_BASE64_USEREMAIL")
@@ -426,6 +427,19 @@ def check_t4(plan: dict) -> str:
             not stale,
             f"{doc_id}: open_conflicts names {stale}, not OPEN in the conflict register",
         )
+        # The declaration is not trusted on its own: deleting it would silence the
+        # gate while the document went on saying "open conflict §4.12". Whatever
+        # OPEN section the document cites, its row must list. The register is
+        # exempt -- it is where the sections live.
+        doc_path = REPO_ROOT / path
+        if doc_path.is_file() and doc_path != CONFLICT_REGISTER_PATH:
+            cited = set(SECTION_CITATION.findall(doc_path.read_text(encoding="utf-8")))
+            undeclared = sorted((cited & open_sections) - set(conflicts))
+            require(
+                not undeclared,
+                f"{doc_id}: cites open conflict(s) {undeclared} that its row "
+                "does not list in open_conflicts",
+            )
         carried.update(conflicts)
         # A row is evidence about one version of the file. If the file changed
         # since, the row describes something that no longer exists.

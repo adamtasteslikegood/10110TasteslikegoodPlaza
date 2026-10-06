@@ -117,8 +117,9 @@ reflected upward in the correct document at the correct tier; and
 
 ## 3. Stage plan
 
-Rounds 1 to 3 are done. Round 4 is partly delivered: M7 and M8 shipped in Sprint 4;
-M5 and M6 are not started.
+Rounds 1 to 3 are done. Round 4 is partly delivered: M7 and M8 shipped in Sprint 4.
+M5 is not started. M6 has groundwork only — `GameState` tracks unlocks and the
+server-room door already asks it — with no gate table and no map.
 
 | Stage | Scope | Advance when |
 |---|---|---|

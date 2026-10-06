@@ -393,6 +393,25 @@ class T4(GateCase):
         self.write()
         self.assertIn("still carried: ['4.12']", gate.check_t4(self.plan))
 
+    def test_document_cites_an_open_conflict_its_row_omits(self):
+        self.register("### 4.12 Counts disagree — **OPEN**\n")
+        path = self.root / "docs" / "roadmap.md"
+        path.write_text("# roadmap\nDisputed: open conflict §4.12.\n", "utf-8")
+        self.crosscheck["reviewed_docs"][0]["reviewed_blob"] = self.blob(
+            "docs/roadmap.md"
+        )
+        self.fails(gate.check_t4, "ROADMAP: cites open conflict(s) ['4.12']")
+
+    def test_citing_a_resolved_conflict_needs_no_declaration(self):
+        self.register("### 4.12 Counts disagree — **RESOLVED**\n")
+        path = self.root / "docs" / "roadmap.md"
+        path.write_text("# roadmap\nSettled in §4.12.\n", "utf-8")
+        self.crosscheck["reviewed_docs"][0]["reviewed_blob"] = self.blob(
+            "docs/roadmap.md"
+        )
+        self.write()
+        self.assertNotIn("still carried", gate.check_t4(self.plan))
+
     def test_conflict_the_register_has_resolved(self):
         self.register("### 4.12 Counts disagree — **RESOLVED**\n")
         self.crosscheck["reviewed_docs"][0]["open_conflicts"] = ["4.12"]
