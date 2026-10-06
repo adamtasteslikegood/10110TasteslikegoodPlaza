@@ -46,7 +46,7 @@
       "attempts": 0,
       "depends_on": ["T0"],
       "blocks": ["T2", "T6"],
-      "note": "Originally 'transition 6 false-WIP items to Done' on the assumption that a merged PR carrying a ticket's key meant the ticket's work was done. Checked against dev on 2026-10-05, that held for four of the six. PLZG-180 and PLZG-200 had their keys reused by unrelated PRs (#178; #199/#203) and their defects were still in the code. Outcome: PLZG-129, -199, -209, -215, -221 verified and transitioned with evidence comments; PLZG-200 fixed by PR #252 and Done when that merges; PLZG-180 closed Won't Do by owner decision (Done plus the wont-do label, since the workflow has no Won't Do status). PLZG-142 had no work behind it and returned to To Do, where T2 triages it. Verify a ticket against the file, never against the PR title."
+      "note": "Originally 'transition 6 false-WIP items to Done' on the assumption that a merged PR carrying a ticket's key meant the ticket's work was done. Checked against dev on 2026-10-05, that held for four of the six. PLZG-180 and PLZG-200 had their keys reused by unrelated PRs (#178; #199/#203) and their defects were still in the code. Outcome: PLZG-129, -199, -209, -215, -221 verified and transitioned with evidence comments; PLZG-200 fixed by PR #252, merged 2026-10-06 UTC, and transitioned then; PLZG-180 closed Won't Do by owner decision (Done plus the wont-do label, since the workflow has no Won't Do status). PLZG-142 had no work behind it and returned to To Do, where T2 triages it. Verify a ticket against the file, never against the PR title."
     },
     {
       "id": "T2",
@@ -75,13 +75,14 @@
         "cmd": "python3 scripts/sprint_5_gate.py t3"
       },
       "acceptance_inputs": {
-        "must_stay_governed": ["META-SPEC", "CONCEPT-DRIVER", "DECISION-REGISTER", "SPEC-DRIVERS-025", "META-INDEX", "STORYBOARD-W1", "DESIGN-25D", "PLATFORM-DECISIONS", "PROJECT-OVERVIEW", "AGENT-DIRECTORY", "DELIVERY-COORDINATES", "ROADMAP", "TASK-TRACKER", "BRANCHING-STRATEGY", "SPRINT-2-CHARTER", "SPRINT-3-CHARTER", "SPRINT-4-CHARTER", "SPRINT-5-CHARTER", "DEVOPS-SETUP"]
+        "must_stay_governed": ["META-SPEC", "CONCEPT-DRIVER", "DECISION-REGISTER", "SPEC-DRIVERS-025", "META-INDEX", "STORYBOARD-W1", "DESIGN-25D", "PLATFORM-DECISIONS", "PROJECT-OVERVIEW", "AGENT-DIRECTORY", "DELIVERY-COORDINATES", "ROADMAP", "TASK-TRACKER", "BRANCHING-STRATEGY", "SPRINT-2-CHARTER", "SPRINT-3-CHARTER", "SPRINT-4-CHARTER", "SPRINT-5-CHARTER", "DEVOPS-SETUP"],
+        "must_be_historical": ["SPRINT-2-CHARTER", "SPRINT-3-CHARTER"]
       },
       "status": "todo",
       "attempts": 0,
       "depends_on": ["T0"],
       "blocks": ["T4", "T6"],
-      "note": "Move the nine tier-4 documents (summaries, research, historical) from documents to exempt in doc-registry.json. Sprint 2 and 3 charters STAY governed and become status HISTORICAL: SPRINT-4-CHARTER derives_from SPRINT-3-CHARTER, and validate_specs.py rejects a derives_from that points outside documents. Before ungoverning any doc, grep for BOTH its D-nnn decisions and its doc_id in other documents' derives_from. Known case: AGILE-LIKE-IM-5 derives from AGILE-EXPLAINED -- both leave together. TASK-TRACKER, BRANCHING-STRATEGY and DEVOPS-SETUP were on an earlier removal list and are no longer in scope. The gate enforces this: must_stay_governed names the 19 documents that are not tier-4, and T3 fails if any of them has left the registry, whatever the count."
+      "note": "Move the nine tier-4 documents (summaries, research, historical) from documents to exempt in doc-registry.json. Sprint 2 and 3 charters STAY governed and become status HISTORICAL: SPRINT-4-CHARTER derives_from SPRINT-3-CHARTER, and validate_specs.py rejects a derives_from that points outside documents. Before ungoverning any doc, grep for BOTH its D-nnn decisions and its doc_id in other documents' derives_from. Known case: AGILE-LIKE-IM-5 derives from AGILE-EXPLAINED -- both leave together. TASK-TRACKER, BRANCHING-STRATEGY and DEVOPS-SETUP were on an earlier removal list and are no longer in scope. The gate enforces this: must_stay_governed names the 19 documents that are not tier-4, and T3 fails if any of them has left the registry, whatever the count. must_be_historical names the two retired charters; T3 also fails while either is still ACTIVE in the registry."
     },
     {
       "id": "T4",

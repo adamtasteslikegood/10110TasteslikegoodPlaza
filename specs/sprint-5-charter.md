@@ -79,6 +79,7 @@ The sprint ends when both gates pass or the iteration cap is hit.
 | `D-023` | Merge commits only, squash/rebase disabled | Repository merge method settings |
 | `D-026` | `docs/delivery-coordinates.md` owns Atlassian identifiers | Policy |
 | `D-028` | Delivery authority for time-boxed sprint policy | META-SPEC |
+| `D-030` | PR review round bounds: minimum 2, maximum 3, with exemptions | `docs/designs/platform-decisions.md` |
 
 ## 3. Budgets
 
@@ -88,7 +89,7 @@ The sprint ends when both gates pass or the iteration cap is hit.
 | Iteration cap (sprint) | 6 iterations |
 | WIP cap | 3 |
 | API cost cap | None — Claude Max 5x subscription |
-| PR review cycle cap | 2 rounds per PR |
+| PR review rounds | `D-030`: minimum 2 rounds before merge, maximum 3 before deciding — merge, close, or revert to draft and elevate to the owner. Security findings, branch-protection failures and ticket-linked blockers are exempt from the maximum and run until resolved or elevated. |
 
 ## 4. Scope
 
@@ -99,7 +100,7 @@ The sprint ends when both gates pass or the iteration cap is hit.
 | T0 | Fetch and reconcile against origin/dev | — | `scripts/check_sync.sh --strict` | — |
 | T1 | Clear the 7 stale In Progress items | PLZG-230 | `python3 scripts/sprint_5_gate.py t1` — PLZG-129, -199, -200, -209, -215, -221 are Done and PLZG-180 is Done with the `wont-do` label | T0 |
 | T2 | Three-bucket triage of every non-Done item (Done/Keep/Won't Do) | PLZG-231 | `python3 scripts/sprint_5_gate.py t2` — the triage evidence covers every key in the pre-triage baseline and every key still open (To Do or In Progress, the sprint's own tickets excepted), and each bucket matches the ticket's status and label in Jira | T1 |
-| T3 | Ungovern the 9 tier-4 docs + mark Sprint 2/3 charters HISTORICAL (28→≤19) | PLZG-232 | `python3 scripts/sprint_5_gate.py t3` — `validate_specs.py` green with ≤19 docs, and all 19 documents that are not tier-4 still governed | T0 |
+| T3 | Ungovern the 9 tier-4 docs + mark Sprint 2/3 charters HISTORICAL (28→≤19) | PLZG-232 | `python3 scripts/sprint_5_gate.py t3` — `validate_specs.py` green with ≤19 docs, all 19 documents that are not tier-4 still governed, and the Sprint 2 and 3 charters `HISTORICAL` | T0 |
 | T4 | Cross-check surviving docs for state contradictions | PLZG-233 | `python3 scripts/sprint_5_gate.py t4` — every governed doc has a cross-check row with `contradiction: false`, the owning systems consulted, and a `reviewed_blob` matching the file's current content | T3 |
 | T5 | Sprint 5 charter and loop plan | PLZG-234 | `python3 scripts/sprint_5_gate.py t5` — the validator passes, both files exist, and Jira confirms sprint `51` is on board `169` holding every task ticket | T0 |
 | T6 | Sprint close — both gates green | PLZG-235 | `python3 scripts/sprint_5_gate.py t6` — re-runs T1–T4, requires `review_complete: true` in the triage evidence, and requires `validate_delivery_coordinates.py` to pass on a refreshed flow snapshot | T1, T2, T3, T4, T5 |

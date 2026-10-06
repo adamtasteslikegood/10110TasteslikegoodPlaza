@@ -97,7 +97,7 @@ def task(plan: dict, task_id: str) -> dict:
 # --------------------------------------------------------------------------
 
 
-def load_env() -> dict:
+def read_dotenv() -> dict:
     env = {}
     dotenv = REPO_ROOT / ".env"
     if dotenv.is_file():
@@ -106,14 +106,25 @@ def load_env() -> dict:
             if line and not line.startswith("#") and "=" in line:
                 key, value = line.split("=", 1)
                 env[key.strip()] = value.strip()
-    # ./.env WINS over the shell. direnv exports .env into the shell and keeps
-    # exporting a value after it is deleted from the file, so the environment
-    # can hold a revoked token the file no longer names. The environment is the
-    # fallback, for a runner that has no .env at all.
-    for key, value in os.environ.items():
-        if key.startswith("ATLASSIAN_"):
-            env.setdefault(key, value)
     return env
+
+
+def resolve_credential() -> "tuple[str | None, str | None]":
+    """``(site, credential)`` from ./.env, else from the environment.
+
+    ./.env WINS, and the two are NEVER MIXED. direnv exports .env into the shell
+    and keeps exporting a value after it is deleted from the file, so the shell
+    can hold a revoked token the file no longer names. Filling gaps field by
+    field would let a stale shell email-and-token pair outrank a fresh base64
+    value in the file. So the credential comes whole from whichever source is
+    the first to hold a complete one; the environment is the fallback for a
+    runner with no .env at all.
+    """
+    shell = {k: v for k, v in os.environ.items() if k.startswith("ATLASSIAN_")}
+    file_env = read_dotenv()
+    credential = basic_credential(file_env) or basic_credential(shell)
+    site = file_env.get("ATLASSIAN_URL") or shell.get("ATLASSIAN_URL")
+    return site, credential
 
 
 def basic_credential(env: dict) -> str | None:
@@ -142,9 +153,7 @@ def jira_get(endpoint: str, params: dict | None = None) -> dict:
     if not _authenticated and endpoint != "/rest/api/3/myself":
         jira_get("/rest/api/3/myself")
         _authenticated = True
-    env = load_env()
-    site = env.get("ATLASSIAN_URL")
-    token = basic_credential(env)
+    site, token = resolve_credential()
     if not site or not token:
         raise GateError(
             "ATLASSIAN_URL plus either ATLASSIAN_EMAIL and ATLASSIAN_API_TOKEN, or "
@@ -331,15 +340,29 @@ def check_t3(plan: dict) -> str:
     # a derives_from target reaches the same number as removing a tier-4
     # summary, so the plan names every document that must stay and this checks
     # each is still governed. That is risk R1, enforced rather than advised.
-    keep = task(plan, "T3").get("acceptance_inputs", {}).get("must_stay_governed")
+    inputs = task(plan, "T3").get("acceptance_inputs", {})
+    keep = inputs.get("must_stay_governed")
     require(
         isinstance(keep, list) and bool(keep),
         "T3 declares no must_stay_governed list",
     )
-    governed = {d["doc_id"] for d in load_json(REGISTRY_PATH).get("documents", [])}
+    registry = load_json(REGISTRY_PATH)
+    governed = {d["doc_id"] for d in registry.get("documents", [])}
     removed = sorted(set(keep) - governed)
     require(not removed, f"documents that must stay governed were removed: {removed}")
-    return f"{count} governed document(s), limit {limit}; all {len(keep)} protected"
+
+    # Staying governed is half of what T3 asks of the retired charters; the
+    # other half is that they stop claiming to be current. validate_specs.py
+    # already holds the registry and the frontmatter to the same status, so
+    # reading the registry is enough.
+    retire = inputs.get("must_be_historical", [])
+    status = {d["doc_id"]: d.get("status") for d in registry.get("documents", [])}
+    still_active = sorted(d for d in retire if status.get(d) != "HISTORICAL")
+    require(not still_active, f"documents not yet marked HISTORICAL: {still_active}")
+    return (
+        f"{count} governed document(s), limit {limit}; all {len(keep)} protected, "
+        f"{len(retire)} retired"
+    )
 
 
 def check_t4(plan: dict) -> str:
@@ -349,6 +372,11 @@ def check_t4(plan: dict) -> str:
     paths = {d["doc_id"]: d["path"] for d in registry.get("documents", [])}
     rows = manifest.get("reviewed_docs")
     require(isinstance(rows, list), "cross-check evidence has no reviewed_docs list")
+    # A dict keeps the LAST row for a doc_id, so a recorded contradiction
+    # followed by a clean row for the same document would vanish.
+    ids = [row.get("doc_id") for row in rows]
+    duplicates = sorted({i for i in ids if ids.count(i) > 1}, key=str)
+    require(not duplicates, f"documents cross-checked more than once: {duplicates}")
     by_id = {row.get("doc_id"): row for row in rows}
 
     missing = sorted(set(paths) - set(by_id))
