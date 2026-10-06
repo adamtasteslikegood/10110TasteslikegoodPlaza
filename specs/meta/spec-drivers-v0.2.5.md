@@ -132,7 +132,8 @@ now; neither is started.
 ## 4. Open-conflict register
 
 Per [`META-SPEC.md`](META-SPEC.md) §4, conflicts are recorded rather than silently
-resolved. **Ten resolved, none open** as of v0.2.11 — §4.10 closed by amendment in `PLZG-137`. Resolved entries are kept,
+resolved. **Ten resolved, one open** as of v0.2.13 — §4.10 closed by amendment in
+`PLZG-137`; §4.11 opened in `PLZG-232`. Resolved entries are kept,
 not deleted — the record of *how* a conflict was settled is what stops it reopening.
 
 ### 4.1 `ALIGNED-SPEC-025` §01.3 versus `STORYBOARD-W1` — **RESOLVED**
