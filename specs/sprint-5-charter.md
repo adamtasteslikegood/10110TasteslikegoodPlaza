@@ -110,7 +110,7 @@ The sprint ends when both gates pass or the iteration cap is hit.
 | T3 | Ungovern the 9 tier-4 docs + mark Sprint 2/3 charters HISTORICAL (28→≤19) | PLZG-232 | `python3 scripts/sprint_5_gate.py t3` — `validate_specs.py` green with ≤19 docs, all 19 documents that are not tier-4 still governed, and the Sprint 2 and 3 charters `HISTORICAL` | T0 |
 | T4 | Cross-check surviving docs for state contradictions | PLZG-233 | `python3 scripts/sprint_5_gate.py t4` — every governed doc has a cross-check row with `contradiction: false`, the owning systems consulted, and a `reviewed_blob` matching the file's current content; a row may carry a dispute the document labels as such only while the conflict register holds it `OPEN`, must list every `OPEN` conflict its document cites, and the gate names what is carried | T3 |
 | T5 | Sprint 5 charter and loop plan | PLZG-234 | `python3 scripts/sprint_5_gate.py t5` — the validator passes, both files exist, and Jira confirms sprint `51` is on board `169` holding every task ticket | T0 |
-| T6 | Sprint close — both gates green | PLZG-235 | `python3 scripts/sprint_5_gate.py t6` — re-runs T1–T4, requires `review_complete: true` in the triage evidence, and requires `validate_delivery_coordinates.py` to pass on a refreshed flow snapshot | T1, T2, T3, T4, T5 |
+| T6 | Sprint close — both gates green (charter retirement and the between-sprints snapshot follow the Jira close, `PLZG-255`) | PLZG-235 | `python3 scripts/sprint_5_gate.py t6` — re-runs T1–T4, requires `review_complete: true` in the triage evidence, and requires `validate_delivery_coordinates.py` to pass on a refreshed flow snapshot | T1, T2, T3, T4, T5 |
 
 **The acceptance commands need a working Jira credential.** `sprint_5_gate.py`
 reads `ATLASSIAN_URL`, `ATLASSIAN_EMAIL` and `ATLASSIAN_API_TOKEN` from `./.env`,
@@ -142,8 +142,9 @@ title.
 
 Adam owns and reviews all tasks. Two automated review layers, both advisory:
 
-1. **`claude-review.yml`** — independent reviewer on non-draft, same-repo PRs; it
-   skips Dependabot's PRs and events triggered by a bot.
+1. **`claude-review.yml`** — independent reviewer. On pull-request events it runs
+   for non-draft, same-repo PRs and skips Dependabot's PRs and bot-triggered events; a
+   manual `workflow_dispatch` always runs.
 2. **GitHub Copilot code review** — set by the ruleset on `dev`; reviews each push.
 
 No `/codex` adversarial reviewer this sprint — the work is docs and board

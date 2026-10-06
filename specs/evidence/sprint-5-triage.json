@@ -1023,6 +1023,14 @@
       "confidence": "high",
       "github_issue": null,
       "reason": "Filed 2026-10-06 after PR #273 merged: the three documents carrying open conflict 4.12 still declare enforcement: asserted, which means a human verified the claim. Whether a disputed figure should lower a document's enforcement value is a question about the D-027 axis; it belongs with the owner's resolution of 4.12, not with sprint close."
+    },
+    {
+      "key": "PLZG-255",
+      "bucket": "keep",
+      "reviewed_at": "2026-10-06",
+      "confidence": "high",
+      "github_issue": 279,
+      "reason": "Filed 2026-10-06 by the review of PR #278: the follow-up owed after sprint close -- retire the Sprint 5 charter to HISTORICAL and re-declare the flow snapshot as between sprints, together, once the Jira sprint is closed. Planned work, done immediately after T6 merges."
     }
   ]
 }

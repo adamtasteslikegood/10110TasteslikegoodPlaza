@@ -33,7 +33,11 @@ spec-set versions, and no application release existed before `v0.1.22`.
 - `data/plzg-flow-snapshot.json` refreshed at 2026-10-06T11:13 PDT: 223 total,
   159 done, 2 in progress.
 - `specs/sprint-5-charter.md` now says the Claude reviewer skips Dependabot PRs and
-  bot-triggered events (`PLZG-253`).
+  bot-triggered events on pull-request events (`PLZG-253`).
+- **Not in this change, on purpose:** the charter stays `ACTIVE` and the snapshot
+  still declares Sprint 5 active, because the Jira sprint is closed only after this
+  is on `dev`. Retiring the charter and re-declaring the snapshot as between
+  sprints move together afterwards (`PLZG-255`).
 
 ### Fixed — state claims in the 19 governed documents, checked against what owns them (`PLZG-233`)
 
