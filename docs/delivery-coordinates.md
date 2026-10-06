@@ -4,8 +4,8 @@ title: Delivery coordinates — which board, which space, which key
 tier: 2
 authority: taxonomy
 status: ACTIVE
-doc_set_version: 0.2.12
-last_updated: 2026-08
+doc_set_version: 0.2.13
+last_updated: 2026-10
 owner: adamtasteslikegood
 derives_from: [PROJECT-OVERVIEW]
 decides: [D-026]
@@ -87,6 +87,23 @@ attracting Plaza work — that is how `TO-125` and `TO-126` were misfiled. The
 rename used `PUT /rest/api/3/project/TO` with the credential in `.env`; the MCP
 server exposes no project-update tool, but REST does, so this is not a UI-only
 operation.
+
+### Board and sprints
+
+Board **`169`** is the `PLZG` Scrum board. A sprint id is a coordinate like any
+other, and until 2026-10-05 none was recorded here — each charter stated its own,
+and the Sprint 5 charter cited this document for an id it did not contain.
+
+| Sprint | Id | State, read 2026-10-05 |
+|---|---|---|
+| PLZG Sprint 1 | `10` | closed |
+| PLZG Sprint 2 | `44` | closed |
+| PLZG Sprint 3 | `45` | closed |
+| Sprint 4 | `48` | closed 2026-08-21 |
+| Sprint 5 | `51` | `future` — created 2026-08-20, not started |
+
+The ids are stable; the state column is a reading and goes stale. Re-read it from
+the board (`listJiraBoardSprints` on board `169`) before citing it.
 
 ## Confluence
 
@@ -346,4 +363,4 @@ them first.
   cross-project board. Untracked and git-ignored: committing it is a disclosure
   decision, not a formatting one.
 
-*Last updated: August 2026*
+*Last updated: October 2026*

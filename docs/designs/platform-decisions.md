@@ -4,7 +4,7 @@ title: Platform Decisions — engine, transport, data layer, licence, repo polic
 tier: 2
 authority: implementation
 status: ACTIVE
-doc_set_version: 0.2.12
+doc_set_version: 0.2.13
 last_updated: 2026-08
 owner: adamtasteslikegood
 derives_from: [META-SPEC]
@@ -211,4 +211,4 @@ not here. Add the `D-nnn` to this file's `decides:` list and to
 `scripts/validate_specs.py` fails the build if the two disagree, and now also fails
 if a document declares `decides:` without an authority licensed to originate.
 
-*Doc set version: 0.2.12 · Last updated: August 2026*
+*Doc set version: 0.2.13 · Last updated: August 2026*

@@ -4,7 +4,7 @@ title: Decision Register — every locked decision, with a citable id
 tier: 0
 authority: constitution
 status: ACTIVE
-doc_set_version: 0.2.12
+doc_set_version: 0.2.13
 last_updated: 2026-08
 owner: adamtasteslikegood
 derives_from: [META-SPEC]
@@ -133,4 +133,4 @@ point of the tier ladder.
    `SUPERSEDED` — do not delete it — and bump `doc_set_version` across the set.
 4. Add the `D-nnn` to the origin document's `decides:` frontmatter list.
 
-*Doc set version: 0.2.12 · Last updated: August 2026*
+*Doc set version: 0.2.13 · Last updated: August 2026*

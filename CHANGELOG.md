@@ -11,11 +11,28 @@ section at release time. PR references in parentheses.
 **Two version axes, deliberately separate.** This file and the tags track the
 **application**: the 3D era was `0.0.x`, and the 2.5D line is `0.1.y`. The
 `doc_set_version:` in every governed document's frontmatter is the **document
-set's** number and is unrelated — it reached `0.2.11` on its own axis. Prose that
+set's** number and is unrelated — it reached `0.2.13` on its own axis. Prose that
 cites `v0.2.7` or `v0.2.8` as software releases is conflating the two; those were
 spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
+
+### Added — Sprint 5 charter and loop plan (`PLZG-234`)
+
+- Sprint 5 charter (`specs/sprint-5-charter.md`) and machine-readable loop plan
+  (`specs/sprint-5-loop-plan.json`) for board reconciliation and governed-document
+  consolidation.
+- Governing target captured as 28→≤19 documents: the nine tier-4 documents. An
+  earlier draft said ≤14, which the registry could not reach.
+- `scripts/sprint_5_gate.py` carries the acceptance check for each task, replacing
+  shell one-liners embedded in the loop plan. It pages through Jira searches,
+  proves the credential before trusting an empty result, measures triage coverage
+  against a pre-triage baseline, and checks cross-check rows against each
+  document's current git blob.
+- `docs/delivery-coordinates.md` gains a *Board and sprints* table (board `169`,
+  sprint ids `10`–`51`).
+- Six `Doc set version` footers and `META-SPEC` §7's prose moved to `0.2.13` to
+  match the frontmatter bump.
 
 ### Fixed — bridge env docstring and SDK reference doc (`PLZG-200`)
 

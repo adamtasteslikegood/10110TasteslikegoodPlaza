@@ -1,0 +1,135 @@
+{
+  "$comment": "Machine-readable Sprint 5 plan. Prose rationale lives in specs/sprint-5-charter.md; this file is the shape delivery_loop_gate.py consumes. That script is NOT in this repo — it ships with the pm-skills plugin. Resolve it deterministically: mapfile -t G < <(find ~/.claude/plugins -path '*/pm-skills/scripts/delivery_loop_gate.py' | sort); [ ${#G[@]} -ge 1 ] || { echo 'FAIL: no delivery_loop_gate.py found'; exit 1; }; [ \"$(printf \"%s\\n\" \"${G[@]}\" | xargs sha256sum | awk '{print $1}' | sort -u | wc -l)\" = 1 ] || { echo 'FAIL: installs differ -- pin one'; exit 1; }; python3 \"${G[0]}\" --plan specs/sprint-5-loop-plan.json --mode plan --output human. Acceptance commands live in scripts/sprint_5_gate.py, one subcommand per task; it reads the sprint, board and ticket keys from THIS file and holds none of its own. Sprint goal: board reconciliation + doc consolidation. Done when (A) board triaged, non-Done ≤ deliberate backlog and (B) validate_specs.py green with ≤19 governed docs. The limit was ≤14 until 2026-10-05; that was unreachable -- 28 governed docs, 9 of them tier-4 -- and the owner re-scoped to the 9 tier-4 removals. No code milestones — housekeeping sprint. WIP cap 3, 2 attempts/task, 6 iterations. Reviewer: claude-review.yml only (no /codex).",
+  "goal": "Board reconciliation + doc consolidation. Done when: (A) board triaged, non-Done ≤ deliberate backlog; (B) validate_specs.py green with ≤19 governed docs. PLZG Sprint 5.",
+  "jira": {
+    "project": "PLZG",
+    "board_id": 169,
+    "sprint_id": 51,
+    "source": "docs/delivery-coordinates.md (D-026) owns these; this is the machine-readable copy the gate reads"
+  },
+  "governed_doc_limit": 19,
+  "budgets": {
+    "max_attempts_per_task": 2,
+    "max_loop_iterations": 6
+  },
+  "iteration": 0,
+  "tasks": [
+    {
+      "id": "T0",
+      "title": "Fetch and reconcile against origin/dev before any other task runs",
+      "owner": "adam schoen",
+      "executor": "agent",
+      "reviewer": "adam schoen",
+      "acceptance": {
+        "cmd": "scripts/check_sync.sh --strict"
+      },
+      "status": "todo",
+      "attempts": 0,
+      "blocks": ["T1", "T3", "T5"],
+      "note": "Blocking precondition, exempt from the attempt cap. No Jira ticket: it is a precondition the SessionStart hook already runs."
+    },
+    {
+      "id": "T1",
+      "jira": "PLZG-230",
+      "title": "Clear the 7 stale In Progress items (PLZG-129, -199, -209, -215, -221 Done; -200 fixed by PR #252; -180 Won't Do)",
+      "owner": "adam schoen",
+      "executor": "agent",
+      "reviewer": "adam schoen",
+      "acceptance": {
+        "cmd": "python3 scripts/sprint_5_gate.py t1"
+      },
+      "acceptance_inputs": {
+        "done": ["PLZG-129", "PLZG-199", "PLZG-200", "PLZG-209", "PLZG-215", "PLZG-221"],
+        "wont_do": ["PLZG-180"]
+      },
+      "status": "todo",
+      "attempts": 0,
+      "depends_on": ["T0"],
+      "blocks": ["T2", "T6"],
+      "note": "Originally 'transition 6 false-WIP items to Done' on the assumption that a merged PR carrying a ticket's key meant the ticket's work was done. Checked against dev on 2026-10-05, that held for four of the six. PLZG-180 and PLZG-200 had their keys reused by unrelated PRs (#178; #199/#203) and their defects were still in the code. Outcome: PLZG-129, -199, -209, -215, -221 verified and transitioned with evidence comments; PLZG-200 fixed by PR #252, merged 2026-10-06 UTC, and transitioned then; PLZG-180 closed Won't Do by owner decision (Done plus the wont-do label, since the workflow has no Won't Do status). PLZG-142 had no work behind it and returned to To Do, where T2 triages it. Verify a ticket against the file, never against the PR title."
+    },
+    {
+      "id": "T2",
+      "jira": "PLZG-231",
+      "title": "Three-bucket triage of every non-Done item (Done/Keep/Won't Do)",
+      "owner": "adam schoen",
+      "executor": "agent",
+      "reviewer": "adam schoen",
+      "acceptance": {
+        "cmd": "python3 scripts/sprint_5_gate.py t2"
+      },
+      "status": "todo",
+      "attempts": 0,
+      "depends_on": ["T1"],
+      "blocks": ["T6"],
+      "note": "Review every non-Done item individually -- To Do and In Progress alike; only the sprint's own tickets are exempt. Bucket as done (already merged -- verify against the file), keep (real remaining work), or wont_do (stale or duplicate). Do not bulk-close. BEFORE moving anything, record the non-Done set (project = PLZG AND statusCategory != Done, minus the sprint's own tickets) as baseline_keys with baseline_captured_at in specs/evidence/sprint-5-triage.json: coverage is measured against that baseline, because a closed item leaves the live column and could not otherwise be shown to have been skipped. Each row carries key, bucket, reviewed_at and reason. The gate then re-reads Jira: keep must still be open, done and wont_do must be Done, wont_do must carry the wont-do label, and done must not."
+    },
+    {
+      "id": "T3",
+      "jira": "PLZG-232",
+      "title": "Ungovern the 9 tier-4 docs + mark Sprint 2/3 charters HISTORICAL (28→≤19)",
+      "owner": "adam schoen",
+      "executor": "agent",
+      "reviewer": "adam schoen",
+      "acceptance": {
+        "cmd": "python3 scripts/sprint_5_gate.py t3"
+      },
+      "acceptance_inputs": {
+        "must_stay_governed": ["META-SPEC", "CONCEPT-DRIVER", "DECISION-REGISTER", "SPEC-DRIVERS-025", "META-INDEX", "STORYBOARD-W1", "DESIGN-25D", "PLATFORM-DECISIONS", "PROJECT-OVERVIEW", "AGENT-DIRECTORY", "DELIVERY-COORDINATES", "ROADMAP", "TASK-TRACKER", "BRANCHING-STRATEGY", "SPRINT-2-CHARTER", "SPRINT-3-CHARTER", "SPRINT-4-CHARTER", "SPRINT-5-CHARTER", "DEVOPS-SETUP"],
+        "must_be_historical": ["SPRINT-2-CHARTER", "SPRINT-3-CHARTER"]
+      },
+      "status": "todo",
+      "attempts": 0,
+      "depends_on": ["T0"],
+      "blocks": ["T4", "T6"],
+      "note": "Move the nine tier-4 documents (summaries, research, historical) from documents to exempt in doc-registry.json. Sprint 2 and 3 charters STAY governed and become status HISTORICAL: SPRINT-4-CHARTER derives_from SPRINT-3-CHARTER, and validate_specs.py rejects a derives_from that points outside documents. Before ungoverning any doc, grep for BOTH its D-nnn decisions and its doc_id in other documents' derives_from. Known case: AGILE-LIKE-IM-5 derives from AGILE-EXPLAINED -- both leave together. TASK-TRACKER, BRANCHING-STRATEGY and DEVOPS-SETUP were on an earlier removal list and are no longer in scope. The gate enforces this: must_stay_governed names the 19 documents that are not tier-4, and T3 fails if any of them has left the registry, whatever the count. must_be_historical names the two retired charters; T3 also fails while either is still ACTIVE in the registry."
+    },
+    {
+      "id": "T4",
+      "jira": "PLZG-233",
+      "title": "Cross-check surviving docs for state contradictions",
+      "owner": "adam schoen",
+      "executor": "agent",
+      "reviewer": "adam schoen",
+      "acceptance": {
+        "cmd": "python3 scripts/sprint_5_gate.py t4"
+      },
+      "status": "todo",
+      "attempts": 0,
+      "depends_on": ["T3"],
+      "blocks": ["T6"],
+      "note": "After T3, read each surviving governed doc and verify every claim it makes about state against the system that OWNS that state: git for code and history, Jira for board state, GitHub for repository settings and checks, CI for what a job does. CLAUDE.md is not an owner -- agreeing with it only shows two documents match. Fix what is wrong, then record one row per doc in specs/evidence/sprint-5-doc-crosscheck.json: doc_id, contradiction (explicitly false), verified_against (the owners consulted, or [\"none\"] for a doc with no state claims) and reviewed_blob (git hash-object of the file as reviewed). The gate recomputes the blob, so editing a doc after its review invalidates its row."
+    },
+    {
+      "id": "T5",
+      "jira": "PLZG-234",
+      "title": "Sprint 5 charter (specs/sprint-5-charter.md), loop plan, Jira sprint creation on PLZG board",
+      "owner": "adam schoen",
+      "executor": "agent",
+      "reviewer": "adam schoen",
+      "acceptance": {
+        "cmd": "python3 scripts/sprint_5_gate.py t5"
+      },
+      "status": "todo",
+      "attempts": 0,
+      "depends_on": ["T0"],
+      "blocks": ["T6"],
+      "note": "Charter, loop plan, gate script and doc-registry.json update in one PR. The gate also asks Jira that the sprint exists on the board and holds every task ticket."
+    },
+    {
+      "id": "T6",
+      "jira": "PLZG-235",
+      "title": "Sprint close — both gates green",
+      "owner": "adam schoen",
+      "executor": "agent",
+      "reviewer": "adam schoen",
+      "acceptance": {
+        "cmd": "python3 scripts/sprint_5_gate.py t6"
+      },
+      "status": "todo",
+      "attempts": 0,
+      "depends_on": ["T1", "T2", "T3", "T4", "T5"],
+      "note": "Procedural close. Re-runs T1-T4 against their owners, requires triage review_complete, and runs validate_delivery_coordinates.py so the sprint cannot close on a stale flow snapshot -- refresh data/plzg-flow-snapshot.json first. Both gates must pass: (A) board triaged, (B) validate_specs.py green with ≤19 docs. Update charter status to HISTORICAL. Run delivery_loop_gate.py --mode close."
+    }
+  ]
+}

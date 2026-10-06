@@ -4,7 +4,7 @@ title: DevOps Setup Guide
 tier: 3
 authority: derived
 status: ACTIVE
-doc_set_version: 0.2.12
+doc_set_version: 0.2.13
 last_updated: 2026-08
 owner: adamtasteslikegood
 derives_from: []
