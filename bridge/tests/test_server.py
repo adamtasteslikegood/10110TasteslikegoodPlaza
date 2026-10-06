@@ -27,6 +27,10 @@ def mock_engines(monkeypatch):
         }
     )
     domain_mgr.handle_resume = MagicMock(return_value=[])
+    # Synchronous in DomainManager. Left as the AsyncMock default it returns an
+    # un-awaited coroutine, which is truthy, so the resume branch passed by
+    # accident and leaked a RuntimeWarning.
+    domain_mgr.get_domain_state = MagicMock(return_value=None)
     domain_mgr.background_domain = MagicMock(
         return_value={
             "type": "domain_state",
@@ -98,6 +102,22 @@ class TestBridgeServerDispatch:
         )
         assert len(resp) == 1
         assert resp[0]["output"] == "buffered"
+        domain_mgr.refocus_domain.assert_not_called()
+
+    async def test_resume_refocuses_a_known_domain(self, mock_engines):
+        _, domain_mgr = mock_engines
+        domain_mgr.get_domain_state.return_value = {
+            "type": "domain_state",
+            "domain_id": "engineering",
+            "state": "backgrounded",
+            "unread_count": 1,
+        }
+        server = BridgeServer()
+        await server.dispatch(
+            {"type": "resume", "domain_id": "engineering", "cursor": "-1"}
+        )
+        domain_mgr.get_domain_state.assert_called_once_with("engineering")
+        domain_mgr.refocus_domain.assert_called_once_with("engineering")
 
     async def test_activate_domain_dispatch(self, mock_engines):
         _, domain_mgr = mock_engines

@@ -17,6 +17,19 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
 
+### Fixed — bridge env docstring and SDK reference doc (`PLZG-200`)
+
+- `bridge/domain_session.py`: `_resolve_sdk_env()`'s docstring said
+  `ClaudeAgentOptions.env` replaces the child environment. The pinned SDK merges
+  it over the inherited one; the docstring now says so. No behaviour change.
+- `docs/reference/using_agents_sdk_with_claude_code.md`: removed a nonexistent
+  `skills_dir` option (the SDK field is `skills`) and a 124-line duplicated,
+  garbled copy of the earlier sections.
+- `bridge/tests/test_server.py`: the shared fixture now mocks the synchronous
+  `get_domain_state`, so the resume test no longer leaks an un-awaited coroutine.
+  A second resume test covers the branch that fixture had been hiding: a known
+  domain is refocused, an unknown one is not.
+
 ### Fixed — delivery-coordinates gate was unpassable between sprints (`PLZG-239`)
 
 - `scripts/validate_delivery_coordinates.py` clause (b) gains a declared
