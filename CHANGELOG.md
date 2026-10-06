@@ -47,6 +47,19 @@ spec-set versions, and no application release existed before `v0.1.22`.
   A second resume test covers the branch that fixture had been hiding: a known
   domain is refocused, an unknown one is not.
 
+### Changed — Sprint 5 started; backlog triaged (`PLZG-231`)
+
+- Sprint 5 (Jira sprint `51`) started 2026-10-06 with a one-week window. The
+  charter, `docs/delivery-coordinates.md` and `data/plzg-flow-snapshot.json` now
+  say so; the snapshot no longer declares the between-sprints state.
+- `specs/evidence/sprint-5-triage.json` — the T2 record. All 106 tickets that
+  were not Done when triage began, each reviewed against the files on `dev`:
+  60 keep, 42 done, 4 Won't Do. The owner approved applying the buckets and the
+  board was moved to match; open GitHub issue twins were closed with the same
+  evidence. Non-Done fell from 111 to 64.
+- `specs/sprint-5-loop-plan.json` records T0, T1, T5 and T2 as done, each with
+  the gate output observed by the harness controller.
+
 ### Added — regression tests for the Sprint 5 gate (`PLZG-245`)
 
 - `tests/test_sprint_5_gate.py` — 48 network-free cases against a fake Jira and
