@@ -11,6 +11,7 @@ them could be trusted:
 * T2 compared the triage evidence with the CURRENT To Do set, so an item closed
   without review simply left the query and the check passed -- the bulk-close
   the charter's R2 exists to prevent;
+* T3 counted governed documents without asking which ones had left;
 * T4's manifest was self-attesting: an omitted ``contradiction`` read as false
   and ``reviewed_commit`` was never compared with anything;
 * T5 claimed a Jira sprint existed and checked only that two files did.
@@ -217,6 +218,11 @@ def check_t1(plan: dict) -> str:
     live = issues_by_key(expected)
     not_done = sorted(k for k in expected if live.get(k, {}).get("category") != "done")
     require(not not_done, f"not Done in Jira: {not_done}")
+    mislabeled = sorted(k for k in done_keys if WONT_DO_LABEL in live[k]["labels"])
+    require(
+        not mislabeled,
+        f"listed as done but labelled {WONT_DO_LABEL}: {mislabeled}",
+    )
     unlabeled = sorted(
         k for k in wont_do_keys if WONT_DO_LABEL not in live[k]["labels"]
     )
@@ -236,8 +242,8 @@ def check_t2(plan: dict, require_complete: bool = False) -> str:
     baseline = triage.get("baseline_keys")
     require(
         isinstance(baseline, list) and bool(baseline),
-        "triage evidence must record baseline_keys, the To Do set captured before "
-        "any item was moved",
+        "triage evidence must record baseline_keys, the non-Done set captured "
+        "before any item was moved",
     )
     require(bool(triage.get("baseline_captured_at")), "baseline_captured_at is missing")
 
@@ -259,9 +265,16 @@ def check_t2(plan: dict, require_complete: bool = False) -> str:
     # skipped. Anything filed after the baseline is picked up by the live read.
     missing = sorted(set(baseline) - set(keys))
     require(not missing, f"baseline keys with no triage row: {missing}")
-    live_todo = jira_search(f'project = {project} AND status = "To Do"')
-    unreviewed = sorted(set(live_todo) - set(keys))
-    require(not unreviewed, f"live To Do keys with no triage row: {unreviewed}")
+    # Every open item, not only To Do: Gate A is about all non-Done work, and an
+    # In Progress ticket nobody triaged is exactly what T1 found seven of. The
+    # sprint's own tickets are exempt -- they are the work, and T6's is open
+    # while T6 runs.
+    sprint_id = plan.get("jira", {}).get("sprint_id")
+    require(isinstance(sprint_id, int), "the loop plan declares no jira.sprint_id")
+    own = set(jira_search(f"sprint = {sprint_id}"))
+    live_open = jira_search(f"project = {project} AND statusCategory != Done")
+    unreviewed = sorted(set(live_open) - set(keys) - own)
+    require(not unreviewed, f"open keys with no triage row: {unreviewed}")
 
     # The bucket has to be what actually happened on the board.
     live = issues_by_key(keys)
@@ -274,10 +287,16 @@ def check_t2(plan: dict, require_complete: bool = False) -> str:
             require(not closed, f"{key}: bucketed keep but is {state['status']}")
         else:
             require(closed, f"{key}: bucketed {bucket} but is {state['status']}")
+        labelled = WONT_DO_LABEL in state["labels"]
         if bucket == "wont_do":
             require(
-                WONT_DO_LABEL in state["labels"],
-                f"{key}: bucketed wont_do without the {WONT_DO_LABEL} label",
+                labelled, f"{key}: bucketed wont_do without the {WONT_DO_LABEL} label"
+            )
+        elif bucket == "done":
+            require(
+                not labelled,
+                f"{key}: bucketed done but carries the {WONT_DO_LABEL} label -- "
+                "declined work is not completed work",
             )
     if require_complete:
         require(
@@ -307,7 +326,20 @@ def check_t3(plan: dict) -> str:
     require(isinstance(limit, int), "the loop plan declares no governed_doc_limit")
     count = governed_count()
     require(count <= limit, f"{count} governed documents, limit is {limit}")
-    return f"{count} governed document(s), limit {limit}"
+
+    # A count cannot tell WHICH documents left. Removing a decision's origin or
+    # a derives_from target reaches the same number as removing a tier-4
+    # summary, so the plan names every document that must stay and this checks
+    # each is still governed. That is risk R1, enforced rather than advised.
+    keep = task(plan, "T3").get("acceptance_inputs", {}).get("must_stay_governed")
+    require(
+        isinstance(keep, list) and bool(keep),
+        "T3 declares no must_stay_governed list",
+    )
+    governed = {d["doc_id"] for d in load_json(REGISTRY_PATH).get("documents", [])}
+    removed = sorted(set(keep) - governed)
+    require(not removed, f"documents that must stay governed were removed: {removed}")
+    return f"{count} governed document(s), limit {limit}; all {len(keep)} protected"
 
 
 def check_t4(plan: dict) -> str:
@@ -379,6 +411,24 @@ def check_t5(plan: dict) -> str:
     )
 
 
+def check_snapshot() -> str:
+    """The committed flow snapshot is fresh, by the gate that owns that rule."""
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(REPO_ROOT / "scripts" / "validate_delivery_coordinates.py"),
+        ],
+        capture_output=True,
+        text=True,
+        cwd=REPO_ROOT,
+    )
+    output = f"{result.stdout}{result.stderr}".strip()
+    require(
+        result.returncode == 0, f"validate_delivery_coordinates.py failed:\n{output}"
+    )
+    return "flow snapshot fresh"
+
+
 def check_t6(plan: dict) -> str:
     """Sprint close: both gates, re-read from their owners."""
     parts = [
@@ -386,6 +436,7 @@ def check_t6(plan: dict) -> str:
         check_t2(plan, require_complete=True),
         check_t3(plan),
         check_t4(plan),
+        check_snapshot(),
     ]
     return "; ".join(parts)
 

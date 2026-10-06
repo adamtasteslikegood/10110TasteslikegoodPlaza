@@ -98,11 +98,11 @@ The sprint ends when both gates pass or the iteration cap is hit.
 |---|---|---|---|---|
 | T0 | Fetch and reconcile against origin/dev | — | `scripts/check_sync.sh --strict` | — |
 | T1 | Clear the 7 stale In Progress items | PLZG-230 | `python3 scripts/sprint_5_gate.py t1` — PLZG-129, -199, -200, -209, -215, -221 are Done and PLZG-180 is Done with the `wont-do` label | T0 |
-| T2 | Three-bucket triage of To Do backlog (Done/Keep/Won't Do) | PLZG-231 | `python3 scripts/sprint_5_gate.py t2` — the triage evidence covers every key in the pre-triage baseline and every live To Do key, and each bucket matches the ticket's status in Jira | T1 |
-| T3 | Ungovern the 9 tier-4 docs + mark Sprint 2/3 charters HISTORICAL (28→≤19) | PLZG-232 | `python3 scripts/sprint_5_gate.py t3` — `validate_specs.py` green with ≤19 docs | T0 |
+| T2 | Three-bucket triage of every non-Done item (Done/Keep/Won't Do) | PLZG-231 | `python3 scripts/sprint_5_gate.py t2` — the triage evidence covers every key in the pre-triage baseline and every key still open (To Do or In Progress, the sprint's own tickets excepted), and each bucket matches the ticket's status and label in Jira | T1 |
+| T3 | Ungovern the 9 tier-4 docs + mark Sprint 2/3 charters HISTORICAL (28→≤19) | PLZG-232 | `python3 scripts/sprint_5_gate.py t3` — `validate_specs.py` green with ≤19 docs, and all 19 documents that are not tier-4 still governed | T0 |
 | T4 | Cross-check surviving docs for state contradictions | PLZG-233 | `python3 scripts/sprint_5_gate.py t4` — every governed doc has a cross-check row with `contradiction: false`, the owning systems consulted, and a `reviewed_blob` matching the file's current content | T3 |
 | T5 | Sprint 5 charter and loop plan | PLZG-234 | `python3 scripts/sprint_5_gate.py t5` — the validator passes, both files exist, and Jira confirms sprint `51` is on board `169` holding every task ticket | T0 |
-| T6 | Sprint close — both gates green | PLZG-235 | `python3 scripts/sprint_5_gate.py t6` — re-runs T1–T4 and requires `review_complete: true` in the triage evidence | T1, T2, T3, T4, T5 |
+| T6 | Sprint close — both gates green | PLZG-235 | `python3 scripts/sprint_5_gate.py t6` — re-runs T1–T4, requires `review_complete: true` in the triage evidence, and requires `validate_delivery_coordinates.py` to pass on a refreshed flow snapshot | T1, T2, T3, T4, T5 |
 
 **The acceptance commands need a working Jira credential.** `sprint_5_gate.py`
 reads `ATLASSIAN_URL`, `ATLASSIAN_EMAIL` and `ATLASSIAN_API_TOKEN` from `./.env`,
@@ -145,17 +145,18 @@ Two acceptance gates, both must pass for the sprint to close:
 
 - **Gate A — Board triaged:** non-Done items are either deliberate backlog or
   closed. The 7 stale In Progress items are resolved (PLZG-129, -199, -200,
-  -209, -215, -221 Done; PLZG-180 Won't Do). Every To Do item in the pre-triage
-  baseline has been reviewed.
+  -209, -215, -221 Done; PLZG-180 Won't Do). Every non-Done item in the
+  pre-triage baseline has been reviewed, In Progress included.
 - **Gate B — Doc consolidation:** `python3 scripts/validate_specs.py` passes
-  with ≤19 governed documents (down from 28).
+  with ≤19 governed documents (down from 28), none of the 19 non-tier-4
+  documents among those removed.
 
 ## 7. Risks
 
 | # | Failure mode | Likelihood | Mitigation |
 |---|---|---|---|
-| R1 | Ungovern a doc that carries a live `D-nnn` decision, or that another governed doc derives from. | Medium | Grep both `D-nnn` references and the doc's `doc_id` in other documents' `derives_from` before removing it from governance. A decision must be migrated first; a `derives_from` target stays governed. |
-| R2 | Bulk-close real work on the board. | Medium | Three-bucket triage (Done/Keep/Won't Do), not bulk-close. Each item reviewed individually; the To Do column is recorded as a baseline first, so an item closed without a triage row fails T2. |
+| R1 | Ungovern a doc that carries a live `D-nnn` decision, or that another governed doc derives from. | Medium | Grep both `D-nnn` references and the doc's `doc_id` in other documents' `derives_from` before removing it from governance. A decision must be migrated first; a `derives_from` target stays governed. T3's gate fails if any of the 19 documents named in the loop plan's `must_stay_governed` leaves the registry. |
+| R2 | Bulk-close real work on the board. | Medium | Three-bucket triage (Done/Keep/Won't Do), not bulk-close. Each item reviewed individually; the non-Done set is recorded as a baseline first, so an item closed without a triage row fails T2. |
 | R3 | Surviving docs still contain state contradictions. | Medium | T4 verifies each claim against the system that owns it — git, Jira, GitHub or CI — and records which. Agreement with CLAUDE.md is not verification. |
 
 *Last updated: October 2026*
