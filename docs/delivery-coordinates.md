@@ -100,7 +100,7 @@ and the Sprint 5 charter cited this document for an id it did not contain.
 | PLZG Sprint 2 | `44` | closed |
 | PLZG Sprint 3 | `45` | closed |
 | Sprint 4 | `48` | closed 2026-08-21 |
-| Sprint 5 | `51` | `active` — started 2026-10-06, ends 2026-10-13 |
+| Sprint 5 | `51` | closed 2026-10-06 |
 
 The ids are stable; the state column is a reading and goes stale. Re-read it from
 the board (`listJiraBoardSprints` on board `169`) before citing it.

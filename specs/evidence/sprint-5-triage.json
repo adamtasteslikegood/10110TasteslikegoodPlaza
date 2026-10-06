@@ -1010,11 +1010,11 @@
     },
     {
       "key": "PLZG-253",
-      "bucket": "keep",
+      "bucket": "done",
       "reviewed_at": "2026-10-06",
       "confidence": "high",
       "github_issue": 276,
-      "reason": "Filed 2026-10-06 from the review of PR #273: the Sprint 5 charter's description of claude-review.yml's trigger omitted that it skips Dependabot PRs and bot-triggered events (claude-review.yml:171-183). Corrected in the sprint-close change; stays open until that is on dev."
+      "reason": "Filed 2026-10-06 from the review of PR #273: the Sprint 5 charter's description of claude-review.yml's trigger omitted that it skips Dependabot PRs and bot-triggered events (claude-review.yml:171-183). Corrected by PR #278, on dev at d8faf6c; ticket and issue #276 closed 2026-10-06."
     },
     {
       "key": "PLZG-254",

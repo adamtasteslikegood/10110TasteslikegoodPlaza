@@ -144,8 +144,8 @@
       "path": "specs/sprint-5-charter.md",
       "tier": 3,
       "authority": "delivery",
-      "status": "ACTIVE",
-      "note": "Executable context for Sprint 5. Board reconciliation (triage the 114 non-Done items on the board at the start of 2026-10-05, clear 7 stale In Progress) and doc consolidation (28 governed docs to ≤19, the nine tier-4 documents). Housekeeping sprint — no code milestones. Acceptance checks live in scripts/sprint_5_gate.py; sprint and board ids are recorded in DELIVERY-COORDINATES (D-026)."
+      "status": "HISTORICAL",
+      "note": "Executable context for Sprint 5. Board reconciliation (triage the 114 non-Done items on the board at the start of 2026-10-05, clear 7 stale In Progress) and doc consolidation (28 governed docs to ≤19, the nine tier-4 documents). Housekeeping sprint — no code milestones. Acceptance checks live in scripts/sprint_5_gate.py; sprint and board ids are recorded in DELIVERY-COORDINATES (D-026). Closed 2026-10-06 PDT (Jira completeDate 2026-10-06T20:50Z) with both gates green; HISTORICAL since PLZG-255."
     },
     {
       "doc_id": "DEVOPS-SETUP",
