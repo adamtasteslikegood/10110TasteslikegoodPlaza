@@ -20,7 +20,8 @@ spec-set versions, and no application release existed before `v0.1.22`.
 ### Changed — Sprint 5 charter retired; board is between sprints (`PLZG-255`)
 
 - Jira sprint `51` was closed on 2026-10-06 (`completeDate` 20:50Z) once the
-  sprint-close change was on `dev`, with all seven of its tickets Done.
+  sprint-close change was on `dev`, with all seven of its tickets Done: `PLZG-229`,
+  which carried the charter, and the six task tickets `PLZG-230`–`PLZG-235`.
 - `specs/sprint-5-charter.md` is `HISTORICAL`, with a banner saying its present
   tense describes the sprint as it ran. It stays governed.
 - `data/plzg-flow-snapshot.json` declares `"sprint": null`, read at
