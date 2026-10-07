@@ -105,7 +105,7 @@
           "war-room"
         ]
       },
-      "status": "in_progress",
+      "status": "done",
       "attempts": 1,
       "max_attempts": 3,
       "depends_on": [
