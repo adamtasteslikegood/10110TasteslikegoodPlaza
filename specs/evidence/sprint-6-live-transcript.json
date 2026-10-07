@@ -1,0 +1,122 @@
+{
+  "captured_at": "2026-10-07T04:49:10+00:00",
+  "nonce": "kestrel-10316b97",
+  "agent_id": "systems-architect",
+  "owner_read": false,
+  "clients": {
+    "godot": {
+      "turns": [
+        {
+          "sent": "Please remember this code word for my next message: kestrel-10316b97. Reply with just the word OK.",
+          "received": "OK"
+        },
+        {
+          "sent": "What was the code word I gave you in my previous message? Reply with the code word only.",
+          "received": "I don't have access to any previous messages from you. This is the start of our conversation. Each conversation begins fresh without context from prior interactions.\n\nIf you'd like to share a code word now, feel free to provide it and I can help you with whatever you need."
+        }
+      ],
+      "recalled": false,
+      "tries": [
+        {
+          "try": 1,
+          "turns": [
+            {
+              "sent": "Please remember this code word for my next message: kestrel-10316b97. Reply with just the word OK.",
+              "received": "OK"
+            },
+            {
+              "sent": "What was the code word I gave you in my previous message? Reply with the code word only.",
+              "received": "I don't have access to any previous messages from you. Each conversation starts fresh without history of prior interactions. I cannot provide a code word from a message I haven't seen.\n\nIf you'd like to share a code word now, feel free to do so, and I can acknowledge it."
+            }
+          ],
+          "recalled": false
+        },
+        {
+          "try": 2,
+          "turns": [
+            {
+              "sent": "Please remember this code word for my next message: kestrel-10316b97. Reply with just the word OK.",
+              "received": "OK"
+            },
+            {
+              "sent": "What was the code word I gave you in my previous message? Reply with the code word only.",
+              "received": "I don't have any record of previous messages from you. Each conversation with me starts fresh without access to prior interactions. There is no code word from a previous message that I can recall.\n\nIf you'd like to establish a code word for this conversation, feel free to provide it now."
+            }
+          ],
+          "recalled": false
+        },
+        {
+          "try": 3,
+          "turns": [
+            {
+              "sent": "Please remember this code word for my next message: kestrel-10316b97. Reply with just the word OK.",
+              "received": "OK"
+            },
+            {
+              "sent": "What was the code word I gave you in my previous message? Reply with the code word only.",
+              "received": "I don't have access to any previous messages from you. This is the start of our conversation. Each conversation begins fresh without context from prior interactions.\n\nIf you'd like to share a code word now, feel free to provide it and I can help you with whatever you need."
+            }
+          ],
+          "recalled": false
+        }
+      ]
+    },
+    "python": {
+      "turns": [
+        {
+          "sent": "Please remember this code word for my next message: kestrel-10316b97. Reply with just the word OK.",
+          "received": "OK"
+        },
+        {
+          "sent": "What was the code word I gave you in my previous message? Reply with the code word only.",
+          "received": "I don't have access to any previous messages from you. Each conversation with me starts fresh without memory of past interactions. This is my first message in our conversation.\n\nIf you'd like to share a code word now, feel free to do so and I can help you with it."
+        }
+      ],
+      "recalled": false,
+      "tries": [
+        {
+          "try": 1,
+          "turns": [
+            {
+              "sent": "Please remember this code word for my next message: kestrel-10316b97. Reply with just the word OK.",
+              "received": "OK"
+            },
+            {
+              "sent": "What was the code word I gave you in my previous message? Reply with the code word only.",
+              "received": "I don't have access to any previous messages from you. Each conversation starts fresh, and I can only see the current message thread. This is my first message from you in this conversation.\n\nIf you'd like to share a code word now, I'm ready to help!"
+            }
+          ],
+          "recalled": false
+        },
+        {
+          "try": 2,
+          "turns": [
+            {
+              "sent": "Please remember this code word for my next message: kestrel-10316b97. Reply with just the word OK.",
+              "received": "OK"
+            },
+            {
+              "sent": "What was the code word I gave you in my previous message? Reply with the code word only.",
+              "received": "I don't have any previous messages from you in our conversation history. This is the first message you've sent me. I have no record of a code word from an earlier interaction.\n\nIf you shared a code word in a previous conversation session, I wouldn't have access to it, as each conversation starts fresh without memory of past interactions."
+            }
+          ],
+          "recalled": false
+        },
+        {
+          "try": 3,
+          "turns": [
+            {
+              "sent": "Please remember this code word for my next message: kestrel-10316b97. Reply with just the word OK.",
+              "received": "OK"
+            },
+            {
+              "sent": "What was the code word I gave you in my previous message? Reply with the code word only.",
+              "received": "I don't have access to any previous messages from you. Each conversation with me starts fresh without memory of past interactions. This is my first message in our conversation.\n\nIf you'd like to share a code word now, feel free to do so and I can help you with it."
+            }
+          ],
+          "recalled": false
+        }
+      ]
+    }
+  }
+}

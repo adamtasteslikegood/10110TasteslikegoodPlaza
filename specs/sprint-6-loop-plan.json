@@ -33,7 +33,7 @@
     ],
     "blocked_on_owner": "A PR awaiting the owner's merge is neither a failure nor an attempt. The loop moves to a task whose dependencies are met, otherwise stops and reports."
   },
-  "iteration": 0,
+  "iteration": 1,
   "tasks": [
     {
       "id": "T0",
@@ -44,12 +44,13 @@
       "acceptance": {
         "cmd": "scripts/check_sync.sh --strict"
       },
-      "status": "todo",
-      "attempts": 0,
+      "status": "done",
+      "attempts": 1,
       "blocks": [
         "T1"
       ],
-      "note": "Blocking precondition, exempt from the attempt cap. No Jira ticket: it is a precondition the SessionStart hook already runs, and a permanently-instant item would pollute the flow data."
+      "note": "Blocking precondition, exempt from the attempt cap. No Jira ticket: it is a precondition the SessionStart hook already runs, and a permanently-instant item would pollute the flow data.",
+      "evidence": "scripts/check_sync.sh --strict exit 0 via loop_controller verify, 2026-10-06 PDT: dev at 425539b, in sync with origin/dev"
     },
     {
       "id": "T1",
@@ -71,8 +72,8 @@
         ],
         "charter_doc_id": "SPRINT-6-CHARTER"
       },
-      "status": "in_progress",
-      "attempts": 0,
+      "status": "done",
+      "attempts": 1,
       "max_attempts": 2,
       "depends_on": [
         "T0"
@@ -81,7 +82,8 @@
         "T2",
         "T5"
       ],
-      "note": "Started 2026-10-06 (PLZG-257 In Progress). Documents this task may touch: the roadmap, the charter, this plan, the doc registry and delivery-coordinates -- nothing else in docs/ or specs/ (risk R5). Done when its PR is merged by the owner and the command exits 0 on dev."
+      "note": "Started 2026-10-06 (PLZG-257 In Progress). Documents this task may touch: the roadmap, the charter, this plan, the doc registry and delivery-coordinates -- nothing else in docs/ or specs/ (risk R5). Done when its PR is merged by the owner and the command exits 0 on dev.",
+      "evidence": "sprint_6_gate.py t1 exit 0 on dev via loop_controller verify, 2026-10-06 PDT, after the owner merged PR #290 as 425539b. PLZG-257 Done."
     },
     {
       "id": "T2",
@@ -184,8 +186,8 @@
         ],
         "simulated_reply": "Hello from the bridge."
       },
-      "status": "todo",
-      "attempts": 0,
+      "status": "in_progress",
+      "attempts": 1,
       "max_attempts": 3,
       "depends_on": [
         "T1"
@@ -194,7 +196,7 @@
         "T6",
         "T7"
       ],
-      "note": "The runner starts bridge/server.py, drives two turns from a headless Godot scene through scenes/bridge/ws_client.gd and the same two from a plain Python websocket client (D-005 swap test, risk R3), and writes the transcript: {captured_at, nonce, owner_read: false, clients: {godot: {turns: [{sent, received} x2]}, python: {...}}}. Turn 1 sends a random nonce; turn 2 asks for it back without repeating it. Up to three tries per run, every try logged (risk R2). The runner exits 2 when it cannot authenticate and the gate passes that through (risk R1). In-engine means the reply reaches BodyLabel through the typewriter. KNOWN BEFORE THE FIRST RUN: bridge/conversation.py's ConversationEngine is stateless -- each request sends only the current task -- so turn 2 cannot recall the nonce and this gate fails until T6 gives the conversation path a history. T5 is done when the runner exists and reports that failure truthfully; its ticket closes on T6's green run, not before."
+      "note": "The runner starts bridge/server.py, drives two turns from a headless Godot scene through scenes/bridge/ws_client.gd and the same two from a plain Python websocket client (D-005 swap test, risk R3), and writes the transcript: {captured_at, nonce, owner_read: false, clients: {godot: {turns: [{sent, received} x2]}, python: {...}}}. Turn 1 sends a random nonce; turn 2 asks for it back without repeating it. Up to three tries per run, every try logged (risk R2). The runner exits 2 when it cannot authenticate and the gate passes that through (risk R1). In-engine means the reply reaches BodyLabel through the typewriter. KNOWN BEFORE THE FIRST RUN: bridge/conversation.py's ConversationEngine is stateless -- each request sends only the current task -- so turn 2 cannot recall the nonce and this gate fails until T6 gives the conversation path a history. T5 is done when `t5` exits 0 on dev: the runner exists, reached a real model from both clients, and reports the missing recall truthfully. First real run, 2026-10-06 PDT: both clients got real replies on all three tries and neither recalled the nonce -- the model answered that it had no record of a previous message."
     },
     {
       "id": "T6",

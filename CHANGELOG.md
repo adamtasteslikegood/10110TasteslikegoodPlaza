@@ -17,6 +17,17 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
 
+### Added — the live runner: real replies from Godot and from a plain client (`PLZG-261`)
+
+- `scripts/sprint_6_live.py` starts the bridge and asks one agent two questions from
+  each of two clients: `tests/live_conversation.tscn`, headless, through the dialogue
+  panel and `ws_client.gd`; and a stdlib WebSocket client with no Godot in it.
+- First real run: both clients got real model replies, read off `BodyLabel` with the
+  typewriter advancing in-engine. Neither recalled the nonce from turn 1 — the
+  conversation path keeps no history. `sprint_6_gate.py t5` passes; `live` fails
+  until `PLZG-262` gives the conversation a history.
+- `specs/evidence/sprint-6-live-transcript.json` holds that run.
+
 ### Added — Sprint 6 charter: walkable office and live conversation proof (`PLZG-257`)
 
 - `specs/sprint-6-charter.md` and `specs/sprint-6-loop-plan.json`. Sprint 6 is Jira
