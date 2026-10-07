@@ -11,6 +11,8 @@ loopback, no credential, no engine, no model call.
 Stdlib only. Run: python3 -m unittest tests/test_sprint_6_live.py
 """
 
+import base64
+import hashlib
 import json
 import os
 import socket
@@ -147,7 +149,8 @@ class PlainClientFrames(unittest.TestCase):
 
 
 class Handshake(unittest.TestCase):
-    def serve_once(self, response: bytes) -> int:
+    def serve_once(self, respond) -> int:
+        """One connection; `respond(key)` builds the reply from the request's key."""
         listener = socket.socket()
         listener.bind(("127.0.0.1", 0))
         listener.listen(1)
@@ -156,23 +159,44 @@ class Handshake(unittest.TestCase):
         def answer():
             conn, _ = listener.accept()
             with conn:
-                conn.recv(4096)
-                conn.sendall(response)
+                request = conn.recv(4096).decode()
+                key = request.split("Sec-WebSocket-Key: ")[1].split("\r\n")[0]
+                conn.sendall(respond(key))
                 time.sleep(0.2)
 
         threading.Thread(target=answer, daemon=True).start()
         return listener.getsockname()[1]
 
-    def test_upgrade_accepted(self):
-        port = self.serve_once(b"HTTP/1.1 101 Switching Protocols\r\n\r\n")
+    def connect(self, respond):
+        port = self.serve_once(respond)
         with mock.patch.multiple(live, HOST="127.0.0.1", PORT=port):
             live.PlainClient().close()
 
+    @staticmethod
+    def accept_for(key: str) -> bytes:
+        digest = hashlib.sha1((key + live.WEBSOCKET_GUID).encode()).digest()
+        return base64.b64encode(digest)
+
+    def switching(self, accept: bytes) -> bytes:
+        return (
+            b"HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\n"
+            b"Sec-WebSocket-Accept: " + accept + b"\r\n\r\n"
+        )
+
+    def test_upgrade_accepted(self):
+        self.connect(lambda key: self.switching(self.accept_for(key)))
+
     def test_upgrade_refused_raises(self):
-        port = self.serve_once(b"HTTP/1.1 400 Bad Request\r\n\r\n")
-        with mock.patch.multiple(live, HOST="127.0.0.1", PORT=port):
-            with self.assertRaises(RuntimeError):
-                live.PlainClient()
+        with self.assertRaisesRegex(RuntimeError, "refused the upgrade"):
+            self.connect(lambda key: b"HTTP/1.1 400 Bad Request\r\n\r\n")
+
+    def test_a_101_with_no_accept_header_is_not_a_websocket(self):
+        with self.assertRaisesRegex(RuntimeError, "WebSocket handshake"):
+            self.connect(lambda key: b"HTTP/1.1 101 Switching Protocols\r\n\r\n")
+
+    def test_a_101_with_the_wrong_accept_value_is_not_a_websocket(self):
+        with self.assertRaisesRegex(RuntimeError, "WebSocket handshake"):
+            self.connect(lambda key: self.switching(self.accept_for("another key")))
 
 
 def live_line(turn: int, **over) -> str:
@@ -240,6 +264,21 @@ class AskGodot(unittest.TestCase):
             self.ask(seconds=45.0, side_effect=hang)
         self.assertEqual(self.run.call_args.kwargs["timeout"], 45.0)
 
+    def test_a_record_that_is_no_object_fails_as_a_failed_try(self):
+        with self.assertRaisesRegex(RuntimeError, "no object"):
+            self.ask(godot_result("LIVE []\n" + live_line(2) + "\n"))
+
+    def test_godot_is_not_handed_the_credential(self):
+        shell = {
+            "ANTHROPIC_API_KEY": "secret",
+            "CLAUDE_CODE_0AUTH_TOKEN": "s",
+            "A": "1",
+        }
+        with mock.patch.dict(os.environ, shell, clear=True):
+            self.ask(godot_result(live_line(1) + "\n" + live_line(2) + "\n"))
+        env = self.run.call_args.kwargs["env"]
+        self.assertEqual(set(env), {"A", "LIVE_AGENT", "LIVE_TURNS"})
+
     def test_no_godot_is_a_could_not_run(self):
         with mock.patch.object(live.shutil, "which", return_value=None):
             with self.assertRaises(live.CouldNotRun):
@@ -251,6 +290,16 @@ def turns(recalled: bool) -> list:
         {"sent": PROMPTS[0], "received": "OK"},
         {"sent": PROMPTS[1], "received": NONCE if recalled else "no record"},
     ]
+
+
+class AskPlain(unittest.TestCase):
+    def test_a_reply_that_is_no_object_is_a_failure_not_a_crash(self):
+        client = mock.Mock()
+        client.receive.return_value = "[]"
+        with mock.patch.object(live, "PlainClient", return_value=client):
+            with self.assertRaisesRegex(RuntimeError, "no object"):
+                live.ask_plain(PROMPTS, 100.0)
+        client.close.assert_called_once()
 
 
 class RunClient(unittest.TestCase):
@@ -304,6 +353,14 @@ class RunClient(unittest.TestCase):
         result = self.run_client(ask)
         self.assertFalse(result["recalled"])
         self.assertEqual(result["turns"], turns(False))
+
+    def test_a_malformed_reply_is_a_logged_try_not_a_traceback(self):
+        def ask(prompts, seconds):
+            raise TypeError("'>' not supported between 'str' and 'int'")
+
+        result = self.run_client(ask)
+        self.assertEqual(len(result["tries"]), live.MAX_TRIES)
+        self.assertFalse(result["recalled"])
 
     def test_could_not_run_is_not_swallowed_as_a_failed_try(self):
         def ask(prompts, seconds):

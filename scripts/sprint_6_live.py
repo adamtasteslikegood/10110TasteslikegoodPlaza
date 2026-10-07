@@ -35,6 +35,7 @@ Godot, port in use. A 2 is never evidence either way.
 from __future__ import annotations
 
 import base64
+import hashlib
 import json
 import os
 import secrets
@@ -53,6 +54,7 @@ PLAN_PATH = REPO_ROOT / "specs" / "sprint-6-loop-plan.json"
 BRIDGE_ENTRY = REPO_ROOT / "bridge" / "bridge.py"
 GODOT_SCENE = "tests/live_conversation.tscn"
 HOST, PORT = "localhost", 8765
+WEBSOCKET_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 AGENT_ID = "systems-architect"
 MAX_TRIES = 3
 BRIDGE_START_SECONDS = 20
@@ -182,6 +184,18 @@ class PlainClient:
                 head += self._read(1)
             if b" 101 " not in head.split(b"\r\n", 1)[0]:
                 raise RuntimeError(f"bridge refused the upgrade: {head[:80]!r}")
+            # A 101 alone could come from anything. Only a WebSocket server
+            # derives this value from the key it was sent (RFC 6455, 4.2.2).
+            expected = base64.b64encode(
+                hashlib.sha1((key + WEBSOCKET_GUID).encode()).digest()
+            )
+            accepts = [
+                line.split(b":", 1)[1].strip()
+                for line in head.split(b"\r\n")[1:]
+                if line.lower().startswith(b"sec-websocket-accept:")
+            ]
+            if accepts != [expected]:
+                raise RuntimeError("listener did not complete a WebSocket handshake")
         except BaseException:
             self.sock.close()
             raise
@@ -255,6 +269,8 @@ def ask_plain(prompts: list, seconds: float) -> list:
             client.send(json.dumps({"agent_id": AGENT_ID, "task": prompt}))
             left = max(0.0, end - time.monotonic())
             reply = json.loads(client.receive(min(REPLY_SECONDS, left)))
+            if not isinstance(reply, dict):
+                raise RuntimeError(f"bridge answered with no object: {reply!r:.80}")
             if reply.get("status") != "ok":
                 refuse(reply.get("error_type"), reply.get("message"))
             turns.append({"sent": prompt, "received": reply.get("output", "")})
@@ -267,7 +283,10 @@ def ask_godot(prompts: list, seconds: float) -> list:
     godot = shutil.which("godot")
     if godot is None:
         raise CouldNotRun("godot is not on PATH")
-    env = dict(os.environ, LIVE_AGENT=AGENT_ID, LIVE_TURNS=json.dumps(prompts))
+    # The credential is the bridge's. Godot is a client and gets none of it,
+    # whichever source it came from.
+    env = {k: v for k, v in os.environ.items() if k not in CREDENTIAL_VARS}
+    env.update(LIVE_AGENT=AGENT_ID, LIVE_TURNS=json.dumps(prompts))
     limit = min(GODOT_SECONDS, seconds)
     try:
         result = subprocess.run(
@@ -283,7 +302,7 @@ def ask_godot(prompts: list, seconds: float) -> list:
     turns = []
     for line in result.stdout.splitlines():
         if line.startswith("LIVE_ERROR "):
-            error = json.loads(line[len("LIVE_ERROR ") :])
+            error = live_record(line, "LIVE_ERROR ")
             refuse(error.get("error_type"), error.get("message"))
     if result.returncode != 0:
         raise RuntimeError(
@@ -292,7 +311,7 @@ def ask_godot(prompts: list, seconds: float) -> list:
         )
     for line in result.stdout.splitlines():
         if line.startswith("LIVE "):
-            turn = json.loads(line[len("LIVE ") :])
+            turn = live_record(line, "LIVE ")
             if not turn.get("label_holds_reply"):
                 raise RuntimeError(
                     f"turn {turn.get('turn')}: BodyLabel does not hold the reply"
@@ -308,6 +327,13 @@ def ask_godot(prompts: list, seconds: float) -> list:
             + f"{result.stdout}{result.stderr}".strip()[-600:]
         )
     return turns
+
+
+def live_record(line: str, prefix: str) -> dict:
+    record = json.loads(line[len(prefix) :])
+    if not isinstance(record, dict):
+        raise RuntimeError(f"{GODOT_SCENE} printed a record that is no object: {line}")
+    return record
 
 
 def refuse(error_type, message) -> None:
@@ -347,7 +373,7 @@ def run_client(name: str, ask, nonce: str, deadline: float) -> dict:
             tries.append({"try": number, "turns": turns, "recalled": recalled})
         except CouldNotRun:
             raise
-        except (RuntimeError, OSError, ValueError, KeyError) as exc:
+        except (RuntimeError, OSError, ValueError, KeyError, TypeError) as exc:
             tries.append({"try": number, "error": str(exc), "recalled": False})
             recalled = False
         print(f"{name} try {number}: {'recalled' if recalled else 'not recalled'}")
