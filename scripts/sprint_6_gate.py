@@ -428,7 +428,7 @@ def check_acceptance(plan: dict) -> str:
         transcript.get("owner_read") is True,
         f"{rel}: owner_read is not true -- the owner has not accepted it",
     )
-    return f"{rel} committed, captured in the sprint window, accepted by the owner"
+    return f"{rel} committed, captured after the sprint opened, accepted by the owner"
 
 
 def check_t7(plan: dict) -> str:
