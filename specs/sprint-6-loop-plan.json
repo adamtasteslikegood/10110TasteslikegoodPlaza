@@ -105,8 +105,8 @@
           "war-room"
         ]
       },
-      "status": "todo",
-      "attempts": 0,
+      "status": "in_progress",
+      "attempts": 1,
       "max_attempts": 3,
       "depends_on": [
         "T1"
@@ -115,7 +115,7 @@
         "T3",
         "T4"
       ],
-      "note": "A room is seen by the probe when a node in group 'rooms' carries a room_id metadata string. The two existing rooms need that too."
+      "note": "A room is seen by the probe when a node in group 'rooms' carries a room_id metadata string. The two existing rooms need that too. Started 2026-10-06 PDT (PLZG-258 In Progress) while Jira still held sprint 120 as future; the owner said go on the merge."
     },
     {
       "id": "T3",
