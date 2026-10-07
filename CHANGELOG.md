@@ -27,6 +27,11 @@ spec-set versions, and no application release existed before `v0.1.22`.
   conversation path keeps no history. `sprint_6_gate.py t5` passes; `live` fails
   until `PLZG-262` gives the conversation a history.
 - `specs/evidence/sprint-6-live-transcript.json` holds that run.
+- `tests/test_sprint_6_live.py` covers what a real run cannot be made to produce:
+  fragmented frames, a ping during a slow reply, a crashed Godot, a bridge that never
+  starts, a hung client. It runs in CI beside the gate's own tests. The runner takes
+  its credential whole from `./.env` when the file has one, and its tries share one
+  time budget that fits inside the gate's timeout.
 
 ### Added — Sprint 6 charter: walkable office and live conversation proof (`PLZG-257`)
 

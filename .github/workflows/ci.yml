@@ -93,6 +93,11 @@ jobs:
       - name: Run the Sprint 6 gate regression tests
         run: python3 -m unittest tests/test_sprint_6_gate.py
 
+      # And for scripts/sprint_6_live.py (PLZG-261), the runner that gate
+      # believes: fake Godot, fake bridge, a socket pair for the client.
+      - name: Run the Sprint 6 live runner regression tests
+        run: python3 -m unittest tests/test_sprint_6_live.py
+
   validate-agent-data:
     name: Validate Agent Data
     runs-on: ubuntu-latest

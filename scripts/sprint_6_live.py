@@ -19,7 +19,9 @@ A bridge that answers requests passes turn 1; only one that holds a
 conversation passes turn 2. Nothing about the model's wording is asserted.
 
 Each run makes up to ``MAX_TRIES`` tries per client and records every one, so a
-flaky pass is visible as a pass on try 3 rather than as a clean pass.
+flaky pass is visible as a pass on try 3 rather than as a clean pass. The whole
+run shares one ``RUN_SECONDS`` budget, shorter than the gate's own timeout, so
+a hung client ends as a recorded failure here and not as a kill from outside.
 
 It writes ``specs/evidence/sprint-6-live-transcript.json`` every time it gets
 as far as a model reply, pass or fail, stamped with the time of this run -- the
@@ -55,8 +57,15 @@ AGENT_ID = "systems-architect"
 MAX_TRIES = 3
 BRIDGE_START_SECONDS = 20
 READY_LINE = f"Bridge running on ws://{HOST}:{PORT}"
+BRIDGE_STOP_SECONDS = 10
+CONNECT_SECONDS = 10
 REPLY_SECONDS = 120
 GODOT_SECONDS = 300
+# Every try of every client, together. With the bridge's start and stop either
+# side it has to fit inside sprint_6_gate.py's LIVE_TIMEOUT_SECONDS, which
+# tests/test_sprint_6_live.py holds it to.
+RUN_SECONDS = 780
+MIN_TRY_SECONDS = 30
 # What bridge/conversation.py's build_client reads. The digit-zero spelling is
 # a typo the bridge accepts on purpose (issue #258); it is listed because a
 # working .env on this project carries it.
@@ -89,10 +98,19 @@ def dotenv() -> dict:
 
 
 def bridge_environment() -> dict:
+    """The bridge's environment, with ONE source's credential in it.
+
+    ./.env wins and the two are never mixed, the rule sprint_5_gate.py's
+    resolve_credential gives its reason for: a shell keeps exporting a value
+    after it has left the file. The bridge takes the first of CREDENTIAL_VARS
+    it finds, so a stale exported key would otherwise outrank the file's token.
+    """
     env = dict(os.environ)
-    for key, value in dotenv().items():
-        if key in CREDENTIAL_VARS and value:
-            env.setdefault(key, value)
+    from_file = {k: v for k, v in dotenv().items() if k in CREDENTIAL_VARS and v}
+    if from_file:
+        for name in CREDENTIAL_VARS:
+            env.pop(name, None)
+        env.update(from_file)
     if not any(env.get(name) for name in CREDENTIAL_VARS):
         raise CouldNotRun(
             "no Claude credential: set one of "
@@ -148,24 +166,36 @@ class PlainClient:
     """A WebSocket text client from the standard library. No Godot, no SDK."""
 
     def __init__(self):
-        self.sock = socket.create_connection((HOST, PORT), timeout=REPLY_SECONDS)
-        key = base64.b64encode(os.urandom(16)).decode()
-        self.sock.sendall(
-            (
-                f"GET / HTTP/1.1\r\nHost: {HOST}:{PORT}\r\nUpgrade: websocket\r\n"
-                f"Connection: Upgrade\r\nSec-WebSocket-Key: {key}\r\n"
-                "Sec-WebSocket-Version: 13\r\n\r\n"
-            ).encode()
-        )
-        head = b""
-        while b"\r\n\r\n" not in head:
-            head += self._read(1)
-        if b" 101 " not in head.split(b"\r\n", 1)[0]:
-            raise RuntimeError(f"bridge refused the upgrade: {head[:80]!r}")
+        self.deadline = time.monotonic() + CONNECT_SECONDS
+        self.sock = socket.create_connection((HOST, PORT), timeout=CONNECT_SECONDS)
+        try:
+            key = base64.b64encode(os.urandom(16)).decode()
+            self.sock.sendall(
+                (
+                    f"GET / HTTP/1.1\r\nHost: {HOST}:{PORT}\r\nUpgrade: websocket\r\n"
+                    f"Connection: Upgrade\r\nSec-WebSocket-Key: {key}\r\n"
+                    "Sec-WebSocket-Version: 13\r\n\r\n"
+                ).encode()
+            )
+            head = b""
+            while b"\r\n\r\n" not in head:
+                head += self._read(1)
+            if b" 101 " not in head.split(b"\r\n", 1)[0]:
+                raise RuntimeError(f"bridge refused the upgrade: {head[:80]!r}")
+        except BaseException:
+            self.sock.close()
+            raise
 
     def _read(self, count: int) -> bytes:
         data = b""
         while len(data) < count:
+            # One deadline for the whole message, not per recv: the server's
+            # pings arrive every 20s and would keep a per-recv timeout alive
+            # for ever while the reply itself never came.
+            left = self.deadline - time.monotonic()
+            if left <= 0:
+                raise TimeoutError("no reply from the bridge in time")
+            self.sock.settimeout(left)
             chunk = self.sock.recv(count - len(data))
             if not chunk:
                 raise RuntimeError("bridge closed the connection")
@@ -188,7 +218,8 @@ class PlainClient:
     def send(self, text: str) -> None:
         self._frame(0x1, text.encode())
 
-    def receive(self) -> str:
+    def receive(self, seconds: float = REPLY_SECONDS) -> str:
+        self.deadline = time.monotonic() + seconds
         message = b""
         while True:
             first, second = self._read(2)
@@ -215,13 +246,15 @@ class PlainClient:
         self.sock.close()
 
 
-def ask_plain(prompts: list) -> list:
+def ask_plain(prompts: list, seconds: float) -> list:
+    end = time.monotonic() + seconds
     client = PlainClient()
     try:
         turns = []
         for prompt in prompts:
             client.send(json.dumps({"agent_id": AGENT_ID, "task": prompt}))
-            reply = json.loads(client.receive())
+            left = max(0.0, end - time.monotonic())
+            reply = json.loads(client.receive(min(REPLY_SECONDS, left)))
             if reply.get("status") != "ok":
                 refuse(reply.get("error_type"), reply.get("message"))
             turns.append({"sent": prompt, "received": reply.get("output", "")})
@@ -230,11 +263,12 @@ def ask_plain(prompts: list) -> list:
         client.close()
 
 
-def ask_godot(prompts: list) -> list:
+def ask_godot(prompts: list, seconds: float) -> list:
     godot = shutil.which("godot")
     if godot is None:
         raise CouldNotRun("godot is not on PATH")
     env = dict(os.environ, LIVE_AGENT=AGENT_ID, LIVE_TURNS=json.dumps(prompts))
+    limit = min(GODOT_SECONDS, seconds)
     try:
         result = subprocess.run(
             [godot, "--headless", GODOT_SCENE],
@@ -242,10 +276,10 @@ def ask_godot(prompts: list) -> list:
             text=True,
             cwd=REPO_ROOT,
             env=env,
-            timeout=GODOT_SECONDS,
+            timeout=limit,
         )
     except subprocess.TimeoutExpired as exc:
-        raise RuntimeError(f"{GODOT_SCENE} did not exit in {GODOT_SECONDS}s") from exc
+        raise RuntimeError(f"{GODOT_SCENE} did not exit in {limit:.0f}s") from exc
     turns = []
     for line in result.stdout.splitlines():
         if line.startswith("LIVE_ERROR "):
@@ -291,13 +325,24 @@ def prompts_for(nonce: str) -> list:
     ]
 
 
-def run_client(name: str, ask, nonce: str) -> dict:
-    """Up to MAX_TRIES tries; the last one is the client's recorded result."""
+def run_client(name: str, ask, nonce: str, deadline: float) -> dict:
+    """Up to MAX_TRIES tries; the last one is the client's recorded result.
+
+    `deadline` is the run's, on time.monotonic(). A try is given what is left
+    of it and is not started with less than MIN_TRY_SECONDS.
+    """
     prompts = prompts_for(nonce)
     tries = []
     for number in range(1, MAX_TRIES + 1):
+        left = deadline - time.monotonic()
+        if left < MIN_TRY_SECONDS:
+            tries.append(
+                {"try": number, "error": "run budget exhausted", "recalled": False}
+            )
+            print(f"{name} try {number}: not started, run budget exhausted")
+            break
         try:
-            turns = ask(prompts)
+            turns = ask(prompts, left)
             recalled = nonce in turns[1]["received"]
             tries.append({"try": number, "turns": turns, "recalled": recalled})
         except CouldNotRun:
@@ -364,8 +409,10 @@ def main() -> int:
             return 2
 
         nonce = "kestrel-" + secrets.token_hex(4)
+        deadline = time.monotonic() + RUN_SECONDS
         clients = {
-            name: run_client(name, askers[name], nonce) for name in spec["clients"]
+            name: run_client(name, askers[name], nonce, deadline)
+            for name in spec["clients"]
         }
     except CouldNotRun as exc:
         print(f"could not run: {exc}", file=sys.stderr)
@@ -373,7 +420,7 @@ def main() -> int:
     finally:
         bridge.terminate()
         try:
-            bridge.wait(timeout=10)
+            bridge.wait(timeout=BRIDGE_STOP_SECONDS)
         except subprocess.TimeoutExpired:
             bridge.kill()
 
