@@ -41,6 +41,7 @@ import socket
 import struct
 import subprocess
 import sys
+import threading
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -53,6 +54,7 @@ HOST, PORT = "localhost", 8765
 AGENT_ID = "systems-architect"
 MAX_TRIES = 3
 BRIDGE_START_SECONDS = 20
+READY_LINE = f"Bridge running on ws://{HOST}:{PORT}"
 REPLY_SECONDS = 120
 GODOT_SECONDS = 300
 # What bridge/conversation.py's build_client reads. The digit-zero spelling is
@@ -118,6 +120,24 @@ def bridge_python() -> str:
     )
 
 
+class BridgeLog:
+    """The child bridge's stderr, read on a thread so the pipe never fills."""
+
+    def __init__(self, stream):
+        self.lines = []
+        self.ready = threading.Event()
+        threading.Thread(target=self._drain, args=(stream,), daemon=True).start()
+
+    def _drain(self, stream) -> None:
+        for line in stream:
+            self.lines.append(line)
+            if READY_LINE in line:
+                self.ready.set()
+
+    def tail(self) -> str:
+        return "".join(self.lines)[-600:]
+
+
 def port_open() -> bool:
     with socket.socket() as probe:
         probe.settimeout(0.5)
@@ -152,18 +172,21 @@ class PlainClient:
             data += chunk
         return data
 
-    def send(self, text: str) -> None:
-        payload = text.encode()
+    def _frame(self, opcode: int, payload: bytes) -> None:
         mask = os.urandom(4)
         size = len(payload)
+        first = 0x80 | opcode
         if size < 126:
-            header = bytes([0x81, 0x80 | size])
+            header = bytes([first, 0x80 | size])
         elif size < 65536:
-            header = bytes([0x81, 0x80 | 126]) + struct.pack(">H", size)
+            header = bytes([first, 0x80 | 126]) + struct.pack(">H", size)
         else:
-            header = bytes([0x81, 0x80 | 127]) + struct.pack(">Q", size)
+            header = bytes([first, 0x80 | 127]) + struct.pack(">Q", size)
         masked = bytes(b ^ mask[i % 4] for i, b in enumerate(payload))
         self.sock.sendall(header + mask + masked)
+
+    def send(self, text: str) -> None:
+        self._frame(0x1, text.encode())
 
     def receive(self) -> str:
         message = b""
@@ -177,7 +200,12 @@ class PlainClient:
             payload = self._read(size)
             if opcode == 0x8:
                 raise RuntimeError("bridge closed the connection")
-            if opcode in (0x9, 0xA):  # ping, pong
+            if opcode == 0x9:
+                # The server pings every 20s and drops a client that stays
+                # silent, which a slow model reply would otherwise trip.
+                self._frame(0xA, payload)
+                continue
+            if opcode == 0xA:
                 continue
             message += payload
             if first & 0x80:
@@ -223,6 +251,12 @@ def ask_godot(prompts: list) -> list:
         if line.startswith("LIVE_ERROR "):
             error = json.loads(line[len("LIVE_ERROR ") :])
             refuse(error.get("error_type"), error.get("message"))
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"{GODOT_SCENE} exited {result.returncode}:\n"
+            + f"{result.stdout}{result.stderr}".strip()[-600:]
+        )
+    for line in result.stdout.splitlines():
         if line.startswith("LIVE "):
             turn = json.loads(line[len("LIVE ") :])
             if not turn.get("label_holds_reply"):
@@ -308,18 +342,26 @@ def main() -> int:
         print(f"could not run: {exc}", file=sys.stderr)
         return 2
 
+    log = BridgeLog(bridge.stderr)
     try:
+        # The port answering is not enough: another process could have taken
+        # it after the check above. The bridge prints READY_LINE only once its
+        # own bind succeeded, and it exits if the bind failed.
         deadline = time.monotonic() + BRIDGE_START_SECONDS
-        while not port_open():
+        while not log.ready.wait(0.25):
             if bridge.poll() is not None or time.monotonic() > deadline:
                 bridge.kill()
                 print(
-                    "could not run: the bridge did not start:\n"
-                    + (bridge.stderr.read() or "")[-600:],
+                    f"could not run: the bridge did not start:\n{log.tail()}",
                     file=sys.stderr,
                 )
                 return 2
-            time.sleep(0.25)
+        if bridge.poll() is not None:
+            print(
+                f"could not run: the bridge exited at startup:\n{log.tail()}",
+                file=sys.stderr,
+            )
+            return 2
 
         nonce = "kestrel-" + secrets.token_hex(4)
         clients = {
