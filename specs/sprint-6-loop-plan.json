@@ -33,7 +33,7 @@
     ],
     "blocked_on_owner": "A PR awaiting the owner's merge is neither a failure nor an attempt. The loop moves to a task whose dependencies are met, otherwise stops and reports."
   },
-  "iteration": 0,
+  "iteration": 1,
   "tasks": [
     {
       "id": "T0",
@@ -44,12 +44,13 @@
       "acceptance": {
         "cmd": "scripts/check_sync.sh --strict"
       },
-      "status": "todo",
-      "attempts": 0,
+      "status": "done",
+      "attempts": 1,
       "blocks": [
         "T1"
       ],
-      "note": "Blocking precondition, exempt from the attempt cap. No Jira ticket: it is a precondition the SessionStart hook already runs, and a permanently-instant item would pollute the flow data."
+      "note": "Blocking precondition, exempt from the attempt cap. No Jira ticket: it is a precondition the SessionStart hook already runs, and a permanently-instant item would pollute the flow data.",
+      "evidence": "scripts/check_sync.sh --strict exit 0 via loop_controller verify, 2026-10-06 PDT: dev at 425539b, in sync with origin/dev"
     },
     {
       "id": "T1",
@@ -71,8 +72,8 @@
         ],
         "charter_doc_id": "SPRINT-6-CHARTER"
       },
-      "status": "in_progress",
-      "attempts": 0,
+      "status": "done",
+      "attempts": 1,
       "max_attempts": 2,
       "depends_on": [
         "T0"
@@ -81,7 +82,8 @@
         "T2",
         "T5"
       ],
-      "note": "Started 2026-10-06 (PLZG-257 In Progress). Documents this task may touch: the roadmap, the charter, this plan, the doc registry and delivery-coordinates -- nothing else in docs/ or specs/ (risk R5). Done when its PR is merged by the owner and the command exits 0 on dev."
+      "note": "Started 2026-10-06 (PLZG-257 In Progress). Documents this task may touch: the roadmap, the charter, this plan, the doc registry and delivery-coordinates -- nothing else in docs/ or specs/ (risk R5). Done when its PR is merged by the owner and the command exits 0 on dev.",
+      "evidence": "sprint_6_gate.py t1 exit 0 on dev via loop_controller verify, 2026-10-06 PDT, after the owner merged PR #290 as 425539b. PLZG-257 Done."
     },
     {
       "id": "T2",
@@ -103,8 +105,8 @@
           "war-room"
         ]
       },
-      "status": "todo",
-      "attempts": 0,
+      "status": "in_progress",
+      "attempts": 1,
       "max_attempts": 3,
       "depends_on": [
         "T1"
@@ -113,7 +115,7 @@
         "T3",
         "T4"
       ],
-      "note": "A room is seen by the probe when a node in group 'rooms' carries a room_id metadata string. The two existing rooms need that too."
+      "note": "A room is seen by the probe when a node in group 'rooms' carries a room_id metadata string. The two existing rooms need that too. Started 2026-10-06 PDT (PLZG-258 In Progress) while Jira still held sprint 120 as future; the owner said go on the merge."
     },
     {
       "id": "T3",
