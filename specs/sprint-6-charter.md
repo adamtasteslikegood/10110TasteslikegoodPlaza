@@ -63,6 +63,12 @@ Read from the tree on 2026-10-06:
 - `scenes/world/office.gd` builds a lobby, a corridor and the server room. The
   player's office, the engineering floor and the war room do not exist, and no
   test moves a body through a doorway.
+- `bridge/conversation.py`'s `ConversationEngine` is **stateless**: each request
+  sends only the current task to the model. A second turn cannot know what the
+  first one said. So the bridge answers requests today; it does not hold a
+  conversation, and Gate B will fail on its first run for exactly that reason.
+  That is defect 1 of T6, known before the run rather than discovered by it
+  (found by Copilot's review of this charter's PR).
 
 ### 1.3 Forecast blackout — still in force, re-measured
 
@@ -134,20 +140,23 @@ stops and reports.
 | T1 | Charter, loop plan and roadmap rewrite | PLZG-257 | `python3 scripts/sprint_6_gate.py t1` — the validator passes, the charter is registered, and Jira confirms sprint `120` is on board `169` holding every task ticket under epic `PLZG-256` | T0 |
 | T2 | Player's office, engineering floor and war room — walkable | PLZG-258 | `python3 scripts/sprint_6_gate.py t2` — `tests/room_probe.tscn` finds all five rooms in the running scene | T1 |
 | T3 | Doorway triggers and locked corridors | PLZG-259 | `python3 scripts/sprint_6_gate.py t3` — every room but the lobby has a doorway trigger, and at least two corridors are locked | T2 |
-| T4 | Smoke test: every room exists and is reachable (Gate A) | PLZG-260 | `python3 scripts/sprint_6_gate.py t4` — the smoke test exits 0 **and** its `SMOKE rooms_reachable:` line names all five rooms | T2, T3 |
-| T5 | Live gate: two real turns, in-engine and without Godot (Gate B) | PLZG-261 | `python3 scripts/sprint_6_gate.py t5` — the runner exits 0 and the transcript shows turn 2 returning a nonce only turn 1 carried, for both clients | T1 |
-| T6 | Fix what the first real Gate B run breaks | PLZG-262 | `python3 scripts/sprint_6_gate.py t6` — Gate B green, defects recorded, three or fewer | T5 |
+| T4 | Smoke test: every room exists and is reachable (Gate A) | PLZG-260 | `python3 scripts/sprint_6_gate.py t4` — the smoke test exits 0, its `SMOKE rooms_reachable:` line names all five rooms, **and** its `SMOKE corridors_blocked:` line names at least two corridors that stopped a body | T2, T3 |
+| T5 | Live runner: real replies from both clients | PLZG-261 | `python3 scripts/sprint_6_gate.py t5` — the runner exists, authenticates, and its transcript holds two non-empty, non-simulated replies for each client. Recall of the nonce is **not** asked for here | T1 |
+| T6 | Give the conversation a history, and fix what else Gate B breaks | PLZG-262 | `python3 scripts/sprint_6_gate.py t6` — Gate B green (`live`: turn 2 returns a nonce only turn 1 carried, for both clients), defects recorded, three or fewer | T5 |
 | T7 | Sprint close — both gates green | PLZG-263 | `python3 scripts/sprint_6_gate.py t7` — T1, Gate A and Gate B re-run; transcript committed, captured inside the window and `owner_read: true`; every other task ticket Done with an hour or more between In Progress and Done; flow snapshot fresh | T4, T5, T6 |
 
 The five rooms are `lobby`, `server-room`, `player-office`, `engineering-floor`
 and `war-room`. **The probe's contract:** a room, doorway or locked corridor is
 seen when its node is in the group `rooms`, `doorways` or `locked_corridors` and
 carries a `room_id` metadata string; a doorway's `room_id` is the room it leads
-into. Node names and types are the implementer's.
+into. Node names and types are the implementer's. A locked corridor's `room_id`
+is the room beyond it, and the probe reports it only while
+`GameState.is_unlocked` says that room is locked. Whether it physically stops a
+body is shown by the smoke test, not by the declaration.
 
 **What exists when this charter merges, and what does not.** `sprint_6_gate.py`
-ships with every subcommand, and `tests/room_probe.tscn` runs. `t2`, `t3`, `t4`
-and `live` all **fail** today, which is the truthful reading: no room declares
+ships with every subcommand, and `tests/room_probe.tscn` runs. `t2`, `t3`, `t4`,
+`t5` and `live` all **fail** today, which is the truthful reading: no room declares
 itself, the smoke test walks nowhere, and the live runner
 (`scripts/sprint_6_live.py`) is T5's deliverable. The gate's own behaviour is
 pinned by `tests/test_sprint_6_gate.py`, run in CI.
@@ -166,8 +175,11 @@ authenticate. An exit 2 blocks the close and cannot be waived by the agent.
 - **A Claude credential in CI.** Gate B is local this sprint.
 - **Sprint 5's follow-ups** — `PLZG-249`, `PLZG-251`, `PLZG-252`, `PLZG-254` —
   stay in the backlog (risk R5).
-- **Bridge evolution** to domain-scoped sessions or the Agent SDK, beyond what
-  a T6 defect forces.
+- **Bridge evolution** to domain-scoped sessions or the Agent SDK. T6 gives the
+  conversation path a history because Gate B cannot pass without one; how — the
+  client resending it, or the bridge keeping it under a conversation id — is
+  T6's design call, bounded by `D-005` and written into `bridge/PROTOCOL.md`.
+  Anything past that is a later sprint.
 
 ## 5. Ownership
 

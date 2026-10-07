@@ -24,7 +24,7 @@ spec-set versions, and no application release existed before `v0.1.22`.
   `PLZG-257`–`PLZG-263`; `docs/delivery-coordinates.md` records the ids. The governed
   set goes from 19 to 20 by design.
 - `scripts/sprint_6_gate.py`, one subcommand per task, with `tests/test_sprint_6_gate.py`
-  run in CI. `t2`, `t3`, `t4` and `live` fail today on purpose: no room declares
+  run in CI. `t2`, `t3`, `t4`, `t5` and `live` fail today on purpose: no room declares
   itself, the smoke test walks nowhere, and the live runner is `PLZG-261`'s deliverable.
 - `tests/room_probe.tscn` prints the rooms, doorways and locked corridors the running
   office declares.

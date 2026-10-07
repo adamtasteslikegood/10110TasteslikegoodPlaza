@@ -27,7 +27,6 @@ the model has not shown the bridge is broken, and must not read as if it had.
 
 from __future__ import annotations
 
-import json
 import re
 import shutil
 import subprocess
@@ -49,12 +48,16 @@ REGISTRY_PATH = REPO_ROOT / "specs" / "meta" / "doc-registry.json"
 # stops checking a room turns the gate red instead of staying quietly green.
 PROBE_LINE = re.compile(r"^PROBE (rooms|doorways|locked_corridors): ?(.*)$", re.M)
 REACHABLE_LINE = re.compile(r"^SMOKE rooms_reachable: ?(.*)$", re.M)
+BLOCKED_LINE = re.compile(r"^SMOKE corridors_blocked: ?(.*)$", re.M)
 
 # A ticket moved to In Progress and Done in the same breath records a
 # bookkeeping click, not work. Twenty of the 41 cycle times measured on
 # 2026-10-06 were under an hour, which is what kept the forecast blackout shut.
 MIN_CYCLE = timedelta(hours=1)
 GODOT_TIMEOUT_SECONDS = 180
+# Three tries of two model turns from two clients, with room to spare. A stalled
+# bridge or socket must end as a failed gate, not a gate that never answers.
+LIVE_TIMEOUT_SECONDS = 900
 
 
 def load_plan() -> dict:
@@ -142,7 +145,21 @@ def check_t4(plan: dict) -> str:
     require(match is not None, f"{scene} printed no 'SMOKE rooms_reachable:' line")
     unreached = sorted(set(rooms) - split_ids(match.group(1)))
     require(not unreached, f"rooms the smoke test did not walk into: {unreached}")
-    return f"smoke test green, {len(rooms)} room(s) reachable"
+    # A corridor in the `locked_corridors` group is a declaration. Whether it
+    # stops anyone is behaviour, and only a body walked into it shows that.
+    minimum = inputs(plan, "T3").get("min_locked_corridors")
+    require(isinstance(minimum, int), "T3 declares no min_locked_corridors")
+    blocked = BLOCKED_LINE.search(output)
+    require(blocked is not None, f"{scene} printed no 'SMOKE corridors_blocked:' line")
+    stopped = len(split_ids(blocked.group(1)))
+    require(
+        stopped >= minimum,
+        f"the smoke test was stopped by {stopped} locked corridor(s), need {minimum}",
+    )
+    return (
+        f"smoke test green, {len(rooms)} room(s) reachable, "
+        f"{stopped} locked corridor(s) held"
+    )
 
 
 # --------------------------------------------------------------------------
@@ -150,30 +167,56 @@ def check_t4(plan: dict) -> str:
 # --------------------------------------------------------------------------
 
 
-def check_live(plan: dict) -> str:
-    """Gate B: two real turns through the bridge, in-engine and without Godot.
+def run_live(plan: dict) -> "tuple[int, str]":
+    """Run the live runner; return its exit code (0 or 1) and its output.
 
     The runner is T5's deliverable and does not exist until T5 lands; until
     then this FAILS, which is the truthful answer to "is the bridge proven?".
-    The runner's own exit code is passed through, so its 2 -- no credential --
-    stays a 2 here and can never close the sprint.
+    Its exit 2 -- no credential -- is raised as could-not-run, so it stays a 2
+    here and can never close the sprint.
     """
     spec = inputs(plan, "T5")
     runner = spec.get("live_runner")
     require(bool(runner), "T5 declares no live_runner")
     require((REPO_ROOT / runner).is_file(), f"{runner} does not exist yet (T5)")
-    result = subprocess.run(
-        [sys.executable, runner], capture_output=True, text=True, cwd=REPO_ROOT
-    )
+    try:
+        result = subprocess.run(
+            [sys.executable, runner],
+            capture_output=True,
+            text=True,
+            cwd=REPO_ROOT,
+            timeout=LIVE_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise GateFailure(f"{runner} did not exit in {LIVE_TIMEOUT_SECONDS}s") from exc
     output = f"{result.stdout}{result.stderr}".strip()
     if result.returncode == 2:
         raise GateError(f"{runner} could not run:\n{output[-800:]}")
-    require(result.returncode == 0, f"{runner} failed:\n{output[-800:]}")
+    return result.returncode, output
+
+
+def check_t5(plan: dict) -> str:
+    """The live path answers real requests from both clients.
+
+    Recall is NOT asked for here. The conversation path is stateless when this
+    sprint opens, so the runner is expected to exit 1 on turn 2 until T6 fixes
+    it; what T5 has to show is that the runner exists, reached a real model
+    from Godot and from the plain client, and wrote down what came back.
+    """
+    run_live(plan)
+    return check_transcript(plan, require_recall=False)
+
+
+def check_live(plan: dict) -> str:
+    """Gate B: two real turns through the bridge, in-engine and without Godot."""
+    code, output = run_live(plan)
+    runner = inputs(plan, "T5").get("live_runner")
+    require(code == 0, f"{runner} failed:\n{output[-800:]}")
     return check_transcript(plan)
 
 
-def check_transcript(plan: dict) -> str:
-    """The committed transcript shows a conversation, not two requests."""
+def check_transcript(plan: dict, require_recall: bool = True) -> str:
+    """The transcript shows real replies and, for Gate B, a conversation."""
     spec = inputs(plan, "T5")
     rel = spec.get("transcript")
     require(bool(rel), "T5 declares no transcript path")
@@ -208,10 +251,11 @@ def check_transcript(plan: dict) -> str:
             f"{rel}: {name} repeated the nonce in turn 2, which proves nothing",
         )
         require(
-            nonce in turns[1]["received"],
+            not require_recall or nonce in turns[1]["received"],
             f"{rel}: {name} turn 2 did not recall the nonce -- no conversation",
         )
-    return f"{rel}: {len(spec.get('clients', []))} client(s), nonce recalled"
+    outcome = "nonce recalled" if require_recall else "real replies, recall not asked"
+    return f"{rel}: {len(spec.get('clients', []))} client(s), {outcome}"
 
 
 def check_t6(plan: dict) -> str:
@@ -328,17 +372,18 @@ def check_flow(plan: dict) -> str:
     return f"{len(keys)} task ticket(s) Done with a real started-to-resolved gap"
 
 
-def check_t7(plan: dict) -> str:
-    """Sprint close: both gates, the transcript accepted, the flow data honest."""
-    spec = inputs(plan, "T5")
-    rel = spec.get("transcript", "")
-    parts = [check_t1(plan), check_t4(plan), check_live(plan)]
-
-    tracked = subprocess.run(
-        ["git", "ls-files", "--error-unmatch", rel],
-        capture_output=True,
-        cwd=REPO_ROOT,
-    )
+def check_acceptance(plan: dict) -> str:
+    """The transcript is committed, from this sprint, and accepted by the owner."""
+    rel = inputs(plan, "T5").get("transcript", "")
+    try:
+        tracked = subprocess.run(
+            ["git", "ls-files", "--error-unmatch", rel],
+            capture_output=True,
+            cwd=REPO_ROOT,
+            timeout=30,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise GateError(f"git ls-files did not answer for {rel}") from exc
     require(tracked.returncode == 0, f"{rel} is not committed")
     transcript = base.load_json(REPO_ROOT / rel)
     window = plan.get("jira", {}).get("window", {})
@@ -360,7 +405,19 @@ def check_t7(plan: dict) -> str:
         transcript.get("owner_read") is True,
         f"{rel}: owner_read is not true -- the owner has not accepted it",
     )
-    parts += [check_flow(plan), base.check_snapshot()]
+    return f"{rel} committed, captured in the sprint window, accepted by the owner"
+
+
+def check_t7(plan: dict) -> str:
+    """Sprint close: both gates, the transcript accepted, the flow data honest."""
+    parts = [
+        check_t1(plan),
+        check_t4(plan),
+        check_live(plan),
+        check_acceptance(plan),
+        check_flow(plan),
+        base.check_snapshot(),
+    ]
     return "; ".join(parts)
 
 
@@ -369,7 +426,7 @@ CHECKS = {
     "t2": check_t2,
     "t3": check_t3,
     "t4": check_t4,
-    "t5": check_live,
+    "t5": check_t5,
     "live": check_live,
     "t6": check_t6,
     "t7": check_t7,

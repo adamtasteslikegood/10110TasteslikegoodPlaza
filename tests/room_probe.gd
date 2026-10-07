@@ -11,6 +11,8 @@ extends Node
 ## The contract a room, doorway or locked corridor has to meet to be seen:
 ## be in the group named below, and carry a `room_id` metadata string. A
 ## doorway's `room_id` is the room it leads INTO. Node names and types are free.
+## A locked corridor is reported only while `GameState.is_unlocked(room_id)` is
+## false; whether it physically stops a body is the smoke test's to show.
 ##
 ## The scene goes into the tree before anything is read, for the reason
 ## smoke_test.gd gives: instantiate() alone never fires _ready(), and the office
@@ -34,8 +36,13 @@ func _ready() -> void:
 		var ids: Array[String] = []
 		for node in get_tree().get_nodes_in_group(group):
 			var room_id := str(node.get_meta("room_id", ""))
-			if room_id != "" and not ids.has(room_id):
-				ids.append(room_id)
+			if room_id == "" or ids.has(room_id):
+				continue
+			# A corridor is locked only while GameState says its room is. One
+			# that declares itself locked and leads somewhere open is a label.
+			if group == "locked_corridors" and GameState.is_unlocked(room_id):
+				continue
+			ids.append(room_id)
 		ids.sort()
 		print("PROBE %s: %s" % [group, ",".join(ids)])
 
