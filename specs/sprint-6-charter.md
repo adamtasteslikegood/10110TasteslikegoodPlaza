@@ -143,7 +143,7 @@ stops and reports.
 | T4 | Smoke test: every room exists and is reachable (Gate A) | PLZG-260 | `python3 scripts/sprint_6_gate.py t4` — the smoke test exits 0, its `SMOKE rooms_reachable:` line names all five rooms, **and** its `SMOKE corridors_blocked:` line names at least two corridors that stopped a body | T2, T3 |
 | T5 | Live runner: real replies from both clients | PLZG-261 | `python3 scripts/sprint_6_gate.py t5` — the runner exists, authenticates, and its transcript holds two non-empty, non-simulated replies for each client. Recall of the nonce is **not** asked for here | T1 |
 | T6 | Give the conversation a history, and fix what else Gate B breaks | PLZG-262 | `python3 scripts/sprint_6_gate.py t6` — Gate B green (`live`: turn 2 returns a nonce only turn 1 carried, for both clients), defects recorded, three or fewer | T5 |
-| T7 | Sprint close — both gates green | PLZG-263 | `python3 scripts/sprint_6_gate.py t7` — T1, Gate A and Gate B re-run; transcript committed, captured inside the window and `owner_read: true`; every other task ticket Done with an hour or more between In Progress and Done; flow snapshot fresh | T4, T5, T6 |
+| T7 | Sprint close — both gates green | PLZG-263 | `python3 scripts/sprint_6_gate.py t7` — T1, Gate A and Gate B re-run; transcript committed, captured after the sprint opened and `owner_read: true`; every other task ticket Done with an hour or more between In Progress and Done; flow snapshot fresh | T4, T5, T6 |
 
 The five rooms are `lobby`, `server-room`, `player-office`, `engineering-floor`
 and `war-room`. **The probe's contract:** a room, doorway or locked corridor is
@@ -231,7 +231,7 @@ Pre-mortem run 2026-10-06. Owner of every risk: Adam.
 
 | # | Failure mode | Mitigation |
 |---|---|---|
-| R1 | Gate B never really runs: the credential is missing, the script exits 2, and the sprint closes on Gate A alone. | T7 requires Gate B exit 0 and a transcript captured inside this sprint's window. Exit 2 blocks the close. |
+| R1 | Gate B never really runs: the credential is missing, the script exits 2, and the sprint closes on Gate A alone. | T7 requires Gate B exit 0 and a transcript captured after this sprint opened. The window's end is not enforced — it is Jira's date, not a promise (§1.3). Exit 2 blocks the close. |
 | R2 | The live gate is flaky, a strict assertion reddens, and someone loosens it to "non-empty". | Structure is asserted, never wording: the nonce. Up to three tries per run, every try logged. |
 | R3 | The bridge learns about Godot while being fixed in T6 (`D-005`). | The same two turns run from a client with no Godot. A fix that works for one client only fails review. |
 | R4 | Rooms are added but sealed: a wall collider closes a doorway and the test only checks that nodes exist. | T4 moves a body through each doorway, and the gate compares the rooms the test says it reached with the plan's list. |

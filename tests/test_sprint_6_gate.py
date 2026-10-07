@@ -178,6 +178,10 @@ class SmokeCheck(GateCase):
         self.godot["smoke.tscn"] = (0, SMOKE_OK.replace("east,north", "east"))
         self.assertFails(gate.check_t4, "need 2")
 
+    def test_blocked_corridors_the_scene_never_declared_fail(self):
+        self.godot["smoke.tscn"] = (0, SMOKE_OK.replace("east,north", "x,y"))
+        self.assertFails(gate.check_t4, "does not declare locked")
+
     def test_smoke_that_never_tried_a_locked_corridor_fails(self):
         self.godot["smoke.tscn"] = (0, SMOKE_OK.split("\n")[0])
         self.assertFails(gate.check_t4, "corridors_blocked")
@@ -215,6 +219,17 @@ class TranscriptCheck(GateCase):
         del self.transcript["clients"]["python"]
         self.write_transcript()
         self.assertFails(gate.check_transcript, "'python'")
+
+    def test_plan_naming_no_clients_fails(self):
+        # An empty list checks nothing, and nothing must not read as a pass.
+        self.plan["tasks"][3]["acceptance_inputs"]["clients"] = []
+        self.write_transcript()
+        self.assertFails(gate.check_transcript, "two distinct clients")
+
+    def test_plan_naming_one_client_fails(self):
+        self.plan["tasks"][3]["acceptance_inputs"]["clients"] = ["godot", "godot"]
+        self.write_transcript()
+        self.assertFails(gate.check_transcript, "two distinct clients")
 
     def test_simulated_reply_fails(self):
         self.transcript["clients"]["godot"]["turns"][0][
@@ -287,6 +302,79 @@ class LiveCheck(GateCase):
         self.assertFails(gate.check_t6, "even if []")
 
 
+class T1Check(GateCase):
+    """The sprint Jira holds is the sprint the plan describes."""
+
+    KEYS = ["PLZG-2", "PLZG-3", "PLZG-4", "PLZG-5", "PLZG-6", "PLZG-7"]
+
+    def setUp(self):
+        super().setUp()
+        (self.root / "specs" / "meta").mkdir()
+        registry = self.root / "specs" / "meta" / "doc-registry.json"
+        registry.write_text(
+            json.dumps({"documents": [{"doc_id": "CHARTER"}]}), encoding="utf-8"
+        )
+        (self.root / "specs" / "charter.md").write_text("#\n", encoding="utf-8")
+        self.plan["jira"]["epic"] = "PLZG-1"
+        self.plan["tasks"].insert(
+            0,
+            {
+                "id": "T1",
+                "acceptance_inputs": {
+                    "files": ["specs/charter.md"],
+                    "charter_doc_id": "CHARTER",
+                },
+            },
+        )
+        self.board = 169
+        self.in_sprint = set(self.KEYS)
+        self.under_epic = set(self.KEYS)
+        fakes = {
+            "REGISTRY_PATH": registry,
+        }
+        for name, value in fakes.items():
+            patcher = mock.patch.object(gate, name, value)
+            patcher.start()
+            self.addCleanup(patcher.stop)
+        for name, fake in (
+            ("governed_count", lambda: 20),
+            ("jira_get", lambda endpoint, params=None: self.sprint()),
+            ("jira_search", self.search),
+        ):
+            patcher = mock.patch.object(base, name, side_effect=fake)
+            patcher.start()
+            self.addCleanup(patcher.stop)
+
+    def sprint(self):
+        return {"originBoardId": self.board, "name": "Sprint 6", "state": "future"}
+
+    def search(self, jql):
+        return self.in_sprint if jql.startswith("sprint = ") else self.under_epic
+
+    def test_plan_and_board_agree_passes(self):
+        self.assertIn("all 6 task ticket(s)", gate.check_t1(self.plan))
+
+    def test_sprint_on_another_board_fails(self):
+        self.board = 12
+        self.assertFails(gate.check_t1, "belongs to board 12")
+
+    def test_ticket_missing_from_the_sprint_fails(self):
+        self.in_sprint.discard("PLZG-4")
+        self.assertFails(gate.check_t1, "not in sprint 120: ['PLZG-4']")
+
+    def test_ticket_outside_the_epic_fails(self):
+        self.under_epic.discard("PLZG-6")
+        self.assertFails(gate.check_t1, "not under epic PLZG-1: ['PLZG-6']")
+
+    def test_unregistered_charter_fails(self):
+        self.plan["tasks"][0]["acceptance_inputs"]["charter_doc_id"] = "OTHER"
+        self.assertFails(gate.check_t1, "not in the doc registry")
+
+    def test_missing_file_fails(self):
+        (self.root / "specs" / "charter.md").unlink()
+        self.assertFails(gate.check_t1, "is missing")
+
+
 class AcceptanceCheck(GateCase):
     """T7's reading of the transcript: committed, current, and owner-accepted."""
 
@@ -316,6 +404,13 @@ class AcceptanceCheck(GateCase):
         self.transcript["captured_at"] = "2026-08-20T12:00:00+00:00"
         self.write_transcript()
         self.assertFails(gate.check_acceptance, "before this sprint")
+
+    def test_transcript_after_the_jira_end_date_still_passes(self):
+        # The end date is Jira's required field, not a promise (charter 1.3).
+        self.plan["jira"]["window"]["end"] = "2026-10-21T16:00:00+00:00"
+        self.transcript["captured_at"] = "2026-11-02T12:00:00+00:00"
+        self.write_transcript()
+        self.assertIn("accepted by the owner", gate.check_acceptance(self.plan))
 
     def test_transcript_the_owner_has_not_read_fails(self):
         self.transcript["owner_read"] = False

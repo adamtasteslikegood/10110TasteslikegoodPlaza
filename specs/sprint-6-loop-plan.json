@@ -163,7 +163,7 @@
       "blocks": [
         "T7"
       ],
-      "note": "The test moves a body through each doorway in the running scene, bounds read from the scene, never equalities, and prints 'SMOKE rooms_reachable: <ids>' naming what it walked into. It also walks a body at each locked corridor and prints 'SMOKE corridors_blocked: <ids>' for those that stopped it. The gate compares the first line with T2's rooms and counts the second against T3's min_locked_corridors, so a test that stops checking a room, or a corridor that is locked in name only, turns the gate red (risk R4)."
+      "note": "The test moves a body through each doorway in the running scene, bounds read from the scene, never equalities, and prints 'SMOKE rooms_reachable: <ids>' naming what it walked into. It also walks a body at each locked corridor and prints 'SMOKE corridors_blocked: <ids>' for those that stopped it; each id must be one the probe reports as a declared locked corridor. The gate compares the first line with T2's rooms and counts the second against T3's min_locked_corridors, so a test that stops checking a room, or a corridor that is locked in name only, turns the gate red (risk R4)."
     },
     {
       "id": "T5",
@@ -242,7 +242,7 @@
         "T5",
         "T6"
       ],
-      "note": "Re-runs T1, Gate A and Gate B; requires the transcript committed, captured inside the sprint window and owner_read true (only the owner sets it); requires every other task ticket Done with at least an hour between In Progress and Done; requires a fresh flow snapshot. Starting and closing the Jira sprint are the owner's. Retiring the charter to HISTORICAL follows the Jira close, as PLZG-255 did for Sprint 5."
+      "note": "Re-runs T1, Gate A and Gate B; requires the transcript committed, captured after the sprint opened (the window's end is Jira's date and is not enforced) and owner_read true (only the owner sets it); requires every other task ticket Done with at least an hour between In Progress and Done; requires a fresh flow snapshot. Starting and closing the Jira sprint are the owner's. Retiring the charter to HISTORICAL follows the Jira close, as PLZG-255 did for Sprint 5."
     }
   ]
 }

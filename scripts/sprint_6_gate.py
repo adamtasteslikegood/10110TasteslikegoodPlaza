@@ -151,7 +151,17 @@ def check_t4(plan: dict) -> str:
     require(isinstance(minimum, int), "T3 declares no min_locked_corridors")
     blocked = BLOCKED_LINE.search(output)
     require(blocked is not None, f"{scene} printed no 'SMOKE corridors_blocked:' line")
-    stopped = len(split_ids(blocked.group(1)))
+    # Only corridors the running scene declares locked count. Otherwise the
+    # test could print two names of its own and be believed.
+    declared = probe(plan)["locked_corridors"]
+    reported = split_ids(blocked.group(1))
+    undeclared = sorted(reported - declared)
+    require(
+        not undeclared,
+        f"smoke test reports corridors the scene does not declare locked: "
+        f"{undeclared}",
+    )
+    stopped = len(reported)
     require(
         stopped >= minimum,
         f"the smoke test was stopped by {stopped} locked corridor(s), need {minimum}",
@@ -226,7 +236,14 @@ def check_transcript(plan: dict, require_recall: bool = True) -> str:
     forbidden = spec.get("simulated_reply", "")
     clients = transcript.get("clients")
     require(isinstance(clients, dict), f"{rel}: clients missing")
-    for name in spec.get("clients", []):
+    names = spec.get("clients")
+    # One client proves the bridge works for that client. D-005 is about the
+    # second one, so a plan naming fewer than two has no Gate B to pass.
+    require(
+        isinstance(names, list) and len(set(names)) >= 2,
+        "T5 must name at least two distinct clients",
+    )
+    for name in names:
         turns = (clients.get(name) or {}).get("turns")
         require(
             isinstance(turns, list) and len(turns) == 2,
@@ -255,7 +272,7 @@ def check_transcript(plan: dict, require_recall: bool = True) -> str:
             f"{rel}: {name} turn 2 did not recall the nonce -- no conversation",
         )
     outcome = "nonce recalled" if require_recall else "real replies, recall not asked"
-    return f"{rel}: {len(spec.get('clients', []))} client(s), {outcome}"
+    return f"{rel}: {len(names)} client(s), {outcome}"
 
 
 def check_t6(plan: dict) -> str:
@@ -373,7 +390,13 @@ def check_flow(plan: dict) -> str:
 
 
 def check_acceptance(plan: dict) -> str:
-    """The transcript is committed, from this sprint, and accepted by the owner."""
+    """The transcript is committed, from this sprint, and accepted by the owner.
+
+    "From this sprint" means captured after the sprint opened. The window's END
+    is deliberately not enforced: it is Jira's required date, not a forecast
+    (charter §1.3), and a sprint that runs past it is still this sprint. Failing
+    the close for being late would be the gate asserting a date nobody promised.
+    """
     rel = inputs(plan, "T5").get("transcript", "")
     try:
         tracked = subprocess.run(
