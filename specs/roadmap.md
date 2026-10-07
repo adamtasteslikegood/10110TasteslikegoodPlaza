@@ -58,8 +58,9 @@ Top-down 8-direction movement, arrows + WASD. ~15 lines of GDScript.
 **Time estimate:** 4–6 hours
 **GDScript required:** Minimal (door trigger logic only)
 **Status:** partial — the lobby, a corridor and the server room are grey-boxed in
-`scenes/world/office.gd`. The other three rooms, the doorway triggers and the
-locked corridors are **Sprint 6** (`PLZG-258`–`PLZG-260`), done when
+`scenes/world/office.gd`, and so since `PLZG-258` are the player's office, the
+engineering floor and the war room. The doorway triggers and the locked
+corridors are still open, **Sprint 6** (`PLZG-259`–`PLZG-260`), done when
 `python3 scripts/sprint_6_gate.py t4` exits 0: the smoke test has walked a body
 into every room.
 
@@ -78,10 +79,10 @@ it. It is scheduled by no milestone until one needs it.
 
 **Rooms to block out (Week 1 scope):**
 - [x] Lobby / entrance
-- [ ] Player's office
+- [x] Player's office
 - [x] Server room (Core agents)
-- [ ] Engineering floor (open plan)
-- [ ] War room / meeting room
+- [x] Engineering floor (open plan)
+- [x] War room / meeting room
 - 2–3 locked corridors leading to future floors
 
 **Door lock logic (simple version):**

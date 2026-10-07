@@ -17,6 +17,14 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
 
+### Added — three more walkable rooms (`PLZG-258`)
+
+- `scenes/world/office.gd` grey-boxes the player's office (west), the war room (north)
+  and the engineering floor (south), each through a corridor cut in the lobby wall.
+- Every room is now an `Area2D` in the group `rooms` carrying a `room_id`, so
+  `python3 scripts/sprint_6_gate.py t2` passes: all five rooms are present in the
+  running scene. Doorway triggers and locked corridors follow in `PLZG-259`.
+
 ### Added — Sprint 6 charter: walkable office and live conversation proof (`PLZG-257`)
 
 - `specs/sprint-6-charter.md` and `specs/sprint-6-loop-plan.json`. Sprint 6 is Jira

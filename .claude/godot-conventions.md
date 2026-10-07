@@ -14,7 +14,7 @@ autoload/
   GameState.gd
 scenes/                 # each .tscn with its .gd beside it (D-025)
   main.tscn             # run/main_scene — what `godot .` opens
-  world/office.tscn     # lobby, corridor, server room
+  world/office.tscn     # lobby plus four rooms off it; geometry and ROOMS built in office.gd
   player/player.tscn    # CharacterBody2D, 8-direction, arrows + WASD
   npc/agent_npc.tscn    # stores an agent_id and nothing else
   hud/dialogue_panel.tscn
