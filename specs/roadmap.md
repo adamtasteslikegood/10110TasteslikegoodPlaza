@@ -59,10 +59,11 @@ Top-down 8-direction movement, arrows + WASD. ~15 lines of GDScript.
 **GDScript required:** Minimal (door trigger logic only)
 **Status:** partial — five rooms are grey-boxed in `scenes/world/office.gd`: the
 lobby and the server room, and since `PLZG-258` the player's office, the
-engineering floor and the war room. The doorway triggers and the locked
-corridors are still open, in **Sprint 6** (`PLZG-259`–`PLZG-260`), done when
-`python3 scripts/sprint_6_gate.py t4` exits 0: the smoke test has walked a body
-into every room.
+engineering floor and the war room. Since `PLZG-259` each of the four rooms off
+the lobby has a doorway trigger, and the corridors to the engineering floor and
+the war room are barred until `GameState` unlocks them. Still open, in
+**Sprint 6** (`PLZG-260`): the smoke test walking a body into every room, done
+when `python3 scripts/sprint_6_gate.py t4` exits 0.
 
 **What "grey-boxing" means:**
 Standard game dev practice — build the entire space with plain grey/white geometry boxes before spending any time on textures, lighting, or art. Walk through it. Does the lobby feel right? Are the corridors the right width? Is the server room in a sensible place? Validate the space before investing in visuals.

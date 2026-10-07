@@ -6,13 +6,16 @@ extends Node
 ## earned rather than handed over. This node owns that state so doors, the HUD and
 ## the eventual save system all read one source instead of each tracking their own.
 ##
-## Round 3 scope: only `lobby` and `server-room` exist, and only the server-room
-## door consults `is_unlocked()`. The gate table below is where later rooms attach.
+## Every doorway in `scenes/world/office.gd` consults `is_unlocked()`, and a room
+## that is not unlocked has a barrier across its corridor until `unlock()` runs.
+## The gate table below is where the progression that calls it attaches.
 
-## Rooms open from the start. SB-04 has the player arriving alone in the lobby and
-## exploring freely, so neither Day 1 space is gated -- the door logic is exercised
-## by wiring, not by locking the player out of the one thing there is to see.
-const INITIALLY_UNLOCKED: Array[String] = ["lobby", "server-room"]
+## Rooms open from the start: the three Day 1 spaces. SB-04 has the player
+## arriving alone in the lobby and exploring freely, SB-05 meets the Systems
+## Architect in the server room, and SB-07 has the player find their own office.
+## Everything else starts locked -- the engineering floor opens on Day 2 (SB-08)
+## and the war room hosts the Day 3 standup (SB-12).
+const INITIALLY_UNLOCKED: Array[String] = ["lobby", "server-room", "player-office"]
 
 ## floor_id -> the task_id that opens it. Empty until M5 introduces real tasks;
 ## complete_task() already reads it so the wiring is proven before it carries load.

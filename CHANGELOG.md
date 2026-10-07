@@ -17,6 +17,21 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
 
+### Added — doorway triggers and locked corridors (`PLZG-259`)
+
+- `scenes/world/office.gd` builds one doorway trigger per corridor from a `DOORWAYS`
+  table, each an `Area2D` in the group `doorways` carrying the `room_id` it leads into.
+  This replaces the single server-room door, which was in no group.
+- A room `GameState` reports as locked gets a barrier across its corridor, a
+  `StaticBody2D` in the group `locked_corridors`. It is removed when
+  `GameEvents.floor_unlocked` fires for that room.
+
+### Changed — which rooms start open (`PLZG-259`)
+
+- `GameState.INITIALLY_UNLOCKED` gains `player-office`: the player finds their office on
+  Day 1 (`SB-07`). The engineering floor (`SB-08`, Day 2) and the war room (`SB-12`,
+  Day 3) start locked. Nothing unlocks them in play yet; that progression is M6.
+
 ### Added — three more walkable rooms (`PLZG-258`)
 
 - `scenes/world/office.gd` grey-boxes the player's office (west), the war room (north)

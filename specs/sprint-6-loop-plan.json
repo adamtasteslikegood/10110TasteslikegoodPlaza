@@ -131,7 +131,7 @@
         "start_room": "lobby",
         "min_locked_corridors": 2
       },
-      "status": "todo",
+      "status": "in_progress",
       "attempts": 0,
       "max_attempts": 3,
       "depends_on": [
