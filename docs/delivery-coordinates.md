@@ -101,6 +101,13 @@ and the Sprint 5 charter cited this document for an id it did not contain.
 | PLZG Sprint 3 | `45` | closed |
 | Sprint 4 | `48` | closed 2026-08-21 |
 | Sprint 5 | `51` | closed 2026-10-06 |
+| Sprint 6 | `120` | future — created 2026-10-06, not yet started |
+
+Sprint 6 is also the first sprint with an epic: **`PLZG-256`**, parent of its
+seven task tickets `PLZG-257`–`PLZG-263`. Earlier sprints were a flat set of
+tasks. An epic is created through the core REST API (`POST /rest/api/2/issue`);
+the Agile API (`/rest/agile/1.0/sprint`) creates the sprint and moves issues
+into it — "file the epic through the agile API" takes both.
 
 The ids are stable; the state column is a reading and goes stale. Re-read it from
 the board (`listJiraBoardSprints` on board `169`) before citing it.

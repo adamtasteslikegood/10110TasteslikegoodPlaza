@@ -1,0 +1,244 @@
+{
+  "$comment": "Machine-readable Sprint 6 plan. Prose rationale lives in specs/sprint-6-charter.md; this file is the shape delivery_loop_gate.py consumes. That script is NOT in this repo -- it ships with the pm-skills plugin; resolve it the way specs/sprint-5-loop-plan.json's $comment spells out, with --plan specs/sprint-6-loop-plan.json. Acceptance commands live in scripts/sprint_6_gate.py, one subcommand per task; it reads the sprint, board, epic, ticket keys, room ids and paths from THIS file and holds none of its own. Sprint goal: the office is walkable room to room, and a command proves the bridge carries a real two-turn conversation. Done when (A) the smoke test is green having walked into every room and (B) sprint_6_gate.py live exits 0 with a committed transcript the owner has read. No delivery date -- forecast blackout in force. WIP cap 3; 3 attempts on T2-T6, 2 on T1 and T7; 8 sprint iterations. Reviewers, all advisory: claude-review.yml, GitHub Copilot code review, and the owner's scheduled ChatGPT/Codex PR review, which posts and pushes under the owner's account.",
+  "goal": "Walkable office + live conversation proof. Done when: (A) godot --headless tests/smoke_test.tscn exits 0 having walked into every room; (B) python3 scripts/sprint_6_gate.py live exits 0 with a committed two-turn transcript from both clients. Sprint 6.",
+  "jira": {
+    "project": "PLZG",
+    "board_id": 169,
+    "sprint_id": 120,
+    "epic": "PLZG-256",
+    "window": {
+      "start": "2026-10-07T16:00:00+00:00",
+      "end": "2026-10-21T16:00:00+00:00",
+      "note": "Jira's required dates, not a delivery forecast"
+    },
+    "source": "docs/delivery-coordinates.md (D-026) owns these; this is the machine-readable copy the gate reads"
+  },
+  "budgets": {
+    "max_attempts_per_task": 3,
+    "max_loop_iterations": 8,
+    "wip_cap": 3,
+    "harness_max_loop_iterations": 28,
+    "note": "max_attempts_per_task is the ceiling; a task's own max_attempts may be lower. loop_controller.py spends one iteration per record AND per verify, so eight tasks cost 16 before any retry; 28 is that plus 12 slack and is a different counter from the sprint's 8."
+  },
+  "escalation": {
+    "to": "adam schoen",
+    "on": [
+      "attempts_exhausted",
+      "no_verification_available",
+      "gate_b_exit_2_credential",
+      "destructive_or_irreversible_action",
+      "goal_drift_detected",
+      "fix_would_change_a_storyboard_beat_or_locked_decision",
+      "t6_fourth_defect"
+    ],
+    "blocked_on_owner": "A PR awaiting the owner's merge is neither a failure nor an attempt. The loop moves to a task whose dependencies are met, otherwise stops and reports."
+  },
+  "iteration": 0,
+  "tasks": [
+    {
+      "id": "T0",
+      "title": "Fetch and reconcile against origin/dev before any other task runs",
+      "owner": "adam schoen",
+      "executor": "agent",
+      "reviewer": "adam schoen",
+      "acceptance": {
+        "cmd": "scripts/check_sync.sh --strict"
+      },
+      "status": "todo",
+      "attempts": 0,
+      "blocks": [
+        "T1"
+      ],
+      "note": "Blocking precondition, exempt from the attempt cap. No Jira ticket: it is a precondition the SessionStart hook already runs, and a permanently-instant item would pollute the flow data."
+    },
+    {
+      "id": "T1",
+      "jira": "PLZG-257",
+      "title": "Sprint 6 charter, loop plan and roadmap rewrite",
+      "owner": "adam schoen",
+      "executor": "agent",
+      "reviewer": "adam schoen",
+      "acceptance": {
+        "cmd": "python3 scripts/sprint_6_gate.py t1"
+      },
+      "acceptance_inputs": {
+        "files": [
+          "specs/sprint-6-charter.md",
+          "specs/sprint-6-loop-plan.json",
+          "scripts/sprint_6_gate.py",
+          "tests/room_probe.tscn"
+        ],
+        "charter_doc_id": "SPRINT-6-CHARTER"
+      },
+      "status": "in_progress",
+      "attempts": 0,
+      "max_attempts": 2,
+      "depends_on": [
+        "T0"
+      ],
+      "blocks": [
+        "T2",
+        "T5"
+      ],
+      "note": "Started 2026-10-06 (PLZG-257 In Progress). Documents this task may touch: the roadmap, the charter, this plan, the doc registry and delivery-coordinates -- nothing else in docs/ or specs/ (risk R5). Done when its PR is merged by the owner and the command exits 0 on dev."
+    },
+    {
+      "id": "T2",
+      "jira": "PLZG-258",
+      "title": "Player's office, engineering floor and war room -- walkable",
+      "owner": "adam schoen",
+      "executor": "agent",
+      "reviewer": "adam schoen",
+      "acceptance": {
+        "cmd": "python3 scripts/sprint_6_gate.py t2"
+      },
+      "acceptance_inputs": {
+        "probe_scene": "tests/room_probe.tscn",
+        "rooms": [
+          "lobby",
+          "server-room",
+          "player-office",
+          "engineering-floor",
+          "war-room"
+        ]
+      },
+      "status": "todo",
+      "attempts": 0,
+      "max_attempts": 3,
+      "depends_on": [
+        "T1"
+      ],
+      "blocks": [
+        "T3",
+        "T4"
+      ],
+      "note": "A room is seen by the probe when a node in group 'rooms' carries a room_id metadata string. The two existing rooms need that too."
+    },
+    {
+      "id": "T3",
+      "jira": "PLZG-259",
+      "title": "Doorway triggers and locked corridors",
+      "owner": "adam schoen",
+      "executor": "agent",
+      "reviewer": "adam schoen",
+      "acceptance": {
+        "cmd": "python3 scripts/sprint_6_gate.py t3"
+      },
+      "acceptance_inputs": {
+        "start_room": "lobby",
+        "min_locked_corridors": 2
+      },
+      "status": "todo",
+      "attempts": 0,
+      "max_attempts": 3,
+      "depends_on": [
+        "T2"
+      ],
+      "blocks": [
+        "T4"
+      ],
+      "note": "Doorways: group 'doorways', room_id = the room entered. Locked corridors: group 'locked_corridors', each asking GameState.is_unlocked. No NavigationRegion2D this sprint -- no NPC walks yet, so nothing would consume it."
+    },
+    {
+      "id": "T4",
+      "jira": "PLZG-260",
+      "title": "Smoke test -- every room exists and is reachable (Gate A)",
+      "owner": "adam schoen",
+      "executor": "agent",
+      "reviewer": "adam schoen",
+      "acceptance": {
+        "cmd": "python3 scripts/sprint_6_gate.py t4"
+      },
+      "acceptance_inputs": {
+        "smoke_scene": "tests/smoke_test.tscn"
+      },
+      "status": "todo",
+      "attempts": 0,
+      "max_attempts": 3,
+      "depends_on": [
+        "T2",
+        "T3"
+      ],
+      "blocks": [
+        "T7"
+      ],
+      "note": "The test moves a body through each doorway in the running scene, bounds read from the scene, never equalities, and prints 'SMOKE rooms_reachable: <ids>' naming what it walked into. The gate compares that line with T2's rooms, so a test that stops checking a room turns the gate red (risk R4)."
+    },
+    {
+      "id": "T5",
+      "jira": "PLZG-261",
+      "title": "Live gate -- two real turns through the bridge, in-engine and without Godot (Gate B)",
+      "owner": "adam schoen",
+      "executor": "agent",
+      "reviewer": "adam schoen",
+      "acceptance": {
+        "cmd": "python3 scripts/sprint_6_gate.py t5"
+      },
+      "acceptance_inputs": {
+        "live_runner": "scripts/sprint_6_live.py",
+        "transcript": "specs/evidence/sprint-6-live-transcript.json",
+        "clients": [
+          "godot",
+          "python"
+        ],
+        "simulated_reply": "Hello from the bridge."
+      },
+      "status": "todo",
+      "attempts": 0,
+      "max_attempts": 3,
+      "depends_on": [
+        "T1"
+      ],
+      "blocks": [
+        "T6",
+        "T7"
+      ],
+      "note": "The runner starts bridge/server.py, drives two turns from a headless Godot scene through scenes/bridge/ws_client.gd and the same two from a plain Python websocket client (D-005 swap test, risk R3), and writes the transcript: {captured_at, nonce, owner_read: false, clients: {godot: {turns: [{sent, received} x2]}, python: {...}}}. Turn 1 sends a random nonce; turn 2 asks for it back without repeating it. Up to three tries per run, every try logged (risk R2). The runner exits 2 when it cannot authenticate and the gate passes that through (risk R1). In-engine means the reply reaches BodyLabel through the typewriter."
+    },
+    {
+      "id": "T6",
+      "jira": "PLZG-262",
+      "title": "Fix what the first real Gate B run breaks",
+      "owner": "adam schoen",
+      "executor": "agent",
+      "reviewer": "adam schoen",
+      "acceptance": {
+        "cmd": "python3 scripts/sprint_6_gate.py t6"
+      },
+      "acceptance_inputs": {
+        "max_defects": 3,
+        "defects": []
+      },
+      "status": "todo",
+      "attempts": 0,
+      "max_attempts": 3,
+      "depends_on": [
+        "T5"
+      ],
+      "blocks": [
+        "T7"
+      ],
+      "note": "Record each defect fixed as {summary, commit} in acceptance_inputs.defects. A fourth is filed as a ticket and escalated, not absorbed. A fix that works for only one client breaks D-005 and fails review."
+    },
+    {
+      "id": "T7",
+      "jira": "PLZG-263",
+      "title": "Sprint 6 close -- both gates green",
+      "owner": "adam schoen",
+      "executor": "agent",
+      "reviewer": "adam schoen",
+      "acceptance": {
+        "cmd": "python3 scripts/sprint_6_gate.py t7"
+      },
+      "status": "todo",
+      "attempts": 0,
+      "max_attempts": 2,
+      "depends_on": [
+        "T4",
+        "T5",
+        "T6"
+      ],
+      "note": "Re-runs T1, Gate A and Gate B; requires the transcript committed, captured inside the sprint window and owner_read true (only the owner sets it); requires every other task ticket Done with at least an hour between In Progress and Done; requires a fresh flow snapshot. Starting and closing the Jira sprint are the owner's. Retiring the charter to HISTORICAL follows the Jira close, as PLZG-255 did for Sprint 5."
+    }
+  ]
+}

@@ -28,6 +28,12 @@ Milestone 1 → Milestone 4 → Milestone 8
 
 Everything else can be deferred. If you can walk through a lobby, approach an NPC, and get a real agent response back in a dialogue panel — the concept is proven.
 
+> **Owner ruling, 2026-10-06 — the milestones serve the prototype.** Where this
+> list and the working game disagree, this list is what changes. Sprint 6
+> ([`sprint-6-charter.md`](sprint-6-charter.md) §1.1) is the first use of it: M2
+> loses its navigation mesh, and M8 below says what proves it rather than only
+> that it is done.
+
 ---
 
 ## Phase 1 — Godot prototype (weeks 1–3)
@@ -52,7 +58,10 @@ Top-down 8-direction movement, arrows + WASD. ~15 lines of GDScript.
 **Time estimate:** 4–6 hours
 **GDScript required:** Minimal (door trigger logic only)
 **Status:** partial — the lobby, a corridor and the server room are grey-boxed in
-`scenes/world/office.gd`; the other rooms, door triggers and navigation mesh are open.
+`scenes/world/office.gd`. The other three rooms, the doorway triggers and the
+locked corridors are **Sprint 6** (`PLZG-258`–`PLZG-260`), done when
+`python3 scripts/sprint_6_gate.py t4` exits 0: the smoke test has walked a body
+into every room.
 
 **What "grey-boxing" means:**
 Standard game dev practice — build the entire space with plain grey/white geometry boxes before spending any time on textures, lighting, or art. Walk through it. Does the lobby feel right? Are the corridors the right width? Is the server room in a sensible place? Validate the space before investing in visuals.
@@ -61,8 +70,11 @@ Standard game dev practice — build the entire space with plain grey/white geom
 ```
 TileMap / StaticBody2D  ← walls, floors (2.5D top-down)
 Area2D                  ← doorway trigger zones (detects when player enters)
-NavigationRegion2D      ← bake a pathfinding mesh so NPCs can walk around later
 ```
+
+A `NavigationRegion2D` pathfinding mesh was part of this milestone and is **no
+longer** (owner ruling 2026-10-06): no NPC walks yet, so nothing would consume
+it. It is scheduled by no milestone until one needs it.
 
 **Rooms to block out (Week 1 scope):**
 - [x] Lobby / entrance
@@ -350,6 +362,14 @@ Logging the response to an inbox was step 8 of this list. It is **not part of M8
 is not built** — deferred until the game is ready for an inbox (owner ruling
 2026-10-06, `PLZG-247`). The inbox itself is introduced by `SB-11` and used by
 `SB-14`; no milestone here schedules it yet.
+
+**What proves it.** The ✅ above records that the path was built and exercised by
+hand in Sprint 4. Until Sprint 6 no command proved it: `tests/smoke_test.gd`
+emits the response signal with a literal string and opens no socket. From
+Sprint 6 the proof is `python3 scripts/sprint_6_gate.py live` — two real turns
+through the bridge, from Godot and from a client with no Godot in it, where the
+second reply has to return a value only the first turn carried. It needs a
+credential, so it is a local gate, not a CI job (`PLZG-261`).
 
 **This is the milestone where the game becomes the tool.**
 

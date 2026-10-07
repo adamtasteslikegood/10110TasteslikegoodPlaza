@@ -146,11 +146,11 @@
     },
     {
       "key": "PLZG-13",
-      "bucket": "keep",
+      "bucket": "wont_do",
       "reviewed_at": "2026-10-06",
       "confidence": "high",
       "github_issue": null,
-      "reason": "M2 partially delivered only: scenes/world/office.gd:3-7 builds lobby, corridor and server room and says the remaining rooms are M2; specs/roadmap.md:66-70 (player's office, engineering floor, war room) unchecked; no locked corridors."
+      "reason": "Re-bucketed from keep on 2026-10-06 when Sprint 6 was planned: superseded by epic PLZG-256, whose tasks PLZG-258, -259 and -260 carry the remaining M2 work. A sub-task follows its parent story's sprint, so it could not be sprint-scoped apart from M5 and M6. Closed Done with the wont-do and superseded labels; the work continues there, it was not finished here. Was: M2 partially delivered only: scenes/world/office.gd:3-7 builds lobby, corridor and server room and says the remaining rooms are M2; specs/roadmap.md:66-70 (player's office, engineering floor, war room) unchecked; no locked corridors."
     },
     {
       "key": "PLZG-25",

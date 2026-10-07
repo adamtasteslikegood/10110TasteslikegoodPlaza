@@ -89,6 +89,10 @@ jobs:
       - name: Run the Sprint 5 gate regression tests
         run: python3 -m unittest tests/test_sprint_5_gate.py
 
+      # And for scripts/sprint_6_gate.py (PLZG-257): fake Godot, fake Jira.
+      - name: Run the Sprint 6 gate regression tests
+        run: python3 -m unittest tests/test_sprint_6_gate.py
+
   validate-agent-data:
     name: Validate Agent Data
     runs-on: ubuntu-latest
