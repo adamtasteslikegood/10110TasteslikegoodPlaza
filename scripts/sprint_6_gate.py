@@ -180,6 +180,10 @@ def check_t4(plan: dict) -> str:
 def run_live(plan: dict) -> "tuple[int, str]":
     """Run the live runner; return its exit code (0 or 1) and its output.
 
+    Also proves the transcript on disk is THIS run's. Without that, a runner
+    that exits without writing would be judged on whatever an earlier run left
+    behind -- including a committed transcript from a bridge since broken.
+
     The runner is T5's deliverable and does not exist until T5 lands; until
     then this FAILS, which is the truthful answer to "is the bridge proven?".
     Its exit 2 -- no credential -- is raised as could-not-run, so it stays a 2
@@ -189,6 +193,7 @@ def run_live(plan: dict) -> "tuple[int, str]":
     runner = spec.get("live_runner")
     require(bool(runner), "T5 declares no live_runner")
     require((REPO_ROOT / runner).is_file(), f"{runner} does not exist yet (T5)")
+    started = datetime.now(timezone.utc)
     try:
         result = subprocess.run(
             [sys.executable, runner],
@@ -202,6 +207,20 @@ def run_live(plan: dict) -> "tuple[int, str]":
     output = f"{result.stdout}{result.stderr}".strip()
     if result.returncode == 2:
         raise GateError(f"{runner} could not run:\n{output[-800:]}")
+    rel = spec.get("transcript")
+    require(bool(rel), "T5 declares no transcript path")
+    stamp = base.load_json(REPO_ROOT / rel).get("captured_at")
+    try:
+        captured = datetime.fromisoformat(stamp)
+    except (TypeError, ValueError) as exc:
+        raise GateFailure(f"{rel}: captured_at is not a timestamp") from exc
+    if captured.tzinfo is None:
+        captured = captured.replace(tzinfo=timezone.utc)
+    require(
+        captured >= started,
+        f"{rel}: captured_at {stamp} is before this run started -- the runner "
+        "did not write it, so it says nothing about this run",
+    )
     return result.returncode, output
 
 

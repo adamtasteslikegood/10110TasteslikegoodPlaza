@@ -126,9 +126,21 @@ class GateCase(unittest.TestCase):
             json.dumps(self.transcript), encoding="utf-8"
         )
 
-    def write_runner(self, exit_code):
+    def write_runner(self, exit_code, writes_transcript=True):
+        """A stand-in runner. A real one stamps the transcript it writes."""
+        stamp = (
+            "import datetime, json, pathlib\n"
+            f"p = pathlib.Path({TRANSCRIPT!r})\n"
+            "if p.is_file():\n"
+            "    d = json.loads(p.read_text())\n"
+            "    now = datetime.datetime.now(datetime.timezone.utc)\n"
+            "    d['captured_at'] = now.isoformat()\n"
+            "    p.write_text(json.dumps(d))\n"
+        )
         (self.root / "scripts" / "live.py").write_text(
-            f"import sys\nsys.exit({exit_code})\n", encoding="utf-8"
+            (stamp if writes_transcript else "")
+            + f"import sys\nsys.exit({exit_code})\n",
+            encoding="utf-8",
         )
 
     def assertFails(self, check, fragment):
@@ -257,6 +269,7 @@ class LiveCheck(GateCase):
 
     def test_runner_failure_fails(self):
         self.write_runner(1)
+        self.write_transcript()
         self.assertFails(gate.check_live, "failed")
 
     def test_runner_success_still_needs_a_real_transcript(self):
@@ -264,6 +277,19 @@ class LiveCheck(GateCase):
         self.transcript["clients"]["godot"] = turns(recalled="nope")
         self.write_transcript()
         self.assertFails(gate.check_live, "did not recall")
+
+    def test_runner_that_wrote_nothing_is_not_judged_on_an_old_transcript(self):
+        # Exit 0, a perfect transcript on disk -- left there by an earlier run.
+        self.write_runner(0, writes_transcript=False)
+        self.transcript["captured_at"] = "2026-08-20T12:00:00+00:00"
+        self.write_transcript()
+        self.assertFails(gate.check_live, "before this run started")
+
+    def test_t5_is_not_judged_on_an_old_transcript_either(self):
+        self.write_runner(1, writes_transcript=False)
+        self.transcript["captured_at"] = "2026-08-20T12:00:00+00:00"
+        self.write_transcript()
+        self.assertFails(gate.check_t5, "before this run started")
 
     def test_runner_that_hangs_fails(self):
         (self.root / "scripts" / "live.py").write_text(
