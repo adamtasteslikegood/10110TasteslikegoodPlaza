@@ -17,6 +17,26 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
 
+### Added — Sprint 6 charter: walkable office and live conversation proof (`PLZG-257`)
+
+- `specs/sprint-6-charter.md` and `specs/sprint-6-loop-plan.json`. Sprint 6 is Jira
+  sprint `120` on board `169`, under epic `PLZG-256` with task tickets
+  `PLZG-257`–`PLZG-263`; `docs/delivery-coordinates.md` records the ids. The governed
+  set goes from 19 to 20 by design.
+- `scripts/sprint_6_gate.py`, one subcommand per task, with `tests/test_sprint_6_gate.py`
+  run in CI. `t2`, `t3`, `t4`, `t5` and `live` fail today on purpose: no room declares
+  itself, the smoke test walks nowhere, and the live runner is `PLZG-261`'s deliverable.
+- `tests/room_probe.tscn` prints the rooms, doorways and locked corridors the running
+  office declares.
+
+### Changed — roadmap milestones follow the prototype (`PLZG-257`)
+
+- Owner ruling 2026-10-06: where the milestone list and the working game disagree,
+  the list changes. M2 loses its navigation mesh; M8 now says that no command proved
+  the live path before Sprint 6 and names the one that will.
+- `PLZG-13` (the M2 sub-task) is closed as superseded by `PLZG-256`; its Sprint 5
+  triage row is re-bucketed to match.
+
 ### Changed — Sprint 5 charter retired; board is between sprints (`PLZG-255`)
 
 - Jira sprint `51` was closed on 2026-10-06 (`completeDate` 20:50Z) once the
