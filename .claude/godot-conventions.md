@@ -47,6 +47,6 @@ All four exist and are registered in `project.godot` under `[autoload]`. New cod
 | `GameState` | `autoload/GameState.gd` | Tracks `unlocked_floors`, `completed_tasks`, `player_config`; gates doors via `is_unlocked()` |
 | `BridgeClient` | `scenes/bridge/ws_client.gd` | WebSocket client for bridge; emits bridge signals via `GameEvents` |
 
-Interaction pattern: NPC `Area` (or `Area2D` under the 2.5D plan) fires `GameEvents.npc_approached` → HUD listens → populates dialogue panel from `AgentRegistry.get_agent(agent_id)`. Door triggers consult `GameState.is_unlocked(floor_id)`. Completing tutorial tasks calls `GameState.complete_task(id)`, which checks an unlock-gate table and emits `floor_unlocked`.
+Interaction pattern: NPC `Area` (or `Area2D` under the 2.5D plan) fires `GameEvents.npc_approached` → HUD listens → populates dialogue panel from `AgentRegistry.get_agent(agent_id)`. Doorway triggers (group `doorways`, a `room_id` each) consult `GameState.is_unlocked(floor_id)`; a locked room has a `StaticBody2D` barrier across its corridor (group `locked_corridors`) that leaves the tree on `floor_unlocked`. Completing tutorial tasks calls `GameState.complete_task(id)`, which checks an unlock-gate table and emits `floor_unlocked`.
 
 Bridge interaction: dialogue panel calls `BridgeClient.send_query(agent_id, task)` → ws_client sends JSON to bridge → bridge response arrives → ws_client emits `GameEvents.agent_response_received` → dialogue panel renders with typewriter effect.
