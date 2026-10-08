@@ -47,6 +47,10 @@ const CORE_COLOR := "#FFD700"
 ## any warning comment placed next to it disappears the first time the scene is
 ## opened in the editor. A test survives.
 
+## The rooms the storyboard has open before anything is earned. A concept fact
+## (SB-04, SB-05, SB-07), not a copy of scene state.
+const DAY_ONE_ROOMS: Array[String] = ["lobby", "server-room", "player-office"]
+
 ## How far the walker moves per sweep. Smaller than any wall is thick, though
 ## move_and_collide sweeps the whole motion and would not tunnel anyway.
 const WALK_STEP := 8.0
@@ -357,6 +361,16 @@ func _check_walk(instance: Node) -> void:
 		reached.append(starts[0])
 	else:
 		_fail("the player cannot stand in the start room '%s'" % starts[0])
+
+	# Day 1 is free exploration: SB-04 is the lobby, SB-05 the server room, SB-07
+	# the player's office. Asserted before the walk because the walk alone would
+	# not notice one of them starting locked -- it would find the barrier, see it
+	# hold, unlock it and walk in, all green.
+	for room_id in DAY_ONE_ROOMS:
+		if not rooms.has(room_id):
+			_fail("Day 1 room '%s' is not in the office" % room_id)
+		elif not GameState.is_unlocked(room_id):
+			_fail("'%s' should be open on Day 1 (SB-04, SB-05, SB-07)" % room_id)
 
 	# Locked corridors first, while they are locked.
 	var blocked: Array[String] = []
