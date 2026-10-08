@@ -29,10 +29,14 @@ spec-set versions, and no application release existed before `v0.1.22`.
   Gate A, and it runs in CI's `Export Godot 4 Prototype` job.
 - A room `GameState` holds locked with no corridor that stops the player now fails the
   test, as does a wall across a doorway.
+- Run alone, as CI runs it, the test now fails when a storyboard room is missing
+  (`SB-04`–`SB-12`: three open, two that start locked) or the walk would start
+  anywhere but the lobby. Before, deleting a locked room with its doorway stayed green.
 
 ### Changed — M2 is done (`PLZG-260`)
 
-- `specs/roadmap.md` marks Milestone 2 done and says what proves it.
+- `specs/roadmap.md` marks Milestone 2 done and says what proves it. Done on a reading of "2–3 locked corridors" the owner has not yet confirmed (issue #306):
+  if "corridors to future floors" was meant literally, the tick comes back off.
 
 ### Fixed — two smoke-test checks that could not fail (`PLZG-260`)
 

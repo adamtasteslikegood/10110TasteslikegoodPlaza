@@ -18,10 +18,13 @@ extends Node
 ##     SMOKE rooms_reachable: <room ids the player's body ended up inside>
 ##
 ## The gate compares those with the plan's room list, so the walk holds no list
-## of rooms to fall out of step with it. The one list in this file is
-## DAY_ONE_ROOMS, and it is not scene state: it is the storyboard's statement of
-## what is open before anything is earned, and it changes only when that does. A room that exists but is walled shut, or
-## a corridor that is locked in name only, changes a line and turns the gate red.
+## of rooms to fall out of step with it. The lists in this file are DAY_ONE_ROOMS,
+## EARNED_ROOMS and START_ROOM, and they are not scene state: they are the
+## storyboard's statement of where the player arrives, what is open before
+## anything is earned and what is not, and they change only when that does. They
+## are also what makes this test, run alone as CI runs it, fail when a storyboard
+## room is deleted along with its doorway. A room that exists but is walled shut,
+## or a corridor that is locked in name only, changes a line and turns the gate red.
 
 ## D-024 fixes the count: 133 source files, three colliding slugs curated down to 132.
 const EXPECTED_AGENT_COUNT := 132
@@ -52,6 +55,13 @@ const CORE_COLOR := "#FFD700"
 ## The rooms the storyboard has open before anything is earned. A concept fact
 ## (SB-04, SB-05, SB-07), not a copy of scene state.
 const DAY_ONE_ROOMS: Array[String] = ["lobby", "server-room", "player-office"]
+
+## The rooms the storyboard opens later: the engineering floor on Day 2 (SB-08)
+## and the war room for the Day 3 standup (SB-12). They exist and start locked.
+const EARNED_ROOMS: Array[String] = ["engineering-floor", "war-room"]
+
+## SB-04: the player arrives alone in the lobby. Every walk starts there.
+const START_ROOM := "lobby"
 
 ## How far the walker moves per sweep. Smaller than any wall is thick, though
 ## move_and_collide sweeps the whole motion and would not tunnel anyway.
@@ -356,6 +366,9 @@ func _check_walk(instance: Node) -> void:
 	if starts.size() != 1:
 		_fail("expected exactly one room no doorway leads into, found %s" % [starts])
 		return
+	if starts[0] != START_ROOM:
+		_fail("the room no doorway leads into is '%s', not the %s (SB-04)" % [starts[0], START_ROOM])
+		return
 	var start: Vector2 = (rooms[starts[0]] as Node2D).global_position
 
 	var reached: Array[String] = []
@@ -373,6 +386,11 @@ func _check_walk(instance: Node) -> void:
 			_fail("Day 1 room '%s' is not in the office" % room_id)
 		elif not GameState.is_unlocked(room_id):
 			_fail("'%s' should be open on Day 1 (SB-04, SB-05, SB-07)" % room_id)
+	for room_id in EARNED_ROOMS:
+		if not rooms.has(room_id):
+			_fail("storyboard room '%s' is not in the office (SB-08, SB-12)" % room_id)
+		elif GameState.is_unlocked(room_id):
+			_fail("'%s' should start locked (SB-08, SB-12)" % room_id)
 
 	# Locked corridors first, while they are locked.
 	var blocked: Array[String] = []
