@@ -17,6 +17,17 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
 
+### Changed — a closed sprint's gate is frozen, not kept green (`PLZG-268`)
+
+- Owner ruling, 2026-10-07: `scripts/sprint_5_gate.py` records the day Sprint 5 closed.
+  `t2`, `t3` and `t4` fail on `dev` now (and so `t6`, which re-runs them) because the
+  board gained tickets and the Sprint 6 charter became the 20th governed document, and that
+  is expected. Its evidence is not re-stamped. Said in the gate's docstring, the
+  Sprint 5 charter, `.claude/pr-workflow.md` and the comment heading
+  `specs/evidence/sprint-5-doc-crosscheck.json`.
+- `scripts/sprint_5_crosscheck_rehash.py` is removed. Its one job was to re-stamp that
+  evidence, which the ruling rules out, and nothing called it.
+  
 ### Fixed — the sprint close erased the sign-off it then asked for (`PLZG-265`)
 
 - `sprint_6_gate.py t7` re-ran the live runner, which rewrites the transcript with
@@ -219,8 +230,8 @@ Recorded, not resolved:
 
 Evidence is `specs/evidence/sprint-5-doc-crosscheck.json`, one row per document
 with what was fixed, left, or could not be checked.
-`scripts/sprint_5_crosscheck_rehash.py` lists rows whose document changed since
-review and re-stamps them only with `--write`. A row may list `open_conflicts`;
+(`scripts/sprint_5_crosscheck_rehash.py`, which listed and re-stamped stale rows, was
+removed under `PLZG-268` when the evidence was frozen.) A row may list `open_conflicts`;
 the T4 gate fails it unless the register still holds that section `OPEN`, fails
 a row that omits an `OPEN` section its document cites, and prints every conflict
 still carried, so a pass cannot read as "nothing in dispute". Triage evidence gains rows for `PLZG-249`–`PLZG-251`, filed today.

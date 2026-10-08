@@ -25,6 +25,20 @@ read from the loop plan, which records what ``docs/delivery-coordinates.md``
 ``ATLASSIAN_EMAIL`` plus ``ATLASSIAN_API_TOKEN``, or a pre-encoded base64 value.
 
 Stdlib only. Exit codes: 0 pass, 1 the check failed, 2 it could not be run.
+
+FROZEN. Sprint 5 closed on 2026-10-06 with every check here green. Each check
+measures live state against something fixed for that sprint: t2 the open board
+items against that day's triage rows, t3 the governed-document count against
+Sprint 5's limit of 19, t4 the blob hash of every governed document against
+the hash reviewed that day. t1 asks Jira whether the seven stale items the
+plan names are still Done, t5 whether the Jira sprint holds its task tickets.
+So t2, t3 and t4 go red as soon as work continues, and that is not a defect.
+By the owner's ruling (``PLZG-268``, 2026-10-07) a closed sprint's gate records
+the day it closed and is not kept green: do not re-stamp its evidence or raise
+its limits to satisfy it, and do not report its failures as findings. None of
+these checks runs the product; a regression there shows in the smoke test and
+the unit tests, not here. The module stays because ``sprint_6_gate.py`` imports
+its helpers and CI runs its unit tests.
 """
 
 from __future__ import annotations
