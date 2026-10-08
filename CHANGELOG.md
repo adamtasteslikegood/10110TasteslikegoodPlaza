@@ -17,6 +17,28 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
 
+### Added — the smoke test walks the office (`PLZG-260`)
+
+- `tests/smoke_test.gd` moves the player's own body from the lobby at every doorway.
+  A locked corridor has to stop it; after `GameState.unlock` the body has to end up
+  inside each room's `Area2D`. Rooms, doorways and the start are read from the scene's
+  groups, so the test holds no room list.
+- It prints `SMOKE corridors_blocked:` and `SMOKE rooms_reachable:`, which
+  `python3 scripts/sprint_6_gate.py t4` compares with the plan. This is Sprint 6's
+  Gate A, and it runs in CI's `Export Godot 4 Prototype` job.
+- A room `GameState` holds locked with no corridor that stops the player now fails the
+  test, as does a wall across a doorway.
+
+### Changed — M2 is done (`PLZG-260`)
+
+- `specs/roadmap.md` marks Milestone 2 done and says what proves it.
+
+### Fixed — two smoke-test checks that could not fail (`PLZG-260`)
+
+- The unlock check asked whether `engineering` was unlocked, an id no room has. It is
+  replaced by the walk. The office child-count floor was a hand-written 16 under a
+  comment describing an older layout; it is now counted from `office.gd`'s tables.
+
 ### Added — doorway triggers and locked corridors (`PLZG-259`)
 
 - `scenes/world/office.gd` builds one doorway trigger per corridor from a `DOORWAYS`

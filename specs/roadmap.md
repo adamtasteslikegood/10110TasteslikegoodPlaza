@@ -53,17 +53,19 @@ Top-down 8-direction movement, arrows + WASD. ~15 lines of GDScript.
 
 ---
 
-### Milestone 2 — Grey-box the office layout
+### Milestone 2 — Grey-box the office layout ✅
 
 **Time estimate:** 4–6 hours
 **GDScript required:** Minimal (door trigger logic only)
-**Status:** partial — five rooms are grey-boxed in `scenes/world/office.gd`: the
-lobby and the server room, and since `PLZG-258` the player's office, the
-engineering floor and the war room. Since `PLZG-259` each of the four rooms off
-the lobby has a doorway trigger, and the corridors to the engineering floor and
-the war room are barred until `GameState` unlocks them. Still open, in
-**Sprint 6** (`PLZG-260`): the smoke test walking a body into every room, done
-when `python3 scripts/sprint_6_gate.py t4` exits 0.
+**Status:** done in Sprint 6 (`PLZG-258`–`PLZG-260`). Five rooms are grey-boxed in
+`scenes/world/office.gd`: the lobby, the server room, the player's office, the
+engineering floor and the war room. Each of the four rooms off the lobby has a
+doorway trigger, and the corridors to the engineering floor and the war room are
+barred until `GameState` unlocks them. What proves it: `godot --headless
+tests/smoke_test.tscn` walks the player's body at both barred corridors and is
+stopped, opens them through `GameState`, and ends up inside every room;
+`python3 scripts/sprint_6_gate.py t4` checks what it reports against the plan.
+Nothing in play unlocks a room yet — that progression is M6.
 
 **What "grey-boxing" means:**
 Standard game dev practice — build the entire space with plain grey/white geometry boxes before spending any time on textures, lighting, or art. Walk through it. Does the lobby feel right? Are the corridors the right width? Is the server room in a sensible place? Validate the space before investing in visuals.
@@ -84,7 +86,7 @@ it. It is scheduled by no milestone until one needs it.
 - [x] Server room (Core agents)
 - [x] Engineering floor (open plan)
 - [x] War room / meeting room
-- 2–3 locked corridors leading to future floors
+- [x] 2–3 locked corridors — two, to the engineering floor and the war room, which open later in the week (`SB-08`, `SB-12`); corridors to floors that do not exist yet arrive with those floors
 
 **Door lock logic (simple version):**
 ```gdscript

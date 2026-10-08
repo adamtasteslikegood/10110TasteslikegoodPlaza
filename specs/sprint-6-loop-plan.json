@@ -132,7 +132,8 @@
         "start_room": "lobby",
         "min_locked_corridors": 2
       },
-      "status": "in_progress",
+      "status": "done",
+      "evidence": "sprint_6_gate.py t3 exit 0 on dev via loop_controller verify, 2026-10-07 PDT, after the owner merged PR #299 as ac7044a: 4 doorway(s), 2 locked corridor(s). PLZG-259 Done.",
       "attempts": 0,
       "max_attempts": 3,
       "depends_on": [
@@ -156,7 +157,7 @@
       "acceptance_inputs": {
         "smoke_scene": "tests/smoke_test.tscn"
       },
-      "status": "todo",
+      "status": "in_progress",
       "attempts": 0,
       "max_attempts": 3,
       "depends_on": [

@@ -16,7 +16,7 @@ This repo is **a running Godot prototype**. `project.godot` exists and `godot .`
 
 Docs split `docs/` (design and reference) from `specs/` (development process), each with its own `README.md` index. Active design is `docs/designs/2.5D-RPG-Prototype.md`; active work plan is `specs/roadmap.md`.
 
-**M1, M3, M4, M7 and M8 are done.** The proof-of-concept critical path (M1 → M4 → M8) is complete — walk up to an NPC, type a question, get a live Claude response with typewriter effect. The bridge layer shipped in Sprint 4. Next code milestones are **M2** (grey-box office), **M5** (assistant chat UI) and **M6** (unlock + map system). `specs/task-tracker.md` is `HISTORICAL` — a reference checklist, not the status of record.
+**M1–M4, M7 and M8 are done.** The proof-of-concept critical path (M1 → M4 → M8) is complete — walk up to an NPC, type a question, get a live Claude response with typewriter effect. The bridge layer shipped in Sprint 4. M2 (grey-box office) closed in Sprint 6. Next code milestones are **M5** (assistant chat UI) and **M6** (unlock + map system). `specs/task-tracker.md` is `HISTORICAL` — a reference checklist, not the status of record.
 
 ## Commands
 
@@ -96,7 +96,7 @@ Top-level `permissions: contents: read`; a job needing more declares its own blo
 - **`Validate Agent Data`** — `generate_agents_json.py --check`. Needs the submodule and `pyyaml`.
 - **`Validate Specs`** — `validate_specs.py`. Stdlib only by design.
 - **`Lint Python Bridge`** — `black --check .` and `flake8 --select=E9,F63,F7,F82` both **hard-fail**; the wider `--max-complexity` pass is advisory. Run `black .` before pushing. Does *not* check out the submodule.
-- **`Export Godot 4 Prototype`** — despite the name it does not export. Installs Godot 4.7.1, imports, and runs `tests/smoke_test.tscn`. "Runs" is load-bearing: the test adds the scene to the tree so `_ready()` fires, because `instantiate()` alone leaves `@onready` paths unresolved and sails past renamed nodes. Feel values are asserted as **bands derived from the scene at runtime**, never equalities — an `== 48.0` check would redden every tuning pass, which is how a check gets deleted. It passed vacuously until v0.2.8.
+- **`Export Godot 4 Prototype`** — despite the name it does not export. Installs Godot 4.7.1, imports, and runs `tests/smoke_test.tscn`. "Runs" is load-bearing: the test adds the scene to the tree so `_ready()` fires, because `instantiate()` alone leaves `@onready` paths unresolved and sails past renamed nodes. It also walks the player's body into every room and at each locked corridor. Feel values are asserted as **bands derived from the scene at runtime**, never equalities — an `== 48.0` check would redden every tuning pass, which is how a check gets deleted. It passed vacuously until v0.2.8.
 
 `.github/workflows/claude-review.yml` is the one independent reviewer on PRs — advisory (`continue-on-error`), never required. Read its `on:` block rather than assuming, and note **it cannot review changes to itself**: `claude-code-action` refuses when the workflow differs from the default branch's copy *and still reports a fast green*, so read the job log, not the check mark.
 
@@ -185,7 +185,7 @@ bridge change, the boundary is broken.
 - **Simplicity first.** Don't invent infrastructure — run the command before recommending it. Saying "there is no Node here" is also inventing infrastructure, in the negative direction, and it was wrong.
 - **Surgical changes.** Never silently reconcile two disagreeing documents — record it in the open-conflict register and raise it. Don't duplicate state: agent facts live in `data/agents.json`, feel values in the scene, project keys in the scripts, and the test derives its bounds from the scene rather than copying them.
 - **Know whose rule it is.** Before enforcing a constraint against a request, check who set it. Owner decisions and `D-nnn` bind; an agent's suggestion written up in a repo file is rationale to weigh, not a gate to refuse with.
-- **Goal-driven execution.** M8 is done; the next goals are M2/M5/M6. `tests/smoke_test.tscn` is the evidence. `META-SPEC` §5.8 requires machine-checkable acceptance, so "done" means a gate went green, not that the work looked finished. The user-level `karpathy-guidelines` skill expands on these principles if installed — a per-machine convenience, not a dependency of this repo.
+- **Goal-driven execution.** M8 is done; the next goals are M5/M6. `tests/smoke_test.tscn` is the evidence. `META-SPEC` §5.8 requires machine-checkable acceptance, so "done" means a gate went green, not that the work looked finished. The user-level `karpathy-guidelines` skill expands on these principles if installed — a per-machine convenience, not a dependency of this repo.
 
 ## GBrain semantic search
 
