@@ -17,6 +17,17 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
 
+### Fixed — the sprint close erased the sign-off it then asked for (`PLZG-265`)
+
+- `sprint_6_gate.py t7` re-ran the live runner, which rewrites the transcript with
+  `owner_read: false`, and then required `owner_read: true`. It could never pass.
+  By the owner's ruling (2026-10-07) it now reads Gate B off the committed transcript:
+  both clients must recall the nonce in the file the owner read. `live` and `t6`
+  still produce a fresh run.
+- The transcript must also match its committed copy, so an uncommitted run or a
+  hand-edited flag is not what closes the sprint.
+- `specs/sprint-6-charter.md` (T7 row, risk R1) and the loop plan say the same.
+
 ### Added — the bridge holds a conversation (`PLZG-262`)
 
 - The bridge keeps one message history per agent for as long as a WebSocket connection

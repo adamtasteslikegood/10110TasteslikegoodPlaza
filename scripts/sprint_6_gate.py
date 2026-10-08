@@ -427,6 +427,19 @@ def check_acceptance(plan: dict) -> str:
     except subprocess.TimeoutExpired as exc:
         raise GateError(f"git ls-files did not answer for {rel}") from exc
     require(tracked.returncode == 0, f"{rel} is not committed")
+    # The close judges this file as it sits on disk, so disk has to be what
+    # was committed -- otherwise a later run, or a hand edit of owner_read,
+    # would be accepted without ever having been in a commit.
+    try:
+        clean = subprocess.run(
+            ["git", "diff", "--quiet", "HEAD", "--", rel],
+            capture_output=True,
+            cwd=REPO_ROOT,
+            timeout=30,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise GateError(f"git diff did not answer for {rel}") from exc
+    require(clean.returncode == 0, f"{rel} differs from the committed copy")
     transcript = base.load_json(REPO_ROOT / rel)
     window = plan.get("jira", {}).get("window", {})
     try:
@@ -451,11 +464,18 @@ def check_acceptance(plan: dict) -> str:
 
 
 def check_t7(plan: dict) -> str:
-    """Sprint close: both gates, the transcript accepted, the flow data honest."""
+    """Sprint close: both gates, the transcript accepted, the flow data honest.
+
+    Gate B is read off the committed transcript, not re-run (PLZG-265). The
+    runner rewrites that file with `owner_read: false` every time, so a close
+    that ran it would erase the owner's acceptance just before asking for it
+    and could never pass. What the owner read is the evidence; `live` and `t6`
+    remain the commands that produce a fresh run.
+    """
     parts = [
         check_t1(plan),
         check_t4(plan),
-        check_live(plan),
+        check_transcript(plan),
         check_acceptance(plan),
         check_flow(plan),
         base.check_snapshot(),
