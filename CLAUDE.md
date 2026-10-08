@@ -16,7 +16,7 @@ This repo is **a running Godot prototype**. `project.godot` exists and `godot .`
 
 Docs split `docs/` (design and reference) from `specs/` (development process), each with its own `README.md` index. Active design is `docs/designs/2.5D-RPG-Prototype.md`; active work plan is `specs/roadmap.md`.
 
-**M1–M4, M7 and M8 are done.** The proof-of-concept critical path (M1 → M4 → M8) is complete — walk up to an NPC, type a question, get a live Claude response with typewriter effect. The bridge layer shipped in Sprint 4. M2 (grey-box office) closed in Sprint 6 — on a reading of "2–3 locked corridors" the owner has not yet confirmed (issue #306). Next code milestones are **M5** (assistant chat UI) and **M6** (unlock + map system). `specs/task-tracker.md` is `HISTORICAL` — a reference checklist, not the status of record.
+**M1–M4, M7 and M8 are done.** The proof-of-concept critical path (M1 → M4 → M8) is complete — walk up to an NPC, type a question, get a live Claude response with typewriter effect. The bridge layer shipped in Sprint 4. M2 (grey-box office) closed in Sprint 6. Next code milestones are **M5** (assistant chat UI) and **M6** (unlock + map system). `specs/task-tracker.md` is `HISTORICAL` — a reference checklist, not the status of record.
 
 ## Commands
 

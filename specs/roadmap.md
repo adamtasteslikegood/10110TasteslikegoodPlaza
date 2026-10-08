@@ -57,8 +57,7 @@ Top-down 8-direction movement, arrows + WASD. ~15 lines of GDScript.
 
 **Time estimate:** 4–6 hours
 **GDScript required:** Minimal (door trigger logic only)
-**Status:** done in Sprint 6 (`PLZG-258`–`PLZG-260`), on a reading of "2–3 locked corridors" the owner has not yet confirmed (issue #306) —
-see the last checklist item. Five rooms are grey-boxed in
+**Status:** done in Sprint 6 (`PLZG-258`–`PLZG-260`). Five rooms are grey-boxed in
 `scenes/world/office.gd`: the lobby, the server room, the player's office, the
 engineering floor and the war room. Each of the four rooms off the lobby has a
 doorway trigger, and the corridors to the engineering floor and the war room are
@@ -87,7 +86,7 @@ it. It is scheduled by no milestone until one needs it.
 - [x] Server room (Core agents)
 - [x] Engineering floor (open plan)
 - [x] War room / meeting room
-- [x] 2–3 locked corridors — two, to the engineering floor and the war room, which open later in the week (`SB-08`, `SB-12`); corridors to floors that do not exist yet arrive with those floors. **Ticked on that reading, which the owner has not yet confirmed** (issue #306): if "future floors" was meant literally, this item and the ✅ above come back off
+- [x] 2–3 locked corridors — two, to the engineering floor and the war room, which open later in the week (`SB-08`, `SB-12`); corridors to floors that do not exist yet arrive with those floors. The owner confirmed that reading on 2026-10-07 (issue #306)
 
 **Door lock logic (simple version):**
 ```gdscript

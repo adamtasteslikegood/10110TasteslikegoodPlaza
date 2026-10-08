@@ -35,8 +35,9 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ### Changed — M2 is done (`PLZG-260`)
 
-- `specs/roadmap.md` marks Milestone 2 done and says what proves it. Done on a reading of "2–3 locked corridors" the owner has not yet confirmed (issue #306):
-  if "corridors to future floors" was meant literally, the tick comes back off.
+- `specs/roadmap.md` marks Milestone 2 done and says what proves it. Two locked corridors
+  satisfy "2–3 locked corridors"; corridors to floors that do not exist yet arrive with
+  those floors. The owner confirmed that reading on 2026-10-07 (issue #306).
 
 ### Fixed — two smoke-test checks that could not fail (`PLZG-260`)
 
