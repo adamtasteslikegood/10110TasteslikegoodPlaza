@@ -94,16 +94,27 @@ const WALLS: Array[Rect2] = [
 	Rect2(-120, 1000, 880, 20),
 ]
 
-## The corridor mouth. Consults GameState before letting the player through.
-const DOOR_RECT := Rect2(660, 190, 60, 100)
-const DOOR_FLOOR_ID := "server-room"
+## One doorway per corridor, sitting in it, named for the room it leads INTO.
+## Each becomes an Area2D in the group `doorways` carrying that `room_id`. The
+## lobby has none: it is where the player starts, so nothing leads into it.
+const DOORWAYS: Array[Dictionary] = [
+	{"room_id": "server-room", "rect": Rect2(660, 190, 60, 100)},
+	{"room_id": "player-office", "rect": Rect2(-100, 190, 60, 100)},
+	{"room_id": "war-room", "rect": Rect2(270, -100, 100, 60)},
+	{"room_id": "engineering-floor", "rect": Rect2(270, 510, 100, 60)},
+]
+
+## How much of a doorway's depth its barrier fills while the room is locked.
+const BARRIER_DEPTH := 20.0
+const BARRIER_COLOR := Color(0.55, 0.30, 0.25)
 
 
 func _ready() -> void:
 	_build_floors()
 	_build_walls()
 	_build_rooms()
-	_build_door()
+	_build_doorways()
+	GameEvents.floor_unlocked.connect(_on_floor_unlocked)
 
 
 func _build_floors() -> void:
@@ -153,31 +164,78 @@ func _build_rooms() -> void:
 		add_child(area)
 
 
-func _build_door() -> void:
-	var area := Area2D.new()
-	area.name = "ServerRoomDoor"
-	area.position = DOOR_RECT.position + DOOR_RECT.size / 2.0
+func _build_doorways() -> void:
+	for entry in DOORWAYS:
+		var rect: Rect2 = entry["rect"]
+		var room_id: String = entry["room_id"]
+		var slug := room_id.replace("-", "_")
+
+		var area := Area2D.new()
+		area.name = "Doorway_%s" % slug
+		area.position = rect.position + rect.size / 2.0
+		area.set_meta("room_id", room_id)
+		area.add_to_group("doorways")
+
+		var shape := CollisionShape2D.new()
+		var rectangle := RectangleShape2D.new()
+		rectangle.size = rect.size
+		shape.shape = rectangle
+		area.add_child(shape)
+
+		area.body_entered.connect(_on_doorway_entered.bind(room_id))
+		add_child(area)
+
+		if not GameState.is_unlocked(room_id):
+			_build_barrier(room_id, rect)
+
+
+## A locked corridor is a wall across its doorway, not a message. It leaves the
+## tree the moment GameState opens the room, so being in `locked_corridors` and
+## stopping a body are the same fact and cannot drift apart.
+func _build_barrier(room_id: String, doorway: Rect2) -> void:
+	# Span the corridor's full width, whichever way it runs, so it sits flush
+	# with the corridor walls either side.
+	var size := doorway.size
+	if size.x < size.y:
+		size.x = BARRIER_DEPTH
+	else:
+		size.y = BARRIER_DEPTH
+
+	var body := StaticBody2D.new()
+	body.name = "LockedCorridor_%s" % room_id.replace("-", "_")
+	body.position = doorway.position + doorway.size / 2.0
+	body.set_meta("room_id", room_id)
+	body.add_to_group("locked_corridors")
 
 	var shape := CollisionShape2D.new()
 	var rectangle := RectangleShape2D.new()
-	rectangle.size = DOOR_RECT.size
+	rectangle.size = size
 	shape.shape = rectangle
-	area.add_child(shape)
+	body.add_child(shape)
 
-	area.body_entered.connect(_on_door_entered)
-	add_child(area)
+	var visual := Polygon2D.new()
+	visual.polygon = _rect_points(Rect2(-size / 2.0, size))
+	visual.color = BARRIER_COLOR
+	body.add_child(visual)
+
+	add_child(body)
 
 
-func _on_door_entered(body: Node2D) -> void:
+func _on_floor_unlocked(floor_id: String) -> void:
+	for node in get_tree().get_nodes_in_group("locked_corridors"):
+		if is_ancestor_of(node) and node.get_meta("room_id", "") == floor_id:
+			node.remove_from_group("locked_corridors")
+			node.queue_free()
+
+
+func _on_doorway_entered(body: Node2D, room_id: String) -> void:
 	if not body.is_in_group("player"):
 		return
-	# Round 3 leaves both Day 1 rooms open (SB-04 is free exploration), so this
-	# reads as a pass-through today. The branch exists because M5 attaches real
-	# unlock gates here, and wiring it now means the door is proven before it has
-	# to carry weight -- see GameState.UNLOCK_GATES.
-	if GameState.is_unlocked(DOOR_FLOOR_ID):
+	# An open room is a pass-through. A locked one has a barrier a step further
+	# in, and this is where M6 hangs whatever tells the player why.
+	if GameState.is_unlocked(room_id):
 		return
-	push_warning("Door: %s is not yet accessible." % DOOR_FLOOR_ID)
+	push_warning("Doorway: %s is not yet accessible." % room_id)
 
 
 func _rect_points(rect: Rect2) -> PackedVector2Array:

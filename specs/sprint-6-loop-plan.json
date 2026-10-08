@@ -105,7 +105,8 @@
           "war-room"
         ]
       },
-      "status": "in_progress",
+      "status": "done",
+      "evidence": "sprint_6_gate.py t2 exit 0 on dev via loop_controller verify, 2026-10-07 PDT, after the owner merged PR #293 as 8b6d998: all 5 room(s) present. PLZG-258 Done.",
       "attempts": 1,
       "max_attempts": 3,
       "depends_on": [
@@ -131,7 +132,7 @@
         "start_room": "lobby",
         "min_locked_corridors": 2
       },
-      "status": "todo",
+      "status": "in_progress",
       "attempts": 0,
       "max_attempts": 3,
       "depends_on": [
