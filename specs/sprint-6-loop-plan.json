@@ -157,7 +157,8 @@
       "acceptance_inputs": {
         "smoke_scene": "tests/smoke_test.tscn"
       },
-      "status": "in_progress",
+      "status": "done",
+      "evidence": "sprint_6_gate.py t4 exit 0 on dev via loop_controller verify, 2026-10-08 PDT, after the owner merged PR #303 as 28ddc21: smoke test green, 5 room(s) reachable, 2 locked corridor(s) held",
       "attempts": 0,
       "max_attempts": 3,
       "depends_on": [
@@ -213,12 +214,21 @@
       },
       "acceptance_inputs": {
         "max_defects": 3,
-        "defects": [],
+        "defects": [
+          {
+            "summary": "The conversation path kept no history between turns, so turn 2 could not recall turn 1. The server now keeps one history per connection and agent and the engine sends it ahead of each request (bridge/PROTOCOL.md, Conversation history). No client changed.",
+            "commit": "8fb9ea1"
+          },
+          {
+            "summary": "With the history in place the gate still failed about one try in three: asked for a 'code word', the agent replied about having no memory and did not name it. The bridge was logged sending turn 1 with turn 2 every time, so the fault was the runner's question. It now asks for a project name; 8 of 8 recalled.",
+            "commit": "621eace"
+          }
+        ],
         "known_before_first_run": [
           "The conversation path keeps no history between turns (bridge/conversation.py). Counts as defect 1 of 3 when fixed."
         ]
       },
-      "status": "todo",
+      "status": "in_progress",
       "attempts": 0,
       "max_attempts": 3,
       "depends_on": [
