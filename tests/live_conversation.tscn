@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://tests/live_conversation.gd" id="1_live"]
+
+[node name="LiveConversation" type="Node"]
+script = ExtResource("1_live")
