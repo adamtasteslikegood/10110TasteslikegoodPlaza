@@ -17,6 +17,22 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
 
+### Added — the live runner: real replies from Godot and from a plain client (`PLZG-261`)
+
+- `scripts/sprint_6_live.py` starts the bridge and asks one agent two questions from
+  each of two clients: `tests/live_conversation.tscn`, headless, through the dialogue
+  panel and `ws_client.gd`; and a stdlib WebSocket client with no Godot in it.
+- First real run: both clients got real model replies, read off `BodyLabel` with the
+  typewriter advancing in-engine. Neither recalled the nonce from turn 1 — the
+  conversation path keeps no history. `sprint_6_gate.py t5` passes; `live` fails
+  until `PLZG-262` gives the conversation a history.
+- `specs/evidence/sprint-6-live-transcript.json` holds that run.
+- `tests/test_sprint_6_live.py` covers what a real run cannot be made to produce:
+  fragmented frames, a ping during a slow reply, a crashed Godot, a bridge that never
+  starts, a hung client. It runs in CI beside the gate's own tests. The runner takes
+  its credential whole from `./.env` when the file has one, and its tries share one
+  time budget that fits inside the gate's timeout.
+
 ### Added — doorway triggers and locked corridors (`PLZG-259`)
 
 - `scenes/world/office.gd` builds one doorway trigger per corridor from a `DOORWAYS`
