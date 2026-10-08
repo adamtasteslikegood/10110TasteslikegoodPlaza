@@ -30,7 +30,8 @@ FROZEN. Sprint 5 closed on 2026-10-06 with every check here green. Each check
 measures live state against something fixed for that sprint: t2 the open board
 items against that day's triage rows, t3 the governed-document count against
 Sprint 5's limit of 19, t4 the blob hash of every governed document against
-the hash reviewed that day; t1 and t5 ask Jira about Sprint 5's own tickets.
+the hash reviewed that day. t1 asks Jira whether the seven stale items the
+plan names are still Done, t5 whether the Jira sprint holds its task tickets.
 So t2, t3 and t4 go red as soon as work continues, and that is not a defect.
 By the owner's ruling (``PLZG-268``, 2026-10-07) a closed sprint's gate records
 the day it closed and is not kept green: do not re-stamp its evidence or raise
