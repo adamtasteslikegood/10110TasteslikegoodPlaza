@@ -188,7 +188,8 @@
         ],
         "simulated_reply": "Hello from the bridge."
       },
-      "status": "in_progress",
+      "status": "done",
+      "evidence": "sprint_6_gate.py t5 exit 0 on dev, 2026-10-07 PDT, after the owner merged PR #294 as d0309d8: 2 client(s), real replies, recall not asked. PLZG-261 Done.",
       "attempts": 1,
       "max_attempts": 3,
       "depends_on": [
