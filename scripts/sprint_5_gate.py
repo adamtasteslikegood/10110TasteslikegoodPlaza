@@ -27,8 +27,8 @@ read from the loop plan, which records what ``docs/delivery-coordinates.md``
 Stdlib only. Exit codes: 0 pass, 1 the check failed, 2 it could not be run.
 
 FROZEN. Sprint 5 closed on 2026-10-06 with every check here green. These checks
-compare live state -- the board, the roadmap's blob hash -- with evidence
-captured that day, so they go red as soon as work continues, and that is not a
+compare live state -- the board's open items, the blob hash of every governed
+document in the registry -- with evidence captured that day, so they go red as soon as work continues, and that is not a
 defect. By the owner's ruling (``PLZG-268``, 2026-10-07) a closed sprint's gate
 records the day it closed and is not kept green: do not re-stamp its evidence
 to satisfy it, and do not report its failures as findings. The module stays

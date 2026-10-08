@@ -23,6 +23,8 @@ spec-set versions, and no application release existed before `v0.1.22`.
   `t2` and `t4` fail on `dev` now because the board and the roadmap moved on, and that
   is expected. Its evidence is not re-stamped. Said in the gate's docstring, the
   Sprint 5 charter and `.claude/pr-workflow.md`.
+- `scripts/sprint_5_crosscheck_rehash.py` is removed. Its one job was to re-stamp that
+  evidence, which the ruling rules out, and nothing called it.
 
 ### Added — the live runner: real replies from Godot and from a plain client (`PLZG-261`)
 
