@@ -1,7 +1,12 @@
-"""Conversation engine — stateless single-request handler for NPC chat.
+"""Conversation engine — one request, one model call, for NPC chat.
 
 Evolved from bridge.py's handle_request(). Uses the Anthropic Messages API
 with Haiku for low-cost personality-driven NPC interactions.
+
+The engine holds no state of its own. A caller that wants a conversation
+passes the turns so far as `history` and the engine extends it; the server
+keeps one per connection and agent (bridge/PROTOCOL.md, "Conversation
+history"). Called without one, every request stands alone, as it did in M8.
 
 D-005: zero UI awareness.
 D-006: synchronous with timeout.
@@ -17,6 +22,10 @@ from bridge.protocol import make_error, make_success, validate_agent_id
 DEFAULT_MODEL = "claude-haiku-4-5"
 DEFAULT_TIMEOUT = 60
 DEFAULT_MAX_TOKENS = 4096
+# Messages kept per conversation, user and assistant turns counted separately.
+# Bounds both the memory a long-lived connection can hold and what each
+# request re-sends to the model. Even, so trimming never splits an exchange.
+MAX_HISTORY_MESSAGES = 40
 
 
 def build_client():
@@ -44,10 +53,11 @@ def build_client():
 
 
 class ConversationEngine:
-    """Stateless request/response engine for NPC chat and story content.
+    """Request/response engine for NPC chat and story content.
 
-    Each call is an independent Haiku invocation — no session state,
-    no tool use, no background execution.
+    Each call is one Haiku invocation — no tool use, no background
+    execution, and no state on the engine. Earlier turns reach the model
+    only through the `history` the caller hands to handle_request().
     """
 
     def __init__(self, client=None, model=None, timeout=None):
@@ -55,7 +65,14 @@ class ConversationEngine:
         self._model = model or DEFAULT_MODEL
         self._timeout = timeout or DEFAULT_TIMEOUT
 
-    def handle_request(self, request):
+    def handle_request(self, request, history=None):
+        """Answer one request.
+
+        `history` is the caller's list of earlier messages with this agent,
+        oldest first. On success the new exchange is appended to it in place
+        and the list is trimmed to MAX_HISTORY_MESSAGES. A failed request
+        leaves it untouched, so a retry does not send the question twice.
+        """
         if not isinstance(request, dict):
             return make_error(
                 "", "", "invalid_request", "Request must be a JSON object"
@@ -91,11 +108,17 @@ class ConversationEngine:
                 model=self._model,
                 max_tokens=DEFAULT_MAX_TOKENS,
                 system=definition,
-                messages=[{"role": "user", "content": task}],
+                messages=[*(history or []), {"role": "user", "content": task}],
                 timeout=self._timeout,
             )
             parts = [b.text for b in response.content if hasattr(b, "text")]
             output = "\n\n".join(parts) if parts else ""
+            # The API rejects an empty assistant turn, so an exchange with no
+            # text is not one the next request could replay.
+            if history is not None and output:
+                history.append({"role": "user", "content": task})
+                history.append({"role": "assistant", "content": output})
+                del history[:-MAX_HISTORY_MESSAGES]
             return make_success(agent_id, task, output)
         except Exception as exc:
             exc_name = type(exc).__name__

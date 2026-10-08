@@ -373,7 +373,11 @@ emits the response signal with a literal string and opens no socket. From
 Sprint 6 the proof is `python3 scripts/sprint_6_gate.py live` — two real turns
 through the bridge, from Godot and from a client with no Godot in it, where the
 second reply has to return a value only the first turn carried. It needs a
-credential, so it is a local gate, not a CI job (`PLZG-261`).
+credential, so it is a local gate, not a CI job (`PLZG-261`). It first passed on
+2026-10-07 PDT (`PLZG-262`), after two changes: the bridge now keeps a history
+per connection and agent, without which every run failed on the second turn;
+and the runner asks its question as a project name, because asked for a "code
+word" the agent declined to repeat it about one try in three.
 
 **This is the milestone where the game becomes the tool.**
 

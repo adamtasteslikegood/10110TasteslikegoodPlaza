@@ -41,14 +41,24 @@ class BridgeServer:
         self.domains = DomainManager(base_path=base_path)
         self._websocket = None
 
-    async def dispatch_raw(self, raw_message: str) -> list[dict]:
+    async def dispatch_raw(self, raw_message: str, histories=None) -> list[dict]:
         try:
             data = json.loads(raw_message)
         except (json.JSONDecodeError, TypeError) as exc:
             return [make_error("", "", "invalid_request", f"Bad JSON: {exc}")]
-        return await self.dispatch(data)
+        if not isinstance(data, dict):
+            return [
+                make_error("", "", "invalid_request", "Request must be a JSON object")
+            ]
+        return await self.dispatch(data, histories)
 
-    async def dispatch(self, data: dict) -> list[dict]:
+    async def dispatch(self, data: dict, histories=None) -> list[dict]:
+        """Route one message.
+
+        `histories` maps agent_id to that agent's conversation so far, for
+        the connection the message arrived on. Without it a conversation
+        request stands alone.
+        """
         msg_type = data.get("type", "")
 
         if msg_type in _LIFECYCLE_TYPES:
@@ -62,7 +72,20 @@ class BridgeServer:
             ]
 
         if request.type == RequestType.CONVERSATION:
-            resp = await asyncio.to_thread(self.conversation.handle_request, data)
+            # A non-string agent_id is the engine's to refuse; it also cannot
+            # key a history, and a list here would raise instead of replying.
+            if histories is None or not isinstance(request.agent_id, str):
+                resp = await asyncio.to_thread(self.conversation.handle_request, data)
+            else:
+                # Kept only once it holds an exchange: the engine extends it
+                # on success alone, so a refused or unknown agent_id leaves
+                # no key behind and a client cannot grow this dict by asking.
+                history = histories.get(request.agent_id, [])
+                resp = await asyncio.to_thread(
+                    self.conversation.handle_request, data, history
+                )
+                if history:
+                    histories[request.agent_id] = history
             return [resp]
 
         if request.type == RequestType.DOMAIN_QUERY:
@@ -111,9 +134,14 @@ class BridgeServer:
 
     async def _handle_connection(self, websocket):
         self._websocket = websocket
+        # Conversation history lives exactly as long as the connection, one
+        # list per agent. The loop below answers one message before reading
+        # the next, so the worker thread that extends a list never races
+        # another request on the same connection.
+        histories: dict[str, list] = {}
         try:
             async for raw in websocket:
-                responses = await self.dispatch_raw(raw)
+                responses = await self.dispatch_raw(raw, histories)
                 for resp in responses:
                     await websocket.send(json.dumps(resp))
         finally:

@@ -344,11 +344,18 @@ def refuse(error_type, message) -> None:
 
 
 def prompts_for(nonce: str) -> list:
+    """Turn 1 carries the nonce, turn 2 asks for it back without repeating it.
+
+    It is dressed as a project name on purpose. Asked to remember a "code
+    word", the agent answered about one time in three with a paragraph on
+    having no memory, and asked to repeat one it refused outright as a
+    security test -- with the history in front of it both times. A fact a
+    colleague would mention is one it simply uses.
+    """
     return [
-        f"Please remember this code word for my next message: {nonce}. "
+        f"The project I am working on is called {nonce}. "
         "Reply with just the word OK.",
-        "What was the code word I gave you in my previous message? "
-        "Reply with the code word only.",
+        "What is the project I am working on called? Reply with the name only.",
     ]
 
 

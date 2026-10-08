@@ -18,6 +18,27 @@ WebSocket on `ws://localhost:8765` (D-015). JSON messages, one per WebSocket fra
 A request **without** a `type` field is treated as `"conversation"` — existing
 clients work without changes.
 
+#### Conversation history
+
+The bridge remembers a conversation for as long as the WebSocket connection it
+arrived on stays open. Within a connection it keeps one history per `agent_id`:
+each successful exchange is appended, and the next request for that agent is
+sent to the model with those earlier turns in front of it.
+
+- **The client sends nothing extra.** There is no conversation id and no
+  history field. A client holds a conversation by keeping its connection open
+  and loses it by reconnecting. Any client gets this the same way (`D-005`).
+- **A new connection starts with nothing**, and two connections never see each
+  other's turns, even for the same agent.
+- **Only successful exchanges are kept.** A request that fails, or a reply with
+  no text, leaves the history as it was, so retrying does not repeat the
+  question.
+- **It is bounded.** The newest 40 messages (20 exchanges) per agent are kept;
+  older ones are dropped whole, oldest first.
+- **It is not persisted.** Nothing is written to disk, and a bridge restart
+  forgets everything. Long-lived, resumable state is what domain sessions are
+  for.
+
 ### Domain Query
 
 ```json
