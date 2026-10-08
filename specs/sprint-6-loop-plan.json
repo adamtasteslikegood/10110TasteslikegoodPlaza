@@ -157,7 +157,8 @@
       "acceptance_inputs": {
         "smoke_scene": "tests/smoke_test.tscn"
       },
-      "status": "in_progress",
+      "status": "done",
+      "evidence": "sprint_6_gate.py t4 exit 0 on dev via loop_controller verify, 2026-10-08 PDT, after the owner merged PR #303 as 28ddc21: smoke test green, 5 room(s) reachable, 2 locked corridor(s) held",
       "attempts": 0,
       "max_attempts": 3,
       "depends_on": [
