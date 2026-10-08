@@ -77,10 +77,15 @@ class BridgeServer:
             if histories is None or not isinstance(request.agent_id, str):
                 resp = await asyncio.to_thread(self.conversation.handle_request, data)
             else:
-                history = histories.setdefault(request.agent_id, [])
+                # Kept only once it holds an exchange: the engine extends it
+                # on success alone, so a refused or unknown agent_id leaves
+                # no key behind and a client cannot grow this dict by asking.
+                history = histories.get(request.agent_id, [])
                 resp = await asyncio.to_thread(
                     self.conversation.handle_request, data, history
                 )
+                if history:
+                    histories[request.agent_id] = history
             return [resp]
 
         if request.type == RequestType.DOMAIN_QUERY:

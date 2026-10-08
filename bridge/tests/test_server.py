@@ -168,6 +168,19 @@ class TestConversationHistoryRouting:
         args = conv.handle_request.call_args_list[call].args
         return args[1] if len(args) > 1 else None
 
+    def answering(self, conv):
+        """Make the mocked engine keep a history the way the real one does."""
+
+        def handle(request, history=None):
+            if history is not None:
+                history += [
+                    {"role": "user", "content": request["task"]},
+                    {"role": "assistant", "content": "x"},
+                ]
+            return {"status": "ok", "output": "x"}
+
+        conv.handle_request.side_effect = handle
+
     async def test_dispatch_without_a_connection_passes_no_history(self, mock_engines):
         conv, _ = mock_engines
         server = BridgeServer()
@@ -176,6 +189,7 @@ class TestConversationHistoryRouting:
 
     async def test_same_agent_on_one_connection_shares_a_history(self, mock_engines):
         conv, _ = mock_engines
+        self.answering(conv)
         server = BridgeServer()
         histories = {}
         await server.dispatch({"agent_id": "test", "task": "one"}, histories)
@@ -185,6 +199,7 @@ class TestConversationHistoryRouting:
 
     async def test_another_agent_gets_its_own_history(self, mock_engines):
         conv, _ = mock_engines
+        self.answering(conv)
         server = BridgeServer()
         histories = {}
         await server.dispatch({"agent_id": "test", "task": "one"}, histories)
@@ -210,7 +225,7 @@ class TestConversationHistoryRouting:
             async def send(self, payload):
                 self.sent.append(payload)
 
-        conv.handle_request.return_value = {"status": "ok", "output": "x"}
+        self.answering(conv)
         request = json.dumps({"agent_id": "test", "task": "hi"})
         first, second = FakeSocket([request, request]), FakeSocket([request])
         await server._handle_connection(first)
@@ -219,6 +234,15 @@ class TestConversationHistoryRouting:
         assert len(first.sent) == 2 and len(second.sent) == 1
         assert self.passed_history(conv, 0) is self.passed_history(conv, 1)
         assert self.passed_history(conv, 2) is not self.passed_history(conv, 0)
+
+    async def test_a_request_that_fails_leaves_no_history_behind(self, mock_engines):
+        conv, _ = mock_engines
+        conv.handle_request.return_value = {"status": "error"}
+        server = BridgeServer()
+        histories = {}
+        for n in range(50):
+            await server.dispatch({"agent_id": f"nobody-{n}", "task": "hi"}, histories)
+        assert histories == {}
 
     async def test_agent_id_that_cannot_key_a_history_gets_none(self, mock_engines):
         conv, _ = mock_engines

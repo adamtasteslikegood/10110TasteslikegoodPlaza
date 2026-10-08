@@ -39,6 +39,9 @@ spec-set versions, and no application release existed before `v0.1.22`.
 - A request whose `agent_id` is not a string (a list, an object) raised the same way,
   at the history lookup. It now reaches the engine, which replies `invalid_request`,
   and gets no history.
+- A connection keeps a history only for an agent that has answered. Before, every
+  `agent_id` asked for left an empty list behind, so one client could grow the
+  table without bound by asking for agents that do not exist.
 
 ### Added — the live runner: real replies from Godot and from a plain client (`PLZG-261`)
 
