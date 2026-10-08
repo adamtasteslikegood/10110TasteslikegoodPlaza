@@ -1,5 +1,7 @@
 """Tests for bridge.server — WebSocket routing and backward compat."""
 
+import json
+
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 
@@ -156,3 +158,69 @@ class TestBridgeServerDispatch:
         )
         assert len(resp) == 1
         assert resp[0]["status"] == "error"
+
+
+@pytest.mark.asyncio
+class TestConversationHistoryRouting:
+    """History belongs to a connection and, within it, to an agent."""
+
+    def passed_history(self, conv, call=-1):
+        args = conv.handle_request.call_args_list[call].args
+        return args[1] if len(args) > 1 else None
+
+    async def test_dispatch_without_a_connection_passes_no_history(self, mock_engines):
+        conv, _ = mock_engines
+        server = BridgeServer()
+        await server.dispatch({"agent_id": "test", "task": "hi"})
+        assert self.passed_history(conv) is None
+
+    async def test_same_agent_on_one_connection_shares_a_history(self, mock_engines):
+        conv, _ = mock_engines
+        server = BridgeServer()
+        histories = {}
+        await server.dispatch({"agent_id": "test", "task": "one"}, histories)
+        await server.dispatch({"agent_id": "test", "task": "two"}, histories)
+        assert self.passed_history(conv, 0) is self.passed_history(conv, 1)
+        assert self.passed_history(conv) is histories["test"]
+
+    async def test_another_agent_gets_its_own_history(self, mock_engines):
+        conv, _ = mock_engines
+        server = BridgeServer()
+        histories = {}
+        await server.dispatch({"agent_id": "test", "task": "one"}, histories)
+        await server.dispatch({"agent_id": "other", "task": "two"}, histories)
+        assert self.passed_history(conv, 0) is not self.passed_history(conv, 1)
+
+    async def test_each_connection_starts_with_no_history(self, mock_engines):
+        conv, _ = mock_engines
+        server = BridgeServer()
+
+        class FakeSocket:
+            def __init__(self, messages):
+                self.messages = messages
+                self.sent = []
+
+            def __aiter__(self):
+                return self._iterate()
+
+            async def _iterate(self):
+                for message in self.messages:
+                    yield message
+
+            async def send(self, payload):
+                self.sent.append(payload)
+
+        conv.handle_request.return_value = {"status": "ok", "output": "x"}
+        request = json.dumps({"agent_id": "test", "task": "hi"})
+        first, second = FakeSocket([request, request]), FakeSocket([request])
+        await server._handle_connection(first)
+        await server._handle_connection(second)
+
+        assert len(first.sent) == 2 and len(second.sent) == 1
+        assert self.passed_history(conv, 0) is self.passed_history(conv, 1)
+        assert self.passed_history(conv, 2) is not self.passed_history(conv, 0)
+
+    async def test_json_that_is_no_object_is_an_error_not_a_crash(self, mock_engines):
+        server = BridgeServer()
+        resp = await server.dispatch_raw("[1, 2]")
+        assert resp[0]["error_type"] == "invalid_request"

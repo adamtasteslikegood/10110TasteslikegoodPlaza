@@ -41,14 +41,24 @@ class BridgeServer:
         self.domains = DomainManager(base_path=base_path)
         self._websocket = None
 
-    async def dispatch_raw(self, raw_message: str) -> list[dict]:
+    async def dispatch_raw(self, raw_message: str, histories=None) -> list[dict]:
         try:
             data = json.loads(raw_message)
         except (json.JSONDecodeError, TypeError) as exc:
             return [make_error("", "", "invalid_request", f"Bad JSON: {exc}")]
-        return await self.dispatch(data)
+        if not isinstance(data, dict):
+            return [
+                make_error("", "", "invalid_request", "Request must be a JSON object")
+            ]
+        return await self.dispatch(data, histories)
 
-    async def dispatch(self, data: dict) -> list[dict]:
+    async def dispatch(self, data: dict, histories=None) -> list[dict]:
+        """Route one message.
+
+        `histories` maps agent_id to that agent's conversation so far, for
+        the connection the message arrived on. Without it a conversation
+        request stands alone.
+        """
         msg_type = data.get("type", "")
 
         if msg_type in _LIFECYCLE_TYPES:
@@ -62,7 +72,13 @@ class BridgeServer:
             ]
 
         if request.type == RequestType.CONVERSATION:
-            resp = await asyncio.to_thread(self.conversation.handle_request, data)
+            if histories is None:
+                resp = await asyncio.to_thread(self.conversation.handle_request, data)
+            else:
+                history = histories.setdefault(request.agent_id, [])
+                resp = await asyncio.to_thread(
+                    self.conversation.handle_request, data, history
+                )
             return [resp]
 
         if request.type == RequestType.DOMAIN_QUERY:
@@ -111,9 +127,14 @@ class BridgeServer:
 
     async def _handle_connection(self, websocket):
         self._websocket = websocket
+        # Conversation history lives exactly as long as the connection, one
+        # list per agent. The loop below answers one message before reading
+        # the next, so the worker thread that extends a list never races
+        # another request on the same connection.
+        histories: dict[str, list] = {}
         try:
             async for raw in websocket:
-                responses = await self.dispatch_raw(raw)
+                responses = await self.dispatch_raw(raw, histories)
                 for resp in responses:
                     await websocket.send(json.dumps(resp))
         finally:
