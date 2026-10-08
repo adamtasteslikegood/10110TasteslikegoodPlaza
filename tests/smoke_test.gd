@@ -10,6 +10,21 @@ extends Node
 ##
 ## Before this existed the `Export Godot 4 Prototype` job echoed a string and went
 ## green, which is indistinguishable from a passing build right up until it isn't.
+##
+## It also walks the office (Sprint 6 Gate A, PLZG-260) and says what it found on
+## two lines that `scripts/sprint_6_gate.py t4` reads:
+##
+##     SMOKE corridors_blocked: <room ids whose locked corridor stopped the player>
+##     SMOKE rooms_reachable: <room ids the player's body ended up inside>
+##
+## The gate compares those with the plan's room list, so the walk holds no list
+## of rooms to fall out of step with it. The lists in this file are DAY_ONE_ROOMS,
+## EARNED_ROOMS and START_ROOM, and they are not scene state: they are the
+## storyboard's statement of where the player arrives, what is open before
+## anything is earned and what is not, and they change only when that does. They
+## are also what makes this test, run alone as CI runs it, fail when a storyboard
+## room is deleted along with its doorway. A room that exists but is walled shut,
+## or a corridor that is locked in name only, changes a line and turns the gate red.
 
 ## D-024 fixes the count: 133 source files, three colliding slugs curated down to 132.
 const EXPECTED_AGENT_COUNT := 132
@@ -37,6 +52,21 @@ const CORE_COLOR := "#FFD700"
 ## any warning comment placed next to it disappears the first time the scene is
 ## opened in the editor. A test survives.
 
+## The rooms the storyboard has open before anything is earned. A concept fact
+## (SB-04, SB-05, SB-07), not a copy of scene state.
+const DAY_ONE_ROOMS: Array[String] = ["lobby", "server-room", "player-office"]
+
+## The rooms the storyboard opens later: the engineering floor on Day 2 (SB-08)
+## and the war room for the Day 3 standup (SB-12). They exist and start locked.
+const EARNED_ROOMS: Array[String] = ["engineering-floor", "war-room"]
+
+## SB-04: the player arrives alone in the lobby. Every walk starts there.
+const START_ROOM := "lobby"
+
+## How far the walker moves per sweep. Smaller than any wall is thick, though
+## move_and_collide sweeps the whole motion and would not tunnel anyway.
+const WALK_STEP := 8.0
+
 var _failures: Array[String] = []
 
 
@@ -45,7 +75,6 @@ func _ready() -> void:
 	_check_registry()
 	_check_core_agents()
 	await _check_scene_tree()
-	_check_unlock_gate()
 
 	if _failures.is_empty():
 		print("smoke_test: OK — %d agents, all checks passed." % AgentRegistry.count())
@@ -135,6 +164,7 @@ func _check_scene_tree() -> void:
 	_check_office_built(instance)
 	_check_hud_ready(instance)
 	_check_feel_bands(instance)
+	await _check_walk(instance)
 
 	instance.queue_free()
 
@@ -225,11 +255,25 @@ func _check_office_built(instance: Node) -> void:
 	var office: Node = instance.get_node_or_null("Office")
 	if office == null:
 		return
-	# 3 floors + 12 walls + 1 door built in _ready(), plus the 2 NPCs already in
-	# the .tscn. A low count means wall generation errored partway.
+	# One child per entry in each of office.gd's geometry tables, plus whatever
+	# the .tscn already holds. Counted from the tables themselves, so adding a
+	# room raises the bar instead of leaving a stale number here. A low count
+	# means the build in _ready() errored partway.
+	var consts: Dictionary = office.get_script().get_script_constant_map()
+	var expected := 0
+	for table in ["FLOORS", "WALLS", "ROOMS", "DOORWAYS"]:
+		if not (consts.get(table) is Array):
+			_fail("office.gd no longer defines the %s table" % table)
+			return
+		expected += (consts[table] as Array).size()
 	var built := office.get_child_count()
-	if built < 16:
-		_fail("Office has %d children, expected >= 16 — geometry build did not finish" % built)
+	if built < expected:
+		_fail(
+			(
+				"Office has %d children, its tables describe %d — geometry build did not finish"
+				% [built, expected]
+			)
+		)
 
 
 func _check_hud_ready(instance: Node) -> void:
@@ -298,8 +342,134 @@ func _check_hud_ready(instance: Node) -> void:
 		_fail("panel did not close on GameEvents.npc_left")
 
 
-func _check_unlock_gate() -> void:
-	if not GameState.is_unlocked("server-room"):
-		_fail("server-room should be unlocked on Day 1 (SB-04 is free exploration)")
-	if GameState.is_unlocked("engineering"):
-		_fail("engineering should NOT be unlocked yet — the gate is not gating")
+## Walk the player's own body through the running office.
+##
+## Everything here is read from the scene: rooms and doorways from their groups,
+## positions from the nodes, the start from the room no doorway leads into. Node
+## existence proves nothing about a floor plan -- a wall collider across a
+## doorway leaves every node in place (charter risk R4) -- so "reachable" means
+## the room's Area2D reports the body inside it after the body was moved there
+## by collision-checked motion.
+func _check_walk(instance: Node) -> void:
+	var player := instance.get_node_or_null("Player") as CharacterBody2D
+	if player == null:
+		_fail("Player is not a CharacterBody2D — nothing to walk the office with")
+		return
+	await get_tree().physics_frame
+
+	var rooms := _by_room_id("rooms")
+	var doorways := _by_room_id("doorways")
+	var starts: Array[String] = []
+	for room_id in rooms:
+		if not doorways.has(room_id):
+			starts.append(room_id)
+	if starts.size() != 1:
+		_fail("expected exactly one room no doorway leads into, found %s" % [starts])
+		return
+	if starts[0] != START_ROOM:
+		_fail("the room no doorway leads into is '%s', not the %s (SB-04)" % [starts[0], START_ROOM])
+		return
+	var start: Vector2 = (rooms[starts[0]] as Node2D).global_position
+
+	var reached: Array[String] = []
+	if await _is_inside(player, start, rooms[starts[0]]):
+		reached.append(starts[0])
+	else:
+		_fail("the player cannot stand in the start room '%s'" % starts[0])
+
+	# Day 1 is free exploration: SB-04 is the lobby, SB-05 the server room, SB-07
+	# the player's office. Asserted before the walk because the walk alone would
+	# not notice one of them starting locked -- it would find the barrier, see it
+	# hold, unlock it and walk in, all green.
+	for room_id in DAY_ONE_ROOMS:
+		if not rooms.has(room_id):
+			_fail("Day 1 room '%s' is not in the office" % room_id)
+		elif not GameState.is_unlocked(room_id):
+			_fail("'%s' should be open on Day 1 (SB-04, SB-05, SB-07)" % room_id)
+	for room_id in EARNED_ROOMS:
+		if not rooms.has(room_id):
+			_fail("storyboard room '%s' is not in the office (SB-08, SB-12)" % room_id)
+		elif GameState.is_unlocked(room_id):
+			_fail("'%s' should start locked (SB-08, SB-12)" % room_id)
+
+	# Locked corridors first, while they are locked.
+	var blocked: Array[String] = []
+	var locked := _by_room_id("locked_corridors")
+	for room_id in locked:
+		if GameState.is_unlocked(room_id):
+			_fail("corridor to '%s' is in locked_corridors but GameState has it open" % room_id)
+			continue
+		if not rooms.has(room_id) or not doorways.has(room_id):
+			_fail("locked corridor names '%s', which has no room or no doorway" % room_id)
+			continue
+		var stopped_by: Object = _walk(player, [start, doorways[room_id], rooms[room_id]])
+		if await _is_inside(player, player.global_position, rooms[room_id]):
+			_fail("locked corridor to '%s' did not stop the player" % room_id)
+		elif stopped_by != locked[room_id]:
+			_fail("the walk to locked '%s' was stopped by %s, not its corridor" % [room_id, stopped_by])
+		else:
+			blocked.append(room_id)
+	# A room GameState holds locked has to be locked in the world too. Without
+	# this, deleting every barrier leaves nothing above to fail: no corridor
+	# declares itself locked, so none is found wanting.
+	for room_id in rooms:
+		if not GameState.is_unlocked(room_id) and not blocked.has(room_id):
+			_fail("GameState has '%s' locked but no corridor stopped the player" % room_id)
+	print("SMOKE corridors_blocked: %s" % ",".join(blocked))
+
+	# Then open them the way the game will -- through GameState -- and walk in.
+	for room_id in locked:
+		GameState.unlock(room_id)
+	await get_tree().physics_frame
+	for room_id in locked:
+		if is_instance_valid(locked[room_id]) and locked[room_id].is_in_group("locked_corridors"):
+			_fail("corridor to '%s' is still locked after GameState.unlock" % room_id)
+
+	for room_id in doorways:
+		if not rooms.has(room_id):
+			_fail("a doorway leads into '%s', which is not a room" % room_id)
+			continue
+		_walk(player, [start, doorways[room_id], rooms[room_id]])
+		if await _is_inside(player, player.global_position, rooms[room_id]):
+			reached.append(room_id)
+		else:
+			_fail("room '%s' is not reachable from '%s'" % [room_id, starts[0]])
+	reached.sort()
+	print("SMOKE rooms_reachable: %s" % ",".join(reached))
+
+
+## room_id -> node, for one of the three groups office.gd fills.
+func _by_room_id(group: String) -> Dictionary:
+	var found: Dictionary = {}
+	for node in get_tree().get_nodes_in_group(group):
+		var room_id := str(node.get_meta("room_id", ""))
+		if room_id != "" and node is Node2D:
+			found[room_id] = node
+	return found
+
+
+## Move the body along `route` (a start position, then nodes to head for) and
+## return whatever stopped it, or null if it got to the end.
+func _walk(player: CharacterBody2D, route: Array) -> Object:
+	player.global_position = route[0]
+	for target_node in route.slice(1):
+		var target: Vector2 = (target_node as Node2D).global_position
+		# Twice the straight-line distance: enough to arrive, never an endless loop.
+		var sweeps := int(player.global_position.distance_to(target) / WALK_STEP) * 2 + 2
+		for _i in sweeps:
+			var to := target - player.global_position
+			if to.length() <= WALK_STEP:
+				break
+			var hit := player.move_and_collide(to.normalized() * WALK_STEP)
+			if hit != null:
+				return hit.get_collider()
+	return null
+
+
+## Put the body at `at` and ask the room's own Area2D whether it is inside.
+func _is_inside(player: CharacterBody2D, at: Vector2, room: Node) -> bool:
+	player.global_position = at
+	# Area overlaps are settled by the physics step, not at the moment of the move.
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	return (room as Area2D).overlaps_body(player)
