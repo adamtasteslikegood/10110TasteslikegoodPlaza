@@ -17,6 +17,26 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
 
+### Added — the bridge holds a conversation (`PLZG-262`)
+
+- The bridge keeps one message history per agent for as long as a WebSocket connection
+  stays open, and sends the earlier turns to the model ahead of each new one. Clients
+  send nothing extra, so the Godot client and the plain client get it the same way
+  (`D-005`). `bridge/PROTOCOL.md` § *Conversation history* is the contract: per
+  connection, per agent, successful exchanges only, newest 40 messages, not persisted.
+- Gate B passes: `python3 scripts/sprint_6_gate.py live` exits 0, with both clients
+  returning in turn 2 a name only turn 1 carried. Every try is in
+  `specs/evidence/sprint-6-live-transcript.json`.
+- The runner's question changed with it. Asked to remember a "code word", the agent
+  answered about one time in three with a paragraph on having no memory and never named
+  it, though the bridge was sending the first turn along. It now mentions a project name
+  and asks what the project is called.
+
+### Fixed — a JSON message that is not an object (`PLZG-262`)
+
+- `bridge/server.py` answered `[]` or `"text"` by raising inside the connection handler,
+  which closed the socket. It now replies `invalid_request`.
+
 ### Added — the live runner: real replies from Godot and from a plain client (`PLZG-261`)
 
 - `scripts/sprint_6_live.py` starts the bridge and asks one agent two questions from
