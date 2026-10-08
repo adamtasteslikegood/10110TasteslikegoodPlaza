@@ -39,6 +39,7 @@ spec-set versions, and no application release existed before `v0.1.22`.
 - The unlock check asked whether `engineering` was unlocked, an id no room has. It is
   replaced by the walk. The office child-count floor was a hand-written 16 under a
   comment describing an older layout; it is now counted from `office.gd`'s tables.
+
 ### Added — the live runner: real replies from Godot and from a plain client (`PLZG-261`)
 
 - `scripts/sprint_6_live.py` starts the bridge and asks one agent two questions from
