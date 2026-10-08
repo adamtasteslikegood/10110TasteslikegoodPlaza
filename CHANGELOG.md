@@ -28,6 +28,34 @@ spec-set versions, and no application release existed before `v0.1.22`.
   hand-edited flag is not what closes the sprint.
 - `specs/sprint-6-charter.md` (T7 row, risk R1) and the loop plan say the same.
 
+### Added — the smoke test walks the office (`PLZG-260`)
+
+- `tests/smoke_test.gd` moves the player's own body from the lobby at every doorway.
+  A locked corridor has to stop it; after `GameState.unlock` the body has to end up
+  inside each room's `Area2D`. Rooms, doorways and the start are read from the scene's
+  groups, so the walk holds no room list. The one exception is the three Day 1 rooms
+  the storyboard has open from the start, asserted open before the walk.
+- It prints `SMOKE corridors_blocked:` and `SMOKE rooms_reachable:`, which
+  `python3 scripts/sprint_6_gate.py t4` compares with the plan. This is Sprint 6's
+  Gate A, and it runs in CI's `Export Godot 4 Prototype` job.
+- A room `GameState` holds locked with no corridor that stops the player now fails the
+  test, as does a wall across a doorway.
+- Run alone, as CI runs it, the test now fails when a storyboard room is missing
+  (`SB-04`–`SB-12`: three open, two that start locked) or the walk would start
+  anywhere but the lobby. Before, deleting a locked room with its doorway stayed green.
+
+### Changed — M2 is done (`PLZG-260`)
+
+- `specs/roadmap.md` marks Milestone 2 done and says what proves it. Two locked corridors
+  satisfy "2–3 locked corridors"; corridors to floors that do not exist yet arrive with
+  those floors. The owner confirmed that reading on 2026-10-07 (issue #306).
+
+### Fixed — two smoke-test checks that could not fail (`PLZG-260`)
+
+- The unlock check asked whether `engineering` was unlocked, an id no room has. It is
+  replaced by the walk. The office child-count floor was a hand-written 16 under a
+  comment describing an older layout; it is now counted from `office.gd`'s tables.
+
 ### Added — the live runner: real replies from Godot and from a plain client (`PLZG-261`)
 
 - `scripts/sprint_6_live.py` starts the bridge and asks one agent two questions from
@@ -74,8 +102,10 @@ spec-set versions, and no application release existed before `v0.1.22`.
   `PLZG-257`–`PLZG-263`; `docs/delivery-coordinates.md` records the ids. The governed
   set goes from 19 to 20 by design.
 - `scripts/sprint_6_gate.py`, one subcommand per task, with `tests/test_sprint_6_gate.py`
-  run in CI. `t2`, `t3`, `t4`, `t5` and `live` fail today on purpose: no room declares
-  itself, the smoke test walks nowhere, and the live runner is `PLZG-261`'s deliverable.
+  run in CI. `t2`, `t3`, `t4`, `t5` and `live` failed on purpose when this landed: no
+  room declared itself, the smoke test walked nowhere, and the live runner was
+  `PLZG-261`'s deliverable. The entries above record `t2`, `t3`, `t4` and `t5` going green;
+  `live` still fails until `PLZG-262` gives the conversation a history.
 - `tests/room_probe.tscn` prints the rooms, doorways and locked corridors the running
   office declares.
 
