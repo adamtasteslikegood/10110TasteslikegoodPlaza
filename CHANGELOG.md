@@ -32,6 +32,7 @@ spec-set versions, and no application release existed before `v0.1.22`.
   starts, a hung client. It runs in CI beside the gate's own tests. The runner takes
   its credential whole from `./.env` when the file has one, and its tries share one
   time budget that fits inside the gate's timeout.
+
 ### Added — doorway triggers and locked corridors (`PLZG-259`)
 
 - `scenes/world/office.gd` builds one doorway trigger per corridor from a `DOORWAYS`
