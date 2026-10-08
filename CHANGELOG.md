@@ -23,7 +23,8 @@ spec-set versions, and no application release existed before `v0.1.22`.
   `t2`, `t3` and `t4` fail on `dev` now (and so `t6`, which re-runs them) because the
   board gained tickets and the Sprint 6 charter became the 20th governed document, and that
   is expected. Its evidence is not re-stamped. Said in the gate's docstring, the
-  Sprint 5 charter and `.claude/pr-workflow.md`.
+  Sprint 5 charter, `.claude/pr-workflow.md` and the comment heading
+  `specs/evidence/sprint-5-doc-crosscheck.json`.
 - `scripts/sprint_5_crosscheck_rehash.py` is removed. Its one job was to re-stamp that
   evidence, which the ruling rules out, and nothing called it.
 
