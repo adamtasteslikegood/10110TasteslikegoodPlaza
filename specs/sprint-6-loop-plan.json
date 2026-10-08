@@ -245,7 +245,7 @@
         "T5",
         "T6"
       ],
-      "note": "Re-runs T1, Gate A and Gate B; requires the transcript committed, captured after the sprint opened (the window's end is Jira's date and is not enforced) and owner_read true (only the owner sets it); requires every other task ticket Done with at least an hour between In Progress and Done; requires a fresh flow snapshot. Starting and closing the Jira sprint are the owner's. Retiring the charter to HISTORICAL follows the Jira close, as PLZG-255 did for Sprint 5."
+      "note": "Re-runs T1 and Gate A; reads Gate B off the committed transcript instead of re-running it, because a run resets owner_read (PLZG-265, owner ruling 2026-10-07); requires the transcript committed and unchanged since, captured after the sprint opened (the window's end is Jira's date and is not enforced) and owner_read true (only the owner sets it); requires every other task ticket Done with at least an hour between In Progress and Done; requires a fresh flow snapshot. Starting and closing the Jira sprint are the owner's. Retiring the charter to HISTORICAL follows the Jira close, as PLZG-255 did for Sprint 5."
     }
   ]
 }

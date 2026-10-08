@@ -409,10 +409,13 @@ class AcceptanceCheck(GateCase):
         self.plan["jira"]["window"] = {"start": "2026-10-07T16:00:00+00:00"}
         self.transcript["owner_read"] = True
         self.tracked = 0
+        self.dirty = 0
         patcher = mock.patch.object(
             gate.subprocess,
             "run",
-            side_effect=lambda *a, **k: mock.Mock(returncode=self.tracked),
+            side_effect=lambda cmd, **k: mock.Mock(
+                returncode=self.tracked if "ls-files" in cmd else self.dirty
+            ),
         )
         patcher.start()
         self.addCleanup(patcher.stop)
@@ -425,6 +428,43 @@ class AcceptanceCheck(GateCase):
         self.tracked = 1
         self.write_transcript()
         self.assertFails(gate.check_acceptance, "not committed")
+
+    def test_transcript_edited_since_its_commit_fails(self):
+        self.dirty = 1
+        self.write_transcript()
+        self.assertFails(gate.check_acceptance, "differs from the committed copy")
+
+    def test_close_reads_the_accepted_transcript_and_runs_nothing(self):
+        # PLZG-265: the runner resets owner_read, so a close that ran it
+        # would erase the acceptance it is about to require.
+        self.write_transcript()
+        before = (self.root / TRANSCRIPT).read_text(encoding="utf-8")
+        stubs = {
+            "check_t1": "t1",
+            "check_t4": "t4",
+            "check_flow": "flow",
+            "run_live": AssertionError("the close must not run the live runner"),
+        }
+        for name, result in stubs.items():
+            patcher = mock.patch.object(gate, name, side_effect=[result])
+            patcher.start()
+            self.addCleanup(patcher.stop)
+        patcher = mock.patch.object(base, "check_snapshot", return_value="snapshot")
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        summary = gate.check_t7(self.plan)
+        self.assertIn("nonce recalled", summary)
+        self.assertIn("accepted by the owner", summary)
+        self.assertEqual(before, (self.root / TRANSCRIPT).read_text(encoding="utf-8"))
+
+    def test_close_fails_when_the_accepted_transcript_shows_no_recall(self):
+        self.transcript["clients"]["python"]["turns"][1]["received"] = "No idea."
+        self.write_transcript()
+        for name in ("check_t1", "check_t4"):
+            patcher = mock.patch.object(gate, name, return_value=name)
+            patcher.start()
+            self.addCleanup(patcher.stop)
+        self.assertFails(gate.check_t7, "did not recall")
 
     def test_transcript_from_before_the_sprint_fails(self):
         self.transcript["captured_at"] = "2026-08-20T12:00:00+00:00"
