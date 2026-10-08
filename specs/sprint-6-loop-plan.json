@@ -228,7 +228,8 @@
           "The conversation path keeps no history between turns (bridge/conversation.py). Counts as defect 1 of 3 when fixed."
         ]
       },
-      "status": "in_progress",
+      "status": "done",
+      "evidence": "sprint_6_gate.py t6 exit 0 on dev via loop_controller verify, 2026-10-08 PDT, after the owner merged PR #305 as 765f0bf: fresh live run, both clients recalled the nonce on try 1; 2 defect(s) fixed, bound 3",
       "attempts": 0,
       "max_attempts": 3,
       "depends_on": [
