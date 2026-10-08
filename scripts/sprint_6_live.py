@@ -23,9 +23,10 @@ flaky pass is visible as a pass on try 3 rather than as a clean pass. The whole
 run shares one ``RUN_SECONDS`` budget, shorter than the gate's own timeout, so
 a hung client ends as a recorded failure here and not as a kill from outside.
 
-It writes ``specs/evidence/sprint-6-live-transcript.json`` every time it gets
-as far as a model reply, pass or fail, stamped with the time of this run -- the
-gate refuses a transcript older than the run it just made.
+It writes ``specs/evidence/sprint-6-live-transcript.json`` whenever both clients
+have had their tries, pass or fail, stamped with the time of this run. A run
+that exits 2 writes nothing and leaves the previous file in place, which is why
+the gate refuses a transcript older than the run it just made.
 
 Exit codes: 0 both clients recalled the nonce; 1 they did not, or the path
 broke; 2 it could not be run -- no credential, no bridge dependencies, no
