@@ -15,6 +15,11 @@ weakest_claim: The board had 114 non-Done items at the start of 2026-10-05
 
 # Sprint 5 charter — board reconciliation and doc consolidation
 
+> **The gate is frozen with the sprint.** `scripts/sprint_5_gate.py` was green at
+> the close and is expected to fail now: it compares live board and document state
+> with evidence captured then. Owner ruling, `PLZG-268`, 2026-10-07 — a closed
+> sprint's gate is a record, not a live check; its evidence is not re-stamped.
+
 > **HISTORICAL.** Sprint 5 is closed (Jira `completeDate` 2026-10-06T20:50Z, the
 > afternoon of 2026-10-06 PDT), with both gates green and all seven tickets in the
 > Jira sprint Done — `PLZG-229`, which carried this charter, and the six task

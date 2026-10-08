@@ -17,6 +17,13 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
 
+### Changed — a closed sprint's gate is frozen, not kept green (`PLZG-268`)
+
+- Owner ruling, 2026-10-07: `scripts/sprint_5_gate.py` records the day Sprint 5 closed.
+  `t2` and `t4` fail on `dev` now because the board and the roadmap moved on, and that
+  is expected. Its evidence is not re-stamped. Said in the gate's docstring, the
+  Sprint 5 charter and `.claude/pr-workflow.md`.
+
 ### Added — the live runner: real replies from Godot and from a plain client (`PLZG-261`)
 
 - `scripts/sprint_6_live.py` starts the bridge and asks one agent two questions from
