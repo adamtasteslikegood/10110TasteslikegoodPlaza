@@ -42,6 +42,7 @@ spec-set versions, and no application release existed before `v0.1.22`.
 - A connection keeps a history only for an agent that has answered. Before, every
   `agent_id` asked for left an empty list behind, so one client could grow the
   table without bound by asking for agents that do not exist.
+
 ### Added — the smoke test walks the office (`PLZG-260`)
 
 - `tests/smoke_test.gd` moves the player's own body from the lobby at every doorway.
