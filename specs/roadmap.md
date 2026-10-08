@@ -87,7 +87,7 @@ it. It is scheduled by no milestone until one needs it.
 - [x] Server room (Core agents)
 - [x] Engineering floor (open plan)
 - [x] War room / meeting room
-- [x] 2–3 locked corridors — two, to the engineering floor and the war room, which open later in the week (`SB-08`, `SB-12`); corridors to floors that do not exist yet arrive with those floors. **Ticked on that reading, which the owner has not yet confirmed** (PR #303): if "future floors" was meant literally, this item and the ✅ above come back off
+- [x] 2–3 locked corridors — two, to the engineering floor and the war room, which open later in the week (`SB-08`, `SB-12`); corridors to floors that do not exist yet arrive with those floors. **Ticked on that reading, which the owner has not yet confirmed** (issue #306): if "future floors" was meant literally, this item and the ✅ above come back off
 
 **Door lock logic (simple version):**
 ```gdscript
