@@ -36,6 +36,9 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 - `bridge/server.py` answered `[]` or `"text"` by raising inside the connection handler,
   which closed the socket. It now replies `invalid_request`.
+- A request whose `agent_id` is not a string (a list, an object) raised the same way,
+  at the history lookup. It now reaches the engine, which replies `invalid_request`,
+  and gets no history.
 
 ### Added — the live runner: real replies from Godot and from a plain client (`PLZG-261`)
 
@@ -44,8 +47,8 @@ spec-set versions, and no application release existed before `v0.1.22`.
   panel and `ws_client.gd`; and a stdlib WebSocket client with no Godot in it.
 - First real run: both clients got real model replies, read off `BodyLabel` with the
   typewriter advancing in-engine. Neither recalled the nonce from turn 1 — the
-  conversation path keeps no history. `sprint_6_gate.py t5` passes; `live` fails
-  until `PLZG-262` gives the conversation a history.
+  conversation path keeps no history. `sprint_6_gate.py t5` passed; `live` failed
+  on that run, and `PLZG-262` (its own entry in this section) is what turned it green.
 - `specs/evidence/sprint-6-live-transcript.json` holds that run.
 - `tests/test_sprint_6_live.py` covers what a real run cannot be made to produce:
   fragmented frames, a ping during a slow reply, a crashed Godot, a bridge that never

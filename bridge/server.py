@@ -72,7 +72,9 @@ class BridgeServer:
             ]
 
         if request.type == RequestType.CONVERSATION:
-            if histories is None:
+            # A non-string agent_id is the engine's to refuse; it also cannot
+            # key a history, and a list here would raise instead of replying.
+            if histories is None or not isinstance(request.agent_id, str):
                 resp = await asyncio.to_thread(self.conversation.handle_request, data)
             else:
                 history = histories.setdefault(request.agent_id, [])

@@ -220,6 +220,15 @@ class TestConversationHistoryRouting:
         assert self.passed_history(conv, 0) is self.passed_history(conv, 1)
         assert self.passed_history(conv, 2) is not self.passed_history(conv, 0)
 
+    async def test_agent_id_that_cannot_key_a_history_gets_none(self, mock_engines):
+        conv, _ = mock_engines
+        server = BridgeServer()
+        histories = {}
+        for agent_id in (["a"], {"a": 1}, 7):
+            await server.dispatch({"agent_id": agent_id, "task": "hi"}, histories)
+            assert self.passed_history(conv) is None
+        assert histories == {}
+
     async def test_json_that_is_no_object_is_an_error_not_a_crash(self, mock_engines):
         server = BridgeServer()
         resp = await server.dispatch_raw("[1, 2]")

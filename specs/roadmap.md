@@ -372,8 +372,10 @@ Sprint 6 the proof is `python3 scripts/sprint_6_gate.py live` — two real turns
 through the bridge, from Godot and from a client with no Godot in it, where the
 second reply has to return a value only the first turn carried. It needs a
 credential, so it is a local gate, not a CI job (`PLZG-261`). It first passed on
-2026-10-07 PDT, once the bridge kept a history per connection and agent
-(`PLZG-262`); before that every run failed on the second turn.
+2026-10-07 PDT (`PLZG-262`), after two changes: the bridge now keeps a history
+per connection and agent, without which every run failed on the second turn;
+and the runner asks its question as a project name, because asked for a "code
+word" the agent declined to repeat it about one try in three.
 
 **This is the milestone where the game becomes the tool.**
 
