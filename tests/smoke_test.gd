@@ -17,8 +17,10 @@ extends Node
 ##     SMOKE corridors_blocked: <room ids whose locked corridor stopped the player>
 ##     SMOKE rooms_reachable: <room ids the player's body ended up inside>
 ##
-## The gate compares those with the plan's room list, so this file holds no list
-## of rooms to fall out of step with it. A room that exists but is walled shut, or
+## The gate compares those with the plan's room list, so the walk holds no list
+## of rooms to fall out of step with it. The one list in this file is
+## DAY_ONE_ROOMS, and it is not scene state: it is the storyboard's statement of
+## what is open before anything is earned, and it changes only when that does. A room that exists but is walled shut, or
 ## a corridor that is locked in name only, changes a line and turns the gate red.
 
 ## D-024 fixes the count: 133 source files, three colliding slugs curated down to 132.

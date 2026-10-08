@@ -22,7 +22,8 @@ spec-set versions, and no application release existed before `v0.1.22`.
 - `tests/smoke_test.gd` moves the player's own body from the lobby at every doorway.
   A locked corridor has to stop it; after `GameState.unlock` the body has to end up
   inside each room's `Area2D`. Rooms, doorways and the start are read from the scene's
-  groups, so the test holds no room list.
+  groups, so the walk holds no room list. The one exception is the three Day 1 rooms
+  the storyboard has open from the start, asserted open before the walk.
 - It prints `SMOKE corridors_blocked:` and `SMOKE rooms_reachable:`, which
   `python3 scripts/sprint_6_gate.py t4` compares with the plan. This is Sprint 6's
   Gate A, and it runs in CI's `Export Godot 4 Prototype` job.
