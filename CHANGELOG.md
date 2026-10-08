@@ -17,6 +17,32 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
 
+### Added — the bridge holds a conversation (`PLZG-262`)
+
+- The bridge keeps one message history per agent for as long as a WebSocket connection
+  stays open, and sends the earlier turns to the model ahead of each new one. Clients
+  send nothing extra, so the Godot client and the plain client get it the same way
+  (`D-005`). `bridge/PROTOCOL.md` § *Conversation history* is the contract: per
+  connection, per agent, successful exchanges only, newest 40 messages, not persisted.
+- Gate B passes: `python3 scripts/sprint_6_gate.py live` exits 0, with both clients
+  returning in turn 2 a name only turn 1 carried. Every try is in
+  `specs/evidence/sprint-6-live-transcript.json`.
+- The runner's question changed with it. Asked to remember a "code word", the agent
+  answered about one time in three with a paragraph on having no memory and never named
+  it, though the bridge was sending the first turn along. It now mentions a project name
+  and asks what the project is called.
+
+### Fixed — a JSON message that is not an object (`PLZG-262`)
+
+- `bridge/server.py` answered `[]` or `"text"` by raising inside the connection handler,
+  which closed the socket. It now replies `invalid_request`.
+- A request whose `agent_id` is not a string (a list, an object) raised the same way,
+  at the history lookup. It now reaches the engine, which replies `invalid_request`,
+  and gets no history.
+- A connection keeps a history only for an agent that has answered. Before, every
+  `agent_id` asked for left an empty list behind, so one client could grow the
+  table without bound by asking for agents that do not exist.
+
 ### Added — the smoke test walks the office (`PLZG-260`)
 
 - `tests/smoke_test.gd` moves the player's own body from the lobby at every doorway.
@@ -52,8 +78,8 @@ spec-set versions, and no application release existed before `v0.1.22`.
   panel and `ws_client.gd`; and a stdlib WebSocket client with no Godot in it.
 - First real run: both clients got real model replies, read off `BodyLabel` with the
   typewriter advancing in-engine. Neither recalled the nonce from turn 1 — the
-  conversation path keeps no history. `sprint_6_gate.py t5` passes; `live` fails
-  until `PLZG-262` gives the conversation a history.
+  conversation path keeps no history. `sprint_6_gate.py t5` passed; `live` failed
+  on that run, and `PLZG-262` (its own entry in this section) is what turned it green.
 - `specs/evidence/sprint-6-live-transcript.json` holds that run.
 - `tests/test_sprint_6_live.py` covers what a real run cannot be made to produce:
   fragmented frames, a ping during a slow reply, a crashed Godot, a bridge that never
