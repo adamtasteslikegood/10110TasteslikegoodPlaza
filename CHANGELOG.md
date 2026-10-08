@@ -20,7 +20,8 @@ spec-set versions, and no application release existed before `v0.1.22`.
 ### Changed — a closed sprint's gate is frozen, not kept green (`PLZG-268`)
 
 - Owner ruling, 2026-10-07: `scripts/sprint_5_gate.py` records the day Sprint 5 closed.
-  `t2` and `t4` fail on `dev` now because the board and the roadmap moved on, and that
+  `t2`, `t3` and `t4` fail on `dev` now (and so `t6`, which re-runs them) because the
+  board gained tickets and the Sprint 6 charter became the 20th governed document, and that
   is expected. Its evidence is not re-stamped. Said in the gate's docstring, the
   Sprint 5 charter and `.claude/pr-workflow.md`.
 - `scripts/sprint_5_crosscheck_rehash.py` is removed. Its one job was to re-stamp that
