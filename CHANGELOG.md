@@ -72,7 +72,8 @@ spec-set versions, and no application release existed before `v0.1.22`.
 - `scripts/sprint_6_gate.py`, one subcommand per task, with `tests/test_sprint_6_gate.py`
   run in CI. `t2`, `t3`, `t4`, `t5` and `live` failed on purpose when this landed: no
   room declared itself, the smoke test walked nowhere, and the live runner was
-  `PLZG-261`'s deliverable. The entries above record each one going green.
+  `PLZG-261`'s deliverable. The entries above record `t2`, `t3` and `t4` going green;
+  `t5` and `live` are Gate B and have no entry here yet.
 - `tests/room_probe.tscn` prints the rooms, doorways and locked corridors the running
   office declares.
 
