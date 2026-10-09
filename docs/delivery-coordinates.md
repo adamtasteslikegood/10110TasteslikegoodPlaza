@@ -94,14 +94,14 @@ Board **`169`** is the `PLZG` Scrum board. A sprint id is a coordinate like any
 other, and until 2026-10-05 none was recorded here — each charter stated its own,
 and the Sprint 5 charter cited this document for an id it did not contain.
 
-| Sprint | Id | State, read 2026-10-06 |
+| Sprint | Id | State, read 2026-10-09 |
 |---|---|---|
 | PLZG Sprint 1 | `10` | closed |
 | PLZG Sprint 2 | `44` | closed |
 | PLZG Sprint 3 | `45` | closed |
 | Sprint 4 | `48` | closed 2026-08-21 |
 | Sprint 5 | `51` | closed 2026-10-06 |
-| Sprint 6 | `120` | future — created 2026-10-06, not yet started |
+| Sprint 6 | `120` | closed 2026-10-09 |
 
 Sprint 6 is also the first sprint with an epic: **`PLZG-256`**, parent of its
 seven task tickets `PLZG-257`–`PLZG-263`. Earlier sprints were a flat set of
@@ -116,6 +116,17 @@ the board (`listJiraBoardSprints` on board `169`) before citing it.
 
 Space **`PLZA`** ("10110 Tasteslikegood Plaza"), parent page **`11075756`** —
 the space home, `https://tasteslikegood.atlassian.net/wiki/x/rACp`.
+
+Sprint retrospectives live under page **`86573057`** ("Sprint Retrospective
+Template Parent Page") in the same space, one child page per sprint. Read
+2026-10-09:
+
+| Retrospective | Page id |
+|---|---|
+| Sprint 5 | `86245377` |
+| Sprint 6 | `89751553` |
+
+Earlier sprints have no page there.
 
 Until 2026-07-28 `post_to_confluence.py` posted into space **`TLG`**
 ("Tasteslikegood.org") under `15925249`, with a fallback to `15695959` — both

@@ -152,8 +152,8 @@
       "path": "specs/sprint-6-charter.md",
       "tier": 3,
       "authority": "delivery",
-      "status": "ACTIVE",
-      "note": "Executable context for Sprint 6. Walkable office (three more rooms, doorway triggers, locked corridors) and live proof that the bridge carries a two-turn conversation, in-engine and from a client with no Godot. Acceptance checks live in scripts/sprint_6_gate.py; sprint, board and epic ids are recorded in DELIVERY-COORDINATES (D-026). Takes the governed set from 19 to 20 by design."
+      "status": "HISTORICAL",
+      "note": "Executable context for Sprint 6. Walkable office (three more rooms, doorway triggers, locked corridors) and live proof that the bridge carries a two-turn conversation, in-engine and from a client with no Godot. Acceptance checks live in scripts/sprint_6_gate.py; sprint, board and epic ids are recorded in DELIVERY-COORDINATES (D-026). Takes the governed set from 19 to 20 by design. Closed 2026-10-09 PDT (Jira completeDate 2026-10-09T12:18Z) with both gates green; HISTORICAL since PLZG-272."
     },
     {
       "doc_id": "DEVOPS-SETUP",
