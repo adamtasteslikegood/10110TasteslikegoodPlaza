@@ -250,7 +250,8 @@
       "acceptance": {
         "cmd": "python3 scripts/sprint_6_gate.py t7"
       },
-      "status": "todo",
+      "status": "done",
+      "evidence": "sprint_6_gate.py t7 exit 0 on dev via loop_controller verify, 2026-10-09 PDT, after the owner merged PR #315 as 96b93c3: sprint 120 holds all 7 task tickets under PLZG-256; smoke test green, 5 rooms reachable, 2 locked corridors held; transcript has 2 clients with the nonce recalled, committed and accepted by the owner; 6 task tickets Done with a real started-to-resolved gap; flow snapshot fresh",
       "attempts": 0,
       "max_attempts": 2,
       "depends_on": [

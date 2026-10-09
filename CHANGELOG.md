@@ -23,6 +23,10 @@ spec-set versions, and no application release existed before `v0.1.22`.
   the transcript and set the flag himself (charter §5); the agent
   committed his edit and changed nothing else in the file. It was the one check
   `sprint_6_gate.py t7` still failed.
+- `specs/sprint-6-loop-plan.json` marks T7 done with its evidence: `sprint_6_gate.py t7`
+  exited 0 on `dev` after PR #315 merged. Every Sprint 6 task is now done in the plan.
+  Starting and closing Jira sprint `120` remain the owner's, and the charter stays
+  `ACTIVE` until that close.
 
 ### Changed — a closed sprint's gate is frozen, not kept green (`PLZG-268`)
 
