@@ -2,7 +2,7 @@
   "captured_at": "2026-10-08T05:43:13+00:00",
   "nonce": "kestrel-b0d59b5c",
   "agent_id": "systems-architect",
-  "owner_read": false,
+  "owner_read": true,
   "clients": {
     "godot": {
       "turns": [
