@@ -20,8 +20,9 @@
 #      unresolved thread. Comes with a reminder about the two review
 #      surfaces thread state cannot see.
 #    - ASK: anything it cannot be sure of — a PR it cannot resolve, a
-#      failed query, quoting or expansion it does not parse, or a base
-#      branch other than `dev`, which `D-031` does not cover.
+#      failed query, quoting or expansion it does not parse, an option
+#      before `pr merge` other than -R/--repo, or a base branch other
+#      than `dev`, which `D-031` does not cover.
 #
 # 3. REPLY NUDGE (informational): fires before `gh pr comment`,
 #    `gh pr review`, or `gh api ...pulls/*/comments -X POST`. Reminds the
@@ -67,29 +68,41 @@ JSON
 fi
 
 # --- Merge guard — checks review threads itself (D-031) ---
-# `gh`, optional -R/--repo before the subcommand, then `pr merge`.
-MG_RE='gh([[:space:]]+(-R|--repo)([[:space:]]+|=)[^[:space:]&|;]+)*[[:space:]]+pr[[:space:]]+merge'
+# A candidate is `gh`, anything short of a command separator, then
+# `pr merge`. Deliberately loose: what sits between `gh` and `pr` is
+# judged token by token below, so an option this guard does not know
+# makes it ask instead of slipping past a tighter pattern.
+MG_RE='gh([[:space:]]+[^&|;]*)?[[:space:]]+pr[[:space:]]+merge'
 MG_BASE='dev'
 
 merge_guard_ask() {
-  jq -n --arg why "$1" '{hookSpecificOutput:{hookEventName:"PreToolUse",permissionDecision:"ask",permissionDecisionReason:("Merge guard is not deciding this merge: " + $why),additionalContext:("The merge guard is asking instead of deciding (" + $why + "). Before merging, check yourself: `gh api graphql` on the `reviewThreads` of the PR must return no `isResolved: false`, and all three review surfaces must have been re-read since the last push (`gh api --paginate repos/{owner}/{repo}/pulls/{number}/comments`, `.../issues/{number}/comments`, `.../pulls/{number}/reviews`). D-031 covers PRs into `dev` only.")}}'
+  jq -n --arg why "$1" '{hookSpecificOutput:{hookEventName:"PreToolUse",permissionDecision:"ask",permissionDecisionReason:("Merge guard is not deciding this merge: " + $why),additionalContext:("The merge guard is asking instead of deciding (" + $why + "). Before merging, check yourself: `gh api graphql` on the `reviewThreads` of the PR must return no `isResolved: false`, and all three review surfaces must have been re-read since the last push (`gh api --paginate repos/{owner}/{repo}/pulls/{number}/comments`, `.../issues/{number}/comments`, `.../pulls/{number}/reviews`). D-031 covers PRs into `dev` only. The guard decides only a plain command such as `gh pr merge <number> --merge`.")}}'
   exit 0
 }
 
-# Sets mg_pr / mg_open / mg_err for ONE `gh ... pr merge ...` segment.
+# Sets mg_skip / mg_pr / mg_open / mg_err for ONE candidate segment.
+# mg_skip=1 means the segment is not a merge after all.
 merge_guard_inspect() {
-  local seg="$1" target="" repo="" skip=0 want_repo=0 seen_pr=0 seen_merge=0 tok view pr_url pr_base pr_rest pr_name pr_owner
+  local seg="$1" bare target="" repo="" skip=0 want_repo=0 stage=0 tok view pr_url pr_base pr_rest pr_name pr_owner
   local -a view_args=()
+  mg_skip=0
   mg_pr=""
   mg_open=""
   mg_err=""
   # The segment is re-split on whitespace, which is only sound when it has
-  # no quoting or expansion. With either, a word from inside a quoted
-  # value can pose as the PR target and the guard would clear a different
-  # PR from the one being merged — so it does not decide those.
+  # no quoting or expansion: a word from inside a quoted value could pose
+  # as the PR target and the guard would clear a different PR from the one
+  # being merged. So it does not decide those. First, though, drop the
+  # quoted spans and look again — if `pr merge` is gone, the words were
+  # only quoted text (a reply that mentions merging) and this is no merge.
   case "$seg" in
     *[\"\'\\\$\`\(\)\{\}\<\>]*)
-      mg_err="the merge command uses quoting or expansion the guard does not parse"
+      bare="$(printf '%s' "$seg" | sed -E "s/\"[^\"]*\"//g; s/'[^']*'//g")"
+      if printf '%s' "$bare" | grep -Eq "${MG_RE}([[:space:]]|\$)"; then
+        mg_err="the merge command uses quoting or expansion the guard does not parse"
+      else
+        mg_skip=1
+      fi
       return 0
       ;;
   esac
@@ -97,6 +110,7 @@ merge_guard_inspect() {
   # shellcheck disable=SC2086
   set -- ${seg#*gh}
   set +f
+  # stage 0: before `pr` · 1: `pr` seen, `merge` expected · 2: merge args
   for tok in "$@"; do
     if [ "$want_repo" -eq 1 ]; then
       repo="$tok"
@@ -107,16 +121,33 @@ merge_guard_inspect() {
       skip=0
       continue
     fi
-    case "$tok" in
-      -R | --repo) want_repo=1 ;;
-      --repo=*) repo="${tok#--repo=}" ;;
-      -b | --body | -F | --body-file | -t | --subject | -A | --author-email | --match-head-commit) skip=1 ;;
-      -*) ;;
-      pr) if [ "$seen_pr" -eq 0 ]; then seen_pr=1; elif [ -z "$target" ]; then target="$tok"; fi ;;
-      merge) if [ "$seen_merge" -eq 0 ]; then seen_merge=1; elif [ -z "$target" ]; then target="$tok"; fi ;;
-      *) [ -n "$target" ] || target="$tok" ;;
+    case "$stage:$tok" in
+      *:-R | *:--repo) want_repo=1 ;;
+      *:--repo=*) repo="${tok#--repo=}" ;;
+      *:-R=*) repo="${tok#-R=}" ;;
+      0:pr) stage=1 ;;
+      0:-*)
+        mg_err="\`$tok\` before \`pr merge\` is an option the guard does not handle"
+        return 0
+        ;;
+      0:*)
+        mg_skip=1
+        return 0
+        ;;
+      1:merge) stage=2 ;;
+      1:*)
+        mg_skip=1
+        return 0
+        ;;
+      2:-b | 2:--body | 2:-F | 2:--body-file | 2:-t | 2:--subject | 2:-A | 2:--author-email | 2:--match-head-commit) skip=1 ;;
+      2:-*) ;;
+      2:*) [ -n "$target" ] || target="$tok" ;;
     esac
   done
+  if [ "$stage" -ne 2 ]; then
+    mg_skip=1
+    return 0
+  fi
 
   [ -z "$target" ] || view_args+=("$target")
   [ -z "$repo" ] || view_args+=(-R "$repo")
@@ -156,22 +187,24 @@ merge_guard_inspect() {
   return 0
 }
 
-if printf '%s' "$cmd" | grep -Eq "${MG_RE}([[:space:]]|\$)"; then
+# One hook call covers the whole command string, so EVERY merge in it is
+# checked: `[^&|;]*` ends a segment at a command separator, and a chain of
+# two merges yields two segments. One blocked merge blocks the call; one
+# merge the guard cannot vouch for makes the call ask.
+mg_segments="$(printf '%s' "$cmd" | grep -Eo "${MG_RE}[^&|;]*" || true)"
+if [ -n "$mg_segments" ]; then
   # From here an unexpected failure must not fall through to the
   # fail-open trap: that would let a merge past with no decision at all.
   trap 'merge_guard_ask "the guard hit an internal error"' ERR
-  # One hook call covers the whole command string, so EVERY merge in it is
-  # checked: `[^&|;]*` ends a segment at a command separator, and a chain
-  # of two merges yields two segments. One blocked merge blocks the call;
-  # one merge the guard cannot vouch for makes the call ask.
   mg_denied=""
   mg_asked=""
   mg_clean=""
-  mg_segments="$(printf '%s' "$cmd" | grep -Eo "${MG_RE}([[:space:]][^&|;]*)?" || true)"
   while IFS= read -r mg_seg; do
     [ -n "$mg_seg" ] || continue
     merge_guard_inspect "$mg_seg"
-    if [ -n "$mg_open" ]; then
+    if [ "$mg_skip" -eq 1 ]; then
+      continue
+    elif [ -n "$mg_open" ]; then
       # awk reads its whole input, so no SIGPIPE under `pipefail`.
       mg_total="$(printf '%s\n' "$mg_open" | awk 'NF{n++} END{print n+0}')"
       mg_list="$(printf '%s\n' "$mg_open" | awk 'NF && ++n<=20{printf "%s%s", (n>1?"; ":""), $0}')"
@@ -190,11 +223,16 @@ if printf '%s' "$cmd" | grep -Eq "${MG_RE}([[:space:]]|\$)"; then
     jq -n --arg d "$mg_denied" --arg a "$mg_asked" '{hookSpecificOutput:{hookEventName:"PreToolUse",permissionDecision:"deny",permissionDecisionReason:("Merge guard: " + $d),additionalContext:("MERGE DENIED (D-031): " + $d + (if $a == "" then "" else " | Also not vouched for: " + $a end) + ". Answer each thread — a fix commit, a rebuttal verified against the file, or a deliberate not-now with the reason and a PLZG ticket for anything owed — then resolve it. Do not resolve a thread you have not answered. A thread that needs the call of the owner stays open and the PR stays unmerged.")}}'
     exit 0
   fi
-  if [ -n "$mg_asked" ] || [ -z "$mg_clean" ]; then
-    merge_guard_ask "${mg_asked:-no merge target could be parsed}"
+  if [ -n "$mg_asked" ]; then
+    merge_guard_ask "$mg_asked"
   fi
-  jq -n --arg pr "$mg_clean" --arg base "$MG_BASE" '{hookSpecificOutput:{hookEventName:"PreToolUse",additionalContext:("Merge guard: PR " + $pr + " into `" + $base + "`: 0 unresolved review threads, so the merge is not blocked. Thread state does not cover conversation comments or review bodies: if you have not re-read `gh api --paginate repos/{owner}/{repo}/issues/{number}/comments` and `.../pulls/{number}/reviews` since your last push, and confirmed required checks are green on the head commit, do that before relying on this merge (D-031).")}}'
-  exit 0
+  if [ -n "$mg_clean" ]; then
+    jq -n --arg pr "$mg_clean" --arg base "$MG_BASE" '{hookSpecificOutput:{hookEventName:"PreToolUse",additionalContext:("Merge guard: PR " + $pr + " into `" + $base + "`: 0 unresolved review threads, so the merge is not blocked. Thread state does not cover conversation comments or review bodies: if you have not re-read `gh api --paginate repos/{owner}/{repo}/issues/{number}/comments` and `.../pulls/{number}/reviews` since your last push, and confirmed required checks are green on the head commit, do that before relying on this merge (D-031).")}}'
+    exit 0
+  fi
+  # Every candidate turned out not to be a merge: back to fail-open, and
+  # on to the informational nudges.
+  trap 'exit 0' ERR
 fi
 
 # ===================================================================
