@@ -144,8 +144,9 @@ are not duplicated here. The policy points:
 
 `dev` **is** protected — by a **repository ruleset**, not a classic branch-protection
 rule. Ruleset `dev` (id `18798438`, `enforcement: active`) targets `~DEFAULT_BRANCH`,
-which resolves to `dev`. Rules as read from the API on 2026-10-09 — every row matches
-the 2026-08-02 reading except `pull_request`, which changed that day:
+which resolves to `dev`. Rules as read from the API on 2026-10-09 (`updated_at`
+2026-10-09T15:22:56Z). Two rows differ from the 2026-08-02 reading, `pull_request`
+and the new `code_quality`; the other five are unchanged:
 
 | Rule | Effect |
 |---|---|
@@ -154,6 +155,7 @@ the 2026-08-02 reading except `pull_request`, which changed that day:
 | `non_fast_forward` | Force pushes blocked |
 | `code_scanning` | CodeQL results gate the merge |
 | `copilot_code_review` | Automatic Copilot review on PRs |
+| `code_quality` | Code-quality results gate the merge at `severity: errors`. Added on 2026-10-09: absent from the API read at 15:19Z, present from 15:22Z |
 | `required_status_checks` | **`Spec Enforcement Matrix` must pass to merge.** Added 2026-08-02 on the owner's instruction, alongside `PLZG-135`. `strict_required_status_checks_policy: false` — see below |
 
 **On `strict_required_status_checks_policy: false`.** An earlier revision of this
