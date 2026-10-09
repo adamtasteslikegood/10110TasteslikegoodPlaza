@@ -4,7 +4,7 @@ title: 10110 TastesLike Plaza — Agent Directory
 tier: 2
 authority: taxonomy
 status: ACTIVE
-doc_set_version: 0.2.13
+doc_set_version: 0.2.14
 last_updated: 2026-10
 owner: adamtasteslikegood
 derives_from: [PROJECT-OVERVIEW]

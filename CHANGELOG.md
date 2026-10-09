@@ -11,11 +11,31 @@ section at release time. PR references in parentheses.
 **Two version axes, deliberately separate.** This file and the tags track the
 **application**: the 3D era was `0.0.x`, and the 2.5D line is `0.1.y`. The
 `doc_set_version:` in every governed document's frontmatter is the **document
-set's** number and is unrelated — it reached `0.2.13` on its own axis. Prose that
+set's** number and is unrelated — it reached `0.2.14` on its own axis. Prose that
 cites `v0.2.7` or `v0.2.8` as software releases is conflating the two; those were
 spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
+
+### Changed — the agent merges on resolved threads and moves the board with the work (`PLZG-274`)
+
+- **`D-031` supersedes `D-030`.** Review rounds are no longer counted. The agent
+  working a PR into `dev` merges it once required checks are green, the head
+  commit's reviews have landed, and every review thread is resolved — fixed,
+  rebutted, or deliberately not fixed now with a reason and a ticket for anything
+  owed. Security findings, a failing required check and a ticket's own acceptance
+  cannot be deferred. Scope and product calls stay the owner's; `dev` → `main`
+  releases are outside the decision.
+- **`D-032` is new.** The agent starts the Jira sprint when its first task starts,
+  moves tickets to `Done` on merge with evidence, and closes the sprint when the
+  close gate is green. Sprint start and close are pre-authorised.
+- Both are owner instructions of 2026-10-09 and live in
+  `docs/designs/platform-decisions.md`; `.claude/pr-workflow.md` and
+  `docs/delivery-coordinates.md` follow them. The doc set is `0.2.14`.
+- `specs/sprint-6-charter.md` is `HISTORICAL` and unchanged apart from the version
+  line: its "Adam only" merge and sprint rows record how Sprint 6 ran, and do not
+  bind the next charter.
+- Not changed: the merge-guard hook still asks for confirmation on `gh pr merge`.
 
 ### Changed — Sprint 6 is closed and its charter retired (`PLZG-272`)
 

@@ -4,7 +4,7 @@ title: Spec Drivers v0.2.5 — what this doc-set version must produce
 tier: 0
 authority: constitution
 status: ACTIVE
-doc_set_version: 0.2.13
+doc_set_version: 0.2.14
 last_updated: 2026-10
 owner: adamtasteslikegood
 derives_from: [META-SPEC]
@@ -470,9 +470,9 @@ once, and then both sentences and the `weakest_claim` quote changed together —
 through the bridge to a real Claude invocation of that agent and the response
 renders in the dialogue panel. That is the doc set's `1.0.0` trigger; the application's
 `v0.1.x` tags are a separate axis (`CHANGELOG.md`). **M8 shipped in Sprint 4 and the
-cut has not been made** — the set is still `0.2.13`. Making it is the owner's call.
+cut has not been made** — the set is still `0.2.14`. Making it is the owner's call.
 
 Between here and there, each round closes with the same check: the register has no
 conflict that has been open longer than the round that discovered it.
 
-*Doc set version: 0.2.13 · Last updated: October 2026*
+*Doc set version: 0.2.14 · Last updated: October 2026*

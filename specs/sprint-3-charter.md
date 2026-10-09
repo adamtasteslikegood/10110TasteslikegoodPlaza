@@ -4,7 +4,7 @@ title: Sprint 3 charter — the doc set declares what is proven
 tier: 3
 authority: delivery
 status: HISTORICAL
-doc_set_version: 0.2.13
+doc_set_version: 0.2.14
 last_updated: 2026-10
 owner: adamtasteslikegood
 derives_from: [META-SPEC, SPEC-DRIVERS-025, SPRINT-2-CHARTER]

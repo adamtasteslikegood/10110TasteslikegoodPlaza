@@ -4,7 +4,7 @@ title: Delivery coordinates — which board, which space, which key
 tier: 2
 authority: taxonomy
 status: ACTIVE
-doc_set_version: 0.2.13
+doc_set_version: 0.2.14
 last_updated: 2026-10
 owner: adamtasteslikegood
 derives_from: [PROJECT-OVERVIEW]
@@ -112,6 +112,14 @@ into it — "file the epic through the agile API" takes both.
 The ids are stable; the state column is a reading and goes stale. Re-read it from
 the board (`listJiraBoardSprints` on board `169`) before citing it.
 
+**Who moves the board, and when, is `D-032`** in
+[`designs/platform-decisions.md`](designs/platform-decisions.md): the agent doing
+the work starts the sprint when its first task starts, moves a ticket to `Done`
+after its PR merges and its acceptance command passes, and closes the sprint when
+every ticket is `Done` and the close gate is green. Sprint `120` is the case that
+rule corrects — it stayed `future` through all of Sprint 6's work and was started
+and closed in the same minute.
+
 ## Confluence
 
 Space **`PLZA`** ("10110 Tasteslikegood Plaza"), parent page **`11075756`** —
@@ -190,7 +198,7 @@ and the test record below are from that configuration.
 | **Branch** created carrying the key | `In Progress` | **works, and correctly scoped** |
 | PR opened | `In Progress` | works, but **over-matches** — see below |
 | Ready to merge / review requested | `In Review` | not yet tested |
-| PR merged | **nothing** — `Done` is a human transition | holds |
+| PR merged | **nothing** — no GitHub event moves a ticket to `Done`; the agent does, with evidence (`D-032`) | holds |
 
 > **Re-read 2026-10-06 (`PLZG-233`) — the table above is the 2026-08-10 reading and
 > two of its rows have moved.** Jira's automation API lists three rules that act on
