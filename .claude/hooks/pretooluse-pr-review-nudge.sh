@@ -64,22 +64,16 @@ JSON
 fi
 
 # --- Merge guard — checks review threads itself (D-031) ---
-merge_guard_ask() {
-  jq -n --arg why "$1" '{hookSpecificOutput:{hookEventName:"PreToolUse",permissionDecision:"ask",permissionDecisionReason:("Merge guard could not check review threads: " + $why),additionalContext:("The merge guard could not read the review threads of this PR (" + $why + "), so it is asking instead. Before merging, check them yourself: `gh api graphql` on the `reviewThreads` of the PR must return no `isResolved: false`, and all three review surfaces must have been re-read since the last push (`gh api --paginate repos/{owner}/{repo}/pulls/{number}/comments`, `.../issues/{number}/comments`, `.../pulls/{number}/reviews`).")}}'
-  exit 0
-}
-
-if printf '%s' "$cmd" | grep -Eq 'gh[[:space:]]+pr[[:space:]]+merge([[:space:]]|$)'; then
-  # Arguments of THIS `gh pr merge` only: `[^&|;]*` stops at a command
-  # separator. Word-splitting is naive — a quoted `--body "two words"`
-  # yields a stray token — so a target that does not resolve asks rather
-  # than passes, and GitHub's own thread-resolution rule on `dev` is the
-  # backstop either way.
-  seg="$(printf '%s' "$cmd" | grep -Eo 'gh[[:space:]]+pr[[:space:]]+merge([[:space:]][^&|;]*)?' | head -n 1 || true)"
-  target=""
-  repo=""
-  skip=0
-  want_repo=0
+# Sets mg_pr / mg_open / mg_err for ONE `gh pr merge ...` segment.
+merge_guard_inspect() {
+  local seg="$1" target="" repo="" skip=0 want_repo=0 tok pr_url pr_rest pr_name pr_owner
+  local -a view_args=()
+  mg_pr=""
+  mg_open=""
+  mg_err=""
+  # Word-splitting is naive — a quoted `--body "two words"` yields a stray
+  # token — so a target that does not resolve asks rather than passes, and
+  # GitHub's own thread-resolution rule on `dev` is the backstop either way.
   set -f
   # shellcheck disable=SC2086
   set -- ${seg#*merge}
@@ -107,38 +101,70 @@ if printf '%s' "$cmd" | grep -Eq 'gh[[:space:]]+pr[[:space:]]+merge([[:space:]]|
   target="${target%\'}"
   target="${target#\'}"
 
-  view_args=()
   [ -z "$target" ] || view_args+=("$target")
   [ -z "$repo" ] || view_args+=(-R "$repo")
   if ! pr_url="$(gh pr view "${view_args[@]}" --json url --jq .url 2>/dev/null)" || [ -z "$pr_url" ]; then
-    merge_guard_ask "gh pr view did not resolve the PR"
+    mg_err="gh pr view did not resolve the PR for \`${seg}\`"
+    return 0
   fi
   # https://<host>/<owner>/<name>/pull/<number>
-  pr_number="${pr_url##*/}"
+  mg_pr="${pr_url##*/}"
   pr_rest="${pr_url%/pull/*}"
   pr_name="${pr_rest##*/}"
   pr_rest="${pr_rest%/*}"
   pr_owner="${pr_rest##*/}"
-  case "$pr_number" in
-    '' | *[!0-9]*) merge_guard_ask "unexpected PR url $pr_url" ;;
+  case "$mg_pr" in
+    '' | *[!0-9]*)
+      mg_err="unexpected PR url $pr_url"
+      return 0
+      ;;
   esac
 
   # shellcheck disable=SC2016
-  if ! open_threads="$(gh api graphql --paginate \
-    -F owner="$pr_owner" -F name="$pr_name" -F number="$pr_number" \
+  if ! mg_open="$(gh api graphql --paginate \
+    -F owner="$pr_owner" -F name="$pr_name" -F number="$mg_pr" \
     -f query='query($owner:String!,$name:String!,$number:Int!,$endCursor:String){repository(owner:$owner,name:$name){pullRequest(number:$number){reviewThreads(first:100,after:$endCursor){pageInfo{hasNextPage endCursor} nodes{isResolved path line comments(first:1){nodes{author{login}}}}}}}}' \
     --jq '.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved == false) | "\(.path):\(.line // "outdated") (\(.comments.nodes[0].author.login // "unknown"))"' 2>/dev/null)"; then
-    merge_guard_ask "the GraphQL reviewThreads query failed for PR #$pr_number"
+    mg_open=""
+    mg_err="the GraphQL reviewThreads query failed for PR #$mg_pr"
   fi
+  return 0
+}
 
-  if [ -n "$open_threads" ]; then
-    open_count="$(printf '%s\n' "$open_threads" | grep -c . || true)"
-    open_list="$(printf '%s\n' "$open_threads" | head -n 20 | paste -sd ';' - | sed 's/;/; /g')"
-    jq -n --arg n "$open_count" --arg pr "$pr_number" --arg list "$open_list" '{hookSpecificOutput:{hookEventName:"PreToolUse",permissionDecision:"deny",permissionDecisionReason:("Merge guard: PR #" + $pr + " has " + $n + " unresolved review thread(s): " + $list),additionalContext:("MERGE DENIED (D-031): PR #" + $pr + " has " + $n + " unresolved review thread(s): " + $list + ". Answer each one — a fix commit, a rebuttal verified against the file, or a deliberate not-now with the reason and a PLZG ticket for anything owed — then resolve it. Do not resolve a thread you have not answered. A thread that needs the call of the owner stays open and the PR stays unmerged.")}}'
+if printf '%s' "$cmd" | grep -Eq 'gh[[:space:]]+pr[[:space:]]+merge([[:space:]]|$)'; then
+  # One hook call covers the whole command string, so EVERY `gh pr merge`
+  # in it is checked: `[^&|;]*` ends a segment at a command separator, and
+  # a chain of two merges yields two segments. One blocked merge blocks
+  # the call; one unreadable PR makes the call ask.
+  mg_denied=""
+  mg_asked=""
+  mg_clean=""
+  while IFS= read -r mg_seg; do
+    [ -n "$mg_seg" ] || continue
+    merge_guard_inspect "$mg_seg"
+    if [ -n "$mg_err" ]; then
+      mg_asked="${mg_asked:+$mg_asked; }$mg_err"
+    elif [ -n "$mg_open" ]; then
+      mg_total="$(printf '%s\n' "$mg_open" | grep -c . || true)"
+      mg_list="$(printf '%s\n' "$mg_open" | head -n 20 | paste -sd ';' - | sed 's/;/; /g')"
+      if [ "$mg_total" -gt 20 ]; then
+        mg_list="$mg_list; ... first 20 of $mg_total shown, query reviewThreads for the rest"
+      fi
+      mg_denied="${mg_denied:+$mg_denied | }PR #$mg_pr has $mg_total unresolved review thread(s): $mg_list"
+    else
+      mg_clean="${mg_clean:+$mg_clean, }#$mg_pr"
+    fi
+  done < <(printf '%s' "$cmd" | grep -Eo 'gh[[:space:]]+pr[[:space:]]+merge([[:space:]][^&|;]*)?' || true)
+
+  if [ -n "$mg_denied" ]; then
+    jq -n --arg d "$mg_denied" --arg a "$mg_asked" '{hookSpecificOutput:{hookEventName:"PreToolUse",permissionDecision:"deny",permissionDecisionReason:("Merge guard: " + $d),additionalContext:("MERGE DENIED (D-031): " + $d + (if $a == "" then "" else " | Also could not check: " + $a end) + ". Answer each thread — a fix commit, a rebuttal verified against the file, or a deliberate not-now with the reason and a PLZG ticket for anything owed — then resolve it. Do not resolve a thread you have not answered. A thread that needs the call of the owner stays open and the PR stays unmerged.")}}'
     exit 0
   fi
-
-  jq -n --arg pr "$pr_number" '{hookSpecificOutput:{hookEventName:"PreToolUse",additionalContext:("Merge guard: PR #" + $pr + " has 0 unresolved review threads, so the merge is not blocked. Thread state does not cover conversation comments or review bodies: if you have not re-read `gh api --paginate repos/{owner}/{repo}/issues/{number}/comments` and `.../pulls/{number}/reviews` since your last push, and confirmed required checks are green on the head commit, do that before relying on this merge (D-031).")}}'
+  if [ -n "$mg_asked" ] || [ -z "$mg_clean" ]; then
+    jq -n --arg why "${mg_asked:-no merge target could be parsed}" '{hookSpecificOutput:{hookEventName:"PreToolUse",permissionDecision:"ask",permissionDecisionReason:("Merge guard could not check review threads: " + $why),additionalContext:("The merge guard could not read the review threads of every PR in this command (" + $why + "), so it is asking instead. Before merging, check them yourself: `gh api graphql` on the `reviewThreads` of the PR must return no `isResolved: false`, and all three review surfaces must have been re-read since the last push (`gh api --paginate repos/{owner}/{repo}/pulls/{number}/comments`, `.../issues/{number}/comments`, `.../pulls/{number}/reviews`).")}}'
+    exit 0
+  fi
+  jq -n --arg pr "$mg_clean" '{hookSpecificOutput:{hookEventName:"PreToolUse",additionalContext:("Merge guard: PR " + $pr + " has 0 unresolved review threads, so the merge is not blocked. Thread state does not cover conversation comments or review bodies: if you have not re-read `gh api --paginate repos/{owner}/{repo}/issues/{number}/comments` and `.../pulls/{number}/reviews` since your last push, and confirmed required checks are green on the head commit, do that before relying on this merge (D-031).")}}'
   exit 0
 fi
 
