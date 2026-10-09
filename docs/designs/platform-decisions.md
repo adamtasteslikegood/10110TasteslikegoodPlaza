@@ -217,7 +217,9 @@ merge is needed, and a PR is not held open waiting for one.
 3. **Every thread is resolved.** Each inline thread carries a reply and is marked
    resolved, and each conversation comment and review body that raises a point has
    a reply. Machine check for the threads: the PR's GraphQL `reviewThreads` has no
-   node with `isResolved: false`.
+   node with `isResolved: false`. GitHub enforces this part — the `dev` ruleset
+   requires conversation resolution since 2026-10-09 — so an open thread blocks
+   the merge button, and resolving a thread without answering it is the breach.
 4. **Each resolution is one of three things**, said in the reply:
    - **Fixed** — the commit that fixed it.
    - **Rebutted** — a concrete technical reason, verified against the file rather

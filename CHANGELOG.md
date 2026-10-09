@@ -35,6 +35,8 @@ spec-set versions, and no application release existed before `v0.1.22`.
 - `specs/sprint-6-charter.md` is `HISTORICAL` and unchanged apart from the version
   line: its "Adam only" merge and sprint rows record how Sprint 6 ran, and do not
   bind the next charter.
+- The `dev` ruleset now has `required_review_thread_resolution: true`, set on the
+  owner's instruction, so GitHub blocks a merge with an unresolved thread.
 - Not changed: the merge-guard hook still asks for confirmation on `gh pr merge`.
 
 ### Changed — Sprint 6 is closed and its charter retired (`PLZG-272`)
