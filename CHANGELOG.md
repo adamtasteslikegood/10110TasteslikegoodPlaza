@@ -22,8 +22,10 @@ spec-set versions, and no application release existed before `v0.1.22`.
 - `.claude/hooks/pretooluse-pr-review-nudge.sh` no longer asks a person on every
   `gh pr merge`. It resolves the PR, reads its review threads through GraphQL, and
   **denies** the merge when any is unresolved, naming each one. With none
-  unresolved the merge goes through. When it cannot resolve the PR or read the
-  threads it falls back to asking.
+  unresolved, and the PR targeting `dev`, the merge goes through. It asks when it
+  cannot be sure: a PR it cannot resolve, a failed query, a command with quoting
+  it does not parse, or a base branch other than `dev`. A command chaining
+  several merges has every one checked.
 - It checks threads only. Conversation comments, review bodies and check status
   are still the agent's to read before merging (`D-031`); the hook says so each
   time it lets a merge through.
@@ -49,7 +51,7 @@ spec-set versions, and no application release existed before `v0.1.22`.
 - The `dev` ruleset now has `required_review_thread_resolution: true`, set on the
   owner's instruction, so GitHub blocks a merge with an unresolved thread.
 - Not changed here: the merge-guard hook still asked for confirmation on every
-  `gh pr merge`. `PLZG-278`, below, changes that.
+  `gh pr merge`. `PLZG-278`, above, changes that.
 
 ### Changed — Sprint 6 is closed and its charter retired (`PLZG-272`)
 
