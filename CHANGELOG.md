@@ -24,7 +24,8 @@ spec-set versions, and no application release existed before `v0.1.22`.
   commit's reviews have landed, and every review thread is resolved — fixed,
   rebutted, or deliberately not fixed now with a reason and a ticket for anything
   owed. Security findings, a failing required check and a ticket's own acceptance
-  cannot be deferred. Scope and product calls and `dev` → `main` stay the owner's.
+  cannot be deferred. Scope and product calls stay the owner's; `dev` → `main`
+  releases are outside the decision.
 - **`D-032` is new.** The agent starts the Jira sprint when its first task starts,
   moves tickets to `Done` on merge with evidence, and closes the sprint when the
   close gate is green. Sprint start and close are pre-authorised.

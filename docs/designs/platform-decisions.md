@@ -236,9 +236,14 @@ PR's own ticket names as acceptance.
 
 **What still goes to the owner.** A disagreement the agent cannot settle on the
 technical merits, and any call about scope or product: reply on the thread that it
-awaits the owner, leave the thread open, and do not merge. Releases — `dev` into
-`main` — stay the owner's merge. So does anything a charter or ticket reserves to
-the owner by name, such as accepting evidence the owner has to read.
+awaits the owner, leave the thread open, and do not merge. So does anything a
+charter or ticket reserves to the owner by name, such as accepting evidence the
+owner has to read.
+
+**Out of scope: `dev` into `main`.** The instruction was about PRs into `dev` and
+said nothing about releases, so this decision does not extend to them. Who merges
+a release is undecided here and unchanged in practice — the owner has made every
+one — until the owner says otherwise.
 
 Origin: owner instruction, session of 2026-10-09 (`PLZG-274`), after Sprint 6 —
 whose charter had the loop open PRs and never merge them, so four finished PRs
