@@ -17,6 +17,13 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
 
+### Changed — the owner accepted the Sprint 6 live transcript (`PLZG-263`)
+
+- `specs/evidence/sprint-6-live-transcript.json` carries `owner_read: true`. Adam read
+  the transcript and set the flag himself (charter §5); the agent
+  committed his edit and changed nothing else in the file. It was the one check
+  `sprint_6_gate.py t7` still failed.
+
 ### Changed — a closed sprint's gate is frozen, not kept green (`PLZG-268`)
 
 - Owner ruling, 2026-10-07: `scripts/sprint_5_gate.py` records the day Sprint 5 closed.
