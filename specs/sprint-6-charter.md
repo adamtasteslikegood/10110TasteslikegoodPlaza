@@ -3,7 +3,7 @@ doc_id: SPRINT-6-CHARTER
 title: Sprint 6 charter — walkable office and live conversation proof
 tier: 3
 authority: delivery
-status: ACTIVE
+status: HISTORICAL
 doc_set_version: 0.2.13
 last_updated: 2026-10
 owner: adamtasteslikegood
@@ -14,6 +14,15 @@ weakest_claim: Sprint 6 is Jira sprint `120` on board `169`, state `future`
 ---
 
 # Sprint 6 charter — walkable office and live conversation proof
+
+> **HISTORICAL.** Sprint 6 is closed (Jira `completeDate` 2026-10-09T12:18Z, the
+> morning of 2026-10-09 PDT), with both gates green and all eight issues in the
+> Jira sprint Done — the seven task tickets `PLZG-257`–`PLZG-263` and `PLZG-265`.
+> Jira sprint `120` stayed `future` while the work was done; it was started and
+> closed on 2026-10-09 by the agent on the owner's instruction, after T7 was on
+> `dev`. Everything below is as written while it was planned and run — "state
+> `future`", "still in force" and other present-tense statements about the sprint
+> and the board describe that time, not now.
 
 > **One line:** this document is the complete executable context for Sprint 6. A
 > session that has read this file needs nothing from the conversation that

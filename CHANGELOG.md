@@ -17,6 +17,20 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
 
+### Changed — Sprint 6 is closed and its charter retired (`PLZG-272`)
+
+- Jira sprint `120` was started and closed on 2026-10-09 (`completeDate`
+  2026-10-09T12:18Z) by the agent on the owner's instruction, with all eight of its
+  issues Done. The epic `PLZG-256` is Done.
+- `specs/sprint-6-charter.md` is `HISTORICAL`, with a banner in the form the Sprint 5
+  charter carries; the registry matches. The body is unchanged and stays governed.
+- `docs/delivery-coordinates.md` records Sprint 6 as closed.
+- `data/plzg-flow-snapshot.json` is re-read from Jira and still declares
+  `"sprint": null`. A snapshot between sprints stays fresh for 14 days (`PLZG-239`):
+  it needs a re-read, or a new sprint, by 2026-10-23.
+- The retrospective is in Confluence under the retrospective parent page, as page
+  `89751553`.
+
 ### Changed — the owner accepted the Sprint 6 live transcript (`PLZG-263`)
 
 - `specs/evidence/sprint-6-live-transcript.json` carries `owner_read: true`. Adam read
