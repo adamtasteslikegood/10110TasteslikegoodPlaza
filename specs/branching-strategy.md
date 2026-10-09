@@ -144,11 +144,12 @@ are not duplicated here. The policy points:
 
 `dev` **is** protected — by a **repository ruleset**, not a classic branch-protection
 rule. Ruleset `dev` (id `18798438`, `enforcement: active`) targets `~DEFAULT_BRANCH`,
-which resolves to `dev`, re-verified against the API 2026-08-02. Rules as of 2026-08-02:
+which resolves to `dev`. Rules as read from the API on 2026-10-09 — every row matches
+the 2026-08-02 reading except `pull_request`, which changed that day:
 
 | Rule | Effect |
 |---|---|
-| `pull_request` | PR required to merge. `required_approving_review_count: 0`, `dismiss_stale_reviews_on_push: false`, **`required_review_thread_resolution: true`** — turned on 2026-10-09 on the owner's instruction (`PLZG-274`), so GitHub refuses a merge while any review thread is unresolved. This is the enforced half of `D-031`; the rest of the rule table is the 2026-08-02 reading |
+| `pull_request` | PR required to merge. `required_approving_review_count: 0`, `dismiss_stale_reviews_on_push: false`, **`required_review_thread_resolution: true`** — turned on 2026-10-09 on the owner's instruction (`PLZG-274`), so GitHub refuses a merge while any review thread is unresolved. This is the enforced half of `D-031` |
 | `deletion` | `dev` cannot be deleted |
 | `non_fast_forward` | Force pushes blocked |
 | `code_scanning` | CodeQL results gate the merge |
