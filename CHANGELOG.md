@@ -28,8 +28,9 @@ spec-set versions, and no application release existed before `v0.1.22`.
 - `data/plzg-flow-snapshot.json` is re-read from Jira and still declares
   `"sprint": null`. A snapshot between sprints stays fresh for 14 days (`PLZG-239`):
   it needs a re-read, or a new sprint, by 2026-10-23.
-- The retrospective is in Confluence under the retrospective parent page, as page
-  `89751553`.
+- The retrospective is in Confluence under the retrospective parent page.
+  `docs/delivery-coordinates.md` § Confluence now records that parent and both
+  retrospectives' page ids (`D-026`); they were in no governed document before.
 
 ### Changed — the owner accepted the Sprint 6 live transcript (`PLZG-263`)
 
@@ -39,8 +40,8 @@ spec-set versions, and no application release existed before `v0.1.22`.
   `sprint_6_gate.py t7` still failed.
 - `specs/sprint-6-loop-plan.json` marks T7 done with its evidence: `sprint_6_gate.py t7`
   exited 0 on `dev` after PR #315 merged. Every Sprint 6 task is now done in the plan.
-  Starting and closing Jira sprint `120` remain the owner's, and the charter stays
-  `ACTIVE` until that close.
+  When this landed the Jira sprint was not yet closed and the charter was still
+  `ACTIVE`; the `PLZG-272` entry above records the close.
 
 ### Changed — a closed sprint's gate is frozen, not kept green (`PLZG-268`)
 

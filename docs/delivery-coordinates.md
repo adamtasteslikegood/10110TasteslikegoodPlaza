@@ -117,6 +117,17 @@ the board (`listJiraBoardSprints` on board `169`) before citing it.
 Space **`PLZA`** ("10110 Tasteslikegood Plaza"), parent page **`11075756`** —
 the space home, `https://tasteslikegood.atlassian.net/wiki/x/rACp`.
 
+Sprint retrospectives live under page **`86573057`** ("Sprint Retrospective
+Template Parent Page") in the same space, one child page per sprint. Read
+2026-10-09:
+
+| Retrospective | Page id |
+|---|---|
+| Sprint 5 | `86245377` |
+| Sprint 6 | `89751553` |
+
+Earlier sprints have no page there.
+
 Until 2026-07-28 `post_to_confluence.py` posted into space **`TLG`**
 ("Tasteslikegood.org") under `15925249`, with a fallback to `15695959` — both
 sprint-planning pages of the sibling product, neither a Plaza report parent. The
