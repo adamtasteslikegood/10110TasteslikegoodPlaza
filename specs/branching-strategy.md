@@ -148,7 +148,7 @@ which resolves to `dev`, re-verified against the API 2026-08-02. Rules as of 202
 
 | Rule | Effect |
 |---|---|
-| `pull_request` | PR required to merge. `required_approving_review_count: 0`, `dismiss_stale_reviews_on_push: false`, `required_review_thread_resolution: false` |
+| `pull_request` | PR required to merge. `required_approving_review_count: 0`, `dismiss_stale_reviews_on_push: false`, **`required_review_thread_resolution: true`** — turned on 2026-10-09 on the owner's instruction (`PLZG-274`), so GitHub refuses a merge while any review thread is unresolved. This is the enforced half of `D-031`; the rest of the rule table is the 2026-08-02 reading |
 | `deletion` | `dev` cannot be deleted |
 | `non_fast_forward` | Force pushes blocked |
 | `code_scanning` | CodeQL results gate the merge |
