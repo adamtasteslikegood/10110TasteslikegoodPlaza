@@ -125,6 +125,8 @@ merge_guard_inspect() {
       *:-R | *:--repo) want_repo=1 ;;
       *:--repo=*) repo="${tok#--repo=}" ;;
       *:-R=*) repo="${tok#-R=}" ;;
+      # gh also accepts -Rowner/repo; keep this after the -R= arm.
+      *:-R*) repo="${tok#-R}" ;;
       0:pr) stage=1 ;;
       0:-*)
         mg_err="\`$tok\` before \`pr merge\` is an option the guard does not handle"
