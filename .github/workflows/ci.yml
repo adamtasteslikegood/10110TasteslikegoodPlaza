@@ -83,6 +83,10 @@ jobs:
       - name: Run the enforcement-axis matrix
         run: tests/spec_enforcement_matrix.sh
 
+      # Exercise the real merge hook with an isolated gh stub (PLZG-278).
+      - name: Run the PR merge guard regression tests
+        run: python3 -m unittest tests/test_pr_merge_guard.py
+
       # Same idea for scripts/sprint_5_gate.py, which decides whether each
       # Sprint 5 task is done (PLZG-245). Fake Jira and a temp dir, stdlib only.
       # It rides this job because this is the check the dev ruleset requires.
