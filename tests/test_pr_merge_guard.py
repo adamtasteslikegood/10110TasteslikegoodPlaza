@@ -134,6 +134,20 @@ class MergeGuardTests(unittest.TestCase):
                 output, _ = self.run_hook("gh pr merge 334 --merge", **env)
                 self.assertEqual(output.get("permissionDecision"), "ask")
 
+    def test_cli_name_suffix_in_unrelated_word_does_not_trigger_guard(self):
+        for word in ("thigh", "high", "weigh", "my_gh"):
+            with self.subTest(word=word):
+                output, calls = self.run_hook(f"echo {word} pr merge 334")
+                self.assertEqual(output, {})
+                self.assertEqual(calls, [])
+
+    def test_merge_after_another_command_is_still_checked(self):
+        output, calls = self.run_hook(
+            "git status&&gh pr merge 334 -Rtarget/blocked --merge"
+        )
+        self.assertEqual(output.get("permissionDecision"), "deny")
+        self.assertEqual(len(calls), 2)
+
     def test_view_comments_deny_takes_priority(self):
         output, calls = self.run_hook("gh pr merge 334 && gh pr view 334 --comments")
         self.assertEqual(output.get("permissionDecision"), "deny")

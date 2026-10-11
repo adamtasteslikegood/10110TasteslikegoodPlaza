@@ -72,7 +72,9 @@ fi
 # `pr merge`. Deliberately loose: what sits between `gh` and `pr` is
 # judged token by token below, so an option this guard does not know
 # makes it ask instead of slipping past a tighter pattern.
-MG_RE='gh([[:space:]]+[^&|;]*)?[[:space:]]+pr[[:space:]]+merge'
+# Require a word boundary so a suffix such as `thigh` is not the CLI.
+# Spell it in POSIX ERE syntax rather than a GNU-only grep extension.
+MG_RE='(^|[^[:alnum:]_])gh([[:space:]]+[^&|;]*)?[[:space:]]+pr[[:space:]]+merge'
 MG_BASE='dev'
 
 merge_guard_ask() {
