@@ -28,3 +28,8 @@ signal floor_unlocked(floor_id: String)
 signal agent_query_sent(agent_id: String, task: String)
 signal agent_response_received(agent_id: String, response: String)
 signal agent_query_failed(agent_id: String, error_type: String, message: String)
+
+## Display snapshots changed; legacy bridge signal arities remain unchanged.
+## Reasons: input, reply, failure, draft, connection, view. Empty request ID
+## denotes a view/draft/connection change or an input rejected before admission.
+signal conversation_changed(agent_id: String, reason: String, request_id: String)
