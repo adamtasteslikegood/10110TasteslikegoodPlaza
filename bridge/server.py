@@ -311,12 +311,22 @@ class BridgeServer:
             self._recorder.close(clean=clean)
 
     async def _shutdown_domains(self):
+        failure = None
         for domain_id in self.domains.list_active_domains():
-            await self.domains.deactivate_domain(domain_id)
+            try:
+                await self.domains.deactivate_domain(domain_id)
+            except asyncio.CancelledError as exc:
+                failure = exc
+            except Exception as exc:
+                if failure is None:
+                    failure = exc
+        if failure is not None:
+            raise failure
 
     async def serve(self, *, stop_event: asyncio.Event | None = None):
         """Serve until cancelled or an explicit normal stop is requested."""
         clean = False
+        serve_failure = None
         try:
             async with websockets.serve(
                 self._handle_connection,
@@ -333,12 +343,18 @@ class BridgeServer:
                 else:
                     await stop_event.wait()
             clean = True
+        except BaseException as exc:
+            serve_failure = exc
+            raise
         finally:
             try:
                 await self._shutdown_domains()
-            except BaseException:
+            except BaseException as exc:
                 clean = False
-                raise
+                # Preserve the listener's original failure/cancellation while
+                # allowing a new caller cancellation during shutdown to escape.
+                if serve_failure is None or isinstance(exc, asyncio.CancelledError):
+                    raise
             finally:
                 self.close(clean=clean)
 

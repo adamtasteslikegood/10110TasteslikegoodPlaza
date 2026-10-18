@@ -590,3 +590,221 @@ async def test_domain_lifecycle_diagnostics_cover_all_transitions(
         "active",
         "deactivated",
     ]
+
+
+@pytest.fixture
+def bound_runtime_listener(monkeypatch):
+    class Listener:
+        async def __aenter__(self):
+            pass
+
+        async def __aexit__(self, *args):
+            pass
+
+    monkeypatch.setattr(server_module.websockets, "serve", lambda *args: Listener())
+
+
+@pytest.mark.asyncio
+async def test_deactivate_preserves_caller_cancel_during_child_cleanup(
+    runtime_config, runtime_archive, offline_clients
+):
+    recorder, writer = runtime_archive
+    _, sdk, _ = offline_clients
+    query_entered = asyncio.Event()
+    cleanup_entered = asyncio.Event()
+    release = asyncio.Event()
+
+    async def query(_):
+        query_entered.set()
+        try:
+            await asyncio.Future()
+        finally:
+            cleanup_entered.set()
+            await release.wait()
+
+    sdk.query.side_effect = query
+    session = DomainSession("domain", config=runtime_config, recorder=recorder)
+    await session.activate()
+    await session.submit_query(
+        "agent", "task", "origin-request", context=origin(session)
+    )
+    await query_entered.wait()
+    deactivation = asyncio.create_task(session.deactivate())
+    await cleanup_entered.wait()
+    deactivation.cancel("caller-stop")
+    await asyncio.sleep(0)
+    release.set()
+    with pytest.raises(asyncio.CancelledError) as error:
+        await deactivation
+    assert error.value.args == ("caller-stop",)
+    assert session._active_task.cancelled()
+    sdk.disconnect.assert_awaited_once()
+    assert [r["outcome"] for r in messages(writer)] == ["input", "cancelled"]
+    assert session.state.value == "deactivated"
+
+
+@pytest.mark.asyncio
+async def test_stop_event_shutdown_cancel_during_child_cleanup_is_unclean(
+    runtime_config, runtime_archive, offline_clients, bound_runtime_listener
+):
+    recorder, writer = runtime_archive
+    _, sdk, _ = offline_clients
+    query_entered = asyncio.Event()
+    cleanup_entered = asyncio.Event()
+    release = asyncio.Event()
+
+    async def query(_):
+        query_entered.set()
+        try:
+            await asyncio.Future()
+        finally:
+            cleanup_entered.set()
+            await release.wait()
+
+    sdk.query.side_effect = query
+    server = BridgeServer(config=runtime_config, recorder=recorder)
+    await server.domains.activate_domain("domain")
+    session = server.domains._sessions["domain"]
+    await session.submit_query(
+        "agent", "task", "origin-request", context=origin(session)
+    )
+    await query_entered.wait()
+    stopped = asyncio.Event()
+    stopped.set()
+    serving = asyncio.create_task(server.serve(stop_event=stopped))
+    await cleanup_entered.wait()
+    serving.cancel("shutdown-stop")
+    await asyncio.sleep(0)
+    release.set()
+    with pytest.raises(asyncio.CancelledError):
+        await serving
+    assert writer.closed == [False]
+    assert messages(writer)[-1]["outcome"] == "cancelled"
+    sdk.disconnect.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_immediate_submit_deactivate_archives_origin_once_before_sdk_start(
+    runtime_config, runtime_archive, offline_clients
+):
+    recorder, writer = runtime_archive
+    _, sdk, _ = offline_clients
+    session = DomainSession("domain", config=runtime_config, recorder=recorder)
+    await session.activate()
+    context = origin(session)
+    await session.submit_query("agent", "task", "origin-request", context=context)
+    await session.deactivate()  # intentionally no scheduling yield after submission
+    assert [(r["role"], r["outcome"]) for r in messages(writer)] == [
+        ("user", "input"),
+        ("error", "cancelled"),
+    ]
+    assert all(
+        r["connection_id"] == context.connection_id
+        and r["request_id"] == context.request_id
+        for r in messages(writer)
+    )
+    assert len(events(writer, "request_cancelled")) == 1
+    assert not events(writer, "execution_started")
+    assert session._active_task.cancelled()
+    sdk.query.assert_not_awaited()
+    await asyncio.sleep(0)
+    assert len(messages(writer)) == 2
+
+
+@pytest.mark.asyncio
+async def test_shutdown_attempts_all_domains_and_records_before_close_after_disconnect_error(
+    runtime_config, runtime_archive, offline_clients, bound_runtime_listener
+):
+    recorder, writer = runtime_archive
+    _, first, sdk_class = offline_clients
+    second = AsyncMock()
+    sdk_class.side_effect = [first, second]
+    entered = {domain: asyncio.Event() for domain in ("first", "second")}
+
+    async def first_query(_):
+        entered["first"].set()
+        await asyncio.Future()
+
+    async def second_query(_):
+        entered["second"].set()
+        await asyncio.Future()
+
+    first.query.side_effect = first_query
+    second.query.side_effect = second_query
+    failure = RuntimeError("credential-sentinel disconnect failed")
+    first.disconnect.side_effect = failure
+    close_snapshot = []
+    original_close = writer.close
+
+    def close(*, clean=True):
+        close_snapshot.extend(messages(writer))
+        original_close(clean=clean)
+
+    writer.close = close
+    server = BridgeServer(config=runtime_config, recorder=recorder)
+    for domain_id in entered:
+        await server.domains.activate_domain(domain_id)
+        session = server.domains._sessions[domain_id]
+        await session.submit_query(
+            "agent", "task", "origin-request", context=origin(session)
+        )
+        await entered[domain_id].wait()
+    stopped = asyncio.Event()
+    stopped.set()
+    try:
+        with pytest.raises(RuntimeError) as error:
+            await server.serve(stop_event=stopped)
+        assert error.value is failure
+        first.disconnect.assert_awaited_once()
+        second.disconnect.assert_awaited_once()
+        assert server.domains._sessions["second"].state.value == "deactivated"
+        assert [(r["domain_id"], r["outcome"]) for r in close_snapshot] == [
+            ("first", "input"),
+            ("second", "input"),
+            ("first", "cancelled"),
+            ("second", "cancelled"),
+        ]
+        assert writer.closed == [False]
+        assert "credential-sentinel" not in json.dumps(writer.records)
+    finally:
+        for session in server.domains._sessions.values():
+            if not session._active_task.done():
+                session._active_task.cancel()
+                with pytest.raises(asyncio.CancelledError):
+                    await session._active_task
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("primary", ["cancel", "bind_error"])
+async def test_primary_serve_failure_survives_disconnect_failure(
+    primary, runtime_config, runtime_archive, offline_clients, monkeypatch
+):
+    recorder, writer = runtime_archive
+    _, sdk, _ = offline_clients
+    bind_error = OSError("initial bind error")
+
+    class Listener:
+        async def __aenter__(self):
+            if primary == "bind_error":
+                raise bind_error
+
+        async def __aexit__(self, *args):
+            pass
+
+    monkeypatch.setattr(server_module.websockets, "serve", lambda *args: Listener())
+    sdk.disconnect.side_effect = RuntimeError("secondary disconnect error")
+    server = BridgeServer(config=runtime_config, recorder=recorder)
+    await server.domains.activate_domain("domain")
+    if primary == "cancel":
+        serving = asyncio.create_task(server.serve())
+        await asyncio.sleep(0)
+        serving.cancel("primary cancellation")
+        with pytest.raises(asyncio.CancelledError) as error:
+            await serving
+        assert error.value.args == ("primary cancellation",)
+    else:
+        with pytest.raises(OSError) as error:
+            await server.serve()
+        assert error.value is bind_error
+    sdk.disconnect.assert_awaited_once()
+    assert writer.closed == [False]

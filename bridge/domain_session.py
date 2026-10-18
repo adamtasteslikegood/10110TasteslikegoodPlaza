@@ -46,6 +46,14 @@ class InvalidTransitionError(Exception):
 
 
 @dataclass
+class _QueryExecution:
+    context: RequestContext
+    task: str
+    submitted_at: float
+    started: bool = False
+
+
+@dataclass
 class OutputEntry:
     output_id: int
     agent_id: str
@@ -215,16 +223,34 @@ class DomainSession:
                 self.model,
                 self.domain_id,
             )
+        execution = _QueryExecution(context, task, time.monotonic())
         self._active_task = asyncio.create_task(
-            self._execute_query(agent_id, task, request_id, on_output, context=context)
+            self._execute_query(
+                agent_id,
+                task,
+                request_id,
+                on_output,
+                context=context,
+                execution=execution,
+            )
         )
-        self._active_task.add_done_callback(self._consume_task_exception)
+        self._active_task.add_done_callback(
+            lambda task: self._consume_task_exception(task, execution)
+        )
 
-    @staticmethod
-    def _consume_task_exception(task):
-        # Detached exceptions otherwise reach asyncio's raw exception logger.
-        # Retrieving it preserves the exception for an explicit task awaiter.
-        if not task.cancelled():
+    def _consume_task_exception(self, task, execution):
+        if task.cancelled():
+            # Cancellation can prevent the coroutine from entering even its
+            # first try block. Its source-owned callback still owns that outcome.
+            if not execution.started:
+                self._message(execution.context, "user", execution.task, "input")
+                self._record_failure(
+                    execution.context,
+                    "cancelled",
+                    execution.submitted_at,
+                )
+        else:
+            # Consume detached exceptions without changing what awaiters receive.
             task.exception()
 
     def _message(self, context, role, content, outcome, **metadata):
@@ -257,7 +283,9 @@ class DomainSession:
         on_output=None,
         *,
         context: RequestContext,
+        execution: _QueryExecution,
     ):
+        execution.started = True
         started = time.monotonic()
         self._message(context, "user", task, "input")
         self._event("execution_started", context)
@@ -321,11 +349,36 @@ class DomainSession:
         self._transition(SessionState.ACTIVE)
 
     async def deactivate(self):
-        """Tear down the client. Cancels any in-flight query first."""
-        if self._active_task and not self._active_task.done():
-            self._active_task.cancel()
+        """Finish query cancellation and disconnect, then propagate caller cancellation."""
+        active_task = self._active_task
+        if active_task is not None and not active_task.done():
+            # Cancel before yielding so immediate submit/deactivate cannot start
+            # provider work while the teardown task is waiting to run.
+            active_task.cancel()
+        else:
+            active_task = None
+        cleanup = asyncio.create_task(self._finish_deactivation(active_task))
+        caller_cancelled = None
+        while not cleanup.done():
             try:
-                await self._active_task
+                await asyncio.shield(cleanup)
+            except asyncio.CancelledError as exc:
+                if not cleanup.cancelled():
+                    caller_cancelled = exc
+            except Exception:
+                break  # retrieve and propagate the cleanup's actual exception below
+        if caller_cancelled is not None:
+            if not cleanup.cancelled():
+                cleanup.exception()
+            raise caller_cancelled
+        cleanup.result()
+
+    async def _finish_deactivation(self, active_task):
+        # Only this shielded task awaits expected child cancellation; caller
+        # cancellation cannot be mistaken for it or interrupt the SDK disconnect.
+        if active_task is not None:
+            try:
+                await active_task
             except asyncio.CancelledError:
                 pass
         if self._client:
