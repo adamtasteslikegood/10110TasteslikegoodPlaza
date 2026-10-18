@@ -252,6 +252,10 @@
     {
       "path": "docs/cc-statusline-protocol.md",
       "reason": "Was governed as CC-STATUSLINE-PROTOCOL (tier 4, research) until Sprint 5 T3 (PLZG-232, owner decision 2026-10-05): a tier-4 document is authoritative over nothing, so the frontmatter contract bought no protection. Claude Code statusline protocol reference. Documents Anthropic's shipped JSON schema for statusline scripts and annotates bridge relevance per field. External protocol, asserts nothing about this repository."
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-18-m11-npc-conversations.md",
+      "reason": "M11 implementation artifact derived from owner-approved BRIDGE-PLATFORM-DESIGN section 7 and the owner instruction to continue the build. Records implementation mechanics, not a new source of product authority; desktop acceptance remains separate."
     }
   ]
 }
