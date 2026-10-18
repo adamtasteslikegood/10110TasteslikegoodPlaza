@@ -144,7 +144,7 @@ Error responses add `error_type` and `message`:
 
 | error_type | Meaning |
 |---|---|
-| `timeout` | Claude API call exceeded the timeout (D-006) |
+| `timeout` | Claude API call exceeded the NPC conversation timeout (D-033) |
 | `auth` | No valid credentials found |
 | `not_found` | agent_id not in the agent store |
 | `api_error` | Claude API returned an error |

@@ -23,7 +23,15 @@ The owner approved the written design before PR #339 merged. Planning baseline:
 
 ## Execution readiness
 
-This plan is ready for review, not already implemented. Before builders start:
+**Approved, 2026-10-18:** the owner approved this plan and the written design.
+The documentation prerequisites below are satisfied by doc set 0.2.15: `D-033`
+supersedes `D-006` with synchronous NPC calls and timeout; `D-034` authorizes async
+buffered domains with existing caps; `D-035`/`D-036` ratify M10 settings and local
+observability. Conflict §4.13 is resolved by that ruling; issue #341's external
+update is separate. M10 implementation is in progress and acceptance remains
+outstanding. Owner merge and no sprint changes remain the session constraints.
+
+**Original pre-approval checklist (retained as history; satisfied above):**
 
 - Record written-spec approval and register the newly approved M10 platform
   policies at their entitled implementation tier, as the spec's §8 requires.

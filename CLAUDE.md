@@ -1,7 +1,5 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
 ## Sync the environment before anything else
 
 **Run `git fetch origin && git status` before reading state, planning, or editing — in every checkout, worktree and sandbox.** Nothing below this line is trustworthy from a stale tree, and this repo's whole failure mode is confident claims about state that was true somewhere else.
@@ -16,7 +14,7 @@ This repo is **a running Godot prototype**. `project.godot` exists and `godot .`
 
 Docs split `docs/` (design and reference) from `specs/` (development process), each with its own `README.md` index. Active design is `docs/designs/2.5D-RPG-Prototype.md`; active work plan is `specs/roadmap.md`.
 
-**M1–M4, M7 and M8 are done.** The proof-of-concept critical path (M1 → M4 → M8) is complete — walk up to an NPC, type a question, get a live Claude response with typewriter effect. The owner-approved next direction is the **M9–M15 bridge-first track** in `specs/roadmap.md`; its written [design](docs/superpowers/specs/2026-10-18-bridge-first-platform-design.md) is DRAFT pending review. M5 (scripted assistant) and M6 (unlock/map) remain deferred; M11 covers NPC history, resizing and keyboard controls. `specs/task-tracker.md` is `HISTORICAL`.
+**M1–M4, M7 and M8 are done.** The proof-of-concept critical path (M1 → M4 → M8) is complete — walk up to an NPC, type a question, get a live Claude response with typewriter effect. The owner-approved next direction is the **M9–M15 bridge-first track** in `specs/roadmap.md`; its written [design](docs/superpowers/specs/2026-10-18-bridge-first-platform-design.md) is ACTIVE, approved 2026-10-18. M9 is complete; M10 is in progress with runtime acceptance outstanding. M5 (scripted assistant) and M6 (unlock/map) remain deferred; M11 covers NPC history, resizing and keyboard controls. `specs/task-tracker.md` is `HISTORICAL`.
 
 ## Commands
 
@@ -38,7 +36,7 @@ Every row below was executed against a real checkout. The rule this table exists
 
 ## Critical architectural reframe (read this before trusting the legacy reference docs)
 
-`docs/designs/2.5D-RPG-Prototype.md` (`PROMOTED`, 2026-04-27) **pivots the prototype from 3D first-person to 2.5D top-down** under a "10x check" scope reduction. Accepted: 2.5D top-down in Godot 2D; one generic agent sprite colour-tinted per department and one silhouette portrait; a Python WebSocket bridge that is **synchronous with timeout protection**, not streaming; a typewriter effect in the UI faking streaming over a full JSON response; and "wait or delegate" UX where short tasks block and long ones become background delegations.
+`docs/designs/2.5D-RPG-Prototype.md` (`PROMOTED`, 2026-04-27) **pivots the prototype from 3D first-person to 2.5D top-down** under a "10x check" scope reduction. Accepted: 2.5D top-down in Godot 2D; one generic agent sprite colour-tinted per department and one silhouette portrait; a Python WebSocket bridge with **synchronous NPC calls and timeout protection** (`D-033`, superseding the broad historical `D-006`) and asynchronous domains with buffered results and existing turn/budget caps (`D-034`); a typewriter effect in the UI faking streaming over a full JSON response; and "wait or delegate" UX where short tasks block and long ones become background delegations.
 
 Deferred: true WebSocket streaming, unique sprites per agent, 3D first-person.
 
@@ -48,7 +46,7 @@ Deferred: true WebSocket streaming, unique sprites per agent, 3D first-person.
 
 Short version: tier 0 `specs/meta/` governs · tier 1 `docs/storyboard-week1.md` owns concept · tier 2 `docs/designs/*` owns implementation and `README.md` reconciles both · tier 3 `specs/roadmap.md` + `specs/task-tracker.md` sequence · tier 4 summaries and research are authoritative over nothing. **Lower tier wins.** Never silently reconcile two disagreeing docs — record it in the open-conflict register and raise it.
 
-This has been got wrong at **both** ends of the ladder, and neither was caught by CI. `README.md` declared `authority: derived` while being named as the origin of eight decisions (fixed v0.2.7); `D-005` named tier-0 `META-SPEC` as its origin, though tier 0 never originates product decisions (fixed v0.2.9). Both sets now live in `docs/designs/platform-decisions.md`, which owns nine. The validator only asks whether an authority may originate *something* — never whether a given decision falls inside its subject matter. A human reading the ladder is still the check.
+This has been got wrong at **both** ends of the ladder, and neither was caught by CI. `README.md` declared `authority: derived` while being named as the origin of eight decisions (fixed v0.2.7); `D-005` named tier-0 `META-SPEC` as its origin, though tier 0 never originates product decisions (fixed v0.2.9). Both sets now live in `docs/designs/platform-decisions.md`; its `decides:` list and the register are current. The validator only asks whether an authority may originate *something* — never whether a given decision falls inside its subject matter. A human reading the ladder is still the check.
 
 Every governed doc declares `doc_id`/`tier`/`authority`/`status` in YAML frontmatter, indexed in `specs/meta/doc-registry.json`. Run `python3 scripts/validate_specs.py` before pushing; CI runs it as `Validate Specs`. Never add `decides:` to a `derived`, `summary`, `research` or `historical` doc.
 
@@ -60,7 +58,7 @@ Every planning doc assumes this model, regardless of 2D/3D:
 
 ```
 Layer 4 — Real agent execution  (EXISTS)   claude-code, gemini-cli, MCP, SSH
-Layer 3 — UI-agnostic bridge    (DONE M7–M8) Python WebSocket → Claude SDK, sync w/ timeout
+Layer 3 — UI-agnostic bridge    (DONE M7–M8) Python WebSocket → synchronous NPC calls, async buffered domains
 Layer 2 — Current frontend      (PARTIAL)  2.5D Godot; one of several swappable frontends
 Layer 1 — Data + config         (EXISTS)   submodule → agent .md files → agents.json
 ```
@@ -119,7 +117,7 @@ Root holds the entry points: `README.md` (pitch, 4-layer architecture, departmen
 | File | Why it matters |
 |---|---|
 | `docs/designs/2.5D-RPG-Prototype.md` | **Active design** — the 2.5D pivot. |
-| `docs/designs/platform-decisions.md` | **Platform authority**, twelve decisions in force (`D-003`, `D-005`, `D-015`, `D-016`, `D-018`, `D-021`–`D-024`, `D-029`, `D-031`, `D-032`). Scope test: would it survive replacing the whole frontend? If it dies with the 2.5D prototype it belongs in the design doc. |
+| `docs/designs/platform-decisions.md` | **Platform authority**, including domain scope (`D-034`), M10 non-secret config (`D-035`) and bounded local archives/diagnostics (`D-036`). Scope test: would it survive replacing the whole frontend? If it dies with the 2.5D prototype it belongs in the design doc. |
 | `docs/agent-directory.md` | **Taxonomy authority (`D-017`)** — every agent count derives from here. |
 | `docs/delivery-coordinates.md` | **Atlassian taxonomy authority (`D-026`)** — every Jira key, board role, space and page id. |
 | `specs/meta/` | **Start here.** See the section above. |
@@ -185,7 +183,7 @@ bridge change, the boundary is broken.
 - **Simplicity first.** Don't invent infrastructure — run the command before recommending it. Saying "there is no Node here" is also inventing infrastructure, in the negative direction, and it was wrong.
 - **Surgical changes.** Never silently reconcile two disagreeing documents — record it in the open-conflict register and raise it. Don't duplicate state: agent facts live in `data/agents.json`, feel values in the scene, project keys in the scripts, and the test derives its bounds from the scene rather than copying them.
 - **Know whose rule it is.** Before enforcing a constraint against a request, check who set it. Owner decisions and `D-nnn` bind; an agent's suggestion written up in a repo file is rationale to weigh, not a gate to refuse with.
-- **Goal-driven execution.** M8 is proven; next is the M9–M15 bridge-first track, beginning with written-spec review. The roadmap separates proposed acceptance from existing smoke/live-test evidence. `META-SPEC` §5.8 requires machine-checkable acceptance; a design alone does not complete a code milestone.
+- **Goal-driven execution.** M8 is proven; next is the M9–M15 bridge-first track, with M9 approved and M10 in progress. The roadmap separates planned acceptance from existing smoke/live-test evidence. `META-SPEC` §5.8 requires machine-checkable acceptance; a design alone does not complete a code milestone.
 
 ## GBrain semantic search
 

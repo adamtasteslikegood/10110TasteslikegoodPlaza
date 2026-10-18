@@ -4,7 +4,7 @@ title: 10110 TastesLike Plaza — Project Overview
 tier: 2
 authority: derived
 status: ACTIVE
-doc_set_version: 0.2.14
+doc_set_version: 0.2.15
 last_updated: 2026-10
 owner: adamtasteslikegood
 derives_from: [STORYBOARD-W1, DESIGN-25D, PLATFORM-DECISIONS, BRIDGE-PLATFORM-DESIGN]
@@ -45,8 +45,10 @@ conversation, not durable workspace ownership or execution recovery.
 
 The owner-approved next direction is documented in the
 [bridge-first design](docs/superpowers/specs/2026-10-18-bridge-first-platform-design.md),
-whose written specification is **DRAFT, awaiting review**. The
-[M9–M15 roadmap](specs/roadmap.md) starts with documentation, centralized settings,
+whose written specification is **ACTIVE, owner-approved 2026-10-18**. M9
+alignment is complete and M10 configuration/observability is in progress;
+M10 and M11 runtime acceptance remain outstanding. The
+[M9–M15 roadmap](specs/roadmap.md) sequences centralized settings,
 bounded local transcripts/debug logs, and usable NPC chat windows with resizing,
 keyboard controls and per-agent scrollback. User → project → domain state,
 worktree execution isolation and authenticated hosted durability are later
@@ -61,7 +63,8 @@ Layer 3 — UI-agnostic bridge  (EXISTS — M7+M8)
   Python WebSocket server on ws://localhost:8765
   Conversation engine (Messages API) + domain sessions (Agent SDK)
   Requires an Anthropic API key (ANTHROPIC_API_KEY)
-  Synchronous with timeout (D-005, D-006) — zero UI awareness
+  NPC calls: synchronous with timeout (D-033); domains: async + buffered (D-034)
+  Zero UI awareness (D-005)
 
 Layer 2 — Current frontend  (PARTIAL)
   Today: 2.5D Godot. CLI, web, and a future 3D world are peers, not replacements.

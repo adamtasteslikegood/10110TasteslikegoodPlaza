@@ -11,19 +11,32 @@ section at release time. PR references in parentheses.
 **Two version axes, deliberately separate.** This file and the tags track the
 **application**: the 3D era was `0.0.x`, and the 2.5D line is `0.1.y`. The
 `doc_set_version:` in every governed document's frontmatter is the **document
-set's** number and is unrelated — it reached `0.2.14` on its own axis. Prose that
+set's** number and is unrelated — it reached `0.2.15` on its own axis. Prose that
 cites `v0.2.7` or `v0.2.8` as software releases is conflating the two; those were
 spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
 
+### Changed — ratify bridge execution scope and M10 policies
+
+- Recorded the owner's written-design/plan approval and execution-scope ruling
+  (2026-10-18). Preserved the original `D-006` as `SUPERSEDED`; `D-033` scopes
+  synchronous calls with timeout to NPC conversations, and `D-034` separately
+  authorizes asynchronous domains with buffered results and existing caps.
+  Conflict §4.13 is resolved in the register; issue #341's update remains separate.
+- Ratified centralized non-secret settings (`D-035`) and bounded local JSONL
+  archives/diagnostics (`D-036`) at the platform tier. Promoted the bridge-first
+  design to ACTIVE with intended enforcement. M9 is complete; M10 is in progress;
+  M10/M11 runtime acceptance remains outstanding. Preserved M5/M6 deferral and
+  prototype history. Document set 0.2.15 is separate from application releases.
+
 ### Added — M10 implementation handoff for review
 
 - Added a task-by-task plan for central bridge configuration, bounded run/agent
   archives, diagnostic events and runtime integration. The handoff separates
-  spec-driven acceptance from subagent-driven execution; runtime work awaits plan
-  review and the design's policy-ratification prerequisites. M11 UI work receives
-  its own plan. No runtime behavior changes here.
+  spec-driven acceptance from subagent-driven execution. The owner approved the
+  plan and its policies on 2026-10-18; runtime implementation is now in progress.
+  M11 UI work receives its own plan. No runtime behavior changes here.
 
 ### Changed — incremental independent Claude review with scoped fixes
 
@@ -38,8 +51,8 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ### Added — bridge-first platform design for review
 
-- Added a governed DRAFT specification and proposed M9–M15 roadmap that distinguish
-  the working Godot/NPC prototype from the platform goal. Near-term scope includes
+- Initially added a governed DRAFT specification and proposed M9–M15 roadmap
+  distinguishing the working Godot/NPC prototype from the platform goal. Near-term scope includes
   centralized settings, bounded run/agent transcripts and debug events, and NPC
   chat resizing, keyboard controls, scrollback and late-response handling. Local
   durable state, worktree isolation and authenticated hosted operation remain
@@ -47,7 +60,8 @@ spec-set versions, and no application release existed before `v0.1.22`.
   behavior from those plans; this change implements no runtime features.
 - Recorded the existing `D-006` synchronous-bridge/asynchronous-domain mismatch in
   the open-conflict register, linked to issue #341, without amending the locked
-  decision or changing runtime behavior.
+  decision or changing runtime behavior at that stage. The owner's later ruling
+  and superseding scoped decisions are recorded in the ratification entry above.
 
 ### Changed — the merge guard checks review threads itself (`PLZG-278`)
 

@@ -4,13 +4,13 @@ title: 10110 TastesLike Plaza — Bridge-First Platform Roadmap
 tier: 3
 authority: derived
 status: ACTIVE
-doc_set_version: 0.2.14
+doc_set_version: 0.2.15
 last_updated: 2026-10
 owner: adamtasteslikegood
 derives_from: [PROJECT-OVERVIEW, DESIGN-25D, SPEC-DRIVERS-025, BRIDGE-PLATFORM-DESIGN]
 enforcement: asserted
 gates: [Validate Specs:live, Export Godot 4 Prototype:live]
-weakest_claim: M9 is awaiting written-spec review; no M9–M15 milestone is complete.
+weakest_claim: M9 is complete; M10 is in progress; M11–M15 remain planned.
 ---
 
 # 10110 TastesLike Plaza — Bridge-First Platform Roadmap
@@ -19,25 +19,27 @@ weakest_claim: M9 is awaiting written-spec review; no M9–M15 milestone is comp
 > Language: **GDScript** (reads like Python — approachable without game dev background)
 > Target: A UI-agnostic agent platform, exercised through the existing 2.5D Godot office
 > Design: [`docs/designs/2.5D-RPG-Prototype.md`](../docs/designs/2.5D-RPG-Prototype.md) (`PROMOTED`, 2026-04-27)
-> Post-M8 direction: [`BRIDGE-PLATFORM-DESIGN`](../docs/superpowers/specs/2026-10-18-bridge-first-platform-design.md) (`DRAFT`, awaiting written-spec review)
+> Post-M8 direction: [`BRIDGE-PLATFORM-DESIGN`](../docs/superpowers/specs/2026-10-18-bridge-first-platform-design.md) (`ACTIVE`, owner-approved 2026-10-18)
 
 ---
 
-## Post-M8 sequence — proposed bridge-first platform work
+## Post-M8 sequence — approved bridge-first platform work
 
 M1–M4, M7 and M8 retain their completed status and evidence below. M5 (the
 separate scripted assistant overlay) and M6 (unlock progression and building map)
 remain deferred frontend milestones. M11 improves NPC conversation; it does not
 complete or replace M5 or M6.
 
-The owner approved the bridge-first direction and the NPC window scope. The
-written design remains `DRAFT`: this roadmap sequences that proposal, without
-promoting it or claiming the features have shipped. M9 is awaiting written-spec review; no M9–M15 milestone is complete.
+The owner approved the written bridge-first design and M10 plan on 2026-10-18.
+M9 is complete; M10 is in progress; M11–M15 remain planned.
+Approval authorizes implementation; it does not establish runtime acceptance.
+`D-033` supersedes broad `D-006` with scoped synchronous NPC calls; `D-034`
+authorizes asynchronous buffered domains. M10 policies are `D-035`/`D-036`.
 
 | Milestone | Scope | Status |
 |---|---|---|
-| **M9** | Align the design, protocol documentation and roadmap around the bridge-first platform direction; review the written spec | Awaiting written-spec review |
-| **M10** | Validated central configuration, JSONL run/agent transcripts and standard debug logs with quotas and retention | Planned after M9 |
+| **M9** | Align the design, protocol documentation and roadmap around the bridge-first platform direction; review the written spec | Complete — owner written-spec approval 2026-10-18 |
+| **M10** | Validated central configuration, JSONL run/agent transcripts and standard debug logs with quotas and retention | In progress — approved implementation plan |
 | **M11** | Godot NPC conversation history, late responses, mouse window resizing and basic keyboard/scroll controls | Planned after M10 |
 | **M12** | Domain lifecycle and execution connected to the UI and verified with a live SDK run | Planned after M11 |
 | **M13** | Durable local user/project/domain application state in SQLite, with explicit restart semantics | Planned after M12 |
@@ -324,8 +326,9 @@ machine. The proven NPC conversation path sends requests over a local WebSocket,
 calls the Claude Messages API, and returns a complete JSON response. It runs
 locally and needs Anthropic credentials. The separate domain-session execution
 path uses the Agent SDK; connecting that lifecycle and execution to the frontend
-with live verification is planned under M12. This distinction does not amend the
-locked `D-006` execution model.
+with live verification is planned under M12. The owner-approved execution scopes
+are synchronous NPC calls with timeout (`D-033`, superseding `D-006`) and
+asynchronous buffered domains (`D-034`).
 
 > **The two code blocks below are the original sketch, kept for the shape of the idea.**
 > The shipped code is `bridge/server.py`, `bridge/conversation.py` and
@@ -435,20 +438,25 @@ surfaces remain outside that sequence unless a later design schedules them.
 
 ---
 
-## Phase 3 — Bridge-first platform (proposed M9–M15)
+## Phase 3 — Bridge-first platform (approved M9–M15)
 
-The following milestones derive from `BRIDGE-PLATFORM-DESIGN` (`DRAFT`). Their
+The following milestones derive from `BRIDGE-PLATFORM-DESIGN` (`ACTIVE`,
+owner-approved 2026-10-18). M9's documentation approval is complete. M10–M15
 acceptance criteria describe future verification; they are not completed proof.
 Existing M8 conversation behavior remains the regression baseline.
 
 ### Milestone 9 — Align and review the platform direction
 
-**Status:** awaiting written-spec review. Document the bridge-first architecture,
-current-versus-planned protocol behavior and milestone sequence together. The
-written review must settle the scope before implementation proceeds. This step
-does not amend a locked decision, select a hosted provider, or ship product code.
+**Status:** complete, owner-approved 2026-10-18. The written design, protocol
+documentation and roadmap distinguish the prototype from planned platform work.
+The owner resolved execution scope (`SPEC-DRIVERS-025` §4.13); `D-006` is superseded by scoped NPC
+`D-033`, with domains separately authorized in `D-034`. M10 policy ratification
+(`D-035`/`D-036`) authorizes implementation; it selects no hosted provider and
+ships no product code.
 
 ### Milestone 10 — Configuration and observability
+
+**Status:** in progress under the owner-approved [M10 implementation plan](../docs/superpowers/plans/2026-10-18-m10-config-observability.md). Runtime acceptance is outstanding.
 
 Establish a validated central configuration contract shared by bridge entry
 points. Add JSONL run/agent transcripts and standard debug logs, with explicit
@@ -480,8 +488,8 @@ bridge contract. Verify the complete path with a live Agent SDK run, including
 the lifecycle transitions and failures named by the design. Existing backend
 scaffolding or a successful NPC Messages API conversation alone does not complete
 this milestone. Keep the completed M8 conversation proof distinct from this new
-execution proof, and preserve the locked `D-006` model pending any separately
-authorised amendment.
+execution proof. Preserve synchronous NPC calls with timeout (`D-033`) and
+asynchronous buffered domain execution with existing caps (`D-034`).
 
 ### Milestone 13 — Durable local application state
 

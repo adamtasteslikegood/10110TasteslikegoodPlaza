@@ -4,7 +4,7 @@ title: Spec Drivers v0.2.5 — what this doc-set version must produce
 tier: 0
 authority: constitution
 status: ACTIVE
-doc_set_version: 0.2.14
+doc_set_version: 0.2.15
 last_updated: 2026-10
 owner: adamtasteslikegood
 derives_from: [META-SPEC]
@@ -464,15 +464,17 @@ and point at this entry. Resolving it needs one stated counting method, applied
 once, and then both sentences and the `weakest_claim` quote changed together —
 `D-024` is `LOCKED`, so that edit is the owner's.
 
-### 4.13 `D-006` synchronous bridge versus shipped asynchronous domains — **OPEN**
+### 4.13 `D-006` synchronous bridge versus shipped asynchronous domains — **RESOLVED**
 
 Raised 2026-10-18 during independent review of
 [PR #339](https://github.com/adamtasteslikegood/10110TasteslikegoodPlaza/pull/339)
 (`PLZG-281`). Tracked as
 [issue #341](https://github.com/adamtasteslikegood/10110TasteslikegoodPlaza/issues/341).
 
-- `DESIGN-25D` specifies a Python WebSocket bridge with synchronous execution and
-  timeout protection. The decision register records `D-006`, "Bridge execution
+**Former mismatch, recorded before the ruling:**
+
+- `DESIGN-25D` specified a Python WebSocket bridge with synchronous execution and
+  timeout protection. The decision register recorded `D-006`, "Bridge execution
   model — Synchronous, with timeout protection", as `LOCKED`, without an explicit
   conversation-only scope.
 - The shipped domain path is asynchronous: `bridge/domain_session.py` schedules
@@ -482,19 +484,20 @@ Raised 2026-10-18 during independent review of
   a future implementation claim. Ordinary NPC conversations still await a model
   result with timeout protection.
 
-The [bridge-first design](../../docs/superpowers/specs/2026-10-18-bridge-first-platform-design.md)
-names this tension, but deferring its resolution until implementation does not
-defer recording it: the mismatch already exists. This entry records both sides
-under `META-SPEC` §4 without treating runtime behavior as authority to amend a
-locked decision.
+This mismatch was recorded under `META-SPEC` §4 rather than treating shipped
+runtime behavior as authority to amend a locked decision.
 
-**Not resolved here.** Candidate resolutions for the owner are to explicitly
-scope the synchronous guarantee to NPC conversations and authorize asynchronous
-domain execution separately, or to confirm that `D-006` covers both engines and
-bring the domain implementation into compliance. The final decision belongs at
-the entitled implementation tier, with decision-register and doc-set version
-updates if a locked decision changes. Issue #341 remains open; neither `D-006`
-nor the runtime is changed by this registration.
+**Resolved by owner ruling, 2026-10-18 (doc set 0.2.15).** The owner approved the
+written bridge-first design and M10 plan and explicitly confirmed the intended
+scope: NPC calls are synchronous with timeout; domains execute asynchronously
+with buffered results and existing turn/budget caps. `DESIGN-25D` now originates
+scoped NPC guarantee `D-033`, superseding `D-006` whose original row remains in
+the register. `PLATFORM-DECISIONS` separately authorizes domain execution as
+`D-034`. `D-035` and `D-036` ratify the approved M10 settings and local archive/
+diagnostic policies. The ACTIVE design retains `enforcement: intended`; no runtime
+behavior, M10 completion or M11 completion is claimed by this resolution.
+Issue #341's external update is controller-owned; this document records the
+resolution without claiming that the GitHub issue has been closed.
 
 ## 5. Exit criteria to v1.0.0
 
@@ -502,9 +505,9 @@ nor the runtime is changed by this registration.
 through the bridge to a real Claude invocation of that agent and the response
 renders in the dialogue panel. That is the doc set's `1.0.0` trigger; the application's
 `v0.1.x` tags are a separate axis (`CHANGELOG.md`). **M8 shipped in Sprint 4 and the
-cut has not been made** — the set is still `0.2.14`. Making it is the owner's call.
+cut has not been made** — the set is still `0.2.15`. Making it is the owner's call.
 
 Between here and there, each round closes with the same check: the register has no
 conflict that has been open longer than the round that discovered it.
 
-*Doc set version: 0.2.14 · Last updated: October 2026*
+*Doc set version: 0.2.15 · Last updated: October 2026*
