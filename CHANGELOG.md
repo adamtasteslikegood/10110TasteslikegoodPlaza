@@ -69,8 +69,9 @@ spec-set versions, and no application release existed before `v0.1.22`.
 - Added a task-by-task plan for central bridge configuration, bounded run/agent
   archives, diagnostic events and runtime integration. The handoff separates
   spec-driven acceptance from subagent-driven execution. The owner approved the
-  plan and its policies on 2026-10-18; runtime implementation is now in progress.
-  M11 UI work receives its own plan. No runtime behavior changes here.
+  plan and its policies on 2026-10-18; runtime implementation began at that
+  handoff stage. M11 UI work was reserved for its own plan. That planning-only
+  entry introduced no runtime behavior changes.
 
 ### Changed — incremental independent Claude review with scoped fixes
 
