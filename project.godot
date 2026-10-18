@@ -29,6 +29,11 @@ window/size/viewport_width=1280
 window/size/viewport_height=720
 window/stretch/mode="canvas_items"
 
+[plaza]
+
+chat/history_max_messages=200
+chat/history_max_bytes=1048576
+
 [rendering]
 
 renderer/rendering_method="gl_compatibility"

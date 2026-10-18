@@ -114,7 +114,7 @@ Interface used by Tasks 3–4:
 
 - `begin_connection() -> int`: advance generation on real socket open; bounded
   metadata and fresh editable context. `generation: int`, `connected: bool`.
-- `disconnect(message: String) -> Array[String]`: finalize pending once, archive
+- `disconnect_connection(message: String) -> Array[String]`: finalize pending once, archive
   the generation/draft read-only, return failed request IDs.
 - `set_draft(agent_id: String, text: String) -> bool`: atomic bounded admission;
   false leaves the prior draft intact. Empty drafts consume no message slot.
