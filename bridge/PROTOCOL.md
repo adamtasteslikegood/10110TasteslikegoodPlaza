@@ -52,11 +52,12 @@ sent to the model with those earlier turns in front of it.
 - **Only successful exchanges are kept.** A request that fails, or a reply with
   no text, leaves the history as it was, so retrying does not repeat the
   question.
-- **It is bounded.** The newest 40 messages (20 exchanges) per agent are kept;
-  older ones are dropped whole, oldest first.
-- **It is not persisted.** Nothing is written to disk, and a bridge restart
-  forgets everything. There is no stable conversation identity for reconnect or
-  restart recovery. Durable session state is planned for M13.
+- **It is bounded.** `CONTEXT_MAX_MESSAGES` defaults to the newest 40 messages
+  (20 exchanges) per agent; older ones are dropped whole, oldest first.
+- **Live context is not restored.** Optional M10 disk transcripts archive
+  exchanges for inspection; they never repopulate this history. Disconnect or
+  restart forgets live context. There is no stable conversation identity for
+  reconnect/restart recovery. Durable session state is planned for M13.
 
 ### Domain Query
 
@@ -171,6 +172,35 @@ INACTIVE → ACTIVATING → ACTIVE → BACKGROUNDED → ACTIVE (refocus)
                      DEACTIVATED  DEACTIVATED
 ```
 
+## Current configuration and local observability (M10)
+
+Both engines use a validated startup settings snapshot: built-ins, then default
+`bridge/config.json` (or `BRIDGE_CONFIG_PATH`), then `PLAZA_<KEY>` overrides.
+Restart to reload. Relative `LOG_DIR` is selected-config-relative. The complete
+20-key defaults, environment syntax, model-tier/advisor resolution and recovery
+instructions are in [Quick start](../QUICKSTART.md#bridge-settings-and-archives-m10).
+Conversation/domain tiers default to Haiku/Sonnet; all four explicit model tiers
+are available. The symbolic advisor helper is reserved for future callers and
+adds no advisory execution.
+
+Linux run manifests, per-agent JSONL transcripts and metadata-only standard logs
+are current behavior. Correlation IDs are recorded internally without adding
+conversation response fields. Bound credentials are redacted in archive content,
+metadata and agent path selectors. `TRANSCRIPTS_ENABLED=false` disables bodies,
+while events remain controlled by `LOG_LEVEL`. Record/file/total encoded-byte
+bounds and age/oldest-first retention protect open files and unrelated data.
+Oversized disk copies are marked truncated; wire replies and model history are
+unchanged. Lock contention, unavailable storage and quota exhaustion suspend
+recording and retry on later writes while service continues. Unsupported native
+platforms also suspend recording; native Windows archives are not supported.
+
+Each process creates a unique run under `LOG_DIR/runs/`; its atomic manifest
+contains effective non-secret settings and clean/open lifecycle status. A crash
+leaves its manifest open. Ambiguous initial manifest temps require operator
+inspection before recording can resume, as documented in Quick start. Native
+Godot logs are separately configured and outside this quota. Archives are not
+context replay, durable user/project state, or SDK recovery.
+
 ## Planned platform evolution
 
 The following milestones are **planned, not implemented by this document**.
@@ -180,7 +210,6 @@ describes the intended boundaries and open contract decisions.
 
 | Milestone | Intended change |
 |---|---|
-| M10 | Local configuration, JSONL transcripts, and operational logs. These records aid inspection and diagnosis; they are not authoritative durable session state or proof that SDK execution can resume. |
 | M11 | Echo and correlate conversation `request_id` values, including failure handling. Successful domain output already includes request/output IDs as documented above. |
 | M12 | Wire the client to domain lifecycle and output replay. Presentation and controls remain client concerns. |
 | M13 | Durable identities scoped by user, project, and domain, with defined restart/reconnect recovery. Exact fields and recovery semantics require implementation and verification. |

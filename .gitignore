@@ -41,3 +41,6 @@ report.md
 .claude/worktrees/
 .venv/
 .agent-harness/
+
+# local bridge diagnostic archives (custom roots are operator-managed)
+.local/bridge-logs/

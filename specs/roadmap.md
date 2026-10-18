@@ -10,7 +10,7 @@ owner: adamtasteslikegood
 derives_from: [PROJECT-OVERVIEW, DESIGN-25D, SPEC-DRIVERS-025, BRIDGE-PLATFORM-DESIGN]
 enforcement: asserted
 gates: [Validate Specs:live, Export Godot 4 Prototype:live]
-weakest_claim: M9 is complete; M10 is in progress; M11–M15 remain planned.
+weakest_claim: M9 is complete; M10 is implemented and deterministically tested; M11–M15 remain planned.
 ---
 
 # 10110 TastesLike Plaza — Bridge-First Platform Roadmap
@@ -31,15 +31,16 @@ remain deferred frontend milestones. M11 improves NPC conversation; it does not
 complete or replace M5 or M6.
 
 The owner approved the written bridge-first design and M10 plan on 2026-10-18.
-M9 is complete; M10 is in progress; M11–M15 remain planned.
-Approval authorizes implementation; it does not establish runtime acceptance.
+M9 is complete; M10 is implemented and deterministically tested; M11–M15 remain planned.
+M10 acceptance covers offline configuration, archive/lifecycle and loopback service
+tests; it does not establish later UI features or durable application recovery.
 `D-033` supersedes broad `D-006` with scoped synchronous NPC calls; `D-034`
 authorizes asynchronous buffered domains. M10 policies are `D-035`/`D-036`.
 
 | Milestone | Scope | Status |
 |---|---|---|
 | **M9** | Align the design, protocol documentation and roadmap around the bridge-first platform direction; review the written spec | Complete — owner written-spec approval 2026-10-18 |
-| **M10** | Validated central configuration, JSONL run/agent transcripts and standard debug logs with quotas and retention | In progress — approved implementation plan |
+| **M10** | Validated central configuration, JSONL run/agent transcripts and standard debug logs with quotas and retention | Implemented — deterministic bridge and loopback acceptance |
 | **M11** | Godot NPC conversation history, late responses, mouse window resizing and basic keyboard/scroll controls | Planned after M10 |
 | **M12** | Domain lifecycle and execution connected to the UI and verified with a live SDK run | Planned after M11 |
 | **M13** | Durable local user/project/domain application state in SQLite, with explicit restart semantics | Planned after M12 |
@@ -441,7 +442,8 @@ surfaces remain outside that sequence unless a later design schedules them.
 ## Phase 3 — Bridge-first platform (approved M9–M15)
 
 The following milestones derive from `BRIDGE-PLATFORM-DESIGN` (`ACTIVE`,
-owner-approved 2026-10-18). M9's documentation approval is complete. M10–M15
+owner-approved 2026-10-18). M9's documentation approval is complete. M10 has
+implemented settings/recording and deterministic acceptance coverage. M11–M15
 acceptance criteria describe future verification; they are not completed proof.
 Existing M8 conversation behavior remains the regression baseline.
 
@@ -456,12 +458,18 @@ ships no product code.
 
 ### Milestone 10 — Configuration and observability
 
-**Status:** in progress under the owner-approved [M10 implementation plan](../docs/superpowers/plans/2026-10-18-m10-config-observability.md). Runtime acceptance is outstanding.
+**Status:** implemented and deterministically tested under the owner-approved
+[M10 implementation plan](../docs/superpowers/plans/2026-10-18-m10-config-observability.md).
+`bridge/tests/` covers validation, Linux writer ownership/crash release, quota/age
+retention, redaction and engine lifecycle. Real loopback integration tests use
+fake providers and real temporary archives to verify independent connections and
+agents, unchanged replies/context, disk truncation, rotation/pruning, recording
+failure/recovery and disabled transcripts. These tests make no live model calls.
 
-Establish a validated central configuration contract shared by bridge entry
-points. Add JSONL run/agent transcripts and standard debug logs, with explicit
-quota and retention behavior. Verify invalid configuration failures, correlated
-run/agent records and bounded retention through the checks defined in the design.
+A validated central configuration contract is shared by bridge entry points.
+JSONL run/agent transcripts and standard debug logs have explicit quota and
+retention behavior. Invalid configuration failures, correlated run/agent records
+and bounded retention are covered by the checks defined in the design.
 These records support inspection and debugging; they are separate from the durable
 application state introduced in M13.
 

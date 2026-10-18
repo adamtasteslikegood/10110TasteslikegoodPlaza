@@ -17,6 +17,21 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
 
+### Added — M10 settings and bounded local recording
+
+- Both bridge engines now use validated startup configuration from built-ins,
+  JSON and `PLAZA_` overrides. Added unique run manifests, per-agent JSONL
+  transcripts and correlated standard diagnostics with encoded-byte bounds,
+  rotation, age/quota pruning and an exclusive Linux writer lock.
+- Recording failures suspend archives while chat continues; later writes retry
+  and report recovery. Transcript capture can be disabled independently of
+  events and live context. Credentials are redacted; bodies stay in transcripts.
+- Added offline loopback integration coverage for independent connections/agents,
+  unchanged replies/history, disk truncation, rotation/pruning, lock contention,
+  ENOSPC/EACCES recovery and disabled transcripts. Documented settings, Linux
+  support, conservative orphan-manifest recovery and separate Godot native logs.
+  Archives do not provide durable application state or SDK restart recovery.
+
 ### Added — model slots and future advisor resolution
 
 - Added owner-requested `OPUS_MODEL=claude-opus-5-5`,
@@ -32,8 +47,8 @@ spec-set versions, and no application release existed before `v0.1.22`.
 - On 2026-10-18, the owner confirmed the official provider IDs
   `claude-haiku-5-5` and `claude-sonnet-5-5`. Updated the central built-in
   and committed JSON defaults, configuration tests, and active M10 design
-  references under the existing D-035 policy. Engine adoption remains part
-  of M10 runtime wiring.
+  references under the existing D-035 policy. Both runtime engines now consume
+  the central snapshot.
 
 ### Changed — ratify bridge execution scope and M10 policies
 
@@ -44,8 +59,9 @@ spec-set versions, and no application release existed before `v0.1.22`.
   Conflict §4.13 is resolved in the register; issue #341's update remains separate.
 - Ratified centralized non-secret settings (`D-035`) and bounded local JSONL
   archives/diagnostics (`D-036`) at the platform tier. Promoted the bridge-first
-  design to ACTIVE with intended enforcement. M9 is complete; M10 is in progress;
-  M10/M11 runtime acceptance remains outstanding. Preserved M5/M6 deferral and
+  design to ACTIVE with intended enforcement. That approval completed M9;
+  the M10 implementation and deterministic acceptance are recorded above.
+  M11 runtime acceptance remains outstanding. Preserved M5/M6 deferral and
   prototype history. Document set 0.2.15 is separate from application releases.
 
 ### Added — M10 implementation handoff for review

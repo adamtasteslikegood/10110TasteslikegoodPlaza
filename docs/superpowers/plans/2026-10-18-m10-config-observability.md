@@ -28,8 +28,8 @@ The documentation prerequisites below are satisfied by doc set 0.2.15: `D-033`
 supersedes `D-006` with synchronous NPC calls and timeout; `D-034` authorizes async
 buffered domains with existing caps; `D-035`/`D-036` ratify M10 settings and local
 observability. Conflict §4.13 is resolved by that ruling; issue #341's external
-update is separate. M10 implementation is in progress and acceptance remains
-outstanding. Owner merge and no sprint changes remain the session constraints.
+update is separate. M10 settings/recording are implemented with deterministic
+acceptance coverage; the controller separately owns the final live smoke/review. Owner merge and no sprint changes remain the session constraints.
 
 **Original pre-approval checklist (retained as history; satisfied above):**
 
@@ -108,7 +108,7 @@ outstanding. Owner merge and no sprint changes remain the session constraints.
 | Task 2 | `bridge/log_storage.py`, `bridge/tests/test_log_storage.py` | Exclusive writer, bounded bytes, manifests, retention, JSONL reader |
 | Task 3 | `bridge/observability.py`, `bridge/tests/test_observability.py` | Record schema, request context, standard logging adapter |
 | Task 4 | `bridge/conversation.py`, `bridge/domain_session.py`, `bridge/domain_manager.py`, `bridge/server.py`, `bridge/bridge.py`; their existing tests | Startup/engine/lifecycle wiring |
-| Task 5 | `bridge/tests/test_observability_integration.py`, `.gitignore`, `QUICKSTART.md`, `bridge/PROTOCOL.md`, `CHANGELOG.md` | End-to-end failure proof and operating instructions |
+| Task 5 | `bridge/tests/test_observability_integration.py`, `.gitignore`, `QUICKSTART.md`, `bridge/PROTOCOL.md`, `CHANGELOG.md`; `README.md`, `CLAUDE.md`, `specs/roadmap.md`, active design §2/current-status prose, this plan | End-to-end failure proof, operating instructions and current-status consistency |
 
 Order: 1 → 2 → 3 → 4 → 5. One fresh builder per task, then a fresh reviewer for
 spec compliance and code quality. No concurrent implementation workers on shared
@@ -144,7 +144,7 @@ existing engine defaults, and doc set 0.2.15 in this unmerged M10 amendment.
 - `BridgeConfig.effective_settings() -> dict[str, object]` (only schema keys,
   uppercase names, resolved LOG_DIR string; never environment/credentials).
 
-- [ ] **1. Write failing tests** for complete default-file/built-in agreement;
+- [x] **1. Write failing tests** for complete default-file/built-in agreement;
   partial-file overlay; explicit-path/env precedence; CWD-independent relative
   paths; startup-only snapshot; setting-specific errors for every invalid input
   class in the constraints. Parse override values using JSON scalar syntax for
@@ -171,12 +171,12 @@ existing engine defaults, and doc set 0.2.15 in this unmerged M10 amendment.
   field types and overrides, symbolic advisor-reference validation, every
   same/lower/higher relationship, and identical-provider-ID rejection.
 
-- [ ] **2. Run red:** `.venv/bin/python -m pytest bridge/tests/test_config.py -q`.
+- [x] **2. Run red:** `.venv/bin/python -m pytest bridge/tests/test_config.py -q`.
   Expect missing config API failures, not a dependency/setup error.
-- [ ] **3. Implement** the interfaces, committed JSON and strict validation.
+- [x] **3. Implement** the interfaces, committed JSON and strict validation.
   Keep loading explicit; importing modules must not read files or credentials.
-- [ ] **4. Run green:** repeat the focused command; all configuration cases pass.
-- [ ] **5. Commit:** `feat: centralize validated bridge settings` with only the
+- [x] **4. Run green:** repeat the focused command; all configuration cases pass.
+- [x] **5. Commit:** `feat: centralize validated bridge settings` with only the
   three Task 1 paths staged.
 
 ### Task 2: Store runs safely within retention and byte bounds
@@ -199,12 +199,12 @@ existing engine defaults, and doc set 0.2.15 in this unmerged M10 amendment.
   Ignore an unterminated final line with a diagnostic; diagnose and skip malformed
   complete lines without rewriting the source. It is an inspection utility only.
 
-- [ ] **1. Write failing tests** for the §6 directory layout, UUID/time uniqueness,
+- [x] **1. Write failing tests** for the §6 directory layout, UUID/time uniqueness,
   atomic manifest start/end/settings/status and crash-left-open semantics. Spawn
   real local processes to prove exclusion for one root, independent roots and
   lock release after forced termination. Use stdlib OS advisory locks (POSIX
   `flock`; Windows locking equivalent); unsupported locking suspends recording.
-- [ ] **2. Add byte/retention tests:** UTF-8 including multibyte characters, JSON
+- [x] **2. Add byte/retention tests:** UTF-8 including multibyte characters, JSON
   escaping and LF; event and transcript rollover before overflow; bounded records
   with `truncated: true`, `original_content_bytes` and a visible content marker.
   Test metadata that cannot fit the record bound: skip visibly, never write an
@@ -213,7 +213,7 @@ existing engine defaults, and doc set 0.2.15 in this unmerged M10 amendment.
   sealed segments, protected active files, empty managed folders and atomic
   manifest replacement with both old and temporary bytes charged. Check total
   owned bytes after *each* mutation, including initial/replacement manifests.
-- [ ] **3. Add ownership/failure tests:** recognize managed runs by a matching
+- [x] **3. Add ownership/failure tests:** recognize managed runs by a matching
   schema/run-ID manifest and exact segment names; leave unknown files untouched.
   Refuse unsafe log-root/managed paths; never traverse symlink files/directories.
   External sentinels survive startup and pruning. Inject ENOSPC/EACCES at creation,
@@ -222,9 +222,9 @@ existing engine defaults, and doc set 0.2.15 in this unmerged M10 amendment.
   failed append must be rolled back or its segment sealed before another record;
   partial writes cannot turn two records into an apparently valid completed one.
   Cover malformed earlier and incomplete final JSONL records in the reader.
-- [ ] **4. Run red:** `.venv/bin/python -m pytest bridge/tests/test_log_storage.py -q`.
+- [x] **4. Run red:** `.venv/bin/python -m pytest bridge/tests/test_log_storage.py -q`.
   Expect missing storage API failures.
-- [ ] **5. Implement** a single serialized write path with a thread lock plus the
+- [x] **5. Implement** a single serialized write path with a thread lock plus the
   lifetime OS lock. Acquire ownership before making a run; keep the lock file
   outside the manifest/event/transcript quota. Use exclusive creation for new
   runs, atomic manifest replacement and flush after complete records. Recheck
@@ -232,9 +232,9 @@ existing engine defaults, and doc set 0.2.15 in this unmerged M10 amendment.
   Reclaim sealed files before opening a new segment. Failure diagnostics go
   directly to stderr to avoid logging recursion; rate-limit repeated identical
   diagnostics and announce recovery. Do not add a queue or background log service.
-- [ ] **6. Run green:** Task 1 and 2 focused suites pass, including subprocess
+- [x] **6. Run green:** Task 1 and 2 focused suites pass, including subprocess
   crash/exclusion assertions with bounded timeouts.
-- [ ] **7. Commit:** `feat: add bounded bridge run storage` with Task 2 paths only.
+- [x] **7. Commit:** `feat: add bounded bridge run storage` with Task 2 paths only.
 
 ### Task 3: Define correlated records and standard diagnostics
 
@@ -251,12 +251,12 @@ existing engine defaults, and doc set 0.2.15 in this unmerged M10 amendment.
 - `message(context: RequestContext, role: Literal["user", "assistant", "error"], content: str, outcome: str, *, output_id: str | None = None, provider_session_id: str | None = None) -> bool`.
 - `close(*, clean: bool = True) -> None`; same idempotent/failure contract as writer.
 
-- [ ] **1. Write failing tests** for required record fields, optional IDs omitted
+- [x] **1. Write failing tests** for required record fields, optional IDs omitted
   when absent, input/success/failure distinction and ordered records from multiple
   worker threads. `TRANSCRIPTS_ENABLED=false` suppresses message records while
   lifecycle/error diagnostics remain available. Repeated failures recover visibly;
   false writer results never become successful capture claims.
-- [ ] **2. Test standard logging** at all four levels: INFO includes ordinary
+- [x] **2. Test standard logging** at all four levels: INFO includes ordinary
   lifecycle, DEBUG adds routing detail, WARNING/ERROR filter events accordingly.
   Keep manifests and enabled transcripts independent of diagnostic filtering.
   Assert no message bodies in metadata events or stderr, no raw exception text,
@@ -264,14 +264,14 @@ existing engine defaults, and doc set 0.2.15 in this unmerged M10 amendment.
   Replace exact nonempty injected credential strings with `[REDACTED]` in disk
   copies and diagnostics, without mutating caller data. Test a provider error
   containing a fake credential; never serialize SDK options or the environment.
-- [ ] **3. Run red:** `.venv/bin/python -m pytest bridge/tests/test_observability.py -q`.
-- [ ] **4. Implement** the schema/facade and a small `logging.Handler` adapter
+- [x] **3. Run red:** `.venv/bin/python -m pytest bridge/tests/test_observability.py -q`.
+- [x] **4. Implement** the schema/facade and a small `logging.Handler` adapter
   routing whitelisted metadata to the bounded event writer. Use Python standard
   stderr logging; remove only handlers owned by this recorder on close. Disk-only
   redaction precedes byte fitting. Every public recorder call isolates storage
   failures; never catch cancellation or process-exit signals as ordinary errors.
-- [ ] **5. Run green:** the config/storage/observability suites pass.
-- [ ] **6. Commit:** `feat: correlate bridge transcripts and diagnostic events`.
+- [x] **5. Run green:** the config/storage/observability suites pass.
+- [x] **6. Commit:** `feat: correlate bridge transcripts and diagnostic events`.
 
 ### Task 4: Wire startup, conversation and domain execution
 
@@ -301,17 +301,17 @@ add shared temporary-config/recorder fixtures to `bridge/tests/conftest.py`.
   one recorder and injects it into the server and both engines. This avoids
   hidden disk writes; deterministic tests continue to mock provider clients.
 
-- [ ] **1. Add failing tests** proving both tiers, timeout, max tokens, context
+- [x] **1. Add failing tests** proving both tiers, timeout, max tokens, context
   trimming, SDK turns/budget use the injected config; constructor overrides and
   existing auth tests still pass. Changing env/files after construction has no
   effect. Patch SDK/network clients in all deterministic tests.
-- [ ] **2. Add routing/lifecycle tests** for start/stop, connection open/close,
+- [x] **2. Add routing/lifecycle tests** for start/stop, connection open/close,
   receipt/routing/completion/failure/duration and domain state transitions. One
   UUID per WebSocket connection; internal UUID when no usable request ID exists.
   Respect existing valid request IDs in archives. Rejected/malformed requests
   get metadata diagnostics; invalid agent IDs never create transcript paths.
   Preserve all existing response fields; no conversation request-ID echo in M10.
-- [ ] **3. Test outcome ownership:** conversation input/reply or input/failure
+- [x] **3. Test outcome ownership:** conversation input/reply or input/failure
   recorded around the awaited engine call. Domain input and final outcome recorded
   once at `_execute_query`; no extra transcript on `_push_output` or resume.
   SDK exception/cancellation produces an error/cancelled archive with sanitized
@@ -320,17 +320,17 @@ add shared temporary-config/recorder fixtures to `bridge/tests/conftest.py`.
   Late domain completion retains the original connection/request IDs. Use actual
   SDK result-session IDs only when observed; do not label the bridge-assigned
   UUID5 as a provider-confirmed session ID. Messages API records omit that field.
-- [ ] **4. Run red:** `.venv/bin/python -m pytest bridge/tests/test_conversation.py bridge/tests/test_domain_session.py bridge/tests/test_domain_manager.py bridge/tests/test_server.py -q`.
-- [ ] **5. Implement** injection and capture at those boundaries. Retain existing
+- [x] **4. Run red:** `.venv/bin/python -m pytest bridge/tests/test_conversation.py bridge/tests/test_domain_session.py bridge/tests/test_domain_manager.py bridge/tests/test_server.py -q`.
+- [x] **5. Implement** injection and capture at those boundaries. Retain existing
   per-connection/per-agent context and async domain delivery; do not redesign the
   single-socket domain push mechanism in this milestone. Shutdown releases recorder
   resources in `finally`; failed startup closes any already-open recorder. A
   graceful stop can close the manifest, but exceptions/cancellation without a
   deliberate normal stop must not be marked clean. Invalid config exits with a
   concise setting-specific error and no network initialization.
-- [ ] **6. Run green:** `.venv/bin/python -m pytest bridge/tests/ -q`.
+- [x] **6. Run green:** `.venv/bin/python -m pytest bridge/tests/ -q`.
   Existing response/history/buffer/credential tests and new wiring tests all pass.
-- [ ] **7. Commit:** `feat: wire bridge settings and execution recording` with
+- [x] **7. Commit:** `feat: wire bridge settings and execution recording` with
   only Task 4 paths staged.
 
 ### Task 5: Prove the full lifecycle and document operation
@@ -340,23 +340,26 @@ listed in the file map. No Godot source or generated agent data changes.
 
 **Consumes:** The complete startup/config/recorder path from Tasks 1–4.
 
-- [ ] **1. Add an integration test** using loopback WebSockets, a real
+- [x] **1. Add an integration test** using loopback WebSockets, a real
   temporary recorder and deterministic fake provider clients. Run two connections
   and two agents; assert ordered per-agent disk records with distinct connection
   IDs, unchanged response text and unchanged two-turn model context. Include a
   response larger than a disk record; archived truncation must not affect wire or
   context. Force rotation/pruning with valid small byte settings and inspect
   manifests, event segments and transcripts through `iter_jsonl`.
-- [ ] **2. Add service-failure proof** for contending writers, read-only/ENOSPC
+- [x] **2. Add service-failure proof** for contending writers, read-only/ENOSPC
   injection and subsequent recording recovery while requests still succeed.
   Set `TRANSCRIPTS_ENABLED=false` in a separate run and assert no transcript files.
   Assert credentials and task bodies never appear in event/stderr output. Start a
   second process after forced termination: it obtains the lock, creates a new run,
-  and leaves the previous manifest unclean/open.
-- [ ] **3. Run:** `.venv/bin/python -m pytest bridge/tests/test_observability_integration.py -q`.
+  and leaves the previous manifest unclean/open. Existing
+  `test_real_process_exclusion_independent_roots_and_crash_release` provides
+  the real subprocess crash/lock/new-run proof; orphan-initial-manifest process
+  coverage also remains in `test_log_storage.py`.
+- [x] **3. Run:** `.venv/bin/python -m pytest bridge/tests/test_observability_integration.py -q`.
   If a case fails, add only missing lifecycle fixes to the owning module and
   rerun; if already green, retain the evidence. No test-only public API.
-- [ ] **4. Document** exact keys/defaults and env syntax, config path precedence,
+- [x] **4. Document** exact keys/defaults and env syntax, config path precedence,
   restart-to-reload, model tiers, log folder inspection, retention suspension and
   recovery, and `TRANSCRIPTS_ENABLED=false`. Clarify archive versus live context
   versus future durable state, and leave request-ID wire echo marked M11 intended.
@@ -380,7 +383,14 @@ listed in the file map. No Godot source or generated agent data changes.
   real two-client conversation gates; run a bounded API-backed two-client smoke
   only after deterministic gates, using bound credentials and a temporary LOG_DIR.
   Avoid updating frozen historical sprint evidence; report live smoke separately.
-- [ ] **6. Commit:** `docs: document M10 configuration and recording operation`.
+
+  **Task 5 deterministic evidence:** 615 bridge tests pass (6 new integration
+  cases); Black, spec validation, pinned Godot import/smoke and diff checks pass.
+  The exact Flake8 command traverses local `.venv/` dependencies and fails there;
+  the same repository-code gate passes with `--extend-exclude=.venv` and no
+  tracked lint/CI changes. The controller owns the separate API-backed live smoke,
+  so step 5 remains open until that check is recorded.
+- [x] **6. Commit:** `docs: document M10 configuration and recording operation`.
 
 ## Handoff and completion
 

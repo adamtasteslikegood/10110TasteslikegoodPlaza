@@ -46,8 +46,9 @@ conversation, not durable workspace ownership or execution recovery.
 The owner-approved next direction is documented in the
 [bridge-first design](docs/superpowers/specs/2026-10-18-bridge-first-platform-design.md),
 whose written specification is **ACTIVE, owner-approved 2026-10-18**. M9
-alignment is complete and M10 configuration/observability is in progress;
-M10 and M11 runtime acceptance remain outstanding. The
+alignment is complete; M10 configuration/observability is implemented with
+deterministic acceptance coverage for validated settings and bounded local
+recording. M11 conversation UI work remains planned. The
 [M9–M15 roadmap](specs/roadmap.md) sequences centralized settings,
 bounded local transcripts/debug logs, and usable NPC chat windows with resizing,
 keyboard controls and per-agent scrollback. User → project → domain state,

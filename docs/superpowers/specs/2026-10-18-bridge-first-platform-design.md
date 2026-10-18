@@ -19,10 +19,11 @@ weakest_claim: Hosted user-scoped durability is a later milestone.
 **Approval state, 2026-10-18:** the owner approved this written specification and
 the separate M10 implementation plan, including mouse resizing and expanded
 keyboard controls for M11. M9 documentation alignment and written approval are
-complete; M10 is in progress. This ACTIVE design specifies future functionality,
-so `enforcement: intended` remains: configuration, logging, UI history and durable
-state are not claimed as implemented. M11 receives its own implementation plan;
-M12–M15 require their own detailed designs before execution.
+complete; M10 settings and bounded recording are implemented with deterministic
+acceptance coverage. This ACTIVE design also specifies future functionality, so
+`enforcement: intended` remains for the later UI/history and durable-state work.
+M11 receives its own implementation plan; M12–M15 require their own detailed
+designs before execution.
 
 The owner explicitly confirmed synchronous NPC calls with timeout (`D-033`,
 superseding `D-006`) and asynchronous domains with buffered results and existing turn/budget caps
@@ -49,9 +50,13 @@ Hosted user-scoped durability is a later milestone. Authentication, databases, d
 coordination, new worktrees, streaming, model-provider abstraction, and a custom
 logging framework are outside M10/M11.
 
-## 2. Current prototype baseline
+## 2. Historical pre-M10 prototype baseline
 
-The following is a source-inspected snapshot, not evidence of future features:
+The following table preserves the source-inspected **pre-M10** design snapshot.
+Its configuration/constants row is historical: current code uses centralized
+validated settings and bounded archives. See §§5–6 and the
+[operating guide](../../../QUICKSTART.md#bridge-settings-and-archives-m10).
+This snapshot is not evidence of later UI features or durable recovery:
 
 | Concern | Current implementation | Boundary |
 |---|---|---|
@@ -121,8 +126,8 @@ key, unsupported version, wrong type or invalid bound fails startup with a usefu
 setting-specific error. Resolve relative LOG_DIR paths against the selected
 configuration file's directory. Read settings once at startup; restart to reload.
 
-The following is the approved complete initial settings set for implementation;
-this document does not claim the file has shipped:
+The following approved complete settings set is implemented in
+[`bridge/config.json`](../../../bridge/config.json) and built-in defaults:
 
 ```json
 {
