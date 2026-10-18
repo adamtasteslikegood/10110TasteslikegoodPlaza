@@ -284,15 +284,19 @@ npm run test:bridge-integration               # real Godot + Python, fake provid
 ```
 
 Or use the npm facade (activate the Python venv with `requirements.txt` installed;
-Godot 4.7.1 must be on PATH or selected by `GODOT_BIN`; no npm install needed):
+Godot 4.7.1 must be available as `godot` on PATH for the import step; no npm
+install needed):
 
 ```bash
 npm test                       # validate → import → smoke → M11 scenes → integration
 ```
 
-The scene runner requires exact success markers and rejects engine/script load
-errors even if Godot exits zero, with a 30-second timeout per scene. The Python
-integration starts its real bridge listener on an ephemeral loopback port and
+The Python scene runner and bridge integration honor `GODOT_BIN` when selecting
+the executable; the direct `godot` commands and npm import step require PATH.
+The scene runner requires a complete success line with a positive numeric count
+and rejects engine/script load errors even if Godot exits zero, with a 30-second
+timeout per scene. The Python integration starts its real bridge listener on an
+ephemeral loopback port and
 supplies the URL to `tests/godot_bridge_integration.tscn`; run it through pytest,
 not by launching that scene alone. It controls delayed provider replies, verifies
 hidden-agent success/B failure, a pending disconnect, archived drafts, fresh

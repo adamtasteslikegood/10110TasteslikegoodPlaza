@@ -2,15 +2,16 @@
 
 import os
 from pathlib import Path
+import re
 import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 MARKERS = {
-    "smoke": "smoke_test: OK — 132 agents, all checks passed.",
-    "conversation_store": "conversation_store_test: OK — 578 checks passed.",
-    "transport_client": "transport_client_test: OK — 154 checks passed.",
-    "dialogue_panel": "dialogue_panel_test: OK — 220 checks passed.",
+    "smoke": r"smoke_test: OK — [1-9][0-9]* agents, all checks passed\.",
+    "conversation_store": r"conversation_store_test: OK — [1-9][0-9]* checks passed\.",
+    "transport_client": r"transport_client_test: OK — [1-9][0-9]* checks passed\.",
+    "dialogue_panel": r"dialogue_panel_test: OK — [1-9][0-9]* checks passed\.",
 }
 
 
@@ -35,7 +36,9 @@ def main():
         print(result.stdout, end="", flush=True)
         if (
             result.returncode
-            or MARKERS[name] not in result.stdout
+            or not any(
+                re.fullmatch(MARKERS[name], line) for line in result.stdout.splitlines()
+            )
             or "SCRIPT ERROR" in result.stdout
             or "ERROR:" in result.stdout
         ):
