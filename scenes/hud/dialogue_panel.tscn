@@ -19,16 +19,6 @@ script = ExtResource("1_hud")
 
 [node name="Panel" type="Panel" parent="."]
 theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
-anchors_preset = 12
-anchor_top = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 24.0
-offset_top = -248.0
-offset_right = -24.0
-offset_bottom = -24.0
-grow_horizontal = 2
-grow_vertical = 0
 
 [node name="Margin" type="MarginContainer" parent="Panel"]
 anchors_preset = 15
@@ -52,22 +42,28 @@ custom_minimum_size = Vector2(64, 64)
 color = Color(1, 1, 1, 1)
 
 [node name="Titles" type="VBoxContainer" parent="Panel/Margin/Rows/Header"]
+size_flags_horizontal = 3
 theme_override_constants/separation = 4
 
 [node name="NameLabel" type="Label" parent="Panel/Margin/Rows/Header/Titles"]
 theme_override_font_sizes/font_size = 22
 text = "Agent Name"
+clip_text = true
 
 [node name="RoleLabel" type="Label" parent="Panel/Margin/Rows/Header/Titles"]
 theme_override_colors/font_color = Color(0.68, 0.68, 0.74, 1)
 theme_override_font_sizes/font_size = 14
 text = "Role · Department"
+clip_text = true
 
 [node name="BodyLabel" type="RichTextLabel" parent="Panel/Margin/Rows"]
 size_flags_vertical = 3
 fit_content = false
 scroll_active = true
-scroll_following = true
+scroll_following = false
+focus_mode = 2
+selection_enabled = true
+bbcode_enabled = false
 text = ""
 
 [node name="InputRow" type="HBoxContainer" parent="Panel/Margin/Rows"]
@@ -76,6 +72,7 @@ theme_override_constants/separation = 8
 [node name="QuestionInput" type="LineEdit" parent="Panel/Margin/Rows/InputRow"]
 size_flags_horizontal = 3
 placeholder_text = "Ask this agent a question..."
+expand_to_text_length = false
 theme_override_font_sizes/font_size = 14
 
 [node name="StatusLabel" type="Label" parent="Panel/Margin/Rows"]
@@ -83,4 +80,6 @@ visible = false
 theme_override_colors/font_color = Color(0.68, 0.68, 0.74, 1)
 theme_override_font_sizes/font_size = 13
 autowrap_mode = 3
+max_lines_visible = 2
+text_overrun_behavior = 3
 text = ""

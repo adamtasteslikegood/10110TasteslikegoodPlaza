@@ -229,6 +229,17 @@ class AskGodot(unittest.TestCase):
         turns = self.ask(godot_result(live_line(1) + "\n" + live_line(2) + "\n"))
         self.assertEqual([t["received"] for t in turns], ["OK", NONCE])
 
+    def test_wrong_second_reply_cannot_recall_nonce_in_first_user_turn(self):
+        output = live_line(1) + "\n" + live_line(2, received="I forgot the token.")
+        records = self.ask(godot_result(output))
+        self.assertIn(NONCE, records[0]["sent"])
+        self.assertNotIn(NONCE, records[1]["received"])
+        with mock.patch("builtins.print"):
+            result = live.run_client(
+                "godot", lambda prompts, seconds: records, NONCE, time.monotonic() + 100
+            )
+        self.assertFalse(result["recalled"])
+
     def test_non_zero_exit_fails_even_with_both_turns_printed(self):
         with self.assertRaisesRegex(RuntimeError, "exited 1"):
             self.ask(godot_result(live_line(1) + "\n" + live_line(2) + "\n", code=1))
