@@ -111,7 +111,7 @@ async def test_domain_uses_snapshot_caps(
 
 
 @pytest.mark.asyncio
-async def test_conversation_recorded_with_duration_without_wire_echo(
+async def test_conversation_recorded_with_duration_and_same_wire_id(
     runtime_config, runtime_archive, offline_clients
 ):
     recorder, writer = runtime_archive
@@ -126,6 +126,7 @@ async def test_conversation_recorded_with_duration_without_wire_echo(
             "task": "question",
             "output": "conversation reply",
             "status": "ok",
+            "request_id": "client-id",
         }
     ]
     records = messages(writer)

@@ -88,6 +88,7 @@ async def ask(socket, agent, task, request_id):
         "task": task,
         "output": LARGE_REPLY if "large" in task else f"answer:{task}",
         "status": "ok",
+        "request_id": request_id,
     }
     return response
 

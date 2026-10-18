@@ -146,6 +146,15 @@ class BridgeServer:
                 duration_ms=(time.monotonic() - started) * 1000,
             )
             raise
+        request_id = data.get("request_id")
+        if (
+            context.engine == "conversation"
+            and isinstance(request_id, str)
+            and request_id.strip()
+        ):
+            responses = [
+                {**response, "request_id": request_id} for response in responses
+            ]
         self._record_dispatch_outcome(data, responses, context, started)
         return responses
 
