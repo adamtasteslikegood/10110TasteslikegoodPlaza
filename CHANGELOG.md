@@ -17,6 +17,14 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
 
+### Added — M10 implementation handoff for review
+
+- Added a task-by-task plan for central bridge configuration, bounded run/agent
+  archives, diagnostic events and runtime integration. The handoff separates
+  spec-driven acceptance from subagent-driven execution; runtime work awaits plan
+  review and the design's policy-ratification prerequisites. M11 UI work receives
+  its own plan. No runtime behavior changes here.
+
 ### Changed — incremental independent Claude review with scoped fixes
 
 - Updated the review action and checkout pins, disabled persisted checkout
