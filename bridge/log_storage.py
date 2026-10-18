@@ -72,6 +72,10 @@ class _File:
     manifest: bool = False
 
 
+class _UnresolvedInitialManifest(OSError):
+    """A prior initial temporary has bytes but no trustworthy ownership manifest."""
+
+
 class RunLogWriter:
     """Best-effort disk recorder; false means a record was not captured.
 
@@ -126,6 +130,11 @@ class RunLogWriter:
         self.is_recording = False
         # Never echo record bodies, settings or exception text into diagnostics.
         message = f'bridge recording suspended: {operation} ({type(error).__name__}, errno={getattr(error, "errno", None)})'
+        if isinstance(error, _UnresolvedInitialManifest):
+            message = (
+                "bridge recording suspended: unresolved initial manifest temporary; "
+                "inspect orphan run before retrying"
+            )
         if message != self._last_diagnostic:
             print(message, file=sys.stderr)
             self._last_diagnostic = message
@@ -231,6 +240,7 @@ class RunLogWriter:
         if self._run is None:
             runs_fd = self._directory(self._root_fd, "runs", create=True)
             try:
+                self._scan()  # reject unresolved prior initial bytes before creating a run
                 os.mkdir(self._run_name, 0o700, dir_fd=runs_fd)
             finally:
                 os.close(runs_fd)
@@ -273,10 +283,20 @@ class RunLogWriter:
             run = Path("runs") / name
             manifest = run / "manifest.json"
             owned = self._read_manifest(manifest) is not None
-            # Only this writer knows provenance before its first atomic manifest.
+            children = self._entries(run)
+            # In-memory provenance is valid only for this writer's initial run.
+            # A prior crash may leave initial bytes with no manifest. Do not
+            # adopt/delete by name, or ignore those bytes and admit more writes.
             if not owned and not (run == self._run and not self._started):
+                if any(
+                    _TEMP.fullmatch(leaf)
+                    and stat.S_ISREG(child.st_mode)
+                    and child.st_size > 0
+                    for leaf, child in children
+                ):
+                    raise _UnresolvedInitialManifest()
                 continue
-            for leaf, child in self._entries(run):
+            for leaf, child in children:
                 path = run / leaf
                 if _regular(child) and (
                     (owned and (leaf == "manifest.json" or _EVENT.fullmatch(leaf)))

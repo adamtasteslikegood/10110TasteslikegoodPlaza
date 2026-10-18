@@ -748,3 +748,155 @@ def test_unsupported_platform_or_directory_primitive_suspends_safely(
         writer.close()
         assert capsys.readouterr().err
     assert not cfg.log_dir.exists()
+
+
+def test_initial_temp_bytes_remain_bounded_across_fresh_writers(tmp_path, monkeypatch):
+    cfg = replace(
+        config(tmp_path), log_max_total_bytes=4096, transcript_max_file_bytes=4096
+    )
+
+    def fail(*args, **kwargs):
+        raise OSError(errno.EACCES, "leave initial manifest temporary")
+
+    real_write = storage.os.write
+
+    def bounded_write(*args, **kwargs):
+        result = real_write(*args, **kwargs)
+        assert all_bytes(cfg.log_dir) <= cfg.log_max_total_bytes
+        return result
+
+    with monkeypatch.context() as patch:
+        patch.setattr(storage.os, "write", bounded_write)
+        patch.setattr(storage.os, "replace", fail)
+        patch.setattr(storage.os, "unlink", fail)
+        for _ in range(12):
+            writer = RunLogWriter(cfg, "plaza")
+            try:
+                assert not writer.is_recording
+                assert not writer.append("event", {})
+                assert all_bytes(cfg.log_dir) <= cfg.log_max_total_bytes
+            finally:
+                writer.close(clean=False)
+    assert len(list(cfg.log_dir.glob("runs/*"))) == 1
+
+
+def test_fresh_writer_resumes_when_initial_temp_ownership_is_resolved(
+    tmp_path, monkeypatch
+):
+    cfg = config(tmp_path)
+
+    def fail(*args, **kwargs):
+        raise OSError(errno.ENOSPC, "leave initial manifest temporary")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(storage.os, "replace", fail)
+        patch.setattr(storage.os, "unlink", fail)
+        original = RunLogWriter(cfg, "original")
+        assert not original.is_recording
+        original.close(clean=False)
+    root = run_dir(original, cfg)
+    temporary = next(root.glob("manifest.*.tmp"))
+    before = temporary.read_bytes()
+    unknown = root / "user-note.txt"
+    unknown.write_text("preserve")
+    fresh = RunLogWriter(cfg, "fresh")
+    try:
+        assert not fresh.is_recording
+        assert not fresh.append("event", {})
+        assert temporary.read_bytes() == before
+        # An operator can inspect and finish this valid initial manifest. The
+        # writer itself cannot infer that an orphan temporary is its property.
+        temporary.replace(root / "manifest.json")
+        assert fresh.append("event", {"event": "recovered"})
+        assert unknown.read_text() == "preserve"
+        assert all_bytes(cfg.log_dir) <= cfg.log_max_total_bytes
+    finally:
+        fresh.close()
+
+
+def test_orphan_lookalikes_suspend_without_adopting_or_deleting(tmp_path, capsys):
+    cfg = config(tmp_path)
+    orphan = cfg.log_dir / "runs" / ("20260101T000000000000Z-" + "a" * 32)
+    orphan.mkdir(parents=True)
+    unknown = orphan / ("manifest." + "b" * 32 + ".tmp")
+    unknown.write_bytes(b"user data with a coincidental managed-looking name")
+    external = tmp_path / "external"
+    external.mkdir()
+    sentinel = external / "sentinel"
+    sentinel.write_bytes(b"outside")
+    linked_run = cfg.log_dir / "runs" / ("20260101T000000000000Z-" + "c" * 32)
+    linked_run.symlink_to(external, target_is_directory=True)
+    link = orphan / ("manifest." + "d" * 32 + ".tmp")
+    link.symlink_to(sentinel)
+    writer = RunLogWriter(cfg, "plaza")
+    try:
+        assert not writer.is_recording
+        assert not writer.append("event", {})
+        diagnostic = capsys.readouterr().err
+        assert "unresolved initial manifest temporary" in diagnostic
+        assert diagnostic.count("suspended") == 1
+        assert (
+            unknown.read_bytes()
+            == b"user data with a coincidental managed-looking name"
+        )
+        assert sentinel.read_bytes() == b"outside"
+        assert linked_run.is_symlink() and link.is_symlink()
+        unknown.unlink()  # user clears the ambiguous file; symlinks remain
+        assert writer.append("event", {})
+        assert "recovered" in capsys.readouterr().err
+        assert sentinel.read_bytes() == b"outside"
+        assert linked_run.is_symlink() and link.is_symlink()
+    finally:
+        writer.close()
+
+
+def test_crash_before_first_manifest_suspends_fresh_writers(tmp_path):
+    cfg = config(tmp_path)
+    child_code = """
+import sys, time
+from pathlib import Path
+from dataclasses import replace
+from bridge.config import default_config
+from bridge import log_storage
+
+def pause_before_replace(*args, **kwargs):
+    print('initial temporary ready', flush=True)
+    time.sleep(60)
+log_storage.os.replace = pause_before_replace
+log_storage.RunLogWriter(replace(default_config(), log_dir=Path(sys.argv[1])), 'child')
+"""
+    child = subprocess.Popen(
+        [sys.executable, "-u", "-c", child_code, str(cfg.log_dir)],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    try:
+        deadline = time.monotonic() + 8
+        temporary = None
+        while time.monotonic() < deadline:
+            candidates = list(cfg.log_dir.glob("runs/*/manifest.*.tmp"))
+            if candidates and candidates[0].stat().st_size:
+                temporary = candidates[0]
+                break
+            assert child.poll() is None
+            time.sleep(0.02)
+        assert temporary is not None
+        child.kill()
+        child.communicate(timeout=5)
+        before = temporary.read_bytes()
+        assert not list(cfg.log_dir.glob("runs/*/manifest.json"))
+        for _ in range(5):
+            writer = RunLogWriter(cfg, "fresh")
+            try:
+                assert not writer.is_recording
+                assert not writer.append("event", {})
+                assert temporary.read_bytes() == before
+                assert all_bytes(cfg.log_dir) <= cfg.log_max_total_bytes
+            finally:
+                writer.close(clean=False)
+        assert len(list(cfg.log_dir.glob("runs/*"))) == 1
+    finally:
+        if child.poll() is None:
+            child.kill()
+            child.communicate(timeout=5)
