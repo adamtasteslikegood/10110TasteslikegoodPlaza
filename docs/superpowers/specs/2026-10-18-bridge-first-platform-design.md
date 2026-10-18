@@ -3,8 +3,8 @@ doc_id: BRIDGE-PLATFORM-DESIGN
 title: Bridge-first platform — local observability and conversation UI
 tier: 2
 authority: implementation
-status: DRAFT
-doc_set_version: 0.2.14
+status: ACTIVE
+doc_set_version: 0.2.15
 last_updated: 2026-10
 owner: adamtasteslikegood
 derives_from: [PLATFORM-DECISIONS, DESIGN-25D]
@@ -16,12 +16,19 @@ weakest_claim: Hosted user-scoped durability is a later milestone.
 
 # Bridge-first platform — local observability and conversation UI
 
-**Review state, 2026-10-18:** the owner approved the direction and milestone
-sequence in conversation, including mouse resizing and expanded keyboard controls.
-This is the written specification for review. It specifies future work; it does
-not claim that configuration, logging, UI history, or durable state is implemented.
-Written-spec approval precedes an implementation plan. M10 and M11 receive separate
-implementation plans; M12–M15 require their own detailed designs before execution.
+**Approval state, 2026-10-18:** the owner approved this written specification and
+the separate M10 implementation plan, including mouse resizing and expanded
+keyboard controls for M11. M9 documentation alignment and written approval are
+complete; M10 settings and bounded recording are implemented with deterministic
+acceptance coverage. This ACTIVE design also specifies future functionality, so
+`enforcement: intended` remains for the later UI/history and durable-state work.
+M11 receives its own implementation plan; M12–M15 require their own detailed
+designs before execution.
+
+The owner explicitly confirmed synchronous NPC calls with timeout (`D-033`,
+superseding `D-006`) and asynchronous domains with buffered results and existing turn/budget caps
+(`D-034`). `PLATFORM-DECISIONS` ratifies centralized non-secret settings (`D-035`)
+and bounded local archives/diagnostics (`D-036`), with the exact contracts below.
 
 ## 1. Purpose and scope
 
@@ -43,9 +50,13 @@ Hosted user-scoped durability is a later milestone. Authentication, databases, d
 coordination, new worktrees, streaming, model-provider abstraction, and a custom
 logging framework are outside M10/M11.
 
-## 2. Current prototype baseline
+## 2. Historical pre-M10 prototype baseline
 
-The following is a source-inspected snapshot, not evidence of future features:
+The following table preserves the source-inspected **pre-M10** design snapshot.
+Its configuration/constants row is historical: current code uses centralized
+validated settings and bounded archives. See §§5–6 and the
+[operating guide](../../../QUICKSTART.md#bridge-settings-and-archives-m10).
+This snapshot is not evidence of later UI features or durable recovery:
 
 | Concern | Current implementation | Boundary |
 |---|---|---|
@@ -115,13 +126,17 @@ key, unsupported version, wrong type or invalid bound fails startup with a usefu
 setting-specific error. Resolve relative LOG_DIR paths against the selected
 configuration file's directory. Read settings once at startup; restart to reload.
 
-The following is the proposed complete initial settings set, not an existing file:
+The following approved complete settings set is implemented in
+[`bridge/config.json`](../../../bridge/config.json) and built-in defaults:
 
 ```json
 {
   "CONFIG_VERSION": 1,
-  "HAIKU_MODEL": "claude-haiku-4-5",
-  "SONNET_MODEL": "claude-sonnet-4-6",
+  "HAIKU_MODEL": "claude-haiku-5-5",
+  "SONNET_MODEL": "claude-sonnet-5-5",
+  "OPUS_MODEL": "claude-opus-5-5",
+  "FABLE_MODEL": "claude-fable-5-1",
+  "ADVISOR_MODEL": "FABLE_MODEL",
   "CONVERSATION_TIER": "haiku",
   "DOMAIN_TIER": "sonnet",
   "CONVERSATION_TIMEOUT_SECONDS": 60,
@@ -139,6 +154,30 @@ The following is the proposed complete initial settings set, not an existing fil
 }
 ```
 
+**Model default replacement, 2026-10-18:** the owner confirmed the official
+provider IDs `claude-haiku-5-5` and `claude-sonnet-5-5` and requested both
+committed JSON and built-in defaults use them. This replaces the earlier
+`claude-haiku-4-5` / `claude-sonnet-4-6` assignments within the existing
+configuration schema and policy.
+
+**Additional model slots, 2026-10-18:** the owner requested `OPUS_MODEL`,
+`FABLE_MODEL`, and the symbolic `ADVISOR_MODEL` reference shown above. The
+four explicit provider IDs were confirmed available by read-only API model
+catalog retrieval, alongside the owner's provider-document confirmation of
+the Haiku/Sonnet replacements. Conversation and domain defaults remain
+`haiku` and `sonnet`; all four tiers may be selected explicitly.
+
+`ADVISOR_MODEL` accepts only `HAIKU_MODEL`, `SONNET_MODEL`, `OPUS_MODEL`, or
+`FABLE_MODEL`, never a provider ID, self reference, or arbitrary key.
+`BridgeConfig.advisor_for(caller_tier)` resolves this reference for future
+callers only when its tier is strictly higher in the capability order
+`haiku < sonnet < opus < fable` and its resolved provider ID differs from
+the caller's. Numeric model versions do not determine this ordering. Fable
+has no higher advisor here. These relationship checks occur on resolution;
+a Fable engine configuration remains valid when no advisor is requested.
+This amendment adds configuration/resolution only, with no advisory calls,
+automatic promotion, fallback, provider framework, or routing-default change.
+
 Model assignments use explicit provider IDs. These values are current defaults,
 not a claim about the latest available release; confirm any replacement ID with
 the provider before changing it. Both engines resolve their selected tier through
@@ -147,7 +186,7 @@ not silently override execution settings. Per-agent model overrides can be added
 in a later schema if a concrete workflow needs them.
 
 Validate positive numeric limits, finite budgets/timeouts, boolean transcript
-enablement, INFO/DEBUG/WARNING/ERROR log levels, and the supported haiku/sonnet
+enablement, INFO/DEBUG/WARNING/ERROR log levels, and the supported haiku/sonnet/opus/fable
 tiers. CONTEXT_MAX_MESSAGES is an even integer of at least 2 to preserve complete
 exchanges; it is independent of transcript retention. Require
 4096 ≤ record bytes ≤ file bytes ≤ total bytes. Age is a positive integer in days.
@@ -338,17 +377,18 @@ remains historical design input: its stateless-conversation description predates
 connection-scoped history, and its persistent-domain wording does not prove
 restart durability.
 
-No existing locked decision is superseded by this DRAFT. Before implementation,
-register newly approved platform policies at their entitled tier. The existing
-conflict between `D-006`'s synchronous-bridge wording and shipped asynchronous
-domain execution is recorded now in the
-[open-conflict register §4.13](../../../specs/meta/spec-drivers-v0.2.5.md), tracked
-by [issue #341](https://github.com/adamtasteslikegood/10110TasteslikegoodPlaza/issues/341).
-An owner decision at the entitled tier must settle the guarantee's scope before
-implementation; this draft does not silently amend `D-006`. The milestone scope
-preserves the scripted-guide distinction
-in `D-010`, the frontend-independent bridge in `D-005`/`D-020`, and frontend-only
-typewriter rendering in `D-007`. This review change does not advance a Jira board,
+The owner resolved the `D-006` scope mismatch on 2026-10-18: synchronous calls
+with timeout apply to NPC conversations in `DESIGN-25D` `D-033`, which
+supersedes the preserved historical `D-006`; asynchronous buffered
+domain execution and existing turn/budget caps are separately authorized by
+`PLATFORM-DECISIONS` `D-034`. The former mismatch and ruling remain recorded in
+[conflict register §4.13](../../../specs/meta/spec-drivers-v0.2.5.md), tracked by
+[issue #341](https://github.com/adamtasteslikegood/10110TasteslikegoodPlaza/issues/341).
+M10 settings and archive/diagnostic policies in §§4–6 are ratified as `D-035` and
+`D-036` at that same entitled platform tier. This approval completes M9, not M10
+or M11. The milestone scope preserves the scripted-guide distinction in `D-010`,
+the frontend-independent bridge in `D-005`/`D-020`, and frontend-only typewriter
+rendering in `D-007`. This documentation change does not advance a Jira board,
 publish configuration, select a cloud provider, or implement any planned feature.
 
 *Last updated: October 2026*

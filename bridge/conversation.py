@@ -17,15 +17,15 @@ import os
 from anthropic import Anthropic
 
 from bridge.agents import load_agent
+from bridge.config import BridgeConfig, default_config
 from bridge.protocol import make_error, make_success, validate_agent_id
 
-DEFAULT_MODEL = "claude-haiku-4-5"
-DEFAULT_TIMEOUT = 60
-DEFAULT_MAX_TOKENS = 4096
-# Messages kept per conversation, user and assistant turns counted separately.
-# Bounds both the memory a long-lived connection can hold and what each
-# request re-sends to the model. Even, so trimming never splits an exchange.
-MAX_HISTORY_MESSAGES = 40
+# Compatibility names derive from the same validated built-ins as runtime defaults.
+_DEFAULT_CONFIG = default_config()
+DEFAULT_MODEL = _DEFAULT_CONFIG.model_for(_DEFAULT_CONFIG.conversation_tier)
+DEFAULT_TIMEOUT = _DEFAULT_CONFIG.conversation_timeout_seconds
+DEFAULT_MAX_TOKENS = _DEFAULT_CONFIG.conversation_max_output_tokens
+MAX_HISTORY_MESSAGES = _DEFAULT_CONFIG.context_max_messages
 
 
 def build_client():
@@ -60,10 +60,30 @@ class ConversationEngine:
     only through the `history` the caller hands to handle_request().
     """
 
-    def __init__(self, client=None, model=None, timeout=None):
-        self._client = client or build_client()
-        self._model = model or DEFAULT_MODEL
-        self._timeout = timeout or DEFAULT_TIMEOUT
+    def __init__(
+        self,
+        client=None,
+        model=None,
+        timeout=None,
+        *,
+        config: BridgeConfig | None = None,
+    ):
+        self._config = config if config is not None else default_config()
+        self._client = client if client is not None else build_client()
+        self._model = (
+            model
+            if model is not None
+            else self._config.model_for(self._config.conversation_tier)
+        )
+        self._timeout = (
+            timeout
+            if timeout is not None
+            else self._config.conversation_timeout_seconds
+        )
+
+    @property
+    def model(self) -> str:
+        return self._model
 
     def handle_request(self, request, history=None):
         """Answer one request.
@@ -106,7 +126,7 @@ class ConversationEngine:
         try:
             response = self._client.messages.create(
                 model=self._model,
-                max_tokens=DEFAULT_MAX_TOKENS,
+                max_tokens=self._config.conversation_max_output_tokens,
                 system=definition,
                 messages=[*(history or []), {"role": "user", "content": task}],
                 timeout=self._timeout,
@@ -118,7 +138,7 @@ class ConversationEngine:
             if history is not None and output:
                 history.append({"role": "user", "content": task})
                 history.append({"role": "assistant", "content": output})
-                del history[:-MAX_HISTORY_MESSAGES]
+                del history[: -self._config.context_max_messages]
             return make_success(agent_id, task, output)
         except Exception as exc:
             exc_name = type(exc).__name__

@@ -8,6 +8,8 @@ D-005: knows domain_id strings and session states, not floors or sprites.
 
 from typing import Optional
 
+from bridge.config import BridgeConfig, default_config
+from bridge.observability import BridgeRecorder, RequestContext
 from bridge.domain_session import DomainSession, SessionState
 from bridge.protocol import (
     BridgeRequest,
@@ -18,7 +20,15 @@ from bridge.protocol import (
 
 
 class DomainManager:
-    def __init__(self, base_path=None):
+    def __init__(
+        self,
+        base_path=None,
+        *,
+        config: BridgeConfig | None = None,
+        recorder: BridgeRecorder | None = None,
+    ):
+        self._config = config if config is not None else default_config()
+        self._recorder = recorder
         self._sessions: dict[str, DomainSession] = {}
         self._base_path = base_path
 
@@ -31,12 +41,23 @@ class DomainManager:
                     session.state.value,
                     session.buffer.count_since(-1),
                 )
-        session = DomainSession(domain_id, base_path=self._base_path)
+        session = DomainSession(
+            domain_id,
+            base_path=self._base_path,
+            config=self._config,
+            recorder=self._recorder,
+        )
         self._sessions[domain_id] = session
         await session.activate()
         return make_domain_state(domain_id, session.state.value, 0)
 
-    async def handle_domain_query(self, request: BridgeRequest, on_output=None):
+    async def handle_domain_query(
+        self,
+        request: BridgeRequest,
+        on_output=None,
+        *,
+        context: RequestContext | None = None,
+    ):
         session = self._sessions.get(request.domain_id)
         if not session or session.state not in (
             SessionState.ACTIVE,
@@ -53,6 +74,7 @@ class DomainManager:
             request.task,
             request.request_id,
             on_output=on_output,
+            context=context,
         )
         return None
 

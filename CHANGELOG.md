@@ -11,11 +11,67 @@ section at release time. PR references in parentheses.
 **Two version axes, deliberately separate.** This file and the tags track the
 **application**: the 3D era was `0.0.x`, and the 2.5D line is `0.1.y`. The
 `doc_set_version:` in every governed document's frontmatter is the **document
-set's** number and is unrelated — it reached `0.2.14` on its own axis. Prose that
+set's** number and is unrelated — it reached `0.2.15` on its own axis. Prose that
 cites `v0.2.7` or `v0.2.8` as software releases is conflating the two; those were
 spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
+
+### Added — M10 settings and bounded local recording
+
+- Both bridge engines now use validated startup configuration from built-ins,
+  JSON and `PLAZA_` overrides. Added unique run manifests, per-agent JSONL
+  transcripts and correlated standard diagnostics with encoded-byte bounds,
+  rotation, age/quota pruning and an exclusive Linux writer lock.
+- Recording failures suspend archives while chat continues; later writes retry
+  and report recovery. Transcript capture can be disabled independently of
+  events and live context. Credentials are redacted; bodies stay in transcripts.
+- Added offline loopback integration coverage for independent connections/agents,
+  unchanged replies/history, disk truncation, rotation/pruning, lock contention,
+  ENOSPC/EACCES recovery and disabled transcripts. Documented settings, Linux
+  support, conservative orphan-manifest recovery and separate Godot native logs.
+  Archives do not provide durable application state or SDK restart recovery.
+
+### Added — model slots and future advisor resolution
+
+- Added owner-requested `OPUS_MODEL=claude-opus-5-5`,
+  `FABLE_MODEL=claude-fable-5-1`, and `ADVISOR_MODEL=FABLE_MODEL` defaults
+  (2026-10-18); the provider IDs were verified in the API model catalog.
+  All four model tiers support explicit configuration. Future advisor
+  resolution requires a strictly higher capability tier and a distinct
+  provider ID. Conversation/domain defaults remain Haiku/Sonnet; this adds
+  no advisory execution or automatic routing.
+
+### Changed — user-confirmed bridge model defaults
+
+- On 2026-10-18, the owner confirmed the official provider IDs
+  `claude-haiku-5-5` and `claude-sonnet-5-5`. Updated the central built-in
+  and committed JSON defaults, configuration tests, and active M10 design
+  references under the existing D-035 policy. Both runtime engines now consume
+  the central snapshot.
+
+### Changed — ratify bridge execution scope and M10 policies
+
+- Recorded the owner's written-design/plan approval and execution-scope ruling
+  (2026-10-18). Preserved the original `D-006` as `SUPERSEDED`; `D-033` scopes
+  synchronous calls with timeout to NPC conversations, and `D-034` separately
+  authorizes asynchronous domains with buffered results and existing caps.
+  Conflict §4.13 is resolved in the register; issue #341's update remains separate.
+- Ratified centralized non-secret settings (`D-035`) and bounded local JSONL
+  archives/diagnostics (`D-036`) at the platform tier. Promoted the bridge-first
+  design to ACTIVE with intended enforcement. That approval completed M9;
+  the M10 implementation and deterministic acceptance are recorded above.
+  M11 runtime acceptance remains outstanding. Preserved M5/M6 deferral and
+  prototype history. Document set 0.2.15 is separate from application releases.
+
+### Added — M10 implementation handoff for review
+
+- Added a task-by-task plan for central bridge configuration, bounded run/agent
+  archives, diagnostic events and runtime integration. The handoff separates
+  spec-driven acceptance from subagent-driven execution. The owner approved the
+  plan and its policies on 2026-10-18; runtime implementation began at that
+  handoff stage. M11 UI work was reserved for its own plan. That planning-only
+  entry introduced no runtime behavior changes.
 
 ### Changed — incremental independent Claude review with scoped fixes
 
@@ -30,8 +86,8 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ### Added — bridge-first platform design for review
 
-- Added a governed DRAFT specification and proposed M9–M15 roadmap that distinguish
-  the working Godot/NPC prototype from the platform goal. Near-term scope includes
+- Initially added a governed DRAFT specification and proposed M9–M15 roadmap
+  distinguishing the working Godot/NPC prototype from the platform goal. Near-term scope includes
   centralized settings, bounded run/agent transcripts and debug events, and NPC
   chat resizing, keyboard controls, scrollback and late-response handling. Local
   durable state, worktree isolation and authenticated hosted operation remain
@@ -39,7 +95,8 @@ spec-set versions, and no application release existed before `v0.1.22`.
   behavior from those plans; this change implements no runtime features.
 - Recorded the existing `D-006` synchronous-bridge/asynchronous-domain mismatch in
   the open-conflict register, linked to issue #341, without amending the locked
-  decision or changing runtime behavior.
+  decision or changing runtime behavior at that stage. The owner's later ruling
+  and superseding scoped decisions are recorded in the ratification entry above.
 
 ### Changed — the merge guard checks review threads itself (`PLZG-278`)
 

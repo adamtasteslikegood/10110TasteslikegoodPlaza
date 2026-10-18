@@ -4,7 +4,7 @@ title: Decision Register — every locked decision, with a citable id
 tier: 0
 authority: constitution
 status: ACTIVE
-doc_set_version: 0.2.14
+doc_set_version: 0.2.15
 last_updated: 2026-10
 owner: adamtasteslikegood
 derives_from: [META-SPEC]
@@ -48,7 +48,7 @@ sensible it reads — it is `PROPOSED` until ratified at the right tier.
 |---|---|---|---|---|
 | `D-001` | Rendering | 2.5D top-down (Godot 2D), Pokémon / Stardew Valley register | The UI *organisation* is the value, not fidelity. Removes the art, navmesh, and physics bottlenecks in one move. | `LOCKED` |
 | `D-004` | 3D first-person world | Deferred to v2.0–3.0 | Scope discipline — the "10x check". Not cancelled; not pulled forward. | `DEFERRED` |
-| `D-006` | Bridge execution model | Synchronous, with timeout protection | True streaming is too brittle for a prototype bridge. Simplicity now; streaming deferred. | `LOCKED` |
+| `D-006` | Bridge execution model | Synchronous, with timeout protection | True streaming is too brittle for a prototype bridge. Simplicity now; streaming deferred. | `SUPERSEDED` |
 | `D-007` | Streaming feel | Typewriter effect over the full JSON response, **rendered entirely in the frontend** | Batch output feels dead; the typewriter buys the feel without the fragility. Being a frontend-only concern is what keeps `D-005` intact. | `LOCKED` |
 | `D-011` | Agent sprite | One generic sprite, tinted per department colour | Eliminates the art bottleneck immediately. Unique sprites for all 133 roles deferred. | `LOCKED` |
 | `D-012` | Dialogue portrait | One generic silhouette | Same reasoning as `D-011`. | `LOCKED` |
@@ -56,6 +56,11 @@ sensible it reads — it is `PROPOSED` until ratified at the right tier.
 | `D-014` | Bridge formality | Conceptual boundary in prose; no versioned API contract until after M8 | Freezing a contract pre-M8 ossifies decisions before anything has been learned about what the messages need to carry. **Reversal threshold:** a multi-frontend need arriving before v2.0 — a web demo for fundraising, say — promotes the message shape to a versioned contract. Nothing else does. Ratified in v0.2.6. | `LOCKED` |
 | `D-020` | Layer 2 naming | "The current frontend, which happens to be 2.5D Godot" — not "the Godot engine" | `D-005` and the swap test are only meaningful if the frontend is structurally a slot. Naming Layer 2 after one implementation makes the rule read as aspiration. Carries the frontend-swap matrix. Ratified in v0.2.6. | `LOCKED` |
 | `D-025` | GDScript file layout | Scene scripts live beside their `.tscn` under `scenes/`; the three autoloads stay in `autoload/` | `CLAUDE.md` originally put GDScript in `scripts/`, written before that directory filled with the Python tooling CI invokes by path (`validate_specs.py`, `generate_agents_json.py`). Mixing two languages and two runtimes there hides which files CI depends on. Script-beside-scene is also ordinary Godot practice. Recorded rather than silently applied because it contradicts a written layout, and an undocumented deviation is what a later agent "corrects" back. Registered in v0.2.8. | `LOCKED` |
+| `D-033` | NPC conversation execution | Synchronous, with timeout protection; complete responses | Owner ruling 2026-10-18 supersedes `D-006` by making its intended NPC-only scope explicit (doc set 0.2.15, conflict §4.13). True streaming remains deferred; asynchronous buffered domains are separately authorized by `D-034`. | `LOCKED` |
+
+`D-006` is retained above as the original broad wording. Owner approval on
+2026-10-18 superseded it with scoped NPC decision `D-033` and separate platform
+domain decision `D-034`; runtime semantics are unchanged.
 
 ## Architecture and platform
 
@@ -76,6 +81,9 @@ sensible it reads — it is `PROPOSED` until ratified at the right tier.
 | `D-030` | PR review round bounds | **Minimum 2 rounds of reading and replying to bot/human review comments before merge. Maximum 3 rounds before deciding: merge, close, revert to draft and elevate to owner.** Security findings, branch-protection failures and ticket-linked blockers are exempt from the max — they run until resolved or elevated. | One round of reading missed a fixable finding that the owner then had to redirect on (PLZG-199: symlink-follow in `/tmp` cache rebutted instead of fixed, because the code is bridge-bound and bots re-flag it every push). The min prevents premature merge; the max prevents infinite review loops on cosmetic or contested findings. The escalation path — close PR or revert to draft — keeps the owner's queue clean. **Superseded by `D-031` in v0.2.14 (`PLZG-274`): a round count measured neither whether findings were answered nor whether the change was ready.** | `PLATFORM-DECISIONS` | `SUPERSEDED` |
 | `D-031` | PR merge criterion and who merges | **The agent working a PR into `dev` merges it once required checks are green, the head commit's reviews have landed and been re-read, and every review thread is resolved — each as fixed, rebutted on verified technical grounds, or deliberately not fixed now with a reason and a `PLZG` ticket for anything owed. Review rounds are not counted.** Security findings, a failing required check and the ticket's own acceptance cannot be deferred. Scope and product calls and unsettled disagreements stay the owner's. `dev` → `main` releases are outside this decision: the instruction did not address them. | Owner instruction 2026-10-09 (`PLZG-274`). Sprint 6 had the loop open PRs and never merge, so finished work queued on one person, and `D-030`'s minimum held small changes open for a pass nobody had anything to say in. Resolution is the thing `D-030` was reaching for: every finding answered properly. The deferral clause is not an exit from review — it covers findings beside the PR's purpose, never ones about whether the change is correct. Supersedes `D-030`. | `PLATFORM-DECISIONS` | `LOCKED` |
 | `D-032` | Board follows the work | **The agent moves Jira when the event happens: starts the sprint when its first task starts, ticket to `In Progress` when work starts, ticket to `Done` on merge with verify evidence, closes the sprint when every ticket is `Done` and the close gate exits 0.** Sprint start and close are pre-authorised — an escalate-destructive-actions rule does not catch them. | Owner instruction 2026-10-09 (`PLZG-274`). Sprint `120` stayed `future` for all of Sprint 6's work because starting it was the owner's step, then was started and closed in the same minute, so its sprint report shows no flow. Timestamps set late record when someone remembered. A charter may add per-sprint policy under `D-028` but does not hand these transitions back to the owner without a stated reason. | `PLATFORM-DECISIONS` | `LOCKED` |
+| `D-034` | Domain execution model | Asynchronous execution with buffered results and existing turn/budget caps; distinct from synchronous NPC conversations (`D-033`) | Owner ruling 2026-10-18 records the intended engine distinction and resolves conflict §4.13. No streaming or restart recovery is implied. | `PLATFORM-DECISIONS` | `LOCKED` |
+| `D-035` | Central non-secret bridge settings | Startup-only built-ins → committed/default or explicitly selected JSON → documented `PLAZA_<KEY>` environment overrides; exact version-1 defaults and validation in `PLATFORM-DECISIONS` `D-035` and `BRIDGE-PLATFORM-DESIGN` §5 | Owner-approved M10 design, 2026-10-18. Both engines share explicit model/tier settings; credentials remain in existing environment bindings. Ratification authorizes implementation, not a claim that M10 is shipped. | `PLATFORM-DECISIONS` | `LOCKED` |
+| `D-036` | Bounded local archives and diagnostics | Append-only JSONL transcripts, standard logging/events, atomic run manifests, exclusive OS-backed writer lock, byte/age quotas, safe pruning and visible recording suspension; exact contract in `PLATFORM-DECISIONS` `D-036` and `BRIDGE-PLATFORM-DESIGN` §§4/6 | Owner-approved M10 design, 2026-10-18. Inspection archives remain separate from live context and future authoritative state; no restoration or durability guarantee is invented. | `PLATFORM-DECISIONS` | `LOCKED` |
 
 > **`D-024`'s command counts are disputed.** "19 of the 24 … covering 26 of the 132"
 > has not been reproduced and `AGENT-DIRECTORY` states different numbers — open
@@ -140,4 +148,4 @@ point of the tier ladder.
    `SUPERSEDED` — do not delete it — and bump `doc_set_version` across the set.
 4. Add the `D-nnn` to the origin document's `decides:` frontmatter list.
 
-*Doc set version: 0.2.14 · Last updated: October 2026*
+*Doc set version: 0.2.15 · Last updated: October 2026*

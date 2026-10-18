@@ -21,7 +21,7 @@ For design-and-reference docs (the *what* and *why*) see [`../docs/`](../docs/RE
 |---|---|
 | [`meta/`](meta/README.md) | **Start here.** The layer above the specs: which document wins, who may decide what, every locked decision, and the CI gate that enforces it. |
 | [`aligned-spec-v0.2.5.md`](aligned-spec-v0.2.5.md) | Research input, `status: SUPERSEDED`. Its normative content was promoted into [`meta/`](meta/README.md); its §01.3 scene spine was a reconstruction that contradicts the real storyboard. Retained for findings, the Document A bridge architecture, the Document B taxonomy, and rationale worth citing. |
-| [`roadmap.md`](roadmap.md) | Work plan. Preserves the **M1 → M4 → M8** prototype proof and sequences proposed bridge-first **M9–M15** work. M5/M6 remain deferred frontend milestones; the new written design awaits review. |
+| [`roadmap.md`](roadmap.md) | Work plan. Preserves the **M1 → M4 → M8** prototype proof and sequences approved bridge-first **M9–M15** work. M9 is complete; M10 is implemented and tested; M11–M15 remain planned. M5/M6 remain deferred frontend milestones. |
 | [`task-tracker.md`](task-tracker.md) | `HISTORICAL` — reference checklist from early planning. Progress state lives in `CLAUDE.md` and git history. |
 | [`evidence/`](evidence/) | Machine-read evidence a sprint gate checks against the live board or tree — not governed documents and not narrative. `sprint-5-triage.json` is the Sprint 5 T2 record: the pre-triage baseline and one reviewed row per ticket, read by `scripts/sprint_5_gate.py t2`. `sprint-6-live-transcript.json` is Sprint 6's Gate B record, rewritten by every run of `scripts/sprint_6_live.py` that gets as far as asking the clients — a run that exits 2 (no credential, no dependencies, port in use, bridge not started, no Godot) leaves the previous file in place: the nonce, both clients' two turns, and every try. Its `owner_read` flag is the owner's to set. |
 | [`branching-strategy.md`](branching-strategy.md) | Branch protection rules, required status checks, CODEOWNERS gating. Intended policy — some referenced workflows don't exist yet. See [`../CONTRIBUTING.md`](../CONTRIBUTING.md) for the everyday flow. |
@@ -38,7 +38,7 @@ The next priorities are platform documentation, local observability and usable
 NPC conversations, followed by domain execution and durable workspace state.
 See the [roadmap](roadmap.md) and the written
 [bridge-first design](../docs/superpowers/specs/2026-10-18-bridge-first-platform-design.md)
-for proposed milestones and their current review status.
+for approved milestones and their implementation status.
 
 ## Before you add or edit anything here
 

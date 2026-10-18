@@ -1,6 +1,6 @@
 {
   "$comment": "The index of the 10110 TastesLike Plaza doc set. This file answers 'which document wins' in machine-readable form. Governed by specs/meta/META-SPEC.md; enforced by scripts/validate_specs.py. Every markdown file under docs/, specs/, Docs/, and the root README.md must appear in exactly one of `documents` or `exempt`.",
-  "doc_set_version": "0.2.14",
+  "doc_set_version": "0.2.15",
   "documents": [
     {
       "doc_id": "META-SPEC",
@@ -57,7 +57,7 @@
       "tier": 2,
       "authority": "implementation",
       "status": "ACTIVE",
-      "note": "Promoted /plan-ceo-review output, 2026-04-27. Authoritative for HOW to build. The 2.5D pivot lives here."
+      "note": "Promoted /plan-ceo-review output, 2026-04-27. Authoritative for HOW to build. The 2.5D pivot lives here. Doc set 0.2.15 records scoped NPC execution D-033, superseding the preserved historical D-006."
     },
     {
       "doc_id": "PLATFORM-DECISIONS",
@@ -65,7 +65,7 @@
       "tier": 2,
       "authority": "implementation",
       "status": "ACTIVE",
-      "note": "Authoritative for platform and repository decisions that outlive the current frontend: engine, bridge transport, agent data layer, licence, submodule and merge policy, and since v0.2.14 who merges a PR and who moves the board (D-031, D-032; D-030 superseded). Created in v0.2.7 to give the eight decisions PROJECT-OVERVIEW was wrongly named as originating an entitled home (issue #11, conflict 4.8)."
+      "note": "Authoritative for platform and repository decisions that outlive the current frontend: engine, bridge transport, agent data layer, licence, submodule and merge policy, and since v0.2.14 who merges a PR and who moves the board (D-031, D-032; D-030 superseded). Created in v0.2.7 to give the eight decisions PROJECT-OVERVIEW was wrongly named as originating an entitled home (issue #11, conflict 4.8). Doc set 0.2.15 ratifies asynchronous buffered domain execution, centralized non-secret configuration and bounded local JSONL archives/diagnostics (D-034–D-036), owner-approved 2026-10-18."
     },
     {
       "doc_id": "PROJECT-OVERVIEW",
@@ -96,8 +96,8 @@
       "path": "docs/superpowers/specs/2026-10-18-bridge-first-platform-design.md",
       "tier": 2,
       "authority": "implementation",
-      "status": "DRAFT",
-      "note": "Written bridge-first design for owner review after conversational direction approval. Specifies M9 documentation alignment, M10 central configuration and bounded local observability, M11 NPC history/resizing/keyboard controls, and later M12–M15 domain execution, durable workspace state, worktrees and authenticated hosting. Does not supersede locked decisions or claim runtime implementation."
+      "status": "ACTIVE",
+      "note": "Owner-approved written bridge-first design (2026-10-18). M9 documentation alignment complete; M10 central configuration and bounded local observability implemented and tested; M11 NPC history/resizing/keyboard controls planned. Later M12–M15 require detailed designs. Execution scope and M10 policies are ratified in PLATFORM-DECISIONS (D-034–D-036); enforcement remains intended for later UI/history and durable-state functionality. M10 archives do not establish durable application state or SDK restart recovery."
     },
     {
       "doc_id": "ROADMAP",
@@ -105,7 +105,7 @@
       "tier": 3,
       "authority": "derived",
       "status": "ACTIVE",
-      "note": "Preserves M1–M8 prototype milestones and proof; sequences proposed M9–M15 bridge-first platform work from the DRAFT BRIDGE-PLATFORM-DESIGN. M5/M6 remain deferred frontend milestones."
+      "note": "Preserves M1–M8 prototype milestones and proof; sequences approved M9–M15 bridge-first platform work from ACTIVE BRIDGE-PLATFORM-DESIGN. M9 complete, M10 implemented and tested, M11–M15 planned; M5/M6 remain deferred frontend milestones."
     },
     {
       "doc_id": "TASK-TRACKER",
@@ -200,6 +200,10 @@
     {
       "path": "docs/superpowers/plans/2026-08-12-bridge-domain-architecture.md",
       "reason": "Superpowers-generated implementation plan. Execution artifact, not a governed spec."
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-18-m10-config-observability.md",
+      "reason": "Owner-approved M10 implementation handoff derived from the ACTIVE bridge-first design and ratified PLATFORM-DECISIONS D-035/D-036. Execution artifact, not a new source of product authority; M10 is implemented and tested."
     },
     {
       "path": "docs/superpowers/specs/2026-08-12-bridge-domain-architecture-design.md",

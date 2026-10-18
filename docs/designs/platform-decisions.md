@@ -4,12 +4,12 @@ title: Platform Decisions — engine, transport, data layer, licence, repo polic
 tier: 2
 authority: implementation
 status: ACTIVE
-doc_set_version: 0.2.14
+doc_set_version: 0.2.15
 last_updated: 2026-10
 owner: adamtasteslikegood
 derives_from: [META-SPEC]
 supersedes: []
-decides: [D-003, D-005, D-015, D-016, D-018, D-021, D-022, D-023, D-024, D-029, D-030, D-031, D-032]
+decides: [D-003, D-005, D-015, D-016, D-018, D-021, D-022, D-023, D-024, D-029, D-030, D-031, D-032, D-034, D-035, D-036]
 enforcement: asserted
 gates: [Validate Specs:live]
 weakest_claim: Nine of these were already made, already evidenced,
@@ -17,7 +17,7 @@ weakest_claim: Nine of these were already made, already evidenced,
 
 # Platform Decisions
 
-> **One line:** the thirteen project-level decisions (twelve in force, `D-030`
+> **One line:** the sixteen project-level decisions (fifteen in force, `D-030`
 > superseded) that are neither concept nor
 > prototype design — engine, bridge boundary, transport, data layer, licence, and
 > repository policy — and the document entitled to originate them.
@@ -47,6 +47,9 @@ bridge agent store survives replacing the frontend), `D-030` from the `PLZG-199`
 review (a review-round bound has nothing to do with the frontend). `D-031` and
 `D-032` followed in v0.2.14 on the owner's instruction of 2026-10-09 (`PLZG-274`):
 `D-031` supersedes `D-030`, and `D-032` is new.
+`D-034`–`D-036` follow in doc set 0.2.15 on the owner's written-design/plan approval
+and execution-scope ruling of 2026-10-18. They authorize M10 policy implementation;
+they do not claim that the planned recorder or configuration layer has shipped.
 
 ## 1. Scope — what belongs in this document
 
@@ -100,8 +103,9 @@ possible at all.
 
 ### `D-015` — Bridge transport: Python WebSocket, `ws://localhost:8765`
 
-A local process, so the prototype needs no deployment story. Pairs with `D-006`
-(synchronous with timeout) in the promoted design. **This decision names a
+A local process, so the prototype needs no deployment story. Pairs with `D-033`
+(synchronous NPC conversations with timeout) in the promoted design. Domains
+execute asynchronously with buffered results under `D-034`. **This decision names a
 transport, not a UI** — `D-005` still holds, and a change here that leaks a
 rendering concept into the bridge fails the swap test regardless of what this
 document says.
@@ -287,6 +291,189 @@ transitions act on are defined in `DELIVERY-COORDINATES` (`D-026`), not here.
 
 Passes the §1 scope test: when the board moves has nothing to do with the frontend.
 
+### `D-034` — Domain execution is asynchronous with buffered results
+
+**Owner ruling, 2026-10-18:** NPC conversations are synchronous with timeout
+protection (`DESIGN-25D` `D-033`, superseding `D-006`); domains execute
+asynchronously, with buffered results and the existing turn/budget caps. Domain work can continue while focus
+is elsewhere. This records the intended distinction already represented by the
+backend; it does not add streaming, authenticated ownership, restart recovery or
+Godot domain controls. Those client controls and live proof remain M12 work.
+
+The ruling resolves the former unqualified synchronous-bridge mismatch in
+[`SPEC-DRIVERS-025` §4.13](../../specs/meta/spec-drivers-v0.2.5.md).
+The M10 defaults in `D-035` retain 20 domain turns and a USD 1.0 budget.
+
+### `D-035` — Centralized non-secret bridge configuration (M10)
+
+**Approved policy, not a runtime completion claim.** Ratified from the
+owner-approved `BRIDGE-PLATFORM-DESIGN` §5 on 2026-10-18.
+
+Use a committed, non-secret `bridge/config.json` containing defaults. Built-in
+defaults are the fallback; the default JSON file, or the file selected by
+`BRIDGE_CONFIG_PATH`, overlays them; documented `PLAZA_<KEY>` environment overrides
+win last. An explicitly selected missing/unreadable file, invalid JSON, unknown
+key, unsupported version, wrong type or invalid bound fails startup with a useful
+setting-specific error. Resolve relative LOG_DIR paths against the selected
+configuration file's directory. Read settings once at startup; restart to reload.
+
+The following is the approved complete initial settings set for implementation:
+
+```json
+{
+  "CONFIG_VERSION": 1,
+  "HAIKU_MODEL": "claude-haiku-5-5",
+  "SONNET_MODEL": "claude-sonnet-5-5",
+  "OPUS_MODEL": "claude-opus-5-5",
+  "FABLE_MODEL": "claude-fable-5-1",
+  "ADVISOR_MODEL": "FABLE_MODEL",
+  "CONVERSATION_TIER": "haiku",
+  "DOMAIN_TIER": "sonnet",
+  "CONVERSATION_TIMEOUT_SECONDS": 60,
+  "CONVERSATION_MAX_OUTPUT_TOKENS": 4096,
+  "CONTEXT_MAX_MESSAGES": 40,
+  "DOMAIN_MAX_TURNS": 20,
+  "DOMAIN_MAX_BUDGET_USD": 1.0,
+  "TRANSCRIPTS_ENABLED": true,
+  "LOG_DIR": "../.local/bridge-logs",
+  "LOG_LEVEL": "INFO",
+  "TRANSCRIPT_MAX_RECORD_BYTES": 262144,
+  "TRANSCRIPT_MAX_FILE_BYTES": 5242880,
+  "LOG_MAX_TOTAL_BYTES": 104857600,
+  "LOG_MAX_AGE_DAYS": 14
+}
+```
+
+**Model default replacement, 2026-10-18:** the owner confirmed the official
+provider IDs `claude-haiku-5-5` and `claude-sonnet-5-5` and requested both
+committed JSON and built-in defaults use them. This replaces the earlier
+`claude-haiku-4-5` / `claude-sonnet-4-6` assignments within the existing
+configuration schema and policy.
+
+**Additional model slots, 2026-10-18:** the owner requested `OPUS_MODEL`,
+`FABLE_MODEL`, and the symbolic `ADVISOR_MODEL` reference shown above. The
+four explicit provider IDs were confirmed available by read-only API model
+catalog retrieval, alongside the owner's provider-document confirmation of
+the Haiku/Sonnet replacements. Conversation and domain defaults remain
+`haiku` and `sonnet`; all four tiers may be selected explicitly.
+
+`ADVISOR_MODEL` accepts only `HAIKU_MODEL`, `SONNET_MODEL`, `OPUS_MODEL`, or
+`FABLE_MODEL`, never a provider ID, self reference, or arbitrary key.
+`BridgeConfig.advisor_for(caller_tier)` resolves this reference for future
+callers only when its tier is strictly higher in the capability order
+`haiku < sonnet < opus < fable` and its resolved provider ID differs from
+the caller's. Numeric model versions do not determine this ordering. Fable
+has no higher advisor here. These relationship checks occur on resolution;
+a Fable engine configuration remains valid when no advisor is requested.
+This amendment adds configuration/resolution only, with no advisory calls,
+automatic promotion, fallback, provider framework, or routing-default change.
+
+Model assignments use explicit provider IDs. These values are current defaults,
+not a claim about the latest available release; confirm any replacement ID with
+the provider before changing it. Both engines resolve their selected tier through
+the same config. Agent Markdown `model:` frontmatter remains prompt data and does
+not silently override execution settings. Per-agent model overrides can be added
+in a later schema if a concrete workflow needs them.
+
+Validate positive numeric limits, finite budgets/timeouts, boolean transcript
+enablement, INFO/DEBUG/WARNING/ERROR log levels, and the supported haiku/sonnet/opus/fable
+tiers. CONTEXT_MAX_MESSAGES is an even integer of at least 2 to preserve complete
+exchanges; it is independent of transcript retention. Require
+4096 ≤ record bytes ≤ file bytes ≤ total bytes. Age is a positive integer in days.
+Do not accept credentials in this config or write them into the effective-settings
+manifest; continue using existing environment credential bindings. No guessed
+model IDs, automatic upgrades, or model fallback after an API error.
+
+### `D-036` — Bounded local JSONL archives and diagnostics (M10)
+
+**Approved policy, not a runtime completion claim.** Ratified from the
+owner-approved `BRIDGE-PLATFORM-DESIGN` §§4/6 on 2026-10-18.
+Keep model context, client display history, recorded transcripts, diagnostic events
+and SDK execution sessions distinct. Changing transcript retention must not trim
+live prompt context, reset a conversation, or delete authoritative workspace state.
+Use append-only JSONL for transcripts and Python standard logging for diagnostics.
+JSONL provides an inspection archive, not automatic conversation restoration or a
+second authoritative history. M10 local project labels provide no authentication
+or multi-user isolation. Durable application state remains separate M13 work.
+
+Each bridge process start creates a unique UTC timestamp plus random run ID:
+
+```text
+LOG_DIR/
+  runs/
+    <timestamp>-<run_id>/
+      manifest.json
+      events-0001.jsonl
+      agents/
+        systems-architect/
+          transcript-0001.jsonl
+```
+
+Acquire an exclusive OS-backed writer lock for LOG_DIR before creating a run,
+and hold it for the recorder's lifetime. A second process using the same root
+must suspend disk recording with a visible diagnostic; it may continue serving
+conversations. Separate LOG_DIR values allow independent recorders. Release the
+lock on process exit, including abnormal exit. Do not replace this with a stale
+PID file that cannot establish whether a writer is alive. Keep generated logs
+ignored by Git and leave pre-existing user files untouched.
+
+The manifest contains schema version, run ID, start/end timestamps, local project
+label, non-secret effective settings and lifecycle status. Write it atomically.
+A crash may leave status open; do not misreport that as a clean shutdown. Recording
+for a new process always gets a new run directory, even after a crash.
+
+Transcript records contain schema version, sequence number, UTC timestamp,
+run/connection/request/agent IDs, engine, model, message role and content, and
+outcome. Add domain, output and provider-session IDs only when actually available.
+Record user input, successful replies and failures as distinguishable records.
+Never invent a provider session ID for a Messages API conversation. Serialize
+appends, flush each completed record and preserve per-conversation order. A reader
+must tolerate an incomplete final line after a crash without treating it as a
+complete message; malformed earlier lines produce a diagnostic rather than silent
+rewriting. Validate agent IDs before using them as directory names.
+
+Debug events record bridge start/stop, connect/disconnect, request received,
+engine routing, completion/failure, duration and applicable domain transitions.
+Use request IDs to correlate events with transcripts. Message bodies belong in
+transcripts, not duplicated DEBUG entries; do not log auth headers or credentials.
+Python standard logging supplies levels and stderr output. A small JSONL formatter
+and bounded writer are enough; do not build a new logging framework.
+
+Rotate transcript and event segments before their configured file bound is
+exceeded. Count actual encoded bytes, including JSON framing and newlines. A
+record larger than its bound is shortened at a valid text boundary with an
+explicit truncation marker and original byte count; never truncate the live model
+response merely to fit its disk copy. Event segments use the same record/file
+bounds. The total quota covers bridge-owned manifests, events and transcripts.
+
+Prune by age and then, if necessary, oldest-first until the total quota admits the
+next write. Run pruning at startup and segment rotation. Under the exclusive
+writer lock, quota admission, pruning and writing form one serialized operation
+for every append and manifest creation/replacement, accounting for temporary
+files used in atomic replacement. Delete only recognized, owned, closed files under LOG_DIR, never
+follow symlinks, and never touch SDK storage, worktrees, user-selected files or
+future authoritative state. Remove empty managed run folders afterward. Closed
+segments from the current run may be pruned; open writable files are protected.
+At rotation, seal the old segment before pruning so a long-lived run cannot grow
+without bound. The exclusive writer lock prevents overlapping recorders from
+admitting the same space or pruning each other's live files.
+
+If protected files consume the quota or storage is unavailable, suspend disk
+recording and emit a visible stderr diagnostic; conversation execution may
+continue. Do not exceed the quota or silently claim a transcript was captured.
+Resume recording after a later space check succeeds. Test disk-full, read-only
+directory, malformed-record and competing-writer cases with local fixtures.
+
+Godot native output already supports `--log-file <path>` and `--verbose`. A launcher
+may configure those separately; this design adds no Godot-specific fields or
+rendering awareness to the bridge. Native engine logs remain separately managed
+by engine settings and are outside the bridge recorder's quota. The shared
+GameEvents signal bus is a client event source, not an existing event archive.
+
+All three decisions pass the §1 scope test: replacing the frontend leaves domain
+execution, settings and recording policy intact. `D-005` continues to require zero
+bridge awareness of rendering concepts.
+
 ## 4. Adding a decision here
 
 Same procedure as any entitled document —
@@ -298,4 +485,4 @@ not here. Add the `D-nnn` to this file's `decides:` list and to
 `scripts/validate_specs.py` fails the build if the two disagree, and now also fails
 if a document declares `decides:` without an authority licensed to originate.
 
-*Doc set version: 0.2.14 · Last updated: October 2026*
+*Doc set version: 0.2.15 · Last updated: October 2026*
