@@ -421,3 +421,71 @@ def test_real_unavailable_writer_recovers_after_competitor_closes(tmp_path, caps
     assert "recovered" in capsys.readouterr().err
     recorder.close()
     assert len(records(cfg)) == 2
+
+
+def test_agent_path_redaction_is_stable_distinct_and_preserves_capture(
+    tmp_path, capsys
+):
+    cfg = config(
+        tmp_path,
+        transcript_max_record_bytes=4096,
+        transcript_max_file_bytes=8192,
+        log_max_total_bytes=32768,
+    )
+    secrets = ("fake-secret-one", "fake-secret-two")
+    agents = (secrets[0], secrets[1], f"prefix-{secrets[0]}-suffix", "ordinary-agent")
+    contexts = [
+        context(agent_id=agent, request_id=f"req-{index}")
+        for index, agent in enumerate(agents)
+    ]
+    recorder = BridgeRecorder(cfg, "plaza", redactions=secrets)
+    body = "large safe reply " * 1000
+    for ctx in contexts:
+        assert recorder.message(ctx, "user", "question", "input")
+        assert recorder.event("request_completed", ctx, outcome="success")
+        assert recorder.message(ctx, "assistant", body, "success")
+    recorder.close()
+
+    paths = list(cfg.log_dir.rglob("*"))
+    assert all(
+        secret not in str(path.relative_to(cfg.log_dir))
+        for path in paths
+        for secret in secrets
+    )
+    assert all(
+        secret.encode() not in path.read_bytes()
+        for path in paths
+        if path.is_file()
+        for secret in secrets
+    )
+    stderr = capsys.readouterr().err
+    assert all(secret not in stderr for secret in secrets)
+    assert [ctx.agent_id for ctx in contexts] == list(agents)
+    assert body == "large safe reply " * 1000
+
+    folders = {}
+    for path in cfg.log_dir.rglob("transcript-*.jsonl"):
+        errors = []
+        rows = list(iter_jsonl(path, on_diagnostic=errors.append))
+        assert not errors
+        assert path.stat().st_size <= cfg.transcript_max_file_bytes
+        assert all(
+            len(line) <= cfg.transcript_max_record_bytes
+            for line in path.read_bytes().splitlines(keepends=True)
+        )
+        for row in rows:
+            folders.setdefault(row["request_id"], set()).add(path.parent.name)
+    assert set(folders) == {ctx.request_id for ctx in contexts}
+    assert all(len(names) == 1 for names in folders.values())
+    aliases = [next(iter(folders[ctx.request_id])) for ctx in contexts]
+    assert len(set(aliases)) == len(agents)
+    assert aliases[-1] == "ordinary-agent"
+    assert len(records(cfg, "transcript-*.jsonl")) == 8
+    assert (
+        sum(
+            path.stat().st_size
+            for path in paths
+            if path.is_file() and path.name != ".writer.lock"
+        )
+        <= cfg.log_max_total_bytes
+    )

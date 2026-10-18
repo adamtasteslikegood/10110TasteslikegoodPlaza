@@ -6,6 +6,7 @@ run identity, UTC timestamps, sequence numbers, bounds, and retries.
 """
 
 from dataclasses import dataclass, fields
+import hashlib
 import json
 import logging
 import math
@@ -105,6 +106,13 @@ class BridgeRecorder:
         for secret in self._redactions:
             value = value.replace(secret, "[REDACTED]")
         return value
+
+    def _agent_path_id(self, agent_id: str | None) -> str | None:
+        if agent_id is None or self._redact(agent_id) == agent_id:
+            return agent_id
+        # Redaction markers are not valid slugs; hashing the original identity
+        # preserves stable, distinct routing without exposing it in the path.
+        return "redacted-" + hashlib.sha256(agent_id.encode("utf-8")).hexdigest()
 
     def _record(
         self, context: RequestContext | None, **values: object
@@ -262,7 +270,9 @@ class BridgeRecorder:
                     output_id=output_id,
                     provider_session_id=provider_session_id,
                 )
-                return self._append("transcript", record, agent_id=context.agent_id)
+                return self._append(
+                    "transcript", record, agent_id=self._agent_path_id(context.agent_id)
+                )
             except Exception:
                 self._failed()
                 return False
