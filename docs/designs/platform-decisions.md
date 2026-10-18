@@ -322,8 +322,8 @@ The following is the approved complete initial settings set for implementation:
 ```json
 {
   "CONFIG_VERSION": 1,
-  "HAIKU_MODEL": "claude-haiku-4-5",
-  "SONNET_MODEL": "claude-sonnet-4-6",
+  "HAIKU_MODEL": "claude-haiku-5-5",
+  "SONNET_MODEL": "claude-sonnet-5-5",
   "CONVERSATION_TIER": "haiku",
   "DOMAIN_TIER": "sonnet",
   "CONVERSATION_TIMEOUT_SECONDS": 60,
@@ -340,6 +340,12 @@ The following is the approved complete initial settings set for implementation:
   "LOG_MAX_AGE_DAYS": 14
 }
 ```
+
+**Model default replacement, 2026-10-18:** the owner confirmed the official
+provider IDs `claude-haiku-5-5` and `claude-sonnet-5-5` and requested both
+committed JSON and built-in defaults use them. This replaces the earlier
+`claude-haiku-4-5` / `claude-sonnet-4-6` assignments within the existing
+configuration schema and policy.
 
 Model assignments use explicit provider IDs. These values are current defaults,
 not a claim about the latest available release; confirm any replacement ID with

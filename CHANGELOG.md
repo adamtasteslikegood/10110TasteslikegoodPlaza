@@ -17,6 +17,14 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
 
+### Changed — user-confirmed bridge model defaults
+
+- On 2026-10-18, the owner confirmed the official provider IDs
+  `claude-haiku-5-5` and `claude-sonnet-5-5`. Updated the central built-in
+  and committed JSON defaults, configuration tests, and active M10 design
+  references under the existing D-035 policy. Engine adoption remains part
+  of M10 runtime wiring.
+
 ### Changed — ratify bridge execution scope and M10 policies
 
 - Recorded the owner's written-design/plan approval and execution-scope ruling

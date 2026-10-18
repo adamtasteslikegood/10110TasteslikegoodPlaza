@@ -19,8 +19,8 @@ class ConfigError(ValueError):
 
 _DEFAULTS: dict[str, object] = {
     "CONFIG_VERSION": 1,
-    "HAIKU_MODEL": "claude-haiku-4-5",
-    "SONNET_MODEL": "claude-sonnet-4-6",
+    "HAIKU_MODEL": "claude-haiku-5-5",
+    "SONNET_MODEL": "claude-sonnet-5-5",
     "CONVERSATION_TIER": "haiku",
     "DOMAIN_TIER": "sonnet",
     "CONVERSATION_TIMEOUT_SECONDS": 60,

@@ -112,6 +112,10 @@ commit only intentional product changes. Run the whole-branch review after Task 
 
 ### Task 1: Load and validate immutable bridge settings
 
+**Model defaults updated, 2026-10-18:** the owner confirmed the official
+provider IDs `claude-haiku-5-5` and `claude-sonnet-5-5`; Task 1 defaults
+and assertions use these replacements under the existing D-035 policy.
+
 **Files:** Create the three Task 1 files above.
 
 **Interfaces:**
@@ -134,13 +138,13 @@ commit only intentional product changes. Run the whole-branch review after Task 
   numeric/boolean keys and raw strings for textual keys; reject unknown
   `PLAZA_` names and non-object/duplicate-key JSON. Test both accepted endpoints
   and rejected adjacent values for context/byte limits, and empty model/path values.
-  Pin the model defaults to `claude-haiku-4-5` and `claude-sonnet-4-6` and assert
+  Pin the model defaults to `claude-haiku-5-5` and `claude-sonnet-5-5` and assert
   `CONTEXT_MAX_MESSAGES == 40`, transcript toggle `true`, INFO level and all §5
   timeout/token/turn/budget/byte/age defaults. Credential keys must be rejected.
 
   ```python
-  assert default_config().haiku_model == "claude-haiku-4-5"
-  assert default_config().sonnet_model == "claude-sonnet-4-6"
+  assert default_config().haiku_model == "claude-haiku-5-5"
+  assert default_config().sonnet_model == "claude-sonnet-5-5"
   assert default_config().context_max_messages == 40
   assert config.log_dir == (selected_path.parent / "logs").resolve()
   with pytest.raises(ConfigError, match="CONTEXT_MAX_MESSAGES"):
