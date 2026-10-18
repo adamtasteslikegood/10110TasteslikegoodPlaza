@@ -2,6 +2,7 @@
 
 import dataclasses
 import json
+import math
 from pathlib import Path
 import subprocess
 import sys
@@ -212,7 +213,13 @@ def test_unknown_and_credential_keys_are_rejected(tmp_path, key):
     [True, False, 0, -1, None, "12", [], {}, float("nan"), float("inf"), -float("inf")],
 )
 def test_numeric_settings_reject_invalid_file_values(tmp_path, key, value):
-    with pytest.raises(ConfigError, match=key):
+    # NaN/Infinity are invalid JSON syntax, rejected before setting validation.
+    message = (
+        "config file must contain valid JSON"
+        if isinstance(value, float) and not math.isfinite(value)
+        else key
+    )
+    with pytest.raises(ConfigError, match=message):
         load_config(write_config(tmp_path, {key: value}), environ={})
 
 
@@ -364,3 +371,39 @@ import bridge.config
         [sys.executable, "-c", script], capture_output=True, text=True
     )
     assert result.returncode == 0, result.stderr
+
+
+@pytest.mark.parametrize("version", [2, True, 1.0, "1", None, [], {}])
+def test_environment_cannot_mask_unsupported_file_version(tmp_path, version):
+    selected = write_config(tmp_path, {"CONFIG_VERSION": version})
+    with pytest.raises(ConfigError, match="CONFIG_VERSION"):
+        load_config(selected, environ={"PLAZA_CONFIG_VERSION": "1"})
+
+
+@pytest.mark.parametrize("constant", ["NaN", "Infinity", "-Infinity"])
+def test_environment_cannot_mask_nonstandard_json_constants(tmp_path, constant):
+    selected = tmp_path / "config.json"
+    selected.write_text('{"DOMAIN_MAX_BUDGET_USD":' + constant + "}")
+    with pytest.raises(ConfigError, match="config"):
+        load_config(selected, environ={"PLAZA_DOMAIN_MAX_BUDGET_USD": "1"})
+
+
+def test_supported_file_version_preserves_environment_validation_and_precedence(
+    tmp_path,
+):
+    selected = write_config(tmp_path, {"CONFIG_VERSION": 1, "DOMAIN_MAX_TURNS": 7})
+    settings = load_config(
+        selected, environ={"PLAZA_CONFIG_VERSION": "1", "PLAZA_DOMAIN_MAX_TURNS": "9"}
+    )
+    assert settings.config_version == 1
+    assert settings.domain_max_turns == 9
+    with pytest.raises(ConfigError, match="CONFIG_VERSION"):
+        load_config(selected, environ={"PLAZA_CONFIG_VERSION": "2"})
+
+
+def test_ordinary_file_value_validation_follows_environment_overlay(tmp_path):
+    selected = write_config(tmp_path, {"DOMAIN_MAX_TURNS": 0})
+    assert (
+        load_config(selected, environ={"PLAZA_DOMAIN_MAX_TURNS": "9"}).domain_max_turns
+        == 9
+    )

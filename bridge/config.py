@@ -170,6 +170,12 @@ def _unique_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
     return result
 
 
+def _reject_json_constant(value: str) -> None:
+    raise ConfigError(
+        "config file must contain valid JSON: nonstandard numeric constant"
+    )
+
+
 def load_config(
     path: Path | None = None, *, environ: Mapping[str, str] | None = None
 ) -> BridgeConfig:
@@ -198,7 +204,11 @@ def load_config(
         raise ConfigError(f"config file cannot be read: {source_path}") from None
     else:
         try:
-            overlay = json.loads(document, object_pairs_hook=_unique_object)
+            overlay = json.loads(
+                document,
+                object_pairs_hook=_unique_object,
+                parse_constant=_reject_json_constant,
+            )
         except (json.JSONDecodeError, ValueError) as error:
             if isinstance(error, ConfigError):
                 raise
@@ -208,6 +218,10 @@ def load_config(
         for key in overlay:
             if key not in _DEFAULTS:
                 raise ConfigError(f"unknown config setting {key}")
+        if "CONFIG_VERSION" in overlay and (
+            type(overlay["CONFIG_VERSION"]) is not int or overlay["CONFIG_VERSION"] != 1
+        ):
+            raise ConfigError("CONFIG_VERSION must be the supported integer version 1")
         values.update(overlay)
     for name, raw in environment.items():
         if not name.startswith("PLAZA_"):
