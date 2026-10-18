@@ -44,6 +44,17 @@ _LIFECYCLE_TYPES = {
 }
 
 
+def _is_domain_request(data):
+    return data.get("type") in (
+        "domain_query",
+        "resume",
+        "activate_domain",
+        "background_domain",
+        "refocus_domain",
+        "deactivate_domain",
+    )
+
+
 async def _drain(task):
     """Join an owned task despite repeated cancellation of its owner."""
     while not task.done():
@@ -100,14 +111,7 @@ class BridgeServer:
             self._recorder.event(name, context, **metadata)
 
     def _context(self, data, connection_id):
-        domain = data.get("type") in (
-            "domain_query",
-            "resume",
-            "activate_domain",
-            "background_domain",
-            "refocus_domain",
-            "deactivate_domain",
-        )
+        domain = _is_domain_request(data)
         request_id = data.get("request_id")
         if not isinstance(request_id, str) or not request_id.strip():
             request_id = str(uuid.uuid4())
@@ -335,13 +339,16 @@ class BridgeServer:
             connection_id, str(uuid.uuid4()), None, "transport", None
         )
         self._event("connection_opened", context)
-        # Each connection processes one request at a time. Peer closure must
-        # interrupt an active request even while the receive loop is awaiting it.
+        # Each connection processes one request at a time. Only NPC work is
+        # cancelled on peer closure; domain dispatch retains its own lifetime.
         histories: dict[str, list] = {}
         active = None
+        peer_closed = False
 
         async def watch_closed():
+            nonlocal peer_closed
             await websocket.wait_closed()
+            peer_closed = True
             if active is not None:
                 active.cancel()
                 await _drain(active)
@@ -349,11 +356,25 @@ class BridgeServer:
         watcher = asyncio.create_task(watch_closed(), name="npc-peer-disconnect")
         try:
             async for raw in websocket:
-                active = asyncio.create_task(
-                    self.dispatch_raw(raw, histories, connection_id=connection_id)
-                )
-                responses = await asyncio.shield(active)
-                active = None
+                # Classify before yielding to the watcher. dispatch_raw remains
+                # responsible for JSON errors and request validation.
+                try:
+                    data = json.loads(raw)
+                except (json.JSONDecodeError, TypeError):
+                    data = None
+                if isinstance(data, dict) and _is_domain_request(data):
+                    responses = await self.dispatch_raw(
+                        raw, histories, connection_id=connection_id
+                    )
+                else:
+                    # A buffered frame can arrive after wait_closed completed.
+                    if peer_closed:
+                        break
+                    active = asyncio.create_task(
+                        self.dispatch_raw(raw, histories, connection_id=connection_id)
+                    )
+                    responses = await asyncio.shield(active)
+                    active = None
                 for resp in responses:
                     await websocket.send(json.dumps(resp))
         finally:

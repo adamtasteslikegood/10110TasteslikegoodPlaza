@@ -262,3 +262,100 @@ class TestConversationHistoryRouting:
         server = BridgeServer()
         resp = await server.dispatch_raw("[1, 2]")
         assert resp[0]["error_type"] == "invalid_request"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("shutdown", [False, True])
+async def test_domain_activation_survives_peer_close(
+    offline_clients, runtime_config, shutdown
+):
+    """A closed peer must not strand the real domain lifecycle in ACTIVATING."""
+    import websockets
+
+    entered, release, cancelled = asyncio.Event(), asyncio.Event(), asyncio.Event()
+    _, sdk, _ = offline_clients
+
+    async def connect():
+        entered.set()
+        try:
+            await release.wait()
+        except asyncio.CancelledError:
+            cancelled.set()
+            raise
+
+    sdk.connect.side_effect = connect
+    server = BridgeServer(config=runtime_config)
+    listener = await websockets.serve(server._handle_connection, "127.0.0.1", 0)
+    socket = await websockets.connect(
+        f"ws://127.0.0.1:{listener.sockets[0].getsockname()[1]}"
+    )
+    try:
+        await socket.send(
+            json.dumps({"type": "activate_domain", "domain_id": "engineering"})
+        )
+        await asyncio.wait_for(entered.wait(), 1)
+        assert server.domains.get_domain_state("engineering")["state"] == "activating"
+        if shutdown:
+            listener.close()
+        await socket.close()
+        listener.close()
+        # Closing a listener must still wait for the blocked activation. Give
+        # its real close watcher time to run before allowing connect to finish.
+        closed = asyncio.create_task(listener.wait_closed())
+        await asyncio.wait({closed}, timeout=0.1)
+        release.set()
+        await asyncio.wait_for(listener.wait_closed(), 1)
+        await closed
+        assert not cancelled.is_set()
+        assert server.domains.list_active_domains() == ["engineering"]
+        assert server.domains.get_domain_state("engineering")["state"] == "active"
+        await server._shutdown_domains()
+        assert server.domains.get_domain_state("engineering")["state"] == "deactivated"
+        assert server.domains.list_active_domains() == []
+        sdk.disconnect.assert_awaited_once()
+    finally:
+        release.set()
+        await socket.close()
+        listener.close()
+        await listener.wait_closed()
+        await server._shutdown_domains()
+        server.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "request_type", [None, "conversation", "unknown", "activate_domain"]
+)
+async def test_queued_request_after_peer_close_obeys_engine_lifetime(
+    mock_engines, request_type
+):
+    conv, domains = mock_engines
+    request = {"agent_id": "test", "task": "hi", "domain_id": "engineering"}
+    if request_type is not None:
+        request["type"] = request_type
+
+    class ClosedSocket:
+        def __aiter__(self):
+            return self._iterate()
+
+        async def _iterate(self):
+            # Closure can be observed before an already buffered frame is read.
+            await asyncio.sleep(0)
+            yield json.dumps(request)
+
+        async def wait_closed(self):
+            return
+
+        async def send(self, payload):
+            pass
+
+    server = BridgeServer()
+    try:
+        await server._handle_connection(ClosedSocket())
+    except asyncio.CancelledError:
+        pass
+    conv.handle_request.assert_not_awaited()
+    if request_type == "activate_domain":
+        domains.activate_domain.assert_awaited_once_with("engineering")
+    else:
+        domains.activate_domain.assert_not_awaited()
