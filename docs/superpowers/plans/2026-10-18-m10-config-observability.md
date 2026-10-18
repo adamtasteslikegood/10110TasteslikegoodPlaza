@@ -59,10 +59,15 @@ outstanding. Owner merge and no sprint changes remain the session constraints.
   fails. Unreadable files, malformed JSON, unknown keys, unsupported version and
   invalid values fail startup before clients connect or SDK clients are built.
 - Reject booleans as numeric limits, non-finite numbers and fractional integer
-  limits. Context is even and at least 2; tiers are `haiku`/`sonnet`; levels are
+  limits. Context is even and at least 2; tiers are `haiku`/`sonnet`/`opus`/`fable`; levels are
   INFO/DEBUG/WARNING/ERROR; age is a positive integer; enforce
   `4096 ≤ record bytes ≤ file bytes ≤ total bytes`. Model IDs are nonempty strings;
   use the approved IDs, with no automatic fallback or upgrade.
+- `ADVISOR_MODEL` is a symbolic reference to HAIKU_MODEL, SONNET_MODEL,
+  OPUS_MODEL or FABLE_MODEL. Future `advisor_for(caller_tier)` resolution
+  requires a strictly higher tier in haiku < sonnet < opus < fable order
+  and a distinct resolved provider ID. Validate this relationship only when
+  resolving; add no advisor execution or default routing change.
 - Resolve relative `LOG_DIR` against the selected config directory (the default
   config directory when using built-ins). Load once; restart to reload. No
   credentials in config or manifests; preserve existing credential precedence.
@@ -116,6 +121,11 @@ commit only intentional product changes. Run the whole-branch review after Task 
 provider IDs `claude-haiku-5-5` and `claude-sonnet-5-5`; Task 1 defaults
 and assertions use these replacements under the existing D-035 policy.
 
+**Owner amendment, 2026-10-18:** add `OPUS_MODEL=claude-opus-5-5`,
+`FABLE_MODEL=claude-fable-5-1`, and `ADVISOR_MODEL=FABLE_MODEL`, with
+the new provider IDs verified in the API model catalog. Preserve version 1,
+existing engine defaults, and doc set 0.2.15 in this unmerged M10 amendment.
+
 **Files:** Create the three Task 1 files above.
 
 **Interfaces:**
@@ -127,8 +137,11 @@ and assertions use these replacements under the existing D-035 policy.
   A supplied path takes precedence over `BRIDGE_CONFIG_PATH`; both are explicit.
 - `default_config() -> BridgeConfig` returns validated built-ins with the default
   source directory, without reading JSON or environment overrides.
-- `BridgeConfig.model_for(tier: str) -> str` and
-  `BridgeConfig.effective_settings() -> dict[str, object]` (only schema keys,
+- `BridgeConfig.model_for(tier: str) -> str` resolves all four tiers.
+- `BridgeConfig.advisor_for(caller_tier: str) -> str` resolves the configured
+  advisor reference only for a strictly lower-tier caller with a different
+  provider ID; unknown callers and Fable callers fail. No advice is executed.
+- `BridgeConfig.effective_settings() -> dict[str, object]` (only schema keys,
   uppercase names, resolved LOG_DIR string; never environment/credentials).
 
 - [ ] **1. Write failing tests** for complete default-file/built-in agreement;
@@ -145,11 +158,18 @@ and assertions use these replacements under the existing D-035 policy.
   ```python
   assert default_config().haiku_model == "claude-haiku-5-5"
   assert default_config().sonnet_model == "claude-sonnet-5-5"
+  assert default_config().opus_model == "claude-opus-5-5"
+  assert default_config().fable_model == "claude-fable-5-1"
+  assert default_config().advisor_model == "FABLE_MODEL"
   assert default_config().context_max_messages == 40
   assert config.log_dir == (selected_path.parent / "logs").resolve()
   with pytest.raises(ConfigError, match="CONTEXT_MAX_MESSAGES"):
       load_config(selected_path, environ={"PLAZA_CONTEXT_MAX_MESSAGES": "3"})
   ```
+
+  Also cover all four model slots and selector tiers, OPUS/FABLE/ADVISOR
+  field types and overrides, symbolic advisor-reference validation, every
+  same/lower/higher relationship, and identical-provider-ID rejection.
 
 - [ ] **2. Run red:** `.venv/bin/python -m pytest bridge/tests/test_config.py -q`.
   Expect missing config API failures, not a dependency/setup error.

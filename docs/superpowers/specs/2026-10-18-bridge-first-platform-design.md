@@ -129,6 +129,9 @@ this document does not claim the file has shipped:
   "CONFIG_VERSION": 1,
   "HAIKU_MODEL": "claude-haiku-5-5",
   "SONNET_MODEL": "claude-sonnet-5-5",
+  "OPUS_MODEL": "claude-opus-5-5",
+  "FABLE_MODEL": "claude-fable-5-1",
+  "ADVISOR_MODEL": "FABLE_MODEL",
   "CONVERSATION_TIER": "haiku",
   "DOMAIN_TIER": "sonnet",
   "CONVERSATION_TIMEOUT_SECONDS": 60,
@@ -152,6 +155,24 @@ committed JSON and built-in defaults use them. This replaces the earlier
 `claude-haiku-4-5` / `claude-sonnet-4-6` assignments within the existing
 configuration schema and policy.
 
+**Additional model slots, 2026-10-18:** the owner requested `OPUS_MODEL`,
+`FABLE_MODEL`, and the symbolic `ADVISOR_MODEL` reference shown above. The
+four explicit provider IDs were confirmed available by read-only API model
+catalog retrieval, alongside the owner's provider-document confirmation of
+the Haiku/Sonnet replacements. Conversation and domain defaults remain
+`haiku` and `sonnet`; all four tiers may be selected explicitly.
+
+`ADVISOR_MODEL` accepts only `HAIKU_MODEL`, `SONNET_MODEL`, `OPUS_MODEL`, or
+`FABLE_MODEL`, never a provider ID, self reference, or arbitrary key.
+`BridgeConfig.advisor_for(caller_tier)` resolves this reference for future
+callers only when its tier is strictly higher in the capability order
+`haiku < sonnet < opus < fable` and its resolved provider ID differs from
+the caller's. Numeric model versions do not determine this ordering. Fable
+has no higher advisor here. These relationship checks occur on resolution;
+a Fable engine configuration remains valid when no advisor is requested.
+This amendment adds configuration/resolution only, with no advisory calls,
+automatic promotion, fallback, provider framework, or routing-default change.
+
 Model assignments use explicit provider IDs. These values are current defaults,
 not a claim about the latest available release; confirm any replacement ID with
 the provider before changing it. Both engines resolve their selected tier through
@@ -160,7 +181,7 @@ not silently override execution settings. Per-agent model overrides can be added
 in a later schema if a concrete workflow needs them.
 
 Validate positive numeric limits, finite budgets/timeouts, boolean transcript
-enablement, INFO/DEBUG/WARNING/ERROR log levels, and the supported haiku/sonnet
+enablement, INFO/DEBUG/WARNING/ERROR log levels, and the supported haiku/sonnet/opus/fable
 tiers. CONTEXT_MAX_MESSAGES is an even integer of at least 2 to preserve complete
 exchanges; it is independent of transcript retention. Require
 4096 ≤ record bytes ≤ file bytes ≤ total bytes. Age is a positive integer in days.

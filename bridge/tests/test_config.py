@@ -16,6 +16,9 @@ DEFAULTS = {
     "CONFIG_VERSION": 1,
     "HAIKU_MODEL": "claude-haiku-5-5",
     "SONNET_MODEL": "claude-sonnet-5-5",
+    "OPUS_MODEL": "claude-opus-5-5",
+    "FABLE_MODEL": "claude-fable-5-1",
+    "ADVISOR_MODEL": "FABLE_MODEL",
     "CONVERSATION_TIER": "haiku",
     "DOMAIN_TIER": "sonnet",
     "CONVERSATION_TIMEOUT_SECONDS": 60,
@@ -45,6 +48,9 @@ NUMBER_KEYS = ["CONVERSATION_TIMEOUT_SECONDS", "DOMAIN_MAX_BUDGET_USD"]
 TEXT_KEYS = [
     "HAIKU_MODEL",
     "SONNET_MODEL",
+    "OPUS_MODEL",
+    "FABLE_MODEL",
+    "ADVISOR_MODEL",
     "CONVERSATION_TIER",
     "DOMAIN_TIER",
     "LOG_DIR",
@@ -133,7 +139,7 @@ def test_model_resolution_and_effective_settings_exclude_credentials(tmp_path):
     )
     assert settings.model_for("haiku") == "custom-haiku"
     assert settings.model_for("sonnet") == "custom-sonnet"
-    for invalid in ("opus", "Haiku", "", None):
+    for invalid in ("unknown", "Haiku", "", None):
         with pytest.raises(ConfigError, match="tier"):
             settings.model_for(invalid)
     assert set(settings.effective_settings()) == set(DEFAULTS)
@@ -266,7 +272,7 @@ def test_text_settings_require_nonempty_strings(tmp_path, key, value):
 @pytest.mark.parametrize(
     "key,value",
     [
-        ("CONVERSATION_TIER", "opus"),
+        ("CONVERSATION_TIER", "unknown"),
         ("DOMAIN_TIER", "Haiku"),
         ("LOG_LEVEL", "info"),
         ("LOG_LEVEL", "CRITICAL"),
@@ -283,7 +289,7 @@ def test_rejects_adjacent_bounds_and_unsupported_choices(tmp_path, key, value):
 
 
 @pytest.mark.parametrize("level", ["INFO", "DEBUG", "WARNING", "ERROR"])
-@pytest.mark.parametrize("tier", ["haiku", "sonnet"])
+@pytest.mark.parametrize("tier", ["haiku", "sonnet", "opus", "fable"])
 def test_accepts_supported_choices_and_minimum_limits(tmp_path, level, tier):
     values = {key: 1 for key in INTEGER_KEYS + NUMBER_KEYS}
     values.update(
@@ -327,7 +333,17 @@ def test_valid_environment_overrides_are_parsed_by_setting_type(tmp_path):
     assert settings.context_max_messages == 42
 
 
-@pytest.mark.parametrize("key", ["LOG_DIR", "HAIKU_MODEL", "SONNET_MODEL"])
+@pytest.mark.parametrize(
+    "key",
+    [
+        "LOG_DIR",
+        "HAIKU_MODEL",
+        "SONNET_MODEL",
+        "OPUS_MODEL",
+        "FABLE_MODEL",
+        "ADVISOR_MODEL",
+    ],
+)
 def test_empty_text_overrides_fail(tmp_path, key):
     with pytest.raises(ConfigError, match=key):
         load_config(write_config(tmp_path, {}), environ={f"PLAZA_{key}": ""})
@@ -407,3 +423,129 @@ def test_ordinary_file_value_validation_follows_environment_overlay(tmp_path):
         load_config(selected, environ={"PLAZA_DOMAIN_MAX_TURNS": "9"}).domain_max_turns
         == 9
     )
+
+
+@pytest.mark.parametrize("tier", ["haiku", "sonnet", "opus", "fable"])
+def test_all_model_slots_resolve_file_and_environment_overrides(tmp_path, tier):
+    key = f"{tier.upper()}_MODEL"
+    selected = write_config(tmp_path, {key: "file-model"})
+    assert load_config(selected, environ={}).model_for(tier) == "file-model"
+    settings = load_config(selected, environ={f"PLAZA_{key}": "env-model"})
+    assert settings.model_for(tier) == "env-model"
+    assert settings.effective_settings()[key] == "env-model"
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        setattr(settings, key.lower(), "mutated")
+
+
+@pytest.mark.parametrize(
+    "reference", ["HAIKU_MODEL", "SONNET_MODEL", "OPUS_MODEL", "FABLE_MODEL"]
+)
+def test_advisor_reference_accepts_each_model_slot_and_environment_precedence(
+    tmp_path, reference
+):
+    selected = write_config(tmp_path, {"ADVISOR_MODEL": reference})
+    assert load_config(selected, environ={}).advisor_model == reference
+    settings = load_config(selected, environ={"PLAZA_ADVISOR_MODEL": "OPUS_MODEL"})
+    assert settings.advisor_model == "OPUS_MODEL"
+    assert settings.effective_settings()["ADVISOR_MODEL"] == "OPUS_MODEL"
+
+
+@pytest.mark.parametrize(
+    "reference",
+    ["ADVISOR_MODEL", "UNKNOWN_MODEL", "fable", "fable_model", "claude-fable-5-1"],
+)
+def test_advisor_reference_rejects_self_unknown_and_provider_ids(tmp_path, reference):
+    selected = write_config(tmp_path, {"ADVISOR_MODEL": reference})
+    with pytest.raises(ConfigError, match="ADVISOR_MODEL"):
+        load_config(selected, environ={})
+    selected = write_config(tmp_path, {})
+    with pytest.raises(ConfigError, match="ADVISOR_MODEL"):
+        load_config(selected, environ={"PLAZA_ADVISOR_MODEL": reference})
+
+
+HIGHER_ADVISORS = [
+    ("haiku", "sonnet"),
+    ("haiku", "opus"),
+    ("haiku", "fable"),
+    ("sonnet", "opus"),
+    ("sonnet", "fable"),
+    ("opus", "fable"),
+]
+
+
+@pytest.mark.parametrize("caller,advisor", HIGHER_ADVISORS)
+def test_advisor_for_resolves_strictly_higher_tiers(tmp_path, caller, advisor):
+    reference = f"{advisor.upper()}_MODEL"
+    selected = write_config(
+        tmp_path, {"ADVISOR_MODEL": reference, reference: "custom-advisor"}
+    )
+    settings = load_config(selected, environ={})
+    assert settings.advisor_for(caller) == "custom-advisor"
+    settings = load_config(selected, environ={f"PLAZA_{reference}": "env-advisor"})
+    assert settings.advisor_for(caller) == "env-advisor"
+
+
+@pytest.mark.parametrize(
+    "caller,advisor",
+    [
+        ("haiku", "haiku"),
+        ("sonnet", "haiku"),
+        ("sonnet", "sonnet"),
+        ("opus", "haiku"),
+        ("opus", "sonnet"),
+        ("opus", "opus"),
+        ("fable", "haiku"),
+        ("fable", "sonnet"),
+        ("fable", "opus"),
+        ("fable", "fable"),
+    ],
+)
+def test_advisor_for_rejects_same_or_lower_tier_only_when_called(
+    tmp_path, caller, advisor
+):
+    selected = write_config(
+        tmp_path,
+        {
+            "ADVISOR_MODEL": f"{advisor.upper()}_MODEL",
+            "CONVERSATION_TIER": caller,
+            "DOMAIN_TIER": caller,
+        },
+    )
+    settings = load_config(selected, environ={})
+    assert settings.conversation_tier == settings.domain_tier == caller
+    with pytest.raises(ConfigError, match="higher tier"):
+        settings.advisor_for(caller)
+
+
+@pytest.mark.parametrize("caller,advisor", HIGHER_ADVISORS)
+def test_advisor_for_rejects_identical_provider_id_across_distinct_slots(
+    tmp_path, caller, advisor
+):
+    selected = write_config(
+        tmp_path,
+        {
+            "ADVISOR_MODEL": f"{advisor.upper()}_MODEL",
+            f"{caller.upper()}_MODEL": "same-provider-id",
+            f"{advisor.upper()}_MODEL": "same-provider-id",
+        },
+    )
+    with pytest.raises(ConfigError, match="different provider ID"):
+        load_config(selected, environ={}).advisor_for(caller)
+
+
+def test_advisor_capability_order_ignores_numeric_model_version(tmp_path):
+    selected = write_config(
+        tmp_path,
+        {
+            "ADVISOR_MODEL": "SONNET_MODEL",
+            "HAIKU_MODEL": "claude-haiku-99-0",
+            "SONNET_MODEL": "claude-sonnet-1-0",
+        },
+    )
+    assert load_config(selected, environ={}).advisor_for("haiku") == "claude-sonnet-1-0"
+
+
+@pytest.mark.parametrize("caller", ["unknown", "Haiku", "", None])
+def test_advisor_for_rejects_unknown_caller_tier(caller):
+    with pytest.raises(ConfigError, match="tier"):
+        default_config().advisor_for(caller)

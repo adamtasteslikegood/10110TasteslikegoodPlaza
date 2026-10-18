@@ -21,6 +21,9 @@ _DEFAULTS: dict[str, object] = {
     "CONFIG_VERSION": 1,
     "HAIKU_MODEL": "claude-haiku-5-5",
     "SONNET_MODEL": "claude-sonnet-5-5",
+    "OPUS_MODEL": "claude-opus-5-5",
+    "FABLE_MODEL": "claude-fable-5-1",
+    "ADVISOR_MODEL": "FABLE_MODEL",
     "CONVERSATION_TIER": "haiku",
     "DOMAIN_TIER": "sonnet",
     "CONVERSATION_TIMEOUT_SECONDS": 60,
@@ -40,6 +43,9 @@ _TEXT_KEYS = frozenset(
     {
         "HAIKU_MODEL",
         "SONNET_MODEL",
+        "OPUS_MODEL",
+        "FABLE_MODEL",
+        "ADVISOR_MODEL",
         "CONVERSATION_TIER",
         "DOMAIN_TIER",
         "LOG_DIR",
@@ -58,6 +64,8 @@ _INTEGER_KEYS = frozenset(
     }
 )
 _NUMBER_KEYS = frozenset({"CONVERSATION_TIMEOUT_SECONDS", "DOMAIN_MAX_BUDGET_USD"})
+_TIERS = ("haiku", "sonnet", "opus", "fable")
+_MODEL_REFERENCES = tuple(f"{tier.upper()}_MODEL" for tier in _TIERS)
 
 
 @dataclass(frozen=True)
@@ -67,6 +75,9 @@ class BridgeConfig:
     config_version: int
     haiku_model: str
     sonnet_model: str
+    opus_model: str
+    fable_model: str
+    advisor_model: str
     conversation_tier: str
     domain_tier: str
     conversation_timeout_seconds: int | float
@@ -85,11 +96,20 @@ class BridgeConfig:
 
     def model_for(self, tier: str) -> str:
         """Resolve an approved tier without model fallback or upgrades."""
-        if tier == "haiku":
-            return self.haiku_model
-        if tier == "sonnet":
-            return self.sonnet_model
-        raise ConfigError("model tier must be haiku or sonnet")
+        if tier not in _TIERS:
+            raise ConfigError("model tier must be haiku, sonnet, opus or fable")
+        return getattr(self, f"{tier}_model")
+
+    def advisor_for(self, caller_tier: str) -> str:
+        """Resolve future advice only to a distinct, strictly higher-tier model."""
+        caller_model = self.model_for(caller_tier)
+        advisor_tier = self.advisor_model.removesuffix("_MODEL").lower()
+        advisor_model = self.model_for(advisor_tier)
+        if _TIERS.index(advisor_tier) <= _TIERS.index(caller_tier):
+            raise ConfigError("ADVISOR_MODEL must reference a strictly higher tier")
+        if advisor_model == caller_model:
+            raise ConfigError("ADVISOR_MODEL must resolve to a different provider ID")
+        return advisor_model
 
     def effective_settings(self) -> dict[str, object]:
         """Return only schema values, safe for an effective-settings manifest."""
@@ -129,8 +149,12 @@ def _build(values: Mapping[str, object], source_path: Path) -> BridgeConfig:
     if type(values["TRANSCRIPTS_ENABLED"]) is not bool:
         raise ConfigError("TRANSCRIPTS_ENABLED must be a boolean")
     for key in ("CONVERSATION_TIER", "DOMAIN_TIER"):
-        if values[key] not in ("haiku", "sonnet"):
-            raise ConfigError(f"{key} must be haiku or sonnet")
+        if values[key] not in _TIERS:
+            raise ConfigError(f"{key} must be haiku, sonnet, opus or fable")
+    if values["ADVISOR_MODEL"] not in _MODEL_REFERENCES:
+        raise ConfigError(
+            "ADVISOR_MODEL must reference HAIKU_MODEL, SONNET_MODEL, OPUS_MODEL or FABLE_MODEL"
+        )
     if values["LOG_LEVEL"] not in ("INFO", "DEBUG", "WARNING", "ERROR"):
         raise ConfigError("LOG_LEVEL must be INFO, DEBUG, WARNING or ERROR")
     if values["CONTEXT_MAX_MESSAGES"] < 2 or values["CONTEXT_MAX_MESSAGES"] % 2:

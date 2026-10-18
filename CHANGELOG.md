@@ -17,6 +17,16 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
 
+### Added — model slots and future advisor resolution
+
+- Added owner-requested `OPUS_MODEL=claude-opus-5-5`,
+  `FABLE_MODEL=claude-fable-5-1`, and `ADVISOR_MODEL=FABLE_MODEL` defaults
+  (2026-10-18); the provider IDs were verified in the API model catalog.
+  All four model tiers support explicit configuration. Future advisor
+  resolution requires a strictly higher capability tier and a distinct
+  provider ID. Conversation/domain defaults remain Haiku/Sonnet; this adds
+  no advisory execution or automatic routing.
+
 ### Changed — user-confirmed bridge model defaults
 
 - On 2026-10-18, the owner confirmed the official provider IDs
