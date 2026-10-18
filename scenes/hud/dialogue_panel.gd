@@ -12,6 +12,11 @@ var _revealed := 0.0
 var _reveal_end := 0
 var _current_agent_id := ""
 var _agent_data: Dictionary = {}
+var _rendered_messages: Array = []
+var _rendered_omitted := 0
+var _message_spans: Array[Dictionary] = []
+# Only known registry agents enter this session-only, bounded view index.
+var _view_anchors: Dictionary = {}
 var _waiting := false
 var _assistant_span: Dictionary = {"start": 0, "length": 0, "request_id": ""}
 var _follow := true
@@ -101,7 +106,7 @@ func _on_npc_approached(agent_id: String, agent_data: Dictionary) -> void:
 	_panel.show()
 	var snapshot := BridgeClient.conversation_snapshot(agent_id)
 	_follow = snapshot.get("follow", true)
-	_render(snapshot, "", float(snapshot.get("scroll", 0)))
+	_render(snapshot, "", float(snapshot.get("scroll", 0)), false, _view_anchors.get(agent_id, {}))
 
 func _on_npc_left(agent_id: String) -> void:
 	if agent_id != _current_agent_id:
@@ -113,18 +118,29 @@ func _on_npc_left(agent_id: String) -> void:
 	_panel.hide()
 
 func _on_conversation_changed(agent_id: String, reason: String, request_id: String) -> void:
-	if agent_id != _current_agent_id or reason in ["draft", "view"]:
+	if agent_id != _current_agent_id or reason == "view":
+		return
+	var snapshot := BridgeClient.conversation_snapshot(agent_id)
+	if reason == "draft" and snapshot.messages == _rendered_messages and snapshot.omitted == _rendered_omitted:
 		return
 	var reveal_id := request_id if reason == "reply" and _panel.visible else ""
-	_render(BridgeClient.conversation_snapshot(agent_id), reveal_id, _body_label.get_v_scroll_bar().value)
+	_render(snapshot, reveal_id, _body_label.get_v_scroll_bar().value, reason == "draft", _reading_anchor())
 
-func _render(snapshot: Dictionary, reveal_id: String, scroll: float) -> void:
+func _render(snapshot: Dictionary, reveal_id: String, scroll: float, preserve_reveal: bool = false, anchor: Dictionary = {}) -> void:
+	var previous_span := _assistant_span
+	var previous_progress := _revealed - float(previous_span.start)
+	var was_revealing := _revealed < _reveal_end
 	_scroll_guard = true
+	_rendered_messages = snapshot.get("messages", [])
+	_rendered_omitted = snapshot.get("omitted", 0)
+	_message_spans.clear()
 	_full_text = ""
 	_assistant_span = {"start": 0, "length": 0, "request_id": ""}
 	_waiting = not snapshot.get("pending", {}).is_empty()
 	_input_row.visible = not snapshot.is_empty()
-	_question_input.text = snapshot.get("draft", "")
+	# Reassigning identical LineEdit text destroys native selection/caret state.
+	if _question_input.text != snapshot.get("draft", ""):
+		_question_input.text = snapshot.get("draft", "")
 	var composer_had_focus := _question_input.has_focus()
 	_question_input.editable = not _waiting and snapshot.get("connected", false)
 	_question_input.focus_mode = Control.FOCUS_ALL if _question_input.editable else Control.FOCUS_NONE
@@ -136,6 +152,7 @@ func _render(snapshot: Dictionary, reveal_id: String, scroll: float) -> void:
 		_full_text += "[Older messages omitted]\n\n"
 	var last_generation := -1
 	for message in snapshot.get("messages", []):
+		var message_start := _full_text.length()
 		if message.generation != last_generation:
 			last_generation = message.generation
 			var archived: bool = not snapshot.connected or last_generation != snapshot.generation
@@ -146,6 +163,7 @@ func _render(snapshot: Dictionary, reveal_id: String, scroll: float) -> void:
 		if message.role == "assistant":
 			_assistant_span = {"start": _full_text.length(), "length": message.content.length(), "request_id": message.request_id}
 		_full_text += message.content + "\n\n"
+		_message_spans.append({"request_id": message.request_id, "generation": message.generation, "role": message.role, "start": message_start, "length": _full_text.length() - message_start})
 	if snapshot.get("connected", false) and snapshot.get("generation", 0) > 1 and last_generation != snapshot.generation:
 		_full_text += "[New context restarted — prior history is display only]\n"
 	if _full_text.is_empty():
@@ -158,7 +176,11 @@ func _render(snapshot: Dictionary, reveal_id: String, scroll: float) -> void:
 		_revealed = _assistant_span.start
 		_reveal_end = _assistant_span.start + _assistant_span.length
 		_body_label.visible_characters = int(_revealed)
-	_settle_scroll(scroll)
+	elif preserve_reveal and was_revealing and _assistant_span.request_id == previous_span.request_id:
+		_revealed = _assistant_span.start + previous_progress
+		_reveal_end = _assistant_span.start + _assistant_span.length
+		_body_label.visible_characters = int(_revealed)
+	_settle_scroll(scroll, anchor)
 
 func _on_draft_changed(text: String) -> void:
 	if _current_agent_id.is_empty():
@@ -182,8 +204,12 @@ func _on_query_failed(agent_id: String, _error_type: String, message: String) ->
 	_status_label.show()
 
 func _save_view() -> void:
-	if not _current_agent_id.is_empty():
-		BridgeClient.save_conversation_view(_current_agent_id, _body_label.get_v_scroll_bar().value, _follow)
+	# A render/layout has not settled yet: its temporary pixel range must not
+	# overwrite the saved view when switching agents in consecutive frames.
+	if _scroll_guard or not AgentRegistry.has_agent(_current_agent_id):
+		return
+	_view_anchors[_current_agent_id] = _reading_anchor()
+	BridgeClient.save_conversation_view(_current_agent_id, _body_label.get_v_scroll_bar().value, _follow)
 
 func _bottom() -> float:
 	var bar := _body_label.get_v_scroll_bar()
@@ -232,7 +258,22 @@ func _reading_anchor() -> Dictionary:
 			low = middle + 1
 		else:
 			high = middle
-	return {"character": low, "offset": value - _body_label.get_line_offset(_body_label.get_character_line(low))}
+	var anchor := {"character": low, "offset": value - _body_label.get_line_offset(_body_label.get_character_line(low))}
+	for span in _message_spans:
+		if low >= span.start and low < span.start + span.length:
+			anchor.merge({"request_id": span.request_id, "generation": span.generation, "role": span.role, "relative": low - span.start})
+			break
+	return anchor
+
+func _resolve_anchor(anchor: Dictionary) -> Dictionary:
+	if anchor.has("request_id"):
+		for span in _message_spans:
+			if span.request_id == anchor.request_id and span.generation == anchor.generation and span.role == anchor.role:
+				return {"character": span.start + mini(anchor.relative, span.length - 1), "offset": anchor.offset}
+		# The anchor's exchange was evicted. Show the omission notice/oldest
+		# retained content instead of guessing a position in a different reply.
+		return {"character": 0, "offset": 0.0}
+	return {"character": mini(anchor.character, maxi(0, _body_label.text.length() - 1)), "offset": anchor.offset}
 
 func _settle_scroll(value: float, anchor: Dictionary = {}) -> void:
 	_layout_anchor = anchor
@@ -243,8 +284,9 @@ func _settle_scroll(value: float, anchor: Dictionary = {}) -> void:
 	await get_tree().process_frame
 	if revision != _layout_revision:
 		return
-	if not anchor.is_empty():
-		value = _body_label.get_line_offset(_body_label.get_character_line(anchor.character)) + anchor.offset
+	if not anchor.is_empty() and not _body_label.text.is_empty():
+		var resolved := _resolve_anchor(anchor)
+		value = _body_label.get_line_offset(_body_label.get_character_line(resolved.character)) + resolved.offset
 	_set_scroll(_bottom() if _follow else value)
 	_layout_anchor = {}
 	_scroll_guard = false
@@ -266,12 +308,23 @@ func _apply_geometry() -> void:
 	_panel.position = rect.position
 	_panel.size = rect.size
 	var compact := rect.size.x < 600 or rect.size.y < 340
+	var tiny := rect.size.y < 160
 	_portrait.visible = not compact
-	$Panel/Margin/Rows/Header.visible = rect.size.y >= 160
-	var margin := 6 if compact else 16
+	# Identity remains visible even below the normal panel minimum. Reduce
+	# decoration, type sizes and spacing together; never hide the header.
+	$Panel/Margin/Rows/Header.show()
+	_name_label.add_theme_font_size_override("font_size", 14 if tiny else 22)
+	_role_label.add_theme_font_size_override("font_size", 10 if tiny else 14)
+	$Panel/Margin/Rows/Header/Titles.add_theme_constant_override("separation", 0 if tiny else 4)
+	_body_label.add_theme_font_size_override("normal_font_size", 12 if tiny else 16)
+	_body_label.custom_minimum_size.y = 12
+	_question_input.add_theme_font_size_override("font_size", 12 if tiny else 14)
+	_status_label.add_theme_font_size_override("font_size", 10 if tiny else 13)
+	_status_label.max_lines_visible = 1 if tiny else 2
+	var margin := 2 if tiny else (6 if compact else 16)
 	for side in ["left", "top", "right", "bottom"]:
 		$Panel/Margin.add_theme_constant_override("margin_" + side, margin)
-	$Panel/Margin/Rows.add_theme_constant_override("separation", 4 if compact else 10)
+	$Panel/Margin/Rows.add_theme_constant_override("separation", 2 if tiny else (4 if compact else 10))
 	_settle_scroll(scroll, anchor)
 
 func _edges_at(point: Vector2) -> int:
