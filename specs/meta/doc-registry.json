@@ -92,12 +92,20 @@
       "note": "Taxonomy authority for Atlassian identifiers (D-026). The single origin of every Jira key, Confluence space and page id this repo uses. Since PLZG-109, both Python scripts read their coordinates from the environment and hold none; no script is a second SOURCE for one -- the 'scripts are the other legitimate copy' clause was retired with D-026's rationale in PLZG-137. Keys still APPEAR in prose elsewhere (guides cite them); what D-026 forbids is another document originating one."
     },
     {
+      "doc_id": "BRIDGE-PLATFORM-DESIGN",
+      "path": "docs/superpowers/specs/2026-10-18-bridge-first-platform-design.md",
+      "tier": 2,
+      "authority": "implementation",
+      "status": "DRAFT",
+      "note": "Written bridge-first design for owner review after conversational direction approval. Specifies M9 documentation alignment, M10 central configuration and bounded local observability, M11 NPC history/resizing/keyboard controls, and later M12–M15 domain execution, durable workspace state, worktrees and authenticated hosting. Does not supersede locked decisions or claim runtime implementation."
+    },
+    {
       "doc_id": "ROADMAP",
       "path": "specs/roadmap.md",
       "tier": 3,
       "authority": "derived",
       "status": "ACTIVE",
-      "note": "M1 to M8 milestone structure. Authoritative for sequencing."
+      "note": "Preserves M1–M8 prototype milestones and proof; sequences proposed M9–M15 bridge-first platform work from the DRAFT BRIDGE-PLATFORM-DESIGN. M5/M6 remain deferred frontend milestones."
     },
     {
       "doc_id": "TASK-TRACKER",

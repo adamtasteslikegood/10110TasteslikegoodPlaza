@@ -7,7 +7,7 @@ status: ACTIVE
 doc_set_version: 0.2.14
 last_updated: 2026-10
 owner: adamtasteslikegood
-derives_from: [STORYBOARD-W1, DESIGN-25D, PLATFORM-DECISIONS]
+derives_from: [STORYBOARD-W1, DESIGN-25D, PLATFORM-DECISIONS, BRIDGE-PLATFORM-DESIGN]
 enforcement: asserted
 gates: [Validate Specs:live, Validate Agent Data:live]
 weakest_claim: 132 agents as JSON (generated from .md files)
@@ -38,6 +38,19 @@ TastesLike Plaza is a navigable 2.5D top-down office environment built on top of
 ---
 
 ## System Architecture (4 Layers)
+
+The bridge and execution layers are the platform's core; the current Godot office
+is one client (`D-005`, `D-020`). The working early prototype proves NPC
+conversation, not durable workspace ownership or execution recovery.
+
+The owner-approved next direction is documented in the
+[bridge-first design](docs/superpowers/specs/2026-10-18-bridge-first-platform-design.md),
+whose written specification is **DRAFT, awaiting review**. The
+[M9–M15 roadmap](specs/roadmap.md) starts with documentation, centralized settings,
+bounded local transcripts/debug logs, and usable NPC chat windows with resizing,
+keyboard controls and per-agent scrollback. User → project → domain state,
+worktree execution isolation and authenticated hosted durability are later
+milestones; they are not current prototype capabilities.
 
 ```
 Layer 4 — Real agent execution  (EXISTS)

@@ -1,5 +1,16 @@
 # Bridge Domain Architecture — Design Spec
 
+> **Scope clarification, 2026-10-18:** this dated brainstorm remains design input,
+> not proof of shipped durability. Conversation history is now connection/agent
+> scoped; the engine receives those turns from the server rather than storing
+> them itself. Domain clients and output buffers remain process-local, and Godot
+> currently sends ordinary conversation requests only. The new
+> [bridge-first design](2026-10-18-bridge-first-platform-design.md) is a written
+> DRAFT for review; its [M9–M15 roadmap](../../../specs/roadmap.md) separates
+> local observability/UI work from later user/project/domain durability and
+> worktree execution. Read the original phase labels below as this design's
+> historical scope, not completion status or the entire platform goal.
+
 > **One line:** Evolve the bridge from single-request pipe to domain-scoped parallel
 > sessions, with the current bridge.py becoming a lightweight conversation engine.
 

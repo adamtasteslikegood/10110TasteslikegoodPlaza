@@ -1,32 +1,62 @@
 ---
 doc_id: ROADMAP
-title: 10110 TastesLike Plaza — Prototype Build Roadmap
+title: 10110 TastesLike Plaza — Bridge-First Platform Roadmap
 tier: 3
 authority: derived
 status: ACTIVE
 doc_set_version: 0.2.14
 last_updated: 2026-10
 owner: adamtasteslikegood
-derives_from: [PROJECT-OVERVIEW, DESIGN-25D, SPEC-DRIVERS-025]
+derives_from: [PROJECT-OVERVIEW, DESIGN-25D, SPEC-DRIVERS-025, BRIDGE-PLATFORM-DESIGN]
 enforcement: asserted
 gates: [Validate Specs:live, Export Godot 4 Prototype:live]
-weakest_claim: For now it returns scripted/hardcoded responses.
+weakest_claim: M9 is awaiting written-spec review; no M9–M15 milestone is complete.
 ---
 
-# 10110 TastesLike Plaza — Prototype Build Roadmap
+# 10110 TastesLike Plaza — Bridge-First Platform Roadmap
 
 > Engine: **Godot 4** (free, MIT license, ~80MB download)
 > Language: **GDScript** (reads like Python — approachable without game dev background)
-> Target: Working 2.5D top-down office world with NPC interaction and live agent output
+> Target: A UI-agnostic agent platform, exercised through the existing 2.5D Godot office
 > Design: [`docs/designs/2.5D-RPG-Prototype.md`](../docs/designs/2.5D-RPG-Prototype.md) (`PROMOTED`, 2026-04-27)
+> Post-M8 direction: [`BRIDGE-PLATFORM-DESIGN`](../docs/superpowers/specs/2026-10-18-bridge-first-platform-design.md) (`DRAFT`, awaiting written-spec review)
 
 ---
 
-## Critical path (minimum viable prototype)
+## Post-M8 sequence — proposed bridge-first platform work
+
+M1–M4, M7 and M8 retain their completed status and evidence below. M5 (the
+separate scripted assistant overlay) and M6 (unlock progression and building map)
+remain deferred frontend milestones. M11 improves NPC conversation; it does not
+complete or replace M5 or M6.
+
+The owner approved the bridge-first direction and the NPC window scope. The
+written design remains `DRAFT`: this roadmap sequences that proposal, without
+promoting it or claiming the features have shipped. M9 is awaiting written-spec review; no M9–M15 milestone is complete.
+
+| Milestone | Scope | Status |
+|---|---|---|
+| **M9** | Align the design, protocol documentation and roadmap around the bridge-first platform direction; review the written spec | Awaiting written-spec review |
+| **M10** | Validated central configuration, JSONL run/agent transcripts and standard debug logs with quotas and retention | Planned after M9 |
+| **M11** | Godot NPC conversation history, late responses, mouse window resizing and basic keyboard/scroll controls | Planned after M10 |
+| **M12** | Domain lifecycle and execution connected to the UI and verified with a live SDK run | Planned after M11 |
+| **M13** | Durable local user/project/domain application state in SQLite, with explicit restart semantics | Planned after M12 |
+| **M14** | Worktree-isolated execution | Planned after M13 |
+| **M15** | Authenticated hosted durable state; hosted provider remains unselected | Planned after M14 |
+
+The detailed scope and acceptance contract live in `BRIDGE-PLATFORM-DESIGN`;
+this tier-3 roadmap owns the sequence. These milestones preserve the `D-005`
+boundary: replacing Godot with another client must not require a bridge change.
+
+---
+
+## Proof-of-concept critical path (completed)
 
 Milestone 1 → Milestone 4 → Milestone 8
 
-Everything else can be deferred. If you can walk through a lobby, approach an NPC, and get a real agent response back in a dialogue panel — the concept is proven.
+M1 → M4 → M8 proved the concept: walk through a lobby, approach an NPC, and get a
+real agent response back in a dialogue panel. That path is complete. M9–M15
+sequence the next platform work; M5 and M6 remain deferred.
 
 > **Owner ruling, 2026-10-06 — the milestones serve the prototype.** Where this
 > list and the working game disagree, this list is what changes. Sprint 6
@@ -36,7 +66,10 @@ Everything else can be deferred. If you can walk through a lobby, approach an NP
 
 ---
 
-## Phase 1 — Godot prototype (weeks 1–3)
+## Phase 1 — Godot prototype
+
+The time estimates retained under M1–M8 are historical planning estimates, not
+current forecasts or delivery commitments.
 
 ---
 
@@ -192,10 +225,15 @@ signal floor_unlocked(floor_id: String)
 
 ### Milestone 5 — Assistant chat UI overlay
 
+**Status:** deferred. This is a separate assistant surface, not the NPC
+conversation window scheduled under M11.
+
 **Time estimate:** ~4 hours
 **GDScript required:** Chat panel script
 
-**What this is:** A CanvasLayer (always-on-top 2D layer) containing a chat panel. Player toggles it with a key (e.g. Tab or `~`). For now it returns scripted/hardcoded responses. In Phase 2 it routes to a real API call.
+**What this is:** A CanvasLayer (always-on-top 2D layer) containing a chat panel.
+Player toggles it with a key (e.g. Tab or `~`). The planned first version returns
+scripted/hardcoded responses; connecting it to a real API is a later upgrade.
 
 This is NOT the same as NPC dialogue. The assistant is always available, always in the corner of the screen, and persists across all scenes.
 
@@ -219,11 +257,14 @@ func _input(event):
         $Control.visible = !$Control.visible
 ```
 
-**Phase 2 upgrade:** Replace `_get_scripted_response()` with an HTTP request to your agent API or WebSocket bridge.
+**Later upgrade:** Replace `_get_scripted_response()` with an HTTP request to your agent API or WebSocket bridge. No milestone currently schedules that upgrade.
 
 ---
 
 ### Milestone 6 — Unlock gate system + building map
+
+**Status:** deferred. The room barriers verified under M2 are built; the gameplay
+progression and building-map UI described here remain separate work.
 
 **Time estimate:** ~5 hours
 **GDScript required:** GameState autoload + map UI
@@ -269,7 +310,7 @@ func save():
 
 ---
 
-## Phase 2 — I/O bridge (weeks 4–6)
+## Phase 2 — I/O bridge
 
 ---
 
@@ -278,7 +319,13 @@ func save():
 **Time estimate:** ~1 day
 **Languages:** Python (bridge) + GDScript (Godot side)
 
-**What this is:** A small Python process that runs alongside the game on the same machine. Godot sends task requests over a local WebSocket; the bridge calls the Claude API — the Messages API for NPC conversation, the Agent SDK for domain sessions — and returns the result as JSON. It runs locally and needs Anthropic credentials.
+**What this is:** A small Python process that runs alongside the game on the same
+machine. The proven NPC conversation path sends requests over a local WebSocket,
+calls the Claude Messages API, and returns a complete JSON response. It runs
+locally and needs Anthropic credentials. The separate domain-session execution
+path uses the Agent SDK; connecting that lifecycle and execution to the frontend
+with live verification is planned under M12. This distinction does not amend the
+locked `D-006` execution model.
 
 > **The two code blocks below are the original sketch, kept for the shape of the idea.**
 > The shipped code is `bridge/server.py`, `bridge/conversation.py` and
@@ -381,7 +428,84 @@ word" the agent declined to repeat it about one try in three.
 
 **This is the milestone where the game becomes the tool.**
 
-Everything after this point is polish, expansion of the world, more NPC characters, better UI, and eventually Phase 3 (streaming output, richer I/O visualization, more agent types).
+M8 proves live conversation. The next sequence builds configuration and
+observability, a usable NPC conversation window, domain execution, durable state
+and execution isolation. Streaming, world expansion and additional frontend
+surfaces remain outside that sequence unless a later design schedules them.
+
+---
+
+## Phase 3 — Bridge-first platform (proposed M9–M15)
+
+The following milestones derive from `BRIDGE-PLATFORM-DESIGN` (`DRAFT`). Their
+acceptance criteria describe future verification; they are not completed proof.
+Existing M8 conversation behavior remains the regression baseline.
+
+### Milestone 9 — Align and review the platform direction
+
+**Status:** awaiting written-spec review. Document the bridge-first architecture,
+current-versus-planned protocol behavior and milestone sequence together. The
+written review must settle the scope before implementation proceeds. This step
+does not amend a locked decision, select a hosted provider, or ship product code.
+
+### Milestone 10 — Configuration and observability
+
+Establish a validated central configuration contract shared by bridge entry
+points. Add JSONL run/agent transcripts and standard debug logs, with explicit
+quota and retention behavior. Verify invalid configuration failures, correlated
+run/agent records and bounded retention through the checks defined in the design.
+These records support inspection and debugging; they are separate from the durable
+application state introduced in M13.
+
+### Milestone 11 — Usable Godot NPC conversation window
+
+Retain history for each NPC conversation across closing and reopening its panel,
+including responses that arrive after dismissal. Add mouse resizing with the
+window bounded to the viewport and its input/history layout usable at supported
+sizes. Provide mouse-wheel and scrollbar history navigation, Page Up/Page Down,
+input focus, Enter to send, Escape to release chat focus while preserving draft
+input and pending requests, and basic Ctrl+Home/Ctrl+End
+navigation with the focus behavior specified in the design. Verify history
+restoration, late-response routing, resize limits and the input/focus bindings.
+
+The frontend owns window geometry and keyboard behavior. The bridge continues
+to exchange UI-agnostic requests and responses (`D-005`). This milestone neither
+builds M5's scripted assistant nor M6's unlock/map system. Any history recovery
+across process restarts must follow the explicit state contract in M13.
+
+### Milestone 12 — Domain lifecycle and live execution
+
+Connect domain lifecycle and execution to the frontend through the UI-agnostic
+bridge contract. Verify the complete path with a live Agent SDK run, including
+the lifecycle transitions and failures named by the design. Existing backend
+scaffolding or a successful NPC Messages API conversation alone does not complete
+this milestone. Keep the completed M8 conversation proof distinct from this new
+execution proof, and preserve the locked `D-006` model pending any separately
+authorised amendment.
+
+### Milestone 13 — Durable local application state
+
+Persist local user, project and domain application state in SQLite. Define and
+verify which records survive a restart, how clients recover them, and how
+interrupted or non-resumable work is represented. Application-state recovery
+must not imply that a prior SDK process continues or resumes automatically.
+JSONL transcripts and debug logs from M10 remain diagnostic records rather than
+the application's state store.
+
+### Milestone 14 — Worktree-isolated execution
+
+Isolate repository execution in worktrees under the design's ownership,
+lifecycle and cleanup contract. Verify that concurrent or failed runs cannot
+silently alter another run's checkout or the user's primary checkout, and that
+retained work and cleanup outcomes remain inspectable.
+
+### Milestone 15 — Authenticated hosted durable state
+
+Extend the durable-state boundary to authenticated hosted use, with explicit
+user/project access controls and recovery behavior. Verify authentication,
+authorisation and durable recovery against the chosen provider before claiming
+hosted readiness. **The provider is unselected**; this milestone records the
+capability and its position in the sequence, not a vendor commitment.
 
 ---
 
