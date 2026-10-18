@@ -48,6 +48,8 @@ def runtime_archive(runtime_config):
 @pytest.fixture(autouse=True)
 def forbid_live_model_transports(monkeypatch):
     """A missed fake fails closed before Claude launch or provider HTTP."""
+    # An ambient (even empty) base URL would redirect fake-transport clients.
+    monkeypatch.delenv("ANTHROPIC_BASE_URL", raising=False)
 
     async def blocked_async(*args, **kwargs):
         pytest.fail("Live model transport is forbidden in offline bridge tests")
