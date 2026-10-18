@@ -677,6 +677,48 @@ async def test_default_sdk_with_api_key_ignores_nontext_echoes(monkeypatch):
     api.assert_not_called()
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "credential", ["ANTHROPIC_API_KEY", "CLAUDE_CODE_OAUTH_TOKEN", None]
+)
+@pytest.mark.parametrize("sdk_fails", [False, True])
+async def test_native_api_key_and_oauth_use_same_sdk_route_without_api_fallback(
+    monkeypatch, credential, sdk_fails
+):
+    from bridge import conversation_api
+
+    for name in (
+        "ANTHROPIC_API_KEY",
+        "ANTHROPIC_AUTH_TOKEN",
+        "CLAUDE_CODE_OAUTH_TOKEN",
+        "CLAUDE_CODE_0AUTH_TOKEN",
+    ):
+        monkeypatch.delenv(name, raising=False)
+    if credential:
+        monkeypatch.setenv(credential, "synthetic-credential")
+
+    async def connect():
+        if sdk_fails:
+            raise RuntimeError("SDK connection failed")
+
+    clients = install_sdk(monkeypatch, connect=connect)
+    api = MagicMock(side_effect=AssertionError("no API client on default path"))
+    monkeypatch.setattr(conversation_api, "AsyncAnthropic", api)
+    monkeypatch.setattr("anthropic.Anthropic", api)
+    response = await ConversationEngine().handle_request(
+        {"agent_id": "agent", "task": "same default route"}
+    )
+    assert len(clients) == 1
+    clients[0].connect.assert_awaited_once()
+    clients[0].disconnect.assert_awaited_once()
+    assert response["status"] == ("error" if sdk_fails else "ok")
+    if sdk_fails:
+        assert response["message"] == "SDK connection failed"
+    else:
+        assert response["output"] == "answer"
+    api.assert_not_called()
+
+
 @pytest.mark.parametrize("canonical", [None, "", "canonical"])
 def test_alias_applies_only_when_canonical_is_absent_or_empty(monkeypatch, canonical):
     from bridge.conversation_sdk import _options
