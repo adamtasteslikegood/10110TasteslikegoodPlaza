@@ -97,7 +97,7 @@
       "tier": 2,
       "authority": "implementation",
       "status": "ACTIVE",
-      "note": "Owner-approved written bridge-first design (2026-10-18). M9 documentation alignment complete; M10 central configuration and bounded local observability implemented and tested; M11 NPC history/resizing/keyboard controls planned. Later M12–M15 require detailed designs. Execution scope and M10 policies are ratified in PLATFORM-DECISIONS (D-034–D-036); enforcement remains intended for later UI/history and durable-state functionality. M10 archives do not establish durable application state or SDK restart recovery."
+      "note": "Owner-approved written bridge-first design (2026-10-18). M9 documentation alignment complete; M10 central configuration and bounded local observability implemented and tested; M11 NPC history/resizing/keyboard controls implemented with deterministic coverage; desktop acceptance outstanding. Later M12–M15 require detailed designs. Execution scope and M10 policies are ratified in PLATFORM-DECISIONS (D-034–D-036); enforcement remains intended for future durable-state functionality. M10 archives do not establish durable application state or SDK restart recovery."
     },
     {
       "doc_id": "ROADMAP",
@@ -105,7 +105,7 @@
       "tier": 3,
       "authority": "derived",
       "status": "ACTIVE",
-      "note": "Preserves M1–M8 prototype milestones and proof; sequences approved M9–M15 bridge-first platform work from ACTIVE BRIDGE-PLATFORM-DESIGN. M9 complete, M10 implemented and tested, M11–M15 planned; M5/M6 remain deferred frontend milestones."
+      "note": "Preserves M1–M8 prototype milestones and proof; sequences approved M9–M15 bridge-first platform work from ACTIVE BRIDGE-PLATFORM-DESIGN. M9 complete, M10/M11 implemented with deterministic coverage, M11 desktop acceptance outstanding, M12–M15 planned; M5/M6 remain deferred frontend milestones."
     },
     {
       "doc_id": "TASK-TRACKER",

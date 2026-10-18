@@ -11,9 +11,11 @@
   "scripts": {
     "start": "godot .",
     "import": "godot --headless --import",
-    "smoke": "godot --headless tests/smoke_test.tscn",
+    "smoke": "python3 scripts/run_headless.py smoke",
     "validate": "python3 scripts/validate_specs.py",
     "agents:check": "python3 scripts/generate_agents_json.py --check",
-    "test": "npm run validate && npm run import && npm run smoke"
+    "test": "npm run validate && npm run import && npm run smoke && npm run test:m11 && npm run test:bridge-integration",
+    "test:m11": "python3 scripts/run_headless.py conversation_store transport_client dialogue_panel",
+    "test:bridge-integration": "PLAZA_REQUIRE_GODOT=1 python3 -m pytest bridge/tests/test_godot_conversation_integration.py -q -s"
   }
 }

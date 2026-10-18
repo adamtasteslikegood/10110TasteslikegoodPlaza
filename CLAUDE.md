@@ -10,11 +10,11 @@ The general rule, which generalises the one `docs/delivery-coordinates.md` earne
 
 ## Repository state
 
-This repo is **a running Godot prototype**. `project.godot` exists and `godot .` opens a walkable office. Three autoloads in `autoload/` plus `scenes/` for world, player, NPC and dialogue panel; `data/agents.json` carrying **132 agents** generated from the submodule by `scripts/generate_agents_json.py` (`D-024`) — never hand-edit it, regenerate; a CI pipeline whose four jobs have all been real gates since v0.2.8; two Atlassian scripts (see § Atlassian coordinates for what they target); and the agent directory as a git submodule at `./claude-code-tresor`, **empty in fresh checkouts**.
+This repo is **a running Godot prototype**. `project.godot` exists and `godot .` opens a walkable office. Four autoloads across `autoload/` and `scenes/`; scenes for world, player, NPC and dialogue panel; `data/agents.json` carrying **132 agents** generated from the submodule by `scripts/generate_agents_json.py` (`D-024`) — never hand-edit it, regenerate; a CI pipeline with real Python, Godot and documentation gates; two Atlassian scripts (see § Atlassian coordinates for what they target); and the agent directory as a git submodule at `./claude-code-tresor`, **empty in fresh checkouts**.
 
 Docs split `docs/` (design and reference) from `specs/` (development process), each with its own `README.md` index. Active design is `docs/designs/2.5D-RPG-Prototype.md`; active work plan is `specs/roadmap.md`.
 
-**M1–M4, M7 and M8 are done.** The proof-of-concept critical path (M1 → M4 → M8) is complete — walk up to an NPC, type a question, get a live Claude response with typewriter effect. The owner-approved next direction is the **M9–M15 bridge-first track** in `specs/roadmap.md`; its written [design](docs/superpowers/specs/2026-10-18-bridge-first-platform-design.md) is ACTIVE, approved 2026-10-18. M9 is complete; M10 settings and bounded local recording are implemented with deterministic acceptance coverage (operation: `QUICKSTART.md`). M5 (scripted assistant) and M6 (unlock/map) remain deferred; M11 covers NPC history, resizing and keyboard controls. `specs/task-tracker.md` is `HISTORICAL`.
+**M1–M4, M7 and M8 are done.** The proof-of-concept critical path (M1 → M4 → M8) is complete — walk up to an NPC, type a question, get a live Claude response with typewriter effect. The owner-approved next direction is the **M9–M15 bridge-first track** in `specs/roadmap.md`; its written [design](docs/superpowers/specs/2026-10-18-bridge-first-platform-design.md) is ACTIVE, approved 2026-10-18. M9 is complete; M10 settings and bounded local recording are implemented with deterministic acceptance coverage (operation: `QUICKSTART.md`). M5 (scripted assistant) and M6 (unlock/map) remain deferred; M11 NPC history/correlation, resizing and keyboard controls are implemented with deterministic coverage; desktop acceptance remains outstanding (`QUICKSTART.md`). M12–M15 remain planned. `specs/task-tracker.md` is `HISTORICAL`.
 
 ## Commands
 
@@ -32,7 +32,7 @@ Every row below was executed against a real checkout. The rule this table exists
 | `black --check .` | Formatting gate. **Hard-fails CI** — run `black .` before pushing Python. |
 | `flake8 . --select=E9,F63,F7,F82` | Syntax errors and undefined names. Also hard-fails; the wider `--max-complexity` pass is advisory. |
 
-`npm test` is real too, but **there is no JavaScript in this repo** — `package.json` is a task-runner facade over the same gates (`npm start` → `godot .`; `npm test` → validate → import → smoke, the order CI uses; `npm run agents:check` left out of `npm test` so a fresh checkout without the submodule or `pyyaml` still goes green). No dependencies, no `node_modules`, nothing to `npm install`. Treat a failure as a failure of the underlying Python or Godot gate and debug it there. CI calls those tools directly, so the facade can never become the only path to a gate.
+`npm test` is real too, but **there is no JavaScript in this repo** — `package.json` is a task-runner facade over the same gates (`npm start` → `godot .`; `npm test` → validate → import → smoke → M11 scenes → real-client/fake-provider integration, also required by CI; `npm run agents:check` left out of `npm test` so a fresh checkout without the submodule or `pyyaml` still goes green). No npm dependencies or `node_modules`; activate the Python venv for integration. Treat a failure as a failure of the underlying Python or Godot gate and debug it there. CI calls those tools directly, so the facade can never become the only path to a gate.
 
 ## Critical architectural reframe (read this before trusting the legacy reference docs)
 
@@ -65,9 +65,9 @@ Layer 1 — Data + config         (EXISTS)   submodule → agent .md files → a
 
 Layer 2 is named for the **role, not the implementation** (`D-020`) — a CLI harness, a web UI or the eventual 3D world are peers of 2.5D Godot, not replacements for the layer. That is what makes `D-005`, the bridge having zero UI awareness, architecture rather than aspiration. **Swap test:** if replacing Godot with the CLI harness would require any bridge change, the boundary is broken and the change fails review.
 
-## Architecture: the three Godot autoloads
+## Architecture: the four Godot autoloads
 
-`AgentRegistry` (loads `data/agents.json`), `GameEvents` (global signal bus), `GameState` (unlocks and completed tasks) — all registered in `project.godot` under `[autoload]`. New code plugs into them rather than introducing parallel state. **`.claude/godot-conventions.md` has the table and the interaction pattern.**
+`AgentRegistry` (loads `data/agents.json`), `GameEvents` (global signal bus), `GameState` (unlocks and completed tasks), `BridgeClient` (transport and display store) — all registered in `project.godot` under `[autoload]`. New code plugs into them rather than introducing parallel state. **`.claude/godot-conventions.md` has the table and the interaction pattern.**
 
 ## Critical path
 
@@ -87,14 +87,14 @@ It is the source of truth behind `data/agents.json`; don't copy that data into t
 
 ## CI workflows
 
-`.github/workflows/ci.yml` runs on push/PR to `main` and `dev`. Four jobs:
+`.github/workflows/ci.yml` runs on push/PR to `main` and `dev`. Eight jobs; principal development gates:
 
 Top-level `permissions: contents: read`; a job needing more declares its own block rather than widening that one.
 
 - **`Validate Agent Data`** — `generate_agents_json.py --check`. Needs the submodule and `pyyaml`.
 - **`Validate Specs`** — `validate_specs.py`. Stdlib only by design.
 - **`Lint Python Bridge`** — `black --check .` and `flake8 --select=E9,F63,F7,F82` both **hard-fail**; the wider `--max-complexity` pass is advisory. Run `black .` before pushing. Does *not* check out the submodule.
-- **`Export Godot 4 Prototype`** — despite the name it does not export. Installs Godot 4.7.1, imports, and runs `tests/smoke_test.tscn`. "Runs" is load-bearing: the test adds the scene to the tree so `_ready()` fires, because `instantiate()` alone leaves `@onready` paths unresolved and sails past renamed nodes. It also walks the player's body into every room and at each locked corridor. Feel values are asserted as **bands derived from the scene at runtime**, never equalities — an `== 48.0` check would redden every tuning pass, which is how a check gets deleted. It passed vacuously until v0.2.8.
+- **`Export Godot 4 Prototype`** — despite the name it does not export. Installs Godot 4.7.1, imports, and requires smoke, M11 store/transport/panel scenes and real Godot/Python fake-provider integration; scene gates require success markers and reject load errors. "Runs" is load-bearing: the test adds the scene to the tree so `_ready()` fires, because `instantiate()` alone leaves `@onready` paths unresolved and sails past renamed nodes. It also walks the player's body into every room and at each locked corridor. Feel values are asserted as **bands derived from the scene at runtime**, never equalities — an `== 48.0` check would redden every tuning pass, which is how a check gets deleted. It passed vacuously until v0.2.8.
 
 `.github/workflows/claude-review.yml` is the one independent reviewer on PRs — advisory (`continue-on-error`), never required. Read its `on:` block rather than assuming, and note **it cannot review changes to itself**: `claude-code-action` refuses when the workflow differs from the default branch's copy *and still reports a fast green*, so read the job log, not the check mark.
 

@@ -48,9 +48,10 @@ arrived on stays open. Within a connection it keeps one history per `agent_id`:
 each successful exchange is appended, and the next request for that agent is
 sent to the model with those earlier turns in front of it.
 
-- **The client sends nothing extra.** There is no conversation id and no
-  history field. A client holds a conversation by keeping its connection open
-  and loses it by reconnecting. Any client gets this the same way (`D-005`).
+- **The client sends no history/context payload.** Optional opaque `request_id`
+  metadata correlates responses; it is not a durable conversation identity.
+  A client holds model context by keeping its connection open and loses that
+  context by reconnecting. Any client gets this the same way (`D-005`).
 - **A new connection starts with nothing**, and two connections never see each
   other's turns, even for the same agent.
 - **Only successful exchanges are kept.** A request that fails, or a reply with
@@ -205,6 +206,18 @@ inspection before recording can resume, as documented in Quick start. Native
 Godot logs are separately configured and outside this quota. Archives are not
 context replay, durable user/project state, or SDK recovery.
 
+## Current M11 client behavior
+
+The Godot client correlates pending requests per agent and retains bounded,
+session-only display history across panel dismissal and reconnect. Disconnect
+fails pending requests once and archives that generation read-only; reconnect
+starts fresh server model context. No display transcript or archived draft is
+replayed. Frontend display limits are independent of model and disk limits.
+History, resizing and keyboard controls are implemented with deterministic
+coverage; desktop acceptance remains outstanding. See the
+[operating guide](../QUICKSTART.md#npc-conversation-history-and-controls-m11).
+The bridge has no UI awareness, and legacy clients may omit request IDs.
+
 ## Planned platform evolution
 
 The following milestones are **planned, not implemented by this document**.
@@ -214,7 +227,6 @@ describes the intended boundaries and open contract decisions.
 
 | Milestone | Intended change |
 |---|---|
-| M11 | Add client conversation correlation and history/controls. The bridge already echoes usable conversation `request_id` values as documented above; domain output includes request/output IDs. |
 | M12 | Wire the client to domain lifecycle and output replay. Presentation and controls remain client concerns. |
 | M13 | Durable identities scoped by user, project, and domain, with defined restart/reconnect recovery. Exact fields and recovery semantics require implementation and verification. |
 | M14 | Worktree isolation and ownership for domain execution. The current placeholders do not implement isolation. |

@@ -91,13 +91,59 @@ godot .
 
 Walk around with **arrow keys or WASD**. Approach an NPC — a dialogue panel opens
 showing their name, role, and department. Click the text input at the bottom, type
-a question, and press **Enter**. The bridge sends it to the Claude SDK with the
+a question, and press **Enter**. The bridge sends it to the Claude Messages API with the
 agent's `.md` definition as system prompt; the response renders with a typewriter
 effect. Press **Escape** to release the input and walk to the next agent.
 
 Without the bridge running, the game still opens and you can walk and see agent
 info — questions will show a "Bridge not connected" error until you start
 `bridge/bridge.py`.
+
+## NPC conversation history and controls (M11)
+
+Each NPC keeps an ordered display transcript, draft and reading position during
+this game session. A→B→A restores them immediately; a late A reply stays with A
+while B remains visible. Each agent permits one pending question, with separate
+agents allowed to queue on the bridge's serial connection. A failure remains in
+that agent's transcript and releases its composer. Newly visible replies reveal
+progressively; restored history appears immediately. Reading older text pauses
+follow; scrolling to the newest visible text resumes it.
+
+Drag any panel edge or corner to resize. The minimum is 480×260 logical pixels
+when it fits, otherwise the viewport size. Controls reflow within the viewport;
+the desired dimensions return after a temporary viewport clamp. Size preferences
+last only for this session.
+
+| Control | Behavior |
+|---|---|
+| Wheel / scrollbar | Read transcript history; manual upward scrolling pauses follow. |
+| PgUp / PgDn | Page the transcript, including while composing. |
+| Ctrl+Home / Ctrl+End | With transcript focus, jump to oldest/newest; End resumes follow. |
+| Enter | Submit nonempty enabled composer input once. |
+| Escape | Release chat focus while preserving draft and pending request. |
+| Tab / Shift+Tab | Traverse enabled chat controls in either direction. |
+| Composer Home/End, selection, edit and copy shortcuts | Retain native text editing. |
+
+Handled chat navigation and typing do not move the player. Disconnect fails each
+pending request visibly once and archives that display generation as read-only,
+including unsent drafts. Actual reconnect marks a **fresh model context** and
+starts a blank editable draft. Archived text is never resent or silently copied
+into the fresh draft. Display history does not survive a game restart, and there
+is no history-download endpoint.
+
+The three retention limits are independent:
+
+- **Model context:** bridge `CONTEXT_MAX_MESSAGES` defaults to 40 messages per
+  agent/connection, retaining successful exchanges only. Reconnect resets it.
+- **Frontend display:** Project Settings `plaza/chat/history_max_messages=200`
+  and `plaza/chat/history_max_bytes=1048576` bound each known agent across all
+  reconnect generations, drafts, pending/failed messages and archived drafts.
+  Pending content is protected; oldest terminal exchanges can be evicted with an
+  omission notice. Inadmissible input/draft changes fail visibly. Oversized
+  display replies retain a Unicode-safe excerpt with `[truncated]` inside the
+  byte bound; the submitted task, live response and model context stay intact.
+- **Disk:** M10 archive quotas, file rotation, age and record limits below bound
+  recording separately. Disk history never refills display or model context.
 
 ## Bridge settings and archives (M10)
 
@@ -218,10 +264,9 @@ matching `manifest.json` or move/clear only the ambiguous artifact out of
 remains suspended until that ambiguity is resolved; a later append retries.
 
 Archives are diagnostic history, separate from bounded live model context and
-future client scrollback. They are not replayed into models, durable user/project
-state, or SDK restart recovery. Conversation request-ID response echo remains
-planned for M11; current wire fields are unchanged (see
-[`bridge/PROTOCOL.md`](bridge/PROTOCOL.md)).
+session-only client scrollback. They are not replayed into models, durable
+user/project state, or SDK restart recovery. Conversation responses echo optional
+opaque request IDs; see [`bridge/PROTOCOL.md`](bridge/PROTOCOL.md).
 
 Godot native output is configured separately, for example
 `godot --log-file /tmp/plaza-godot.log --verbose .`. Its files are outside the
@@ -233,14 +278,58 @@ bridge quota and must be managed separately.
 godot --headless --import                     # import assets (once per clone)
 godot --headless tests/smoke_test.tscn        # the build gate
 python3 scripts/validate_specs.py             # governed-document validator
-python3 -m pytest bridge/tests/ -q            # offline bridge tests, no model calls
+python3 -m pytest bridge/tests/ tests/ -q     # offline bridge/tooling tests
+python3 scripts/run_headless.py conversation_store transport_client dialogue_panel
+npm run test:bridge-integration               # real Godot + Python, fake provider
 ```
 
-Or use the npm facade (no install needed — no dependencies):
+Or use the npm facade (activate the Python venv with `requirements.txt` installed;
+Godot 4.7.1 must be on PATH or selected by `GODOT_BIN`; no npm install needed):
 
 ```bash
-npm test                                      # validate → import → smoke
+npm test                       # validate → import → smoke → M11 scenes → integration
 ```
+
+The scene runner requires exact success markers and rejects engine/script load
+errors even if Godot exits zero, with a 30-second timeout per scene. The Python
+integration starts its real bridge listener on an ephemeral loopback port and
+supplies the URL to `tests/godot_bridge_integration.tscn`; run it through pytest,
+not by launching that scene alone. It controls delayed provider replies, verifies
+hidden-agent success/B failure, a pending disconnect, archived drafts, fresh
+server context without display replay, and tiny Unicode display limits. It uses
+no credentials or network provider. Python-only environments may skip it when
+Godot is absent; `npm run test:bridge-integration` and the Godot CI job require it.
+Existing smoke and the separate real two-client conversation harness remain gates.
+
+A bounded real API smoke on 2026-10-18 passed two turns each through Godot and
+plain Python on the first attempt. Godot recall was checked only within the
+current assistant span of the rendered label. The run used temporary plan/output
+and archive paths, preserving frozen Sprint 6 evidence. This establishes current
+NPC Messages API conversation behavior; owner transcript readback and desktop
+interaction acceptance remain outstanding. It does not establish M12 Agent SDK
+domain execution.
+
+### Desktop acceptance checklist — outstanding
+
+M11 is implemented with deterministic automated coverage. Actual desktop mouse,
+keyboard, clipboard and OS-window acceptance has **not been performed** here.
+Record date, platform, observed result and any issue for each item before calling
+M11 accepted; headless checks and API smoke do not replace these observations.
+
+- [ ] A→B→A restores ordered transcript, drafts and reading position. Let A succeed
+  late while B is visible, then make B fail; each result stays with its agent.
+- [ ] Drag all four edges and all four corners, then shrink/grow the desktop
+  window; controls stay reachable and input/history/pending state remains intact.
+- [ ] Use wheel and drag the scrollbar thumb. Read older messages while a new
+  reply reveals; position stays stable. Reach newest text to resume follow.
+- [ ] PgUp/PgDn work while composing. With transcript focus, Ctrl+Home/End reach
+  oldest/newest and End resumes follow. Enter submits nonempty enabled input once.
+- [ ] Escape releases focus without losing draft/pending. Tab/Shift+Tab traverse
+  enabled controls predictably. Native composer Home/End, selection, edits and
+  clipboard copy work. Typing and handled navigation do not move the player.
+- [ ] Disconnect during a pending query; its failure and archived draft are
+  visible and read-only. Reconnect shows a fresh-context notice and blank draft,
+  preserving old display history within limits without replaying it to the model.
 
 ## 5. Lint before pushing
 

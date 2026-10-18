@@ -177,7 +177,7 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
       - name: Run bridge tests
-        run: pytest bridge/tests/ -v
+        run: pytest bridge/tests/ tests/ -v
 
   godot-build:
     name: Export Godot 4 Prototype
@@ -233,4 +233,20 @@ jobs:
         run: godot --headless --import
 
       - name: Headless smoke test
-        run: godot --headless tests/smoke_test.tscn
+        run: python3 scripts/run_headless.py smoke
+
+      - name: M11 store, transport and panel acceptance
+        run: python3 scripts/run_headless.py conversation_store transport_client dialogue_panel
+
+      - name: Set up Python 3.11 for bridge integration
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install bridge integration dependencies
+        run: python3 -m pip install -r requirements.txt
+
+      - name: M11 real Godot client and Python bridge integration
+        env:
+          PLAZA_REQUIRE_GODOT: "1"
+        run: python3 -m pytest bridge/tests/test_godot_conversation_integration.py -q -s
