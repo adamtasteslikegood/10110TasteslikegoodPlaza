@@ -17,6 +17,25 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
 
+### Changed — bounded independent Claude reviews
+
+- Default the isolated reviewer to Sonnet 5.5; allow an explicit Opus 4.6
+  override. Disable reviewer hooks, account-synced plugins/skills, advisor and
+  subagent tools without changing interactive project settings or authentication.
+- Review follow-up pushes from the event's previous PR head to its validated
+  current head, including every commit in that push. Earlier failed reviews do
+  not force replay; completion certifies only that range. Missing previous-head
+  objects fall back to full review; open/ready/label/manual reviews remain full.
+- Bound full reviews to high effort, 20 turns, 8 minutes and approximately $3
+  SDK-estimated cost; deltas use low effort, 8 turns, 4 minutes and approximately
+  $1. These cost estimates can overshoot and are not billing caps. No automatic
+  retry follows a limit.
+- Always finalize with the exact scope, action/SDK outcome and available usage
+  statistics, plus one workflow status comment when the PR head remains current.
+  Missing credentials, limits and workflow-validation skips never claim a clean
+  review. Preserve only sanitized message/tool metadata and numeric statistics
+  for seven days; raw prompts, tool bodies and errors are excluded from artifacts.
+
 ### Added — M10 settings and bounded local recording
 
 - Both bridge engines now use validated startup configuration from built-ins,
