@@ -4,7 +4,7 @@ title: Bridge-first platform — local observability and conversation UI
 tier: 2
 authority: implementation
 status: ACTIVE
-doc_set_version: 0.2.15
+doc_set_version: 0.2.16
 last_updated: 2026-10
 owner: adamtasteslikegood
 derives_from: [PLATFORM-DECISIONS, DESIGN-25D]

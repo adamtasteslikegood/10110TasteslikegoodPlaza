@@ -4,7 +4,7 @@ title: 10110 TastesLike Plaza — Bridge-First Platform Roadmap
 tier: 3
 authority: derived
 status: ACTIVE
-doc_set_version: 0.2.15
+doc_set_version: 0.2.16
 last_updated: 2026-10
 owner: adamtasteslikegood
 derives_from: [PROJECT-OVERVIEW, DESIGN-25D, SPEC-DRIVERS-025, BRIDGE-PLATFORM-DESIGN]

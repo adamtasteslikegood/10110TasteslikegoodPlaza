@@ -4,12 +4,12 @@ title: Platform Decisions — engine, transport, data layer, licence, repo polic
 tier: 2
 authority: implementation
 status: ACTIVE
-doc_set_version: 0.2.15
+doc_set_version: 0.2.16
 last_updated: 2026-10
 owner: adamtasteslikegood
 derives_from: [META-SPEC]
 supersedes: []
-decides: [D-003, D-005, D-015, D-016, D-018, D-021, D-022, D-023, D-024, D-029, D-030, D-031, D-032, D-034, D-035, D-036]
+decides: [D-003, D-005, D-015, D-016, D-018, D-021, D-022, D-023, D-024, D-029, D-030, D-031, D-032, D-034, D-035, D-036, D-037]
 enforcement: asserted
 gates: [Validate Specs:live]
 weakest_claim: Nine of these were already made, already evidenced,
@@ -17,7 +17,7 @@ weakest_claim: Nine of these were already made, already evidenced,
 
 # Platform Decisions
 
-> **One line:** the sixteen project-level decisions (fifteen in force, `D-030`
+> **One line:** the seventeen project-level decisions (sixteen in force, `D-030`
 > superseded) that are neither concept nor
 > prototype design — engine, bridge boundary, transport, data layer, licence, and
 > repository policy — and the document entitled to originate them.
@@ -50,6 +50,10 @@ review (a review-round bound has nothing to do with the frontend). `D-031` and
 `D-034`–`D-036` follow in doc set 0.2.15 on the owner's written-design/plan approval
 and execution-scope ruling of 2026-10-18. They authorize M10 policy implementation;
 they do not claim that the planned recorder or configuration layer has shipped.
+
+`D-037` follows in doc set 0.2.16 on the owner's 2026-10-18 runtime-path
+correction and explicit API-key-only compatibility clarification. This records an
+already authorized requirement; implementation and new SDK evidence follow separately.
 
 ## 1. Scope — what belongs in this document
 
@@ -147,6 +151,47 @@ orchestration commands reference agents by id, covering 26 of the 132.
 Matches the attribution the project already carries and the upstream
 `claude-code-tresor` licensing. Resolves the former Apache-2.0 `LICENSE` file
 versus MIT-in-documentation conflict in favour of the documentation.
+
+### `D-037` — Claude Code/Agent SDK default with explicit API-key Messages API opt-in
+
+**Owner ruling, 2026-10-18 (doc set 0.2.16).** NPCs are actual agents: normal
+Plaza model execution, including NPC conversations, must reach Claude Code through
+the Claude Agent SDK. Preserve useful direct Messages API conversation code as a
+separately identified, explicitly selected compatibility mode. Backend selection
+is independent of credential presence: `CONVERSATION_BACKEND` must default to
+`claude_code`; `messages_api` is opt-in, with `PLAZA_CONVERSATION_BACKEND` following
+the existing environment override contract. Invalid selectors must fail validation.
+Never select a backend just because credentials exist or automatically fall back
+after missing credentials, timeout or another failure.
+
+Default execution must retain native Claude Code credential handling; it must not
+require a new API key, read credential files or convert OAuth credentials into
+direct API credentials. An API key supplied through Claude Code/Agent SDK still
+uses the default execution path. Preserve the documented digit-zero token alias
+only when canonical `CLAUDE_CODE_OAUTH_TOKEN` is absent or empty; native Claude Code
+continues choosing its authentication source. This decision makes no subscription
+entitlement, billing or quota guarantee.
+
+Explicit `messages_api` execution requires a nonempty `ANTHROPIC_API_KEY` and must
+reject known OAuth/setup-token forms before HTTP. It must never read OAuth or
+auth-token fallbacks or accidentally add an inherited Bearer header to an explicit
+API-key request. Preserve useful API behavior and dependency under that explicit
+mode. Diagnostics must not expose credential values.
+
+`D-033` remains locked: NPC calls return a complete synchronous response with
+timeout protection. `D-034` remains locked: domains execute asynchronously with
+buffered results and existing turn/budget caps. This runtime-path correction does
+not supersede either decision, expand tool permissions, enable streaming or durable
+resume, or establish M12 acceptance. `D-005` continues to require UI independence;
+replacing the whole frontend leaves this runtime rule intact, satisfying §1.
+
+The owner authorized this correction and the latest explicit API-key-only exception
+now; no further implementation approval is required. For this change the owner
+retains merge and waived ticket creation; generic `D-031`/`D-032` procedures do not
+override that task-specific instruction. This ratification is a requirement, not a
+claim that the corrected runtime or a new real-SDK smoke has already run. Historical
+direct Messages API proof remains evidence only of that path. M11 desktop acceptance
+remains outstanding and M12–M15 remain planned.
 
 ## 3. Repository policy
 
@@ -485,4 +530,4 @@ not here. Add the `D-nnn` to this file's `decides:` list and to
 `scripts/validate_specs.py` fails the build if the two disagree, and now also fails
 if a document declares `decides:` without an authority licensed to originate.
 
-*Doc set version: 0.2.15 · Last updated: October 2026*
+*Doc set version: 0.2.16 · Last updated: October 2026*
