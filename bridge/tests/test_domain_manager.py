@@ -1,8 +1,7 @@
 """Tests for bridge.domain_manager — domain session orchestration."""
 
-import asyncio
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 from bridge.domain_manager import DomainManager
 from bridge.domain_session import SessionState, OutputEntry
@@ -13,7 +12,7 @@ from bridge.protocol import BridgeRequest, RequestType
 def mock_session_cls(monkeypatch):
     sessions = {}
 
-    def make_session(domain_id, base_path=None):
+    def make_session(domain_id, base_path=None, **kwargs):
         session = MagicMock()
         session.domain_id = domain_id
         session.state = SessionState.INACTIVE

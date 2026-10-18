@@ -19,6 +19,9 @@ from typing import Optional
 from claude_agent_sdk import ClaudeSDKClient, ClaudeAgentOptions
 
 from bridge.agents import load_agent
+from bridge.config import BridgeConfig, default_config
+from bridge.observability import BridgeRecorder, RequestContext
+from bridge.protocol import validate_agent_id
 
 
 class SessionState(Enum):
@@ -86,9 +89,10 @@ class OutputBuffer:
         return self._entries[-1].output_id if self._entries else -1
 
 
-DEFAULT_DOMAIN_MODEL = "claude-sonnet-4-6"
-DEFAULT_MAX_TURNS = 20
-DEFAULT_MAX_BUDGET_USD = 1.0
+_DEFAULT_CONFIG = default_config()
+DEFAULT_DOMAIN_MODEL = _DEFAULT_CONFIG.model_for(_DEFAULT_CONFIG.domain_tier)
+DEFAULT_MAX_TURNS = _DEFAULT_CONFIG.domain_max_turns
+DEFAULT_MAX_BUDGET_USD = _DEFAULT_CONFIG.domain_max_budget_usd
 
 _SDK_ENV_PASSTHROUGH = [
     "ANTHROPIC_API_KEY",
@@ -126,7 +130,17 @@ class DomainSession:
     worktree-per-domain isolation without changing this class's shape.
     """
 
-    def __init__(self, domain_id: str, base_path: Optional[str] = None):
+    def __init__(
+        self,
+        domain_id: str,
+        base_path: Optional[str] = None,
+        *,
+        config: BridgeConfig | None = None,
+        recorder: BridgeRecorder | None = None,
+    ):
+        self._config = config if config is not None else default_config()
+        self._recorder = recorder
+        self._model = self._config.model_for(self._config.domain_tier)
         self.domain_id = domain_id
         self.base_path: str = base_path or os.getcwd()
         self.buffer = OutputBuffer()
@@ -140,6 +154,14 @@ class DomainSession:
         self._active_task: Optional[asyncio.Task] = None
 
     @property
+    def model(self) -> str:
+        return self._model
+
+    def _event(self, name, context=None, **metadata):
+        if self._recorder is not None:
+            self._recorder.event(name, context, **metadata)
+
+    @property
     def state(self) -> SessionState:
         return self._state
 
@@ -149,16 +171,20 @@ class DomainSession:
                 f"Cannot transition from {self._state.value} to {target.value}"
             )
         self._state = target
+        context = RequestContext(
+            None, str(uuid.uuid4()), None, "domain", self.model, self.domain_id
+        )
+        self._event("domain_transition", context, domain_state=target.value)
 
     async def activate(self, sdk_env: Optional[dict] = None):
         """Stand up the Agent SDK client for this domain and connect it."""
         self._transition(SessionState.ACTIVATING)
         options = ClaudeAgentOptions(
-            model=DEFAULT_DOMAIN_MODEL,
+            model=self.model,
             permission_mode="acceptEdits",
             cwd=self.worktree_path or self.base_path,
-            max_turns=DEFAULT_MAX_TURNS,
-            max_budget_usd=DEFAULT_MAX_BUDGET_USD,
+            max_turns=self._config.domain_max_turns,
+            max_budget_usd=self._config.domain_max_budget_usd,
             env=sdk_env if sdk_env is not None else _resolve_sdk_env(),
             session_id=self._session_id,
         )
@@ -166,31 +192,127 @@ class DomainSession:
         await self._client.connect()
         self._transition(SessionState.ACTIVE)
 
-    async def submit_query(self, agent_id, task, request_id, on_output=None):
-        """Fire off a query against this domain's client without blocking
-        the caller. The result lands in `self.buffer` and, if provided,
-        `on_output(domain_id, entry)` is awaited when it completes.
-        """
+    async def submit_query(
+        self,
+        agent_id,
+        task,
+        request_id,
+        on_output=None,
+        *,
+        context: RequestContext | None = None,
+    ):
+        """Schedule execution with its immutable origin; buffer before delivery."""
+        if context is None:
+            context = RequestContext(
+                None,
+                (
+                    request_id
+                    if isinstance(request_id, str) and request_id.strip()
+                    else str(uuid.uuid4())
+                ),
+                agent_id if validate_agent_id(agent_id) else None,
+                "domain",
+                self.model,
+                self.domain_id,
+            )
         self._active_task = asyncio.create_task(
-            self._execute_query(agent_id, task, request_id, on_output)
+            self._execute_query(agent_id, task, request_id, on_output, context=context)
         )
+        self._active_task.add_done_callback(self._consume_task_exception)
 
-    async def _execute_query(self, agent_id, task, request_id, on_output=None):
-        definition = load_agent(agent_id)
-        prompt = f"{definition}\n\n{task}" if definition else task
+    @staticmethod
+    def _consume_task_exception(task):
+        # Detached exceptions otherwise reach asyncio's raw exception logger.
+        # Retrieving it preserves the exception for an explicit task awaiter.
+        if not task.cancelled():
+            task.exception()
+
+    def _message(self, context, role, content, outcome, **metadata):
+        if self._recorder is not None and validate_agent_id(context.agent_id):
+            self._recorder.message(context, role, content, outcome, **metadata)
+
+    async def _receive_output(self, prompt):
         await self._client.query(prompt)
         text_parts = []
+        provider_session_id = None
+        failed = False
         async for msg in self._client.receive_response():
             if hasattr(msg, "content"):
                 for block in msg.content:
                     if hasattr(block, "text"):
                         text_parts.append(block.text)
             if type(msg).__name__ == "ResultMessage":
+                observed = getattr(msg, "session_id", None)
+                if isinstance(observed, str) and observed:
+                    provider_session_id = observed
+                failed = getattr(msg, "is_error", False) is True
                 break
-        output = "\n\n".join(text_parts) if text_parts else ""
-        entry = self.buffer.append(agent_id, task, output, request_id)
+        return "\n\n".join(text_parts), provider_session_id, failed
+
+    async def _execute_query(
+        self,
+        agent_id,
+        task,
+        request_id,
+        on_output=None,
+        *,
+        context: RequestContext,
+    ):
+        started = time.monotonic()
+        self._message(context, "user", task, "input")
+        self._event("execution_started", context)
+        try:
+            definition = load_agent(agent_id)
+            prompt = f"{definition}\n\n{task}" if definition else task
+            output, provider_session_id, failed = await self._receive_output(prompt)
+            entry = self.buffer.append(agent_id, task, output, request_id)
+        except asyncio.CancelledError:
+            self._record_failure(context, "cancelled", started)
+            raise
+        except Exception:
+            self._record_failure(context, "failure", started)
+            raise
+        outcome = "failure" if failed else "success"
+        self._message(
+            context,
+            "error" if failed else "assistant",
+            "sdk_error" if failed else output,
+            outcome,
+            output_id=str(entry.output_id),
+            provider_session_id=provider_session_id,
+        )
+        self._event(
+            "request_failed" if failed else "request_completed",
+            context,
+            outcome=outcome,
+            duration_ms=(time.monotonic() - started) * 1000,
+        )
         if on_output:
+            await self._deliver_output(on_output, entry, context)
+
+    def _record_failure(self, context, outcome, started):
+        self._message(
+            context,
+            "error",
+            "cancelled" if outcome == "cancelled" else "sdk_error",
+            outcome,
+        )
+        self._event(
+            "request_cancelled" if outcome == "cancelled" else "request_failed",
+            context,
+            outcome=outcome,
+            duration_ms=(time.monotonic() - started) * 1000,
+        )
+
+    async def _deliver_output(self, on_output, entry, context):
+        try:
             await on_output(self.domain_id, entry)
+        except asyncio.CancelledError:
+            self._event("delivery_cancelled", context, outcome="cancelled")
+            raise
+        except Exception:
+            self._event("delivery_failed", context, outcome="failure")
+            raise
 
     def background(self):
         self._transition(SessionState.BACKGROUNDED)
@@ -202,6 +324,10 @@ class DomainSession:
         """Tear down the client. Cancels any in-flight query first."""
         if self._active_task and not self._active_task.done():
             self._active_task.cancel()
+            try:
+                await self._active_task
+            except asyncio.CancelledError:
+                pass
         if self._client:
             await self._client.disconnect()
             self._client = None
