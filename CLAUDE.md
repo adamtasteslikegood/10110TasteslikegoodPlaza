@@ -16,7 +16,7 @@ This repo is **a running Godot prototype**. `project.godot` exists and `godot .`
 
 Docs split `docs/` (design and reference) from `specs/` (development process), each with its own `README.md` index. Active design is `docs/designs/2.5D-RPG-Prototype.md`; active work plan is `specs/roadmap.md`.
 
-**M1–M4, M7 and M8 are done.** The proof-of-concept critical path (M1 → M4 → M8) is complete — walk up to an NPC, type a question, get a live Claude response with typewriter effect. The bridge layer shipped in Sprint 4. M2 (grey-box office) closed in Sprint 6. Next code milestones are **M5** (assistant chat UI) and **M6** (unlock + map system). `specs/task-tracker.md` is `HISTORICAL` — a reference checklist, not the status of record.
+**M1–M4, M7 and M8 are done.** The proof-of-concept critical path (M1 → M4 → M8) is complete — walk up to an NPC, type a question, get a live Claude response with typewriter effect. The owner-approved next direction is the **M9–M15 bridge-first track** in `specs/roadmap.md`; its written [design](docs/superpowers/specs/2026-10-18-bridge-first-platform-design.md) is DRAFT pending review. M5 (scripted assistant) and M6 (unlock/map) remain deferred; M11 covers NPC history, resizing and keyboard controls. `specs/task-tracker.md` is `HISTORICAL`.
 
 ## Commands
 
@@ -185,7 +185,7 @@ bridge change, the boundary is broken.
 - **Simplicity first.** Don't invent infrastructure — run the command before recommending it. Saying "there is no Node here" is also inventing infrastructure, in the negative direction, and it was wrong.
 - **Surgical changes.** Never silently reconcile two disagreeing documents — record it in the open-conflict register and raise it. Don't duplicate state: agent facts live in `data/agents.json`, feel values in the scene, project keys in the scripts, and the test derives its bounds from the scene rather than copying them.
 - **Know whose rule it is.** Before enforcing a constraint against a request, check who set it. Owner decisions and `D-nnn` bind; an agent's suggestion written up in a repo file is rationale to weigh, not a gate to refuse with.
-- **Goal-driven execution.** M8 is done; the next goals are M5/M6. `tests/smoke_test.tscn` is the evidence. `META-SPEC` §5.8 requires machine-checkable acceptance, so "done" means a gate went green, not that the work looked finished. The user-level `karpathy-guidelines` skill expands on these principles if installed — a per-machine convenience, not a dependency of this repo.
+- **Goal-driven execution.** M8 is proven; next is the M9–M15 bridge-first track, beginning with written-spec review. The roadmap separates proposed acceptance from existing smoke/live-test evidence. `META-SPEC` §5.8 requires machine-checkable acceptance; a design alone does not complete a code milestone.
 
 ## GBrain semantic search
 

@@ -464,6 +464,38 @@ and point at this entry. Resolving it needs one stated counting method, applied
 once, and then both sentences and the `weakest_claim` quote changed together —
 `D-024` is `LOCKED`, so that edit is the owner's.
 
+### 4.13 `D-006` synchronous bridge versus shipped asynchronous domains — **OPEN**
+
+Raised 2026-10-18 during independent review of
+[PR #339](https://github.com/adamtasteslikegood/10110TasteslikegoodPlaza/pull/339)
+(`PLZG-281`). Tracked as
+[issue #341](https://github.com/adamtasteslikegood/10110TasteslikegoodPlaza/issues/341).
+
+- `DESIGN-25D` specifies a Python WebSocket bridge with synchronous execution and
+  timeout protection. The decision register records `D-006`, "Bridge execution
+  model — Synchronous, with timeout protection", as `LOCKED`, without an explicit
+  conversation-only scope.
+- The shipped domain path is asynchronous: `bridge/domain_session.py` schedules
+  `_execute_query` with `asyncio.create_task`, and `bridge/server.py` routes
+  domain queries to output callbacks. Domain results are pushed and buffered for
+  later resume. `bridge/PROTOCOL.md` describes that current behavior; this is not
+  a future implementation claim. Ordinary NPC conversations still await a model
+  result with timeout protection.
+
+The [bridge-first design](../../docs/superpowers/specs/2026-10-18-bridge-first-platform-design.md)
+names this tension, but deferring its resolution until implementation does not
+defer recording it: the mismatch already exists. This entry records both sides
+under `META-SPEC` §4 without treating runtime behavior as authority to amend a
+locked decision.
+
+**Not resolved here.** Candidate resolutions for the owner are to explicitly
+scope the synchronous guarantee to NPC conversations and authorize asynchronous
+domain execution separately, or to confirm that `D-006` covers both engines and
+bring the domain implementation into compliance. The final decision belongs at
+the entitled implementation tier, with decision-register and doc-set version
+updates if a locked decision changes. Issue #341 remains open; neither `D-006`
+nor the runtime is changed by this registration.
+
 ## 5. Exit criteria to v1.0.0
 
 `1.0.0` is cut when **M8 is demonstrable in-engine** — a player question travels

@@ -17,6 +17,19 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
 
+### Added — bridge-first platform design for review
+
+- Added a governed DRAFT specification and proposed M9–M15 roadmap that distinguish
+  the working Godot/NPC prototype from the platform goal. Near-term scope includes
+  centralized settings, bounded run/agent transcripts and debug events, and NPC
+  chat resizing, keyboard controls, scrollback and late-response handling. Local
+  durable state, worktree isolation and authenticated hosted operation remain
+  later milestones. Protocol and entry-point wording now distinguish current
+  behavior from those plans; this change implements no runtime features.
+- Recorded the existing `D-006` synchronous-bridge/asynchronous-domain mismatch in
+  the open-conflict register, linked to issue #341, without amending the locked
+  decision or changing runtime behavior.
+
 ### Changed — the merge guard checks review threads itself (`PLZG-278`)
 
 - `.claude/hooks/pretooluse-pr-review-nudge.sh` no longer asks a person on every
