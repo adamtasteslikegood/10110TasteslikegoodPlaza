@@ -26,6 +26,9 @@ spec-set versions, and no application release existed before `v0.1.22`.
   durable state, worktree isolation and authenticated hosted operation remain
   later milestones. Protocol and entry-point wording now distinguish current
   behavior from those plans; this change implements no runtime features.
+- Recorded the existing `D-006` synchronous-bridge/asynchronous-domain mismatch in
+  the open-conflict register, linked to issue #341, without amending the locked
+  decision or changing runtime behavior.
 
 ### Changed — the merge guard checks review threads itself (`PLZG-278`)
 

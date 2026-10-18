@@ -339,10 +339,14 @@ connection-scoped history, and its persistent-domain wording does not prove
 restart durability.
 
 No existing locked decision is superseded by this DRAFT. Before implementation,
-register newly approved platform policies at their entitled tier. Specifically,
-resolve `D-006`'s synchronous-bridge wording versus the shipped asynchronous domain
-path by explicitly scoping the conversation guarantee; do not let this draft
-silently amend it. The milestone scope preserves the scripted-guide distinction
+register newly approved platform policies at their entitled tier. The existing
+conflict between `D-006`'s synchronous-bridge wording and shipped asynchronous
+domain execution is recorded now in the
+[open-conflict register §4.13](../../../specs/meta/spec-drivers-v0.2.5.md), tracked
+by [issue #341](https://github.com/adamtasteslikegood/10110TasteslikegoodPlaza/issues/341).
+An owner decision at the entitled tier must settle the guarantee's scope before
+implementation; this draft does not silently amend `D-006`. The milestone scope
+preserves the scripted-guide distinction
 in `D-010`, the frontend-independent bridge in `D-005`/`D-020`, and frontend-only
 typewriter rendering in `D-007`. This review change does not advance a Jira board,
 publish configuration, select a cloud provider, or implement any planned feature.
