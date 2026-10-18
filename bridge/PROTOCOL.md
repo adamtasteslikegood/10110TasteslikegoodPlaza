@@ -9,6 +9,14 @@ durable platform API. NPC conversation history is connection-local; domain SDK
 clients, lifecycle state, and output buffers are bridge-process-local. Neither
 engine currently provides bridge-managed recovery after a bridge restart.
 
+Normal model execution, including NPC calls, defaults to Claude Code through the
+Claude Agent SDK (`D-037`). `CONVERSATION_BACKEND=claude_code` preserves native CLI
+authentication without requiring an API-key environment variable. Explicit
+`messages_api` conversation mode requires `ANTHROPIC_API_KEY` and rejects known
+OAuth/setup-token credentials. Backend selection never follows credential
+presence or falls back automatically after failure. See the
+[authentication guide](../QUICKSTART.md#2-install-prerequisites).
+
 The shipped Godot client sends plain conversation requests only. Domain routing,
 lifecycle commands, and output replay exist in the bridge but are not yet wired
 into that client. The bridge remains unaware of rendering and controls (D-005);
@@ -46,7 +54,12 @@ does not change conversation history or domain/lifecycle routing.
 The bridge remembers a conversation for as long as the WebSocket connection it
 arrived on stays open. Within a connection it keeps one history per `agent_id`:
 each successful exchange is appended, and the next request for that agent is
-sent to the model with those earlier turns in front of it.
+sent to the model with those earlier turns in front of it. The default adapter
+creates a fresh SDK client per request and submits one JSON-serialized transcript
+with the agent definition as system prompt, then disconnects. There is no retained
+NPC SDK client, resume/continue operation or provider-side history dependency.
+Observed SDK session IDs are request-local recorder metadata only; the wire shape
+is unchanged and an ID does not establish durable recovery.
 
 - **The client sends no history/context payload.** Optional opaque `request_id`
   metadata correlates responses; it is not a durable conversation identity.
@@ -54,9 +67,11 @@ sent to the model with those earlier turns in front of it.
   context by reconnecting. Any client gets this the same way (`D-005`).
 - **A new connection starts with nothing**, and two connections never see each
   other's turns, even for the same agent.
-- **Only successful exchanges are kept.** A request that fails, or a reply with
-  no text, leaves the history as it was, so retrying does not repeat the
-  question.
+- **Only successful exchanges are kept.** A request that fails, is cancelled,
+  truncates or returns no text leaves history unchanged. Success requires terminal
+  completion and cleanup; only assistant text is returned. NPC tools/MCP/skills
+  and discretionary project/user hooks/plugins are disabled, while mandatory
+  managed policy remains effective.
 - **It is bounded.** `CONTEXT_MAX_MESSAGES` defaults to the newest 40 messages
   (20 exchanges) per agent; older ones are dropped whole, oldest first.
 - **Live context is not restored.** Optional M10 disk transcripts archive
@@ -150,10 +165,10 @@ Error responses add `error_type` and `message`:
 
 | error_type | Meaning |
 |---|---|
-| `timeout` | Claude API call exceeded the NPC conversation timeout (D-033) |
+| `timeout` | NPC execution exceeded the configured operation deadline (D-033); cleanup may extend elapsed time |
 | `auth` | No valid credentials found |
 | `not_found` | agent_id not in the agent store |
-| `api_error` | Claude API returned an error |
+| `api_error` | Claude Code/SDK execution or explicitly selected API execution failed |
 | `invalid_request` | Malformed JSON or missing required fields |
 
 ## Domain State Notifications (push)
@@ -182,11 +197,14 @@ INACTIVE → ACTIVATING → ACTIVE → BACKGROUNDED → ACTIVE (refocus)
 Both engines use a validated startup settings snapshot: built-ins, then default
 `bridge/config.json` (or `BRIDGE_CONFIG_PATH`), then `PLAZA_<KEY>` overrides.
 Restart to reload. Relative `LOG_DIR` is selected-config-relative. The complete
-20-key defaults, environment syntax, model-tier/advisor resolution and recovery
+21-key defaults, environment syntax, model-tier/advisor resolution and recovery
 instructions are in [Quick start](../QUICKSTART.md#bridge-settings-and-archives-m10).
 Conversation/domain tiers default to Haiku/Sonnet; all four explicit model tiers
 are available. The symbolic advisor helper is reserved for future callers and
-adds no advisory execution.
+adds no advisory execution. The NPC operation deadline defaults to 60 seconds;
+SDK disconnect/reaping can add approximately 20 seconds of bounded cleanup
+escalation. The 4096 output-token default is passed through the supported CLI
+`CLAUDE_CODE_MAX_OUTPUT_TOKENS` environment cap. It is not a disk/display bound.
 
 Linux run manifests, per-agent JSONL transcripts and metadata-only standard logs
 are current behavior. Correlation IDs are recorded internally; a usable supplied
@@ -227,7 +245,7 @@ describes the intended boundaries and open contract decisions.
 
 | Milestone | Intended change |
 |---|---|
-| M12 | Wire the client to domain lifecycle and output replay. Presentation and controls remain client concerns. |
+| M12 | Wire the client to domain lifecycle and output replay; successful SDK NPC chat alone does not prove domain/background execution. Presentation and controls remain client concerns. |
 | M13 | Durable identities scoped by user, project, and domain, with defined restart/reconnect recovery. Exact fields and recovery semantics require implementation and verification. |
 | M14 | Worktree isolation and ownership for domain execution. The current placeholders do not implement isolation. |
 | M15 | Authenticated hosted operation with durable storage and enforced ownership/access boundaries. |

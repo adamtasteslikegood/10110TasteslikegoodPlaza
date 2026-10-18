@@ -65,7 +65,7 @@
       "tier": 2,
       "authority": "implementation",
       "status": "ACTIVE",
-      "note": "Authoritative for platform and repository decisions that outlive the current frontend: engine, bridge transport, agent data layer, licence, submodule and merge policy, and since v0.2.14 who merges a PR and who moves the board (D-031, D-032; D-030 superseded). Created in v0.2.7 to give the eight decisions PROJECT-OVERVIEW was wrongly named as originating an entitled home (issue #11, conflict 4.8). Doc set 0.2.15 ratifies asynchronous buffered domain execution, centralized non-secret configuration and bounded local JSONL archives/diagnostics (D-034–D-036), owner-approved 2026-10-18. Doc set 0.2.16 ratifies the owner runtime-path correction D-037: default Claude Code/Agent SDK with explicitly selected API-key-only Messages API conversation compatibility and no automatic fallback; implementation evidence follows separately."
+      "note": "Authoritative for platform and repository decisions that outlive the current frontend: engine, bridge transport, agent data layer, licence, submodule and merge policy, and since v0.2.14 who merges a PR and who moves the board (D-031, D-032; D-030 superseded). Created in v0.2.7 to give the eight decisions PROJECT-OVERVIEW was wrongly named as originating an entitled home (issue #11, conflict 4.8). Doc set 0.2.15 ratifies asynchronous buffered domain execution, centralized non-secret configuration and bounded local JSONL archives/diagnostics (D-034–D-036), owner-approved 2026-10-18. Doc set 0.2.16 ratifies the owner runtime-path correction D-037: default Claude Code/Agent SDK with explicitly selected API-key-only Messages API conversation compatibility and no automatic fallback; the runtime correction is implemented with separate cloud API-key-through-SDK recall evidence, without proving subscription use or desktop acceptance."
     },
     {
       "doc_id": "PROJECT-OVERVIEW",
@@ -97,7 +97,7 @@
       "tier": 2,
       "authority": "implementation",
       "status": "ACTIVE",
-      "note": "Owner-approved written bridge-first design (2026-10-18). M9 documentation alignment complete; M10 central configuration and bounded local observability implemented and tested; M11 NPC history/resizing/keyboard controls implemented with deterministic coverage; desktop acceptance outstanding. Later M12–M15 require detailed designs. Execution scope and M10 policies are ratified in PLATFORM-DECISIONS (D-034–D-036); enforcement remains intended for future durable-state functionality. M10 archives do not establish durable application state or SDK restart recovery. D-037 now requires default Claude Code/Agent SDK execution with explicit API-key-only Messages API conversation opt-in and no automatic fallback; runtime correction and operating-document refresh follow separately."
+      "note": "Owner-approved written bridge-first design (2026-10-18). M9 documentation alignment complete; M10 central configuration and bounded local observability implemented and tested; M11 NPC history/resizing/keyboard controls implemented with deterministic coverage; desktop acceptance outstanding. Later M12–M15 require detailed designs. Execution scope and M10 policies are ratified in PLATFORM-DECISIONS (D-034–D-036); enforcement remains intended for future durable-state functionality. M10 archives do not establish durable application state or SDK restart recovery. D-037 now requires default Claude Code/Agent SDK execution with explicit API-key-only Messages API conversation opt-in and no automatic fallback; the runtime correction and operating-document refresh are implemented. Separate real SDK/CLI two-client recall passed with a cloud API key; historical direct API evidence remains compatibility-only. Owner readback, local subscription verification and desktop acceptance remain outstanding; M12–M15 remain planned."
     },
     {
       "doc_id": "ROADMAP",
@@ -105,7 +105,7 @@
       "tier": 3,
       "authority": "derived",
       "status": "ACTIVE",
-      "note": "Preserves M1–M8 prototype milestones and proof; sequences approved M9–M15 bridge-first platform work from ACTIVE BRIDGE-PLATFORM-DESIGN. M9 complete, M10/M11 implemented with deterministic coverage, M11 desktop acceptance outstanding, M12–M15 planned; M5/M6 remain deferred frontend milestones."
+      "note": "Preserves M1–M8 prototype milestones and proof; sequences approved M9–M15 bridge-first platform work from ACTIVE BRIDGE-PLATFORM-DESIGN. M9 complete, M10/M11 implemented with deterministic coverage, M11 desktop acceptance outstanding, M12–M15 planned; M5/M6 remain deferred frontend milestones. D-037 default Claude Code/Agent SDK runtime is implemented; separate cloud SDK NPC recall is not domain lifecycle, desktop or subscription proof."
     },
     {
       "doc_id": "TASK-TRACKER",

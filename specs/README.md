@@ -32,7 +32,12 @@ The completed proof-of-concept depends on three milestones — if a change risks
 
 - **M1** — Godot 4 project + player can navigate the world.
 - **M4** — Proximity-triggered dialogue panel populated from `AgentRegistry`.
-- **M8** — Player question → WebSocket bridge → real Claude Messages API invocation → response rendered with a typewriter effect.
+- **M8** — Historical completion: player question → WebSocket bridge → real Claude Messages API invocation → response rendered with a typewriter effect.
+
+Current runtime follows `D-037`: Claude Code through Agent SDK by default, explicit
+API-key-only Messages API compatibility, no automatic fallback. The separate
+[cloud SDK recall evidence](evidence/npc-sdk-live-2026-10-18.json) does not advance
+M11 desktop acceptance or M12–M15.
 
 The next acceptance boundary is M11 desktop conversation controls, followed by
 planned domain execution and durable workspace state.

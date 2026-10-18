@@ -36,6 +36,10 @@ M10 acceptance covers offline configuration, archive/lifecycle and loopback serv
 tests; it does not establish later UI features or durable application recovery.
 `D-033` supersedes broad `D-006` with scoped synchronous NPC calls; `D-034`
 authorizes asynchronous buffered domains. M10 policies are `D-035`/`D-036`.
+`D-037` is implemented: normal execution, including NPCs, defaults to Claude Code
+through Agent SDK; Messages API is explicit API-key-only compatibility, with no
+automatic fallback. [Quick start](../QUICKSTART.md) records fresh cloud SDK recall
+and its limits separately from the historical direct API proof below.
 
 | Milestone | Scope | Status |
 |---|---|---|
@@ -323,11 +327,13 @@ func save():
 **Languages:** Python (bridge) + GDScript (Godot side)
 
 **What this is:** A small Python process that runs alongside the game on the same
-machine. The proven NPC conversation path sends requests over a local WebSocket,
-calls the Claude Messages API, and returns a complete JSON response. It runs
-locally and needs Anthropic credentials. The separate domain-session execution
-path uses the Agent SDK; connecting that lifecycle and execution to the frontend
-with live verification is planned under M12. The owner-approved execution scopes
+machine. The original M7/M8 NPC proof sent requests over a local WebSocket to
+the direct Claude Messages API and returned a complete JSON response. Current
+NPC execution instead defaults to Claude Code through Agent SDK under `D-037`,
+with native CLI authentication and a separately selected API-key-only compatibility
+adapter. The domain-session path also uses Agent SDK; connecting that lifecycle
+and execution to the frontend with live verification is planned under M12. The
+owner-approved execution scopes
 are synchronous NPC calls with timeout (`D-033`, superseding `D-006`) and
 asynchronous buffered domains (`D-034`).
 
@@ -335,7 +341,8 @@ asynchronous buffered domains (`D-034`).
 > The shipped code is `bridge/server.py`, `bridge/conversation.py` and
 > `scenes/bridge/ws_client.gd` (autoload `BridgeClient`); the wire format is
 > `bridge/PROTOCOL.md`. The sketch shells out to a CLI and sends `{"agent", "task"}`;
-> the shipped bridge does neither.
+> the shipped bridge uses a different wire shape and invokes Claude Code through
+> Agent SDK rather than the sketch's manual CLI subprocess.
 
 **bridge.py:**
 ```python
@@ -483,9 +490,13 @@ Display limits include all retained generations and drafts; provider context and
 disk quotas remain independent. Existing smoke is preserved. Desktop mouse,
 keyboard, clipboard and OS-window acceptance remains outstanding; record results
 against the [operating checklist](../QUICKSTART.md#desktop-acceptance-checklist--outstanding)
-before marking M11 fully accepted. A bounded real NPC API smoke on 2026-10-18
-passed first-attempt two-turn recall in both Godot's rendered current assistant
-span and plain Python; owner transcript readback is outstanding. M12 remains planned.
+before marking M11 fully accepted. The earlier direct Messages API recall smoke
+is historical compatibility evidence only. A separate real Claude Code/Agent SDK
+smoke passed at 2026-10-18 22:32:53 UTC: two-turn recall from Godot and Python,
+first attempt each, cloud API key inherited by CLI, four distinct observed SDK
+session IDs. [Fresh evidence](evidence/npc-sdk-live-2026-10-18.json) records its
+limits; owner readback and laptop subscription verification remain outstanding.
+The runner's open manifest is not graceful-shutdown proof. M12 remains planned.
 
 Retain history for each NPC conversation across closing and reopening its panel,
 including responses that arrive after dismissal. Add mouse resizing with the
@@ -506,8 +517,9 @@ across process restarts must follow the explicit state contract in M13.
 Connect domain lifecycle and execution to the frontend through the UI-agnostic
 bridge contract. Verify the complete path with a live Agent SDK run, including
 the lifecycle transitions and failures named by the design. Existing backend
-scaffolding or a successful NPC Messages API conversation alone does not complete
-this milestone. Keep the completed M8 conversation proof distinct from this new
+scaffolding or a successful NPC conversation through either SDK or Messages API
+alone does not complete this milestone or establish domain/background execution.
+Keep the completed M8 conversation proof distinct from this new
 execution proof. Preserve synchronous NPC calls with timeout (`D-033`) and
 asynchronous buffered domain execution with existing caps (`D-034`).
 

@@ -53,7 +53,8 @@ they do not claim that the planned recorder or configuration layer has shipped.
 
 `D-037` follows in doc set 0.2.16 on the owner's 2026-10-18 runtime-path
 correction and explicit API-key-only compatibility clarification. This records an
-already authorized requirement; implementation and new SDK evidence follow separately.
+already authorized requirement; implementation and separately captured SDK evidence
+are now documented in [Quick start](../../QUICKSTART.md).
 
 ## 1. Scope — what belongs in this document
 
@@ -188,10 +189,11 @@ replacing the whole frontend leaves this runtime rule intact, satisfying §1.
 The owner authorized this correction and the latest explicit API-key-only exception
 now; no further implementation approval is required. For this change the owner
 retains merge and waived ticket creation; generic `D-031`/`D-032` procedures do not
-override that task-specific instruction. This ratification is a requirement, not a
-claim that the corrected runtime or a new real-SDK smoke has already run. Historical
-direct Messages API proof remains evidence only of that path. M11 desktop acceptance
-remains outstanding and M12–M15 remain planned.
+override that task-specific instruction. The runtime correction is implemented;
+[Quick start](../../QUICKSTART.md) records the separate cloud API-key-through-SDK
+recall run and its limits. Historical direct Messages API proof remains evidence
+only of that path. Neither ratification nor SDK NPC recall establishes subscription
+billing, M11 desktop acceptance or M12; M12–M15 remain planned.
 
 ## 3. Repository policy
 
@@ -362,7 +364,8 @@ key, unsupported version, wrong type or invalid bound fails startup with a usefu
 setting-specific error. Resolve relative LOG_DIR paths against the selected
 configuration file's directory. Read settings once at startup; restart to reload.
 
-The following is the approved complete initial settings set for implementation:
+The following is the implemented complete settings set, including the `D-037`
+backend selector; the original M10 settings policy remains unchanged:
 
 ```json
 {
@@ -372,6 +375,7 @@ The following is the approved complete initial settings set for implementation:
   "OPUS_MODEL": "claude-opus-5-5",
   "FABLE_MODEL": "claude-fable-5-1",
   "ADVISOR_MODEL": "FABLE_MODEL",
+  "CONVERSATION_BACKEND": "claude_code",
   "CONVERSATION_TIER": "haiku",
   "DOMAIN_TIER": "sonnet",
   "CONVERSATION_TIMEOUT_SECONDS": 60,

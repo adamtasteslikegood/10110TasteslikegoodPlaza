@@ -515,9 +515,11 @@ and no OAuth/setup-token credentials on direct API calls. This is an already
 resolved owner ruling, not an open approval request or unilateral reconciliation.
 `D-033` and `D-034` remain locked with their existing execution timing/domain scope;
 `D-006` and `D-030` remain superseded. The owner retains merge and waived ticket
-creation for this correction. Implementation and active operating-document refresh
-follow separately; no new SDK execution, M11 desktop acceptance, M12 completion or
-closure of issue #341 is claimed here.
+creation for this correction. The runtime correction and operating-document
+refresh are implemented; [Quick start](../../QUICKSTART.md) records the separately
+observed cloud SDK recall run and its limits. The ruling itself is not execution
+proof; M11 desktop acceptance, M12 completion and closure of issue #341 are not
+claimed here.
 
 ## 5. Exit criteria to v1.0.0
 

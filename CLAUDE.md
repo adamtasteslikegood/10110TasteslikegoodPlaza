@@ -38,7 +38,7 @@ Every row below was executed against a real checkout. The rule this table exists
 
 `docs/designs/2.5D-RPG-Prototype.md` (`PROMOTED`, 2026-04-27) **pivots the prototype from 3D first-person to 2.5D top-down** under a "10x check" scope reduction. Accepted: 2.5D top-down in Godot 2D; one generic agent sprite colour-tinted per department and one silhouette portrait; a Python WebSocket bridge with **synchronous NPC calls and timeout protection** (`D-033`, superseding the broad historical `D-006`) and asynchronous domains with buffered results and existing turn/budget caps (`D-034`); a typewriter effect in the UI faking streaming over a full JSON response; and "wait or delegate" UX where short tasks block and long ones become background delegations.
 
-Deferred: true WebSocket streaming, unique sprites per agent, 3D first-person. **`PLATFORM-DECISIONS` `D-037` binds:** normal model execution, including NPCs, must default to Claude Code via Claude Agent SDK; Messages API is an explicit API-key-only opt-in, with no automatic fallback. Runtime correction is in progress; earlier direct-API proof is not SDK execution proof. Owner retains merge and waived tickets for this correction.
+Deferred: true WebSocket streaming, unique sprites per agent, 3D first-person. **`PLATFORM-DECISIONS` `D-037` binds:** normal model execution, including NPCs, must default to Claude Code via Claude Agent SDK; Messages API is an explicit API-key-only opt-in, with no automatic fallback. Runtime correction is implemented; fresh two-client SDK recall passed with cloud API-key authentication (evidence/limits: `QUICKSTART.md`). Earlier direct-API proof is historical compatibility evidence. Owner retains merge and waived tickets for this correction.
 
 ## Which document wins — read `specs/meta/` first
 
@@ -57,7 +57,7 @@ Every governed doc declares `doc_id`/`tier`/`authority`/`status` in YAML frontma
 Every planning doc assumes this model, regardless of 2D/3D:
 
 ```
-Layer 4 — Real agent execution  (D-037 REQUIREMENT) Claude Code via Agent SDK; explicit API-key API mode
+Layer 4 — Real agent execution  (D-037 DEFAULT) Claude Code via Agent SDK; explicit API-key API mode
 Layer 3 — UI-agnostic bridge    (DONE M7–M8) Python WebSocket → synchronous NPC calls, async buffered domains
 Layer 2 — Current frontend      (PARTIAL)  2.5D Godot; one of several swappable frontends
 Layer 1 — Data + config         (EXISTS)   submodule → agent .md files → agents.json

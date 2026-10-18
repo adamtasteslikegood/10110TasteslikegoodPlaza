@@ -55,17 +55,22 @@ outstanding (see the [operating guide](QUICKSTART.md#npc-conversation-history-an
 bounded local transcripts/debug logs, and usable NPC chat windows with resizing,
 keyboard controls and per-agent scrollback. User → project → domain state,
 worktree execution isolation and authenticated hosted durability are later
-milestones; they are not current prototype capabilities.
+milestones; they are not current prototype capabilities. The implemented default
+runtime follows [`D-037`](docs/designs/platform-decisions.md#d-037--claude-codeagent-sdk-default-with-explicit-api-key-messages-api-opt-in):
+Claude Code through Agent SDK, with explicit API-key-only Messages API compatibility
+and no automatic fallback. See [Quick start](QUICKSTART.md) for authentication,
+bounded request history and the separate live SDK evidence/acceptance limits.
 
 ```
 Layer 4 — Real agent execution  (EXISTS)
-  claude-code, gemini-cli, MCP servers, SSH, tty
-  Not built by this project.
+  Claude Code through Claude Agent SDK (D-037 default)
+  Runtime supplied by Claude Code; NPC chat is text-only.
 
 Layer 3 — UI-agnostic bridge  (EXISTS — M7+M8)
   Python WebSocket server on ws://localhost:8765
-  Conversation engine (Messages API) + domain sessions (Agent SDK)
-  Requires an Anthropic API key (ANTHROPIC_API_KEY)
+  NPC conversation + domain sessions default to Claude Code via Agent SDK
+  Native CLI authentication; explicit Messages API mode requires ANTHROPIC_API_KEY
+  CONVERSATION_BACKEND=claude_code; messages_api opt-in, no automatic fallback
   NPC calls: synchronous with timeout (D-033); domains: async + buffered (D-034)
   Zero UI awareness (D-005)
 
