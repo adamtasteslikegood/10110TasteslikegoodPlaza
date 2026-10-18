@@ -17,6 +17,17 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
 
+### Changed — incremental independent Claude review with scoped fixes
+
+- Updated the review action and checkout pins, disabled persisted checkout
+  credentials, and adopted the configured Opus 4.7 review default. Reviews apply
+  scoped fixes and explicitly commit/push them, while protected specification
+  decisions remain owner work. Missing model credentials still skip cleanly.
+- Follow-up pushes use low-effort review of changes since a genuine completed
+  review checkpoint. Skipped/failed reviews, force-pushed history and merge ranges
+  fall back to a full review. Dispatch validates its PR and records the actual
+  reviewed head. Scope regression tests now run in CI.
+
 ### Added — bridge-first platform design for review
 
 - Added a governed DRAFT specification and proposed M9–M15 roadmap that distinguish

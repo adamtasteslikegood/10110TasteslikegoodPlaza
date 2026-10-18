@@ -1,173 +1,40 @@
 # Independent Claude review — advisory, cost-optimized, fail-open.
+# Full review on open/ready/label/dispatch; low-effort unreviewed delta on push.
+# Verified fixes are committed to the PR branch and explained in comments.
+# Protected specification decisions still require the owner's direction.
 #
-# Runs a SECOND, INDEPENDENT review of a PR in its own CI session, on a DIFFERENT
-# and CHEAPER model than the authoring session. Sessions on this repo author in
-# Opus 5 / Fable 5 (branch names are `claude/*`), so this reviewer defaults to
-# Sonnet 5 — cheaper, and a genuinely different perspective rather than the same
-# model grading its own homework.
+# Set CLAUDE_CODE_OAUTH_TOKEN (preferred) or ANTHROPIC_API_KEY in Actions secrets.
+# CLAUDE_REVIEW_MODEL overrides the supplied default, claude-opus-4-7.
+# The Claude App token supplied through OIDC is separate from model credentials.
 #
-# ADVISORY ONLY — never a required status check. `continue-on-error: true` so a
-# flaky/absent key never blocks a merge, and the review step is SKIPPED entirely
-# when no Claude credential is configured.
-#
-# ─────────────────────────────────────────────────────────────────────────────
-# WHAT THIS REPO ACTUALLY NEEDS REVIEWED
-#
-# WHAT THIS FILE DOES NOT DO: describe the repository.
-#
-# CLAUDE.md is the source of truth for what this repo contains and what is
-# runnable in it, and it is expected to change as the project does. This file
-# used to carry its own copy ("a governed document set, not an application --
-# there is no Godot project and no Node"). That copy was accurate when written
-# and became false the moment M1 landed, while still being handed to every
-# reviewer as fact.
-#
-# A stale copy here is worse than a stale copy in a doc, because of the trap
-# below: correcting it is expensive. So this prompt states review METHOD and
-# points at CLAUDE.md for repository STATE. Resist re-adding "this repo is..."
-# text; it will rot, and you will not be able to fix it cheaply.
-#
-# THE SELF-EDIT TRAP -- read before changing this file.
-#
-# claude-code-action refuses to run when the workflow differs from the copy on
-# the default branch ("Skipping action due to workflow validation"), which stops
-# a PR rewriting its own reviewer. Correct behaviour, but it means ANY PR that
-# edits this file is unreviewable by this reviewer, and the check still reports
-# a fast green. Observed on #17 (run 3) and #19. Consequences:
-#   * Keep edits here rare and small, in their own PR where possible.
-#   * A green check on a PR that touches this file proves nothing -- read the
-#     job log for the skip warning before believing it.
-#
-# DURABLE DEFECT CLASSES (these are about method, not about what exists today):
-#
-#   * Repository-state claims that have gone stale or were checked against an
-#     endpoint that cannot see the answer.
-#   * Decision-register bookkeeping -- a `D-nnn` locked from a document whose
-#     `authority` does not permit deciding.
-#   * Cross-reference integrity -- section cites, CHANGELOG self-consistency.
-#   * The governed document set staying green under scripts/validate_specs.py.
-#   * Code, in whatever language the repo currently holds, violating a LOCKED
-#     decision -- notably D-016 (agent facts must be read from the generated
-#     data, never hard-coded) and D-005 (the bridge must never learn the UI
-#     exists).
-#
-# ─────────────────────────────────────────────────────────────────────────────
-# NO AUTO-FIX ON GOVERNED DOCUMENTS — this is the important adaptation.
-#
-# specs/meta/META-SPEC.md §4 binds agents: "An agent may never pick a side
-# unilaterally, and may never edit one document to match another as a drive-by."
-# A reviewer bot running `--fix` across specs/ is exactly that drive-by. So this
-# workflow COMMENTS by default and never edits.
-#
-# Mechanical fixes are opt-in per PR via the `claude-review-fix` label, and even
-# then specs/meta/** stays off-limits — the constitution, the registry, the
-# decision register and the driver doc are changed by humans or by a PR that
-# argues for the change, never by a bot tidying up.
-#
-# ─────────────────────────────────────────────────────────────────────────────
-# AUTH: prefers a Claude Pro/Max subscription OAuth token, falls back to an API key.
-#   * CLAUDE_CODE_OAUTH_TOKEN (primary) — long-lived token from `claude setup-token`;
-#     draws on your subscription's usage/rate limits.
-#   * ANTHROPIC_API_KEY (fallback) — metered API billing; used when the OAuth secret
-#     is absent. If BOTH are set, the action prefers the OAuth token.
-# `id-token: write` is required so the action can mint the official Claude GitHub
-# App token via OIDC to post comments — GitHub-side auth, independent of which
-# Claude credential you use.
-#
-# PREREQUISITES (one-time, by a maintainer):
-#   1. Add at least one Claude credential secret (Settings → Secrets → Actions):
-#      CLAUDE_CODE_OAUTH_TOKEN (preferred) and/or ANTHROPIC_API_KEY. With neither,
-#      the review step skips cleanly (advisory, no failure).
-#   2. (recommended) Add repo variable  CLAUDE_REVIEW_MODEL  — must NOT be the
-#      authoring tier. Verify the exact id at console.anthropic.com.
-#   3. Create two labels:  `claude-review`  (request / re-request a review)
-#                          `claude-review-fix`  (opt in to mechanical fixes)
-#
-# THIS WORKFLOW CANNOT REVIEW CHANGES TO ITSELF. claude-code-action validates
-# that the workflow file is byte-identical to the copy on the default branch and
-# skips otherwise:
-#
-#   "Workflow validation failed. The workflow file must exist and have identical
-#    content to the version on the repository's default branch."
-#
-# That is a supply-chain control, not a bug — without it a PR could edit this
-# file to exfiltrate CLAUDE_CODE_OAUTH_TOKEN and have CI run the edit. The job
-# still reports success (advisory, continue-on-error), so READ THE STEP LOG, not
-# the check mark, when verifying a change here.
-#
-# Consequences:
-#   * The PR that introduced this file could not exercise it. First real run is
-#     the first PR opened AFTER it lands on `dev`.
-#   * Every future PR that edits this file will skip the review of itself. To
-#     test a change, merge it to `dev`, then open a throwaway PR.
-#
-# ON SHA PINNING: this repo does NOT require it. `sha_pinning_required: false`,
-# `allowed_actions: all`, and ci.yml uses plain tags (actions/checkout@v4). The
-# SHA-pinned `uses:` lines came from upstream templates, not from a policy here.
-#
-# The two SHAs below are pinned anyway, deliberately, and both were verified
-# against upstream on 2026-07-26:
-#   actions/checkout@9c091bb              = v7.0.0
-#   anthropics/claude-code-action@44423bd = v1 (Claude Code 2.1.218)
-# The second is the one that matters: `@v1` is a moving tag that has absorbed
-# 180+ releases, so an unpinned reference changes the reviewer's behaviour
-# without a commit here. Swap either for a tag if you prefer ci.yml's style.
+# This workflow cannot review changes to itself until they reach the default
+# branch: the action may skip workflow validation and still report a green step.
+# Only its genuine success output creates a completed-review checkpoint below.
 
 name: Claude Review (independent model)
 
 on:
   pull_request:
-    # Every push, not just the first. This previously excluded `synchronize` to
-    # bound cost. That trade stopped making sense once fix commits — the ones
-    # most worth a second look — were the commits going unread.
-    #
-    # Written when this was the only independent reviewer working at all: gemini
-    # had never completed a run here (cancelled at 7m on #19 and 20m on #20, on
-    # a 54-file diff and a 2-file diff — diff size was never the cause) and
-    # Codex was usage-limited. Gemini was fixed in #23 by pinning
-    # GEMINI_CLI_VERSION, and now completes in ~2m, so that argument no longer
-    # carries this change on its own. The one below does.
-    #
-    # Reviewing once per PR meant every commit after the first review shipped
-    # unread — including fix commits, which is precisely when a second look is
-    # worth most. On #20 the reviewer found a real CRITICAL, and getting the fix
-    # for it reviewed took a manual label re-apply. A reviewer that has to be
-    # asked twice gets asked zero times on a busy day.
-    #
-    # Cost stays bounded by the `concurrency` block below rather than by looking
-    # less often: `cancel-in-progress: true` means a push mid-review kills the
-    # superseded run instead of stacking another alongside it.
-    #
-    # The `labeled` types stay — re-applying `claude-review` is still how you
-    # re-request a review without pushing a commit.
     types: [opened, ready_for_review, labeled, synchronize]
-    branches: [main, dev]
+    branches: [main, dev, 'dev/**']
   workflow_dispatch:
     inputs:
       pr:
         description: 'PR number to review'
         required: true
 
-# Least privilege at the top level, matching .github/workflows/ci.yml. Without it
-# GITHUB_TOKEN inherits the repository default and CodeQL raises
-# `actions/missing-workflow-permissions`, one alert per job. The job below widens
-# it for itself rather than widening it for everything.
 permissions:
-  contents: read
-
-concurrency:
-  group: claude-review-${{ github.event.pull_request.number || github.event.inputs.pr }}
-  cancel-in-progress: true
+  contents: write
+  pull-requests: write
+  issues: write
+  id-token: write
+  actions: read
 
 jobs:
   review:
     name: Independent Claude review
-    # Same-repo only (forks/Dependabot have no secrets → skip cleanly), non-bot,
-    # non-draft; on `labeled` events only fire for the two review labels.
-    #
-    # `sender.type != 'Bot'` keeps this from answering other bots that comment on
-    # PRs here. It was added for the gemini-*.yml triage bots, which are now gone;
-    # it stays because Dependabot, CodeQL and GitGuardian all still post.
+    # Bot fix pushes must not start an automatic review loop. Dispatch targets
+    # are checked separately before checkout, including their repository/state.
     if: >-
       github.event_name == 'workflow_dispatch' ||
       (
@@ -175,97 +42,115 @@ jobs:
         github.event.pull_request.draft == false &&
         github.event.pull_request.user.login != 'dependabot[bot]' &&
         github.event.sender.type != 'Bot' &&
-        (
-          github.event.action != 'labeled' ||
-          github.event.label.name == 'claude-review' ||
-          github.event.label.name == 'claude-review-fix'
-        )
+        (github.event.action != 'labeled' || github.event.label.name == 'claude-review')
       )
+    # Evaluate job eligibility before concurrency: a skipped bot fix push or
+    # unrelated label must not cancel the human-triggered review that is running.
+    concurrency:
+      group: claude-review-${{ github.event.pull_request.number || github.event.inputs.pr }}
+      cancel-in-progress: true
     runs-on: ubuntu-latest
-    continue-on-error: true # advisory — never blocks the merge
-
-    permissions:
-      contents: write # only exercised on the opt-in fix path; read otherwise
-      pull-requests: write # post review comments
-      issues: write # open follow-ups; fallback summary comment
-      id-token: write # OIDC → official Claude GitHub App token
+    continue-on-error: true
 
     steps:
-      - name: Checkout PR head
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-        with:
-          # For pull_request events this is the PR branch, so the opt-in fix path
-          # can push back.
-          ref: ${{ github.head_ref }}
-          fetch-depth: 0 # full history — the reviewer inspects the commit graph
-          # Kept ON deliberately, unlike ci.yml. Agent-count claims ("133 roles",
-          # "141 files = 8 + 133") are a live review surface here and they are only
-          # checkable against claude-code-tresor/subagents/. Costs ~a few seconds.
-          submodules: recursive
-
-      - name: Checkout dispatched PR
-        if: github.event_name == 'workflow_dispatch'
+      - name: Resolve and validate PR context
+        id: pr
         env:
           GH_TOKEN: ${{ github.token }}
-          # Pass the untrusted dispatch input via env, never templated into the
-          # shell source — otherwise a crafted `pr` value is a command-injection
-          # sink (this job has contents/pull-requests/id-token: write).
-          PR_NUMBER: ${{ github.event.inputs.pr }}
-        run: gh pr checkout "$PR_NUMBER"
+          PR_NUMBER: ${{ github.event.pull_request.number || github.event.inputs.pr }}
+          EVENT_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          [[ "$PR_NUMBER" =~ ^[1-9][0-9]*$ ]] || { echo '::error::Expected a positive PR number'; exit 1; }
+          PR_JSON=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER")
+          jq -e --arg repo "$GITHUB_REPOSITORY" '
+            .state == "open" and .draft == false and
+            .head.repo.full_name == $repo and .user.login != "dependabot[bot]"
+          ' <<< "$PR_JSON" > /dev/null || { echo '::error::PR is not eligible for review'; exit 1; }
+          BASE_REF=$(jq -r '.base.ref' <<< "$PR_JSON")
+          case "$BASE_REF" in main|dev|dev/*) ;; *) echo '::error::Unexpected PR base'; exit 1 ;; esac
+          HEAD_SHA=$(jq -r '.head.sha' <<< "$PR_JSON")
+          if [ -n "$EVENT_HEAD" ] && [ "$EVENT_HEAD" != "$HEAD_SHA" ]; then
+            echo '::notice::PR head moved; the newer event must review it.'
+            exit 1
+          fi
+          echo "number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+          echo "head_sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
+          jq -r '"head_ref=\(.head.ref)\nbase_ref=\(.base.ref)\nbase_sha=\(.base.sha)"' \
+            <<< "$PR_JSON" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout PR head
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ steps.pr.outputs.head_sha }}
+          fetch-depth: 0
+          submodules: recursive
+          # Fix pushes use the Claude App's authentication, not checkout's token.
+          persist-credentials: false
+
+      - name: Attach the checked-out commit to its PR branch
+        env:
+          HEAD_REF: ${{ steps.pr.outputs.head_ref }}
+          HEAD_SHA: ${{ steps.pr.outputs.head_sha }}
+        run: |
+          git check-ref-format --branch "$HEAD_REF"
+          git switch -C "$HEAD_REF" "$HEAD_SHA"
+
+      - name: Scope the review (whole PR, or the unreviewed push delta)
+        id: scope
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ACTION: ${{ github.event.action }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+          HEAD_SHA: ${{ steps.pr.outputs.head_sha }}
+        run: |
+          MODE=full RANGE="" LAST=""
+          if [ "$ACTION" = synchronize ]; then
+            # Markers identify the actual reviewed PR and SHA, including dispatch
+            # runs whose workflow head/branch are different from the PR's head.
+            # A bounded lookup can miss an older marker: full review is safe then.
+            RUNS=$(gh run list --workflow claude-review.yml --limit 100 \
+              --json databaseId --jq '.[].databaseId' 2>/dev/null) || RUNS=""
+            for RUN in $RUNS; do
+              MARKERS=$(gh run view "$RUN" --json jobs --jq \
+                '.jobs[].steps[] | select(.conclusion == "success") | .name' \
+                2>/dev/null) || continue
+              while IFS= read -r STEP; do
+                case "$STEP" in
+                  "Reviewed PR $PR_NUMBER at "*) LAST=${STEP#"Reviewed PR $PR_NUMBER at "} ;;
+                esac
+              done <<< "$MARKERS"
+              [ -z "$LAST" ] || break
+            done
+            # Never substitute event.before: failed/skipped/cancelled reviews may
+            # have left earlier pushes unreviewed. Missing/rewritten/merged history
+            # also requires the full PR, not a partial range that loses commits.
+            if [[ "$LAST" =~ ^[0-9a-f]{40}$ ]] && git cat-file -e "$LAST^{commit}" 2>/dev/null; then
+              if [ "$LAST" = "$HEAD_SHA" ]; then
+                MODE=skip
+              elif git merge-base --is-ancestor "$LAST" "$HEAD_SHA" \
+                   && [ -z "$(git rev-list --merges "$LAST..$HEAD_SHA")" ]; then
+                MODE=delta RANGE="$LAST..$HEAD_SHA"
+              fi
+            fi
+          fi
+          echo "mode=$MODE" >> "$GITHUB_OUTPUT"
+          echo "range=$RANGE" >> "$GITHUB_OUTPUT"
+          echo "::notice::Review scope: $MODE $RANGE"
 
       - name: Pick a cost-optimized, independent review model
         id: pick
         env:
-          # Via env, not templated into the shell source (same injection-safety
-          # rule as the dispatch input above; a stray quote/backtick in the var
-          # value would otherwise break or inject the script).
           CLAUDE_REVIEW_MODEL: ${{ vars.CLAUDE_REVIEW_MODEL }}
         run: |
-          # Deterministic, always-cheaper-than-author selection. Authoring sessions
-          # on this repo run Opus 5 / Fable 5, so the reviewer defaults to Sonnet 5:
-          # cheaper, and a different model for a genuinely independent read.
-          MODEL="${CLAUDE_REVIEW_MODEL:-claude-sonnet-5}"
+          MODEL="${CLAUDE_REVIEW_MODEL:-claude-opus-4-7}"
           case "$MODEL" in
-            claude-opus-5*|claude-fable-5*)
-              echo "::warning::CLAUDE_REVIEW_MODEL=$MODEL is the authoring tier; using claude-sonnet-5 for a cheaper, independent review."
-              MODEL="claude-sonnet-5" ;;
+            claude-opus-4-8*|claude-opus-5*|claude-fable-5*)
+              echo '::warning::Authoring-tier model configured; using claude-opus-4-7.'
+              MODEL=claude-opus-4-7 ;;
           esac
           echo "model=$MODEL" >> "$GITHUB_OUTPUT"
           echo "::notice::Independent review model: $MODEL"
-
-      - name: Decide whether fixes are allowed on this PR
-        id: mode
-        env:
-          LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
-        run: |
-          # Comment-only by default. META-SPEC §4 forbids an agent editing one
-          # document to match another as a drive-by, and a bot with edit tools
-          # loose over specs/ is precisely that. Opt in per PR with
-          # `claude-review-fix`.
-          #
-          # Enforced by DENYING THE EDIT TOOLS, not by a mode flag. `--comment`
-          # and `--fix` are claude-code-action *inputs*, not Claude Code CLI
-          # options, and `claude_args` is forwarded verbatim to the CLI -- so
-          # they died with `unknown option '--comment'` before the review ever
-          # started. Verified against `claude --help` on 2.1.220: the CLI has
-          # --allowed-tools / --disallowed-tools and no --comment or --fix.
-          #
-          # This is the §9 failure mode again: a plausible-sounding flag nobody
-          # checked against the tool that receives it.
-          #
-          # `fix` is emitted separately and is what the prompt reads. Deriving
-          # the prompt's ENABLED/DISABLED line by string-matching `flags` meant
-          # any change to the flag spelling silently told the model the opposite
-          # of what the tool permissions enforced.
-          if printf '%s' "$LABELS" | grep -q '"claude-review-fix"'; then
-            echo "fix=true" >> "$GITHUB_OUTPUT"
-            echo "flags=" >> "$GITHUB_OUTPUT"
-            echo "::notice::Fix mode ENABLED for this PR (label: claude-review-fix). specs/meta/** stays off-limits."
-          else
-            echo "fix=false" >> "$GITHUB_OUTPUT"
-            echo 'flags=--disallowed-tools "Edit,Write,MultiEdit,NotebookEdit"' >> "$GITHUB_OUTPUT"
-            echo "::notice::Comment-only mode. Add the claude-review-fix label to allow mechanical fixes."
-          fi
 
       - name: Check for a Claude credential
         id: auth
@@ -273,203 +158,104 @@ jobs:
           OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
-          # Advisory workflow: if no credential is configured, skip cleanly instead
-          # of failing (forks/Dependabot also land here — they have no secrets).
-          if [ -n "$OAUTH_TOKEN" ]; then
-            echo "::notice::Authenticating with CLAUDE_CODE_OAUTH_TOKEN (subscription)."
-            echo "present=true" >> "$GITHUB_OUTPUT"
-          elif [ -n "$API_KEY" ]; then
-            echo "::notice::Authenticating with ANTHROPIC_API_KEY (API billing)."
-            echo "present=true" >> "$GITHUB_OUTPUT"
+          if [ -n "$OAUTH_TOKEN" ] || [ -n "$API_KEY" ]; then
+            echo 'present=true' >> "$GITHUB_OUTPUT"
           else
-            echo "::warning::No CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY secret — skipping independent Claude review (advisory)."
-            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo '::warning::No Claude credential configured; skipping advisory review.'
+            echo 'present=false' >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Review + comment
-        if: steps.auth.outputs.present == 'true'
-        uses: anthropics/claude-code-action@44423bdec74b97d67543eb16c110546762c110b2 # v1
+      - name: Restore trusted startup configuration for dispatch
+        id: trusted
+        if: >-
+          github.event_name == 'workflow_dispatch' &&
+          steps.auth.outputs.present == 'true' && steps.scope.outputs.mode != 'skip'
+        env:
+          BASE_SHA: ${{ steps.pr.outputs.base_sha }}
+        run: |
+          # Match the pinned action's restore-config.ts for PR events. Dispatch
+          # lacks PR event context, so do this before Claude can load hooks/MCP.
+          # These are fixed paths in a fresh CI checkout; rm unlinks a PR symlink
+          # itself rather than following it. The index/HEAD stay the PR's versions.
+          for CONFIG in .claude .mcp.json .claude.json .gitmodules .ripgreprc CLAUDE.md CLAUDE.local.md .husky; do
+            rm -rf -- "$CONFIG"
+            if git cat-file -e "$BASE_SHA:$CONFIG" 2>/dev/null; then
+              git restore --source="$BASE_SHA" --worktree -- "$CONFIG"
+            fi
+          done
+
+      - name: Review + fix + comment
+        id: review
+        if: steps.auth.outputs.present == 'true' && steps.scope.outputs.mode != 'skip'
+        uses: anthropics/claude-code-action@a26b07d8c778b0c43f64618e5fd29fd0f8af72e8 # v1
+        env:
+          CLAUDE_BRANCH: ${{ steps.pr.outputs.head_ref }}
         with:
-          # OAuth token (subscription) is primary; the action prefers it when set and
-          # falls back to the API key when the OAuth secret is empty/unset.
+          base_branch: ${{ steps.pr.outputs.base_ref }}
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          anthropic_api_key: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN == '' && secrets.ANTHROPIC_API_KEY || '' }}
           prompt: |
-            You are an INDEPENDENT reviewer running in CI on a different, cheaper
-            model than the author's session. Review THIS pull request's diff against
-            its base branch. Be rigorous. Do not fabricate issues, and do not pad the
-            review to look thorough.
+            Review PR #${{ steps.pr.outputs.number }} in ${{ github.repository }}.
+            Head: ${{ steps.pr.outputs.head_sha }} on branch ${{ steps.pr.outputs.head_ref }}.
+            Base: ${{ steps.pr.outputs.base_sha }} (${{ steps.pr.outputs.base_ref }}).
+            Scope: ${{ steps.scope.outputs.mode }} ${{ steps.scope.outputs.range }}.
 
-            Read CLAUDE.md and specs/meta/META-SPEC.md FIRST. They are the source
-            of truth for what this repository currently contains and what is
-            runnable in it. This prompt deliberately does not restate that — a
-            second copy rots, and it rotted before. If CLAUDE.md and anything in
-            this prompt disagree about repository state, CLAUDE.md wins; say so
-            in your review rather than following the stale one.
+            You are an independent reviewer. Read CLAUDE.md and
+            specs/meta/META-SPEC.md first; they own repository instructions/state.
+            Verify findings against files and real command output. Never claim a
+            tool or test ran when it is unavailable on this runner.
 
-            Never recommend a command that does not exist here. Before claiming
-            you ran anything, confirm the tool is actually on this runner: this
-            job installs nothing beyond the checkout, so language runtimes and
-            engines the repo uses are generally NOT present. Write "I could not
-            run X" rather than implying you did.
+            On a delta review, inspect ONLY git diff ${{ steps.scope.outputs.range }}
+            at low effort. Earlier PR changes are context only: do not fix, repeat
+            or raise findings outside this range. A full review inspects the entire
+            PR diff against its base; pre-existing unrelated defects are not scope.
 
-            ## 1. Scope and effort
+            For full reviews choose low/medium effort for small prose changes,
+            high/max for core bridge/runtime code, autoload/, scenes/, project.godot,
+            scripts/, specs/meta/, workflows, dependencies, the submodule pointer,
+            or diffs larger than roughly 200 lines.
+            Include security review when scoped changes affect bridge/network code,
+            Python scripts, authentication, secrets, hooks, workflows or dependencies.
+            Use an installed review skill if it honors this scope; otherwise review
+            directly. Do not assume /code-review effort/--fix flags exist. Scope and
+            effort must not be widened by a skill or by a previous review comment.
 
-            Inspect the diff, then CHOOSE a reasoning effort:
-              - `low` / `medium` — small prose edits, CHANGELOG entries, typos.
-              - `high` / `max` — anything touching specs/meta/**, the decision
-                register, scripts/validate_specs.py, .github/workflows/**, the
-                submodule pointer, or a diff over ~200 lines.
+            Apply verified, scoped fixes and explain every fix in a PR comment.
+            Preserve D-005 (the bridge is UI-independent) and D-016 (agent facts
+            come from generated data). Do not hand-edit data/agents.json; use its
+            generator when needed. Do not edit specs/meta/**, change/re-status a
+            D-nnn decision, alter storyboard beats, reconcile conflicting governed
+            documents, bump doc_set_version or the submodule pointer. Report those
+            for the owner instead. Run relevant available checks, including
+            python3 scripts/validate_specs.py for documentation changes.
 
-            Always run the built-in `/code-review` at the effort you chose.
-            ADDITIONALLY run `/security-review` when the diff touches
-            .github/workflows/**, scripts/**, *.py, or the submodule pointer.
+            Stage only your intended fixes, commit them and explicitly git push
+            HEAD to the PR branch using the action's Claude App authentication.
+            The action does not automatically commit/push prompt-driven fixes.
+            Startup config is restored from the trusted base: .claude, .mcp.json,
+            .claude.json, .gitmodules, .ripgreprc, CLAUDE.md, CLAUDE.local.md and
+            .husky. Never stage/commit those restoration differences or edit those
+            paths. Review their PR versions with git show/diff and report findings.
+            Do not force-push or push if the PR head moved since checkout; report
+            that race instead. Keep changes to this PR's concern.
 
-            ## 2. Verify claims about repository state — the highest-yield check
-
-            This document set makes assertions about how the repository is
-            configured. Those assertions rot. Three distinct failure modes, all of
-            which have occurred here (see specs/branching-strategy.md §9):
-
-              1. INHERITED and never checked — carried from
-                 alirezarezvani/claude-code-tresor and plausible-sounding.
-              2. CHECKED ONCE, THEN STALE — real evidence, cited, and the state
-                 moved underneath it afterwards.
-              3. CHECKED AGAINST AN ENDPOINT THAT CANNOT SEE THE ANSWER — the worst
-                 one, because the response looks like evidence.
-
-            When the diff asserts anything about branch protection, merge strategy,
-            required checks, or labels, VERIFY IT LIVE:
-
-            ```bash
-            gh api repos/${{ github.repository }} \
-              --jq '{merge:.allow_merge_commit, squash:.allow_squash_merge, rebase:.allow_rebase_merge, delete_branch:.delete_branch_on_merge}'
-            gh api repos/${{ github.repository }}/rulesets
-            gh api repos/${{ github.repository }}/rules/branches/dev
-            gh api repos/${{ github.repository }}/rules/branches/main
-            ```
-
-            TRAP: `GET /repos/{owner}/{repo}/branches/{branch}/protection` returns
-            `404 Branch not protected` for a branch protected by a RULESET. That 404
-            means "no CLASSIC protection", not "no protection". Never conclude a
-            branch is unprotected from that 404 alone. Check both surfaces.
-
-            Required status checks are matched BY NAME. If the diff names required
-            checks, read .github/workflows/ci.yml and confirm each name exists — the
-            job names are `Validate Specs`, `Lint Python Bridge`, and
-            `Export Godot 4 Prototype`.
-
-            ## 3. Governance and authority
-
-            - Run `python3 scripts/validate_specs.py` (stdlib only, no pip install).
-              It must pass. Report the exact output.
-            - Every governed doc needs frontmatter valid against
-              specs/meta/spec-frontmatter.schema.json AND an entry in
-              specs/meta/doc-registry.json (as `documents` or `exempt`). Any new .md
-              under a governed tree that is registered in neither is a hard failure.
-            - A new or changed `D-nnn` row: check the Origin document's `authority`
-              actually permits deciding, per the META-SPEC §2 table. `derived`,
-              `summary`, `research` and `historical` may originate NOTHING. A
-              decision whose origin is not entitled must be `PROPOSED`, not `LOCKED`.
-              This has already happened seven times — see issue #11 — so check it
-              every time.
-            - Tier ladder: tier 0 specs/meta/ governs, tier 1 docs/storyboard-week1.md
-              owns concept, tier 2 docs/designs/* owns implementation, tier 3
-              specs/roadmap.md + task-tracker sequence, tier 4 decides nothing.
-              LOWER TIER WINS.
-            - If two documents disagree, do NOT reconcile them. Say so, and say it
-              belongs in the open-conflict register in
-              specs/meta/spec-drivers-v0.2.5.md, per META-SPEC §4.
-            - Agent counts derive from docs/agent-directory.md (D-017). 133 distinct
-              roles; 141 files = 8 + 133. Both are right — flag any text that uses
-              one number while meaning the other.
-
-            ## 4. Cross-reference integrity
-
-            - Section cites must resolve to a real heading. `§4.2` is wrong when the
-              target is `## 4.` with a numbered list; write `§4, step 2`.
-            - CHANGELOG.md: check the `[Unreleased]` section against itself. An entry
-              opening a conflict while an older bullet in the same section still
-              claims everything is resolved is a real defect.
-            - The decision register table is ordered by ascending `D-nnn`.
-            - Every relative link must resolve to a file that exists.
-
-            ## 5. Claims about the git graph
-
-            Verify the INFERENCE, not just the facts. `dev`'s head is a merge commit
-            under `D-023`, so EVERY branch cut from `dev` sits on top of already-merged
-            history — that observation alone proves nothing about whether a branch was
-            improperly continued. The discriminating check is the first commit's
-            parent:
-
-            ```bash
-            git log --format='%h parents=%p %s' -5 HEAD
-            ```
-
-            Parent == the base branch head means a fresh branch. A finding built on
-            individually-true facts can still be wrong; check the one thing that
-            separates the two explanations before you post.
-
-            ## 6. Python
-
-            Anything under scripts/ or *.py must pass
-            `flake8 . --select=E9,F63,F7,F82`. generate_report.py and
-            post_to_confluence.py read ./.env directly and raise KeyError when a var
-            is missing — that is known and intentional, do not flag it.
-
-            ## 7. Output
-
-            Post each finding as an INLINE comment on the changed line, formatted:
-
-                **[CRITICAL|INFORMATIONAL] (confidence: N/10)** — one-line problem
-
-            Then the evidence you actually ran, then the fix. Rules:
-              - Quote the specific line or command output that motivates the finding.
-                If you cannot quote it, you have not verified it — drop the finding or
-                mark it below 7/10 and say what you could not check.
-              - GitHub only accepts inline comments on lines inside a diff hunk. For
-                anything outside, anchor to the nearest in-diff line and say where the
-                real line is.
-              - You cannot REQUEST_CHANGES on a PR authored by the same account. Post
-                as COMMENT.
-              - State plainly what you could NOT verify rather than implying coverage.
-
-            Finish with ONE summary comment: each finding as a bullet, the validator
-            output, and the model + effort used, signed:
-            `— Independent Claude review (<model>, effort <level>)`.
-
-            If nothing is worth raising, post a single short "no changes needed"
-            comment. This review is ADVISORY — never block the merge.
-
-            ## 8. Follow-ups
-
-            Do not leave real remaining work in a comment thread where it dies with
-            the PR. Open a GitHub ISSUE for anything still to be done, and a
-            DISCUSSION for settled knowledge worth keeping that is not work. Link
-            them from the summary comment. Check open issues first — do not duplicate
-            #11 (meta-layer authority), #12, #13 or #14.
-
-            ## 9. Fix mode
-
-            Fixes are ${{ steps.mode.outputs.fix == 'true' && 'ENABLED' || 'DISABLED' }} on this PR.
-
-            When DISABLED this is also enforced at the tool layer — Edit, Write,
-            MultiEdit and NotebookEdit are denied, so an edit attempt fails
-            rather than silently succeeding against the instruction above.
-
-            If DISABLED: comment only. Do not edit any file.
-
-            If ENABLED: you may apply MECHANICAL fixes only — typos, broken links,
-            wrong section cites, table ordering, stale dates. You must NEVER:
-              - edit anything under specs/meta/**;
-              - add, remove, reword or re-status a `D-nnn` row;
-              - change a storyboard beat in docs/storyboard-week1.md;
-              - reconcile two documents that disagree;
-              - bump doc_set_version or the submodule pointer.
-            Those are human decisions. Raise them as comments instead. Every fix you
-            apply needs its own inline comment saying what changed and why.
+            Post findings/fix explanations inline using gh api on PR
+            #${{ steps.pr.outputs.number }}; post one summary with fix commits,
+            checks actually run, unverified checks, model and effort. On dispatch,
+            use this explicit PR number rather than assuming pull_request context
+            exists. If nothing needs changing, one short no-changes-needed summary
+            is enough. Do not open duplicate issues or invent Jira keys.
+            Sign: — Independent Claude review (<model>, effort <level>).
+            This review is advisory; never block the merge.
           claude_args: |
             --model ${{ steps.pick.outputs.model }}
-            ${{ steps.mode.outputs.flags }}
+            ${{ steps.scope.outputs.mode == 'delta' && '--effort low' || '' }}
             --max-turns 60
             --dangerously-skip-permissions
+
+      - name: Reviewed PR ${{ steps.pr.outputs.number }} at ${{ steps.pr.outputs.head_sha }}
+        if: >-
+          steps.review.outcome == 'success' &&
+          steps.review.outputs.conclusion == 'success' &&
+          steps.review.outputs.execution_file != ''
+        run: echo '::notice::Completed review checkpoint recorded.'

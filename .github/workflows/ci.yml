@@ -102,6 +102,9 @@ jobs:
       - name: Run the Sprint 6 live runner regression tests
         run: python3 -m unittest tests/test_sprint_6_live.py
 
+      - name: Run the Claude review scope regression tests
+        run: python3 -m unittest tests/test_claude_review_scope.py
+
   validate-agent-data:
     name: Validate Agent Data
     runs-on: ubuntu-latest
