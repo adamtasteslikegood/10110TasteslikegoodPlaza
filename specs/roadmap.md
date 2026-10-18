@@ -10,7 +10,7 @@ owner: adamtasteslikegood
 derives_from: [PROJECT-OVERVIEW, DESIGN-25D, SPEC-DRIVERS-025, BRIDGE-PLATFORM-DESIGN]
 enforcement: asserted
 gates: [Validate Specs:live, Export Godot 4 Prototype:live]
-weakest_claim: M9 is complete; M10 is implemented and deterministically tested; M11–M15 remain planned.
+weakest_claim: M9 is complete; M10 and M11 are implemented and deterministically tested; M11 desktop acceptance is outstanding; M12–M15 remain planned.
 ---
 
 # 10110 TastesLike Plaza — Bridge-First Platform Roadmap
@@ -31,7 +31,7 @@ remain deferred frontend milestones. M11 improves NPC conversation; it does not
 complete or replace M5 or M6.
 
 The owner approved the written bridge-first design and M10 plan on 2026-10-18.
-M9 is complete; M10 is implemented and deterministically tested; M11–M15 remain planned.
+M9 is complete; M10 and M11 are implemented and deterministically tested; M11 desktop acceptance is outstanding; M12–M15 remain planned.
 M10 acceptance covers offline configuration, archive/lifecycle and loopback service
 tests; it does not establish later UI features or durable application recovery.
 `D-033` supersedes broad `D-006` with scoped synchronous NPC calls; `D-034`
@@ -41,7 +41,7 @@ authorizes asynchronous buffered domains. M10 policies are `D-035`/`D-036`.
 |---|---|---|
 | **M9** | Align the design, protocol documentation and roadmap around the bridge-first platform direction; review the written spec | Complete — owner written-spec approval 2026-10-18 |
 | **M10** | Validated central configuration, JSONL run/agent transcripts and standard debug logs with quotas and retention | Implemented — deterministic bridge and loopback acceptance |
-| **M11** | Godot NPC conversation history, late responses, mouse window resizing and basic keyboard/scroll controls | Planned after M10 |
+| **M11** | Godot NPC conversation history, late responses, mouse window resizing and basic keyboard/scroll controls | Implemented — deterministic coverage; desktop acceptance outstanding |
 | **M12** | Domain lifecycle and execution connected to the UI and verified with a live SDK run | Planned after M11 |
 | **M13** | Durable local user/project/domain application state in SQLite, with explicit restart semantics | Planned after M12 |
 | **M14** | Worktree-isolated execution | Planned after M13 |
@@ -443,8 +443,9 @@ surfaces remain outside that sequence unless a later design schedules them.
 
 The following milestones derive from `BRIDGE-PLATFORM-DESIGN` (`ACTIVE`,
 owner-approved 2026-10-18). M9's documentation approval is complete. M10 has
-implemented settings/recording and deterministic acceptance coverage. M11–M15
-acceptance criteria describe future verification; they are not completed proof.
+implemented settings/recording and deterministic acceptance coverage. M11 has
+implemented history/controls and automated coverage; desktop acceptance remains
+outstanding. M12–M15 acceptance criteria describe future verification.
 Existing M8 conversation behavior remains the regression baseline.
 
 ### Milestone 9 — Align and review the platform direction
@@ -474,6 +475,17 @@ These records support inspection and debugging; they are separate from the durab
 application state introduced in M13.
 
 ### Milestone 11 — Usable Godot NPC conversation window
+
+**Status:** implemented with deterministic store, transport and actual-panel
+headless coverage plus a real Godot-client/Python-bridge fake-provider integration
+for delayed responses, per-agent failure, pending disconnect and fresh reconnect.
+Display limits include all retained generations and drafts; provider context and
+disk quotas remain independent. Existing smoke is preserved. Desktop mouse,
+keyboard, clipboard and OS-window acceptance remains outstanding; record results
+against the [operating checklist](../QUICKSTART.md#desktop-acceptance-checklist--outstanding)
+before marking M11 fully accepted. A bounded real NPC API smoke on 2026-10-18
+passed first-attempt two-turn recall in both Godot's rendered current assistant
+span and plain Python; owner transcript readback is outstanding. M12 remains planned.
 
 Retain history for each NPC conversation across closing and reopening its panel,
 including responses that arrive after dismissal. Add mouse resizing with the

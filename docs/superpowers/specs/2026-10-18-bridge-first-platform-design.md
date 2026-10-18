@@ -20,10 +20,11 @@ weakest_claim: Hosted user-scoped durability is a later milestone.
 the separate M10 implementation plan, including mouse resizing and expanded
 keyboard controls for M11. M9 documentation alignment and written approval are
 complete; M10 settings and bounded recording are implemented with deterministic
-acceptance coverage. This ACTIVE design also specifies future functionality, so
-`enforcement: intended` remains for the later UI/history and durable-state work.
-M11 receives its own implementation plan; M12–M15 require their own detailed
-designs before execution.
+acceptance coverage. M11 history, correlation and controls are implemented under
+the [M11 plan](../plans/2026-10-18-m11-npc-conversations.md), with deterministic
+coverage and desktop acceptance outstanding. This ACTIVE design also specifies
+future durable-state functionality, so `enforcement: intended` remains.
+M12–M15 require their own detailed designs before execution.
 
 The owner explicitly confirmed synchronous NPC calls with timeout (`D-033`,
 superseding `D-006`) and asynchronous domains with buffered results and existing turn/budget caps
@@ -344,6 +345,18 @@ M5's assistant overlay or assign new meanings to locked storyboard events.
 
 ### M11 acceptance
 
+**Implementation status (2026-10-18):** store, transport and real-panel headless
+acceptance cover the requirements below; the full Godot-client/Python-bridge
+integration uses controlled fake provider replies, independent B failure and a
+real disconnect/reconnect. It verifies assistant-only rendered output, fresh
+server context without replay, and aggregate Unicode display bounds. Existing
+smoke remains required. All six actual desktop outcomes below remain outstanding;
+record results using the [operating checklist](../../../QUICKSTART.md#desktop-acceptance-checklist--outstanding).
+A bounded real NPC API smoke on 2026-10-18 also passed first-attempt nonce recall
+in Godot's current rendered assistant span and plain Python (two turns each),
+using temporary evidence/archive paths. Owner readback remains outstanding.
+Automated/API coverage is not full M11 desktop acceptance or M12 execution proof.
+
 Use deterministic headless checks for stored data, input dispatch, geometry and
 request correlation, plus desktop mouse/keyboard verification for actual resizing
 and scrolling. Preserve the existing smoke and real two-client conversation gates.
@@ -364,7 +377,7 @@ New checks must demonstrate:
 ## 8. Protocol and documentation handoff
 
 [PROTOCOL.md](../../../bridge/PROTOCOL.md) remains the record of current wire
-behavior. Mark request-ID echo as M11 intended behavior until code and tests ship.
+behavior. Optional opaque conversation request-ID echo is implemented and tested.
 Keep lifecycle/resume semantics separate from UI controls; the bridge never needs
 to know that an actor walked to a character or resized a panel.
 

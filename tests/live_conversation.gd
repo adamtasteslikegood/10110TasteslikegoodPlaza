@@ -70,7 +70,8 @@ func _ready() -> void:
 			return
 		# D-007: the reply is revealed over time, never all at once. Sample the
 		# reveal right after it lands and again a few frames later.
-		var at_arrival := body.visible_characters
+		var span: Dictionary = hud.current_assistant_span()
+		var at_arrival := visible_in_span(body, span)
 		for _frame in 5:
 			await get_tree().process_frame
 		print(
@@ -80,10 +81,10 @@ func _ready() -> void:
 					{
 						"turn": index + 1,
 						"sent": str(turns[index]),
-						"received": body.text,
-						"label_holds_reply": body.text == str(_reply),
+						"received": read_rendered_reply(body, span),
+						"label_holds_reply": read_rendered_reply(body, span) == str(_reply),
 						"typewriter_started_at": at_arrival,
-						"typewriter_after_frames": body.visible_characters,
+						"typewriter_after_frames": visible_in_span(body, span),
 					}
 				)
 			)
@@ -98,3 +99,14 @@ func _abort(kind: String, message: String, turn: int = 0) -> void:
 		"LIVE_ERROR %s" % JSON.stringify({"turn": turn, "error_type": kind, "message": message})
 	)
 	get_tree().quit(1)
+
+
+## Shared with the deterministic wrong-turn-two regression. The nonce from the
+## first user message must never count as a model recall in a later reply.
+static func read_rendered_reply(body: RichTextLabel, span: Dictionary) -> String:
+	return body.text.substr(int(span.start), int(span.length))
+
+
+static func visible_in_span(body: RichTextLabel, span: Dictionary) -> int:
+	var visible := body.text.length() if body.visible_characters < 0 else body.visible_characters
+	return clampi(visible - int(span.start), 0, int(span.length))

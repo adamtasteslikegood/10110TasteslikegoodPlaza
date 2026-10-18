@@ -36,17 +36,28 @@ Godot rewrites `.tscn` files wholesale when a scene is saved in the editor, so a
 The bridge layer (`bridge/`) shipped in Sprint 4 (M7–M8). `D-005` is the hard gate: the bridge must not learn that Godot, scenes, or dialogue panels exist. If swapping the frontend for a CLI harness would require a bridge change, the boundary is broken.
 
 
-## Architecture: the three Godot autoloads
+## Architecture: the four Godot autoloads
 
 All four exist and are registered in `project.godot` under `[autoload]`. New code plugs into them rather than introducing parallel state:
 
 | Autoload | File | Role |
 |---|---|---|
 | `AgentRegistry` | `autoload/AgentRegistry.gd` | Loads `data/agents.json` at startup; `get_agent(id)` returns the dict |
-| `GameEvents` | `autoload/GameEvents.gd` | Global signal bus: `npc_approached`, `npc_left`, `task_completed`, `floor_unlocked`, `agent_query_sent`, `agent_response_received`, `agent_query_failed` |
+| `GameEvents` | `autoload/GameEvents.gd` | Global signal bus: `npc_approached`, `npc_left`, `task_completed`, `floor_unlocked`, `agent_query_sent`, `agent_response_received`, `agent_query_failed`, additive `conversation_changed(agent_id, reason, request_id)` |
 | `GameState` | `autoload/GameState.gd` | Tracks `unlocked_floors`, `completed_tasks`, `player_config`; gates doors via `is_unlocked()` |
-| `BridgeClient` | `scenes/bridge/ws_client.gd` | WebSocket client for bridge; emits bridge signals via `GameEvents` |
+| `BridgeClient` | `scenes/bridge/ws_client.gd` | WebSocket client, bounded request-ID map and pure `ConversationStore`; emits settled state changes via `GameEvents` |
 
 Interaction pattern: NPC `Area` (or `Area2D` under the 2.5D plan) fires `GameEvents.npc_approached` → HUD listens → populates dialogue panel from `AgentRegistry.get_agent(agent_id)`. Doorway triggers (group `doorways`, a `room_id` each) consult `GameState.is_unlocked(floor_id)`; a locked room has a `StaticBody2D` barrier across its corridor (group `locked_corridors`) that leaves the tree on `floor_unlocked`. Completing tutorial tasks calls `GameState.complete_task(id)`, which checks an unlock-gate table and emits `floor_unlocked`.
 
-Bridge interaction: dialogue panel calls `BridgeClient.send_query(agent_id, task)` → ws_client sends JSON to bridge → bridge response arrives → ws_client emits `GameEvents.agent_response_received` → dialogue panel renders with typewriter effect.
+Bridge interaction: the panel calls `BridgeClient.send_query(agent_id, task)`;
+ws_client sends the exact task plus opaque request ID. Matching responses settle
+the per-agent bounded store and request map before notifications. The panel
+refreshes snapshots through `conversation_changed`; only new visible assistant
+spans reveal progressively. Restored transcripts are immediate, and hidden-agent
+replies never replace the visible agent. Disconnect archives the old generation;
+actual reconnect marks fresh model context. Draft/view wrappers share store
+ownership. Controls and the desktop checklist live in `QUICKSTART.md`.
+
+`npm test` preserves smoke and adds `conversation_store_test`,
+`transport_client_test`, `dialogue_panel_test` and the provider-free real
+Godot/Python integration. The integration scene requires its pytest orchestrator.

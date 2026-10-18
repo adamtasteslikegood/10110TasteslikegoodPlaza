@@ -17,6 +17,23 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
 
+### Added — M11 NPC conversation history and controls
+
+- Bounded per-agent session transcripts, drafts and reading position; opaque
+  request-ID correlation retains hidden replies and independent failures.
+  Disconnect archives display history read-only and reconnect marks fresh model
+  context without replay. Display limits stay separate from model/disk limits.
+- Resizable, viewport-clamped chat with mouse scroll, paging, focus traversal,
+  native composer edits and progressive reveal for newly visible replies.
+- npm/CI gates for store, transport and real-panel scenes plus deterministic
+  real Godot-client/Python-bridge delayed-response/reconnect integration using a
+  fake provider. Existing smoke and bridge tests remain required.
+- Required deterministic gates pass, and a bounded real API smoke recalls the
+  nonce through Godot's current rendered assistant span and plain Python on the
+  first attempt (two turns each). Frozen Sprint 6 evidence remains unchanged.
+- Desktop mouse/keyboard/clipboard and OS-window acceptance remains outstanding;
+  `QUICKSTART.md` publishes the checklist. M12–M15 remain planned.
+
 ### Changed — bounded independent Claude reviews
 
 - Default the isolated reviewer to Sonnet 5.5; allow an explicit Opus 4.6

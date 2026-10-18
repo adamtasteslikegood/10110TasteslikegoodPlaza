@@ -48,7 +48,9 @@ The owner-approved next direction is documented in the
 whose written specification is **ACTIVE, owner-approved 2026-10-18**. M9
 alignment is complete; M10 configuration/observability is implemented with
 deterministic acceptance coverage for validated settings and bounded local
-recording. M11 conversation UI work remains planned. The
+recording. M11 per-agent history, correlated late replies, resizing and keyboard
+controls are implemented with deterministic coverage; desktop acceptance remains
+outstanding (see the [operating guide](QUICKSTART.md#npc-conversation-history-and-controls-m11)). The
 [M9–M15 roadmap](specs/roadmap.md) sequences centralized settings,
 bounded local transcripts/debug logs, and usable NPC chat windows with resizing,
 keyboard controls and per-agent scrollback. User → project → domain state,

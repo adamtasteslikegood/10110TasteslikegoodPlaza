@@ -309,9 +309,8 @@ func _check_hud_ready(instance: Node) -> void:
 		_fail("dialogue panel: BodyLabel path does not resolve")
 	elif body_label.text != agent.get("description", ""):
 		_fail("dialogue panel body text was not populated from the agent record")
-	elif body_label.visible_characters != 0:
-		# D-007: the reveal starts at zero and is driven by _process.
-		_fail("typewriter did not reset — visible_characters is %d, expected 0" % body_label.visible_characters)
+	elif body_label.visible_characters != -1:
+		_fail("empty-history introduction should be immediately visible")
 	elif not body_label.scroll_active:
 		_fail("BodyLabel scroll_active is false — long responses will overflow")
 
@@ -330,12 +329,23 @@ func _check_hud_ready(instance: Node) -> void:
 	if status_label == null:
 		_fail("dialogue panel: StatusLabel path does not resolve")
 
-	# Simulate a bridge response and verify the typewriter resets on it.
-	GameEvents.agent_response_received.emit("systems-architect", "Hello from the bridge.")
-	if body_label.text != "Hello from the bridge.":
-		_fail("bridge response was not rendered in BodyLabel")
-	elif body_label.visible_characters != 0:
-		_fail("typewriter did not reset on bridge response — visible_characters is %d" % body_label.visible_characters)
+	# Admit a fixture request into the real store/map, then exercise the ordinary
+	# correlated receive path. No unsolicited legacy signal bypasses admission.
+	BridgeClient.conversations.begin_connection()
+	BridgeClient._connected = true
+	var request_id := "smoke-matched-request"
+	if not BridgeClient.conversations.start_request("systems-architect", request_id, "Smoke question"):
+		_fail("smoke request was not admitted")
+	BridgeClient._pending_requests[request_id] = {"agent_id": "systems-architect", "generation": BridgeClient.conversations.generation}
+	GameEvents.conversation_changed.emit("systems-architect", "input", request_id)
+	BridgeClient._on_message(JSON.stringify({"agent_id": "systems-architect", "request_id": request_id, "status": "ok", "output": "Hello from the bridge."}))
+	var span: Dictionary = hud.current_assistant_span()
+	if body_label.text.substr(span.start, span.length) != "Hello from the bridge.":
+		_fail("matched bridge response was not rendered in BodyLabel assistant span")
+	elif not body_label.text.contains("You (completed):\nSmoke question") or not body_label.text.contains("Assistant (completed):"):
+		_fail("transcript does not preserve ordered user/assistant role text")
+	elif body_label.visible_characters != span.start:
+		_fail("typewriter did not start at new assistant span")
 
 	GameEvents.npc_left.emit("systems-architect")
 	if panel.visible:
