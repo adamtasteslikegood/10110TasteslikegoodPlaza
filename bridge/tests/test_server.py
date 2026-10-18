@@ -1,5 +1,6 @@
 """Tests for bridge.server — WebSocket routing and backward compat."""
 
+import asyncio
 import json
 
 import pytest
@@ -11,6 +12,7 @@ from bridge.server import BridgeServer
 @pytest.fixture
 def mock_engines(monkeypatch):
     conv_engine = MagicMock()
+    conv_engine.handle_request = AsyncMock()
     conv_engine.handle_request.return_value = {
         "agent_id": "test",
         "task": "hi",
@@ -171,7 +173,7 @@ class TestConversationHistoryRouting:
     def answering(self, conv):
         """Make the mocked engine keep a history the way the real one does."""
 
-        def handle(request, history=None):
+        async def handle(request, history=None, *, metadata=None):
             if history is not None:
                 history += [
                     {"role": "user", "content": request["task"]},
@@ -221,6 +223,9 @@ class TestConversationHistoryRouting:
             async def _iterate(self):
                 for message in self.messages:
                     yield message
+
+            async def wait_closed(self):
+                await asyncio.Future()
 
             async def send(self, payload):
                 self.sent.append(payload)

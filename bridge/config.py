@@ -24,6 +24,7 @@ _DEFAULTS: dict[str, object] = {
     "OPUS_MODEL": "claude-opus-5-5",
     "FABLE_MODEL": "claude-fable-5-1",
     "ADVISOR_MODEL": "FABLE_MODEL",
+    "CONVERSATION_BACKEND": "claude_code",
     "CONVERSATION_TIER": "haiku",
     "DOMAIN_TIER": "sonnet",
     "CONVERSATION_TIMEOUT_SECONDS": 60,
@@ -46,6 +47,7 @@ _TEXT_KEYS = frozenset(
         "OPUS_MODEL",
         "FABLE_MODEL",
         "ADVISOR_MODEL",
+        "CONVERSATION_BACKEND",
         "CONVERSATION_TIER",
         "DOMAIN_TIER",
         "LOG_DIR",
@@ -78,6 +80,7 @@ class BridgeConfig:
     opus_model: str
     fable_model: str
     advisor_model: str
+    conversation_backend: str
     conversation_tier: str
     domain_tier: str
     conversation_timeout_seconds: int | float
@@ -148,6 +151,8 @@ def _build(values: Mapping[str, object], source_path: Path) -> BridgeConfig:
         raise ConfigError("CONFIG_VERSION must be the supported integer version 1")
     if type(values["TRANSCRIPTS_ENABLED"]) is not bool:
         raise ConfigError("TRANSCRIPTS_ENABLED must be a boolean")
+    if values["CONVERSATION_BACKEND"] not in ("claude_code", "messages_api"):
+        raise ConfigError("CONVERSATION_BACKEND must be claude_code or messages_api")
     for key in ("CONVERSATION_TIER", "DOMAIN_TIER"):
         if values[key] not in _TIERS:
             raise ConfigError(f"{key} must be haiku, sonnet, opus or fable")

@@ -41,7 +41,8 @@ def origin(session):
 
 
 @pytest.mark.parametrize("tier", ["haiku", "sonnet"])
-def test_conversation_uses_snapshot_bounds_and_tier(
+@pytest.mark.asyncio
+async def test_conversation_uses_snapshot_bounds_and_tier(
     tier, runtime_config, offline_clients, monkeypatch
 ):
     client, _, _ = offline_clients
@@ -52,28 +53,34 @@ def test_conversation_uses_snapshot_bounds_and_tier(
         conversation_max_output_tokens=93,
         context_max_messages=2,
     )
+    from bridge import conversation_sdk
+
+    deadline = MagicMock(wraps=conversation_sdk.anyio.fail_after)
+    monkeypatch.setattr(conversation_sdk.anyio, "fail_after", deadline)
     engine = ConversationEngine(config=config)
     monkeypatch.setenv("PLAZA_CONVERSATION_TIER", "bad-new-value")
     config.source_path.write_text("invalid after construction")
     history = []
     for _ in range(3):
-        engine.handle_request({"agent_id": "agent", "task": "question"}, history)
-    kwargs = client.messages.create.call_args.kwargs
+        await engine.handle_request({"agent_id": "agent", "task": "question"}, history)
+    kwargs = client.reply.call_args.kwargs
     assert kwargs["model"] == config.model_for(tier) == engine.model
-    assert kwargs["timeout"] == 7
-    assert kwargs["max_tokens"] == 93
+    assert deadline.call_args.args == (7,)
+    assert kwargs["max_output_tokens"] == 93
     assert len(history) == 2
     assert len(kwargs["messages"]) == 3
     with pytest.raises(AttributeError):
         engine.model = "new"
 
 
-def test_explicit_conversation_overrides_win(runtime_config, offline_clients):
-    client, _, _ = offline_clients
-    engine = ConversationEngine(client, "explicit", 12, config=runtime_config)
-    engine.handle_request({"agent_id": "agent", "task": "question"})
+@pytest.mark.asyncio
+async def test_explicit_conversation_overrides_win(runtime_config, offline_clients):
+    backend = AsyncMock(complete=AsyncMock(return_value="explicit reply"))
+    engine = ConversationEngine(backend, "explicit", 12, config=runtime_config)
+    await engine.handle_request({"agent_id": "agent", "task": "question"})
     assert engine.model == "explicit"
-    assert client.messages.create.call_args.kwargs["timeout"] == 12
+    assert backend.complete.call_args.kwargs["timeout"] == 12
+    assert backend.complete.call_args.kwargs["model"] == "explicit"
 
 
 def test_runtime_compatibility_constants_follow_central_defaults(offline_clients):
@@ -138,7 +145,8 @@ async def test_conversation_recorded_with_duration_and_same_wire_id(
         r["request_id"] == "client-id" and r["connection_id"] == "socket"
         for r in records
     )
-    assert all("provider_session_id" not in r for r in records)
+    assert "provider_session_id" not in records[0]
+    assert records[-1]["provider_session_id"] == "observed-npc-session"
     assert events(writer, "request_received")
     assert events(writer, "engine_routing")
     assert events(writer, "request_completed")[0]["duration_ms"] >= 0
@@ -150,9 +158,7 @@ async def test_conversation_failure_metadata_is_category_only(
 ):
     recorder, writer = runtime_archive
     client, _, _ = offline_clients
-    client.messages.create.side_effect = RuntimeError(
-        "credential-sentinel private-body"
-    )
+    client.reply.side_effect = RuntimeError("credential-sentinel private-body")
     server = BridgeServer(config=runtime_config, recorder=recorder)
     response = await server.dispatch({"agent_id": "agent", "task": "question"})
     assert response[0]["message"] == "credential-sentinel private-body"
@@ -220,6 +226,9 @@ async def test_connection_uuid_stays_per_socket(
         async def read(self):
             for _ in range(2):
                 yield '{"agent_id":"agent","task":"hi"}'
+
+        async def wait_closed(self):
+            await asyncio.Future()
 
         async def send(self, value):
             pass

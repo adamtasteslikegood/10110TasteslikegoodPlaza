@@ -6,6 +6,12 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from claude_agent_sdk import (
+    AssistantMessage,
+    ResultMessage as SDKResultMessage,
+    TextBlock,
+)
+
 from bridge.config import load_config
 from bridge.observability import BridgeRecorder
 
@@ -39,12 +45,62 @@ def runtime_archive(runtime_config):
     recorder.close()
 
 
+@pytest.fixture(autouse=True)
+def forbid_live_model_transports(monkeypatch):
+    """A missed fake fails closed before Claude launch or provider HTTP."""
+
+    async def blocked_async(*args, **kwargs):
+        pytest.fail("Live model transport is forbidden in offline bridge tests")
+
+    def blocked_sync(*args, **kwargs):
+        pytest.fail("Live model transport is forbidden in offline bridge tests")
+
+    monkeypatch.setattr(
+        "claude_agent_sdk._internal.transport.subprocess_cli.SubprocessCLITransport.connect",
+        blocked_async,
+    )
+    monkeypatch.setattr("httpx.AsyncHTTPTransport.handle_async_request", blocked_async)
+    monkeypatch.setattr("httpx.HTTPTransport.handle_request", blocked_sync)
+
+
 @pytest.fixture
 def offline_clients(monkeypatch):
-    conversation = MagicMock()
-    conversation.messages.create.return_value = SimpleNamespace(
-        content=[SimpleNamespace(text="conversation reply")]
+    # NPC SDK seam is separate from the domain SDK seam. Fresh clients record
+    # decoded JSON input, and yield real SDK message types for adapter validation.
+    conversation = SimpleNamespace(
+        reply=MagicMock(return_value="conversation reply"), clients=[]
     )
+
+    def conversation_factory(*, options):
+        client = AsyncMock()
+        client.options = options
+        conversation.clients.append(client)
+
+        async def receive():
+            prompt = client.query.call_args.args[0]
+            output = conversation.reply(
+                messages=json.loads(prompt.split("\n", 1)[1])["messages"],
+                model=options.model,
+                system=options.system_prompt,
+                max_output_tokens=int(options.env["CLAUDE_CODE_MAX_OUTPUT_TOKENS"]),
+            )
+            yield AssistantMessage(
+                content=[TextBlock(text=output)], model=options.model
+            )
+            yield SDKResultMessage(
+                subtype="success",
+                duration_ms=1,
+                duration_api_ms=1,
+                is_error=False,
+                num_turns=1,
+                session_id="observed-npc-session",
+                result=output,
+            )
+
+        client.receive_response = receive
+        return client
+
+    conversation.factory = MagicMock(side_effect=conversation_factory)
     sdk = AsyncMock()
 
     class ResultMessage:
@@ -57,7 +113,7 @@ def offline_clients(monkeypatch):
 
     sdk.receive_response = receive
     sdk_class = MagicMock(return_value=sdk)
-    monkeypatch.setattr("bridge.conversation.build_client", lambda: conversation)
+    monkeypatch.setattr("bridge.conversation_sdk.ClaudeSDKClient", conversation.factory)
     monkeypatch.setattr("bridge.domain_session.ClaudeSDKClient", sdk_class)
     monkeypatch.setattr("bridge.conversation.load_agent", lambda _: "definition")
     monkeypatch.setattr("bridge.domain_session.load_agent", lambda _: "definition")

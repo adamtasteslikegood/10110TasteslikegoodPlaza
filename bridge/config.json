@@ -5,6 +5,7 @@
   "OPUS_MODEL": "claude-opus-5-5",
   "FABLE_MODEL": "claude-fable-5-1",
   "ADVISOR_MODEL": "FABLE_MODEL",
+  "CONVERSATION_BACKEND": "claude_code",
   "CONVERSATION_TIER": "haiku",
   "DOMAIN_TIER": "sonnet",
   "CONVERSATION_TIMEOUT_SECONDS": 60,

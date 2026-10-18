@@ -12,7 +12,6 @@ from copy import deepcopy
 import errno
 import hashlib
 import json
-from types import SimpleNamespace
 
 import pytest
 import websockets
@@ -58,9 +57,9 @@ def provider(offline_clients):
         calls.append(deepcopy(kwargs))
         task = kwargs["messages"][-1]["content"]
         text = LARGE_REPLY if "large" in task else f"answer:{task}"
-        return SimpleNamespace(content=[SimpleNamespace(text=text)])
+        return text
 
-    client.messages.create.side_effect = reply
+    client.reply.side_effect = reply
     return calls
 
 
