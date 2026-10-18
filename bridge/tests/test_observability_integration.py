@@ -10,6 +10,7 @@ import asyncio
 from contextlib import asynccontextmanager
 from copy import deepcopy
 import errno
+import hashlib
 import json
 from types import SimpleNamespace
 
@@ -102,6 +103,21 @@ def read_records(root, pattern):
     return sorted(records, key=lambda record: record["seq"])
 
 
+def assert_agent_stream(directory, agent_id, requests):
+    # Inspect physical segment/line order before any global sequence sorting.
+    records = [
+        record
+        for segment in sorted(directory.glob("transcript-*.jsonl"))
+        for record in iter_jsonl(segment, on_diagnostic=pytest.fail)
+    ]
+    assert [(record["request_id"], record["role"]) for record in records] == [
+        (request, role) for request in requests for role in ("user", "assistant")
+    ]
+    assert {record["agent_id"] for record in records} == {agent_id}
+    sequences = [record["seq"] for record in records]
+    assert all(before < after for before, after in zip(sequences, sequences[1:]))
+
+
 def assert_private_diagnostics(root, stderr):
     events = read_records(root, "runs/*/events-*.jsonl")
     encoded = json.dumps(events) + stderr
@@ -143,6 +159,11 @@ async def test_two_connections_agents_keep_wire_context_and_ordered_bounded_arch
             provider[index]["messages"][-1],
         ]
     root = config.log_dir
+    agents = next(root.glob("runs/*/agents"))
+    beta_path = "redacted-" + hashlib.sha256(("beta-" + SECRET).encode()).hexdigest()
+    assert {directory.name for directory in agents.iterdir()} == {"alpha", beta_path}
+    assert_agent_stream(agents / "alpha", "alpha", ("a1", "c1", "a2", "c2"))
+    assert_agent_stream(agents / beta_path, "beta-[REDACTED]", ("b1", "b2"))
     transcripts = read_records(root, "runs/*/agents/*/transcript-*.jsonl")
     assert len(transcripts) == 12
     requests = [record["request_id"] for record in transcripts]

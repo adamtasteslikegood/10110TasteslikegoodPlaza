@@ -366,7 +366,7 @@ listed in the file map. No Godot source or generated agent data changes.
   Document Godot `--log-file`/`--verbose` separately; its files are outside bridge
   quota. Ignore repository `.local/bridge-logs/`; custom external log roots remain
   the operator's choice. Do not ignore the committed `bridge/config.json`.
-- [ ] **5. Verify green**, with no live model calls required for deterministic gates:
+- [x] **5. Verify green**, with no live model calls required for deterministic gates:
 
   ```bash
   .venv/bin/python -m pytest bridge/tests/ -q
@@ -388,8 +388,14 @@ listed in the file map. No Godot source or generated agent data changes.
   cases); Black, spec validation, pinned Godot import/smoke and diff checks pass.
   The exact Flake8 command traverses local `.venv/` dependencies and fails there;
   the same repository-code gate passes with `--extend-exclude=.venv` and no
-  tracked lint/CI changes. The controller owns the separate API-backed live smoke,
-  so step 5 remains open until that check is recorded.
+  tracked lint/CI changes.
+
+  **Controller live acceptance at `512a8c9`:** bounded API-backed Godot and Python
+  clients each passed two turns on their first attempt using `claude-haiku-5-5`.
+  The temporary archive contained 8 transcript records, 4 requests, 2 connections
+  and 12 events; inspection found no configured credential values in files/paths,
+  message bodies in events or fabricated provider session IDs. SIGTERM left the
+  manifest open as expected. Frozen historical sprint evidence was unchanged.
 - [x] **6. Commit:** `docs: document M10 configuration and recording operation`.
 
 ## Handoff and completion
