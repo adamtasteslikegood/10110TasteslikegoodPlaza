@@ -44,3 +44,4 @@ report.md
 
 # local bridge diagnostic archives (custom roots are operator-managed)
 .local/bridge-logs/
+Sountrack/*
