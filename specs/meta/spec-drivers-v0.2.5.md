@@ -4,7 +4,7 @@ title: Spec Drivers v0.2.5 — what this doc-set version must produce
 tier: 0
 authority: constitution
 status: ACTIVE
-doc_set_version: 0.2.15
+doc_set_version: 0.2.16
 last_updated: 2026-10
 owner: adamtasteslikegood
 derives_from: [META-SPEC]
@@ -499,15 +499,37 @@ behavior, M10 completion or M11 completion is claimed by this resolution.
 Issue #341's external update is controller-owned; this document records the
 resolution without claiming that the GitHub issue has been closed.
 
+### 4.14 Default NPC execution bypassed Claude Code — **RESOLVED**
+
+Recorded and resolved by owner ruling, 2026-10-18 (doc set 0.2.16). The shipped
+NPC conversation path and active operating descriptions used the low-level
+`anthropic` SDK/Messages API, while the owner requires actual agents executing
+through Claude Code via Claude Agent SDK. Prior direct-API recall smoke proves
+that path only; it cannot establish Claude Code execution.
+
+The owner's latest clarification explicitly preserves useful Messages API code as
+an opt-in conversation mode authenticated only with an API key. `PLATFORM-DECISIONS`
+originates `D-037`: default Claude Code/Agent SDK, explicitly selected API-key-only
+Messages API compatibility, no credential-based selection or automatic fallback,
+and no OAuth/setup-token credentials on direct API calls. This is an already
+resolved owner ruling, not an open approval request or unilateral reconciliation.
+`D-033` and `D-034` remain locked with their existing execution timing/domain scope;
+`D-006` and `D-030` remain superseded. The owner retains merge and waived ticket
+creation for this correction. The runtime correction and operating-document
+refresh are implemented; [Quick start](../../QUICKSTART.md) records the separately
+observed cloud SDK recall run and its limits. The ruling itself is not execution
+proof; M11 desktop acceptance, M12 completion and closure of issue #341 are not
+claimed here.
+
 ## 5. Exit criteria to v1.0.0
 
 `1.0.0` is cut when **M8 is demonstrable in-engine** — a player question travels
 through the bridge to a real Claude invocation of that agent and the response
 renders in the dialogue panel. That is the doc set's `1.0.0` trigger; the application's
 `v0.1.x` tags are a separate axis (`CHANGELOG.md`). **M8 shipped in Sprint 4 and the
-cut has not been made** — the set is still `0.2.15`. Making it is the owner's call.
+cut has not been made** — the set is still `0.2.16`. Making it is the owner's call.
 
 Between here and there, each round closes with the same check: the register has no
 conflict that has been open longer than the round that discovered it.
 
-*Doc set version: 0.2.15 · Last updated: October 2026*
+*Doc set version: 0.2.16 · Last updated: October 2026*

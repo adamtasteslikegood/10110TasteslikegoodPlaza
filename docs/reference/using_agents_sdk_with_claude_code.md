@@ -1,3 +1,10 @@
+> **Historical, unverified captured exchange.** Subscription quotas/billing,
+> token precedence, profile variables and CLI flags below were not verified as
+> current setup guidance. The recorded exchange is preserved. Use the maintained
+> [Quick start](../../QUICKSTART.md#2-install-prerequisites) and `D-037` runtime
+> policy for operation; cloud API-key-through-SDK proof does not establish local
+> subscription entitlement or billing.
+
 ### Using with the agents sdk in python and claude code
 
 ---

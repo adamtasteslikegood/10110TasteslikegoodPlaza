@@ -304,6 +304,16 @@ def turns(recalled: bool) -> list:
 
 
 class AskPlain(unittest.TestCase):
+    def test_actual_auth_refusal_is_a_could_not_run_and_closes_client(self):
+        client = mock.Mock()
+        client.receive.return_value = json.dumps(
+            {"status": "error", "error_type": "auth", "message": "login expired"}
+        )
+        with mock.patch.object(live, "PlainClient", return_value=client):
+            with self.assertRaises(live.AuthRefused):
+                live.ask_plain(PROMPTS, 100.0)
+        client.close.assert_called_once()
+
     def test_a_reply_that_is_no_object_is_a_failure_not_a_crash(self):
         client = mock.Mock()
         client.receive.return_value = "[]"
@@ -430,9 +440,29 @@ class Credential(unittest.TestCase):
             env = self.environment(dotenv, {"ANTHROPIC_API_KEY": "shell"})
             self.assertEqual(env.get("ANTHROPIC_API_KEY"), "shell")
 
-    def test_no_credential_anywhere_is_a_could_not_run(self):
-        with self.assertRaises(live.CouldNotRun):
-            self.environment("ATLASSIAN_URL=x\n", {"PATH": "/bin"})
+    def test_native_cli_login_needs_no_environment_credential(self):
+        env = self.environment("ATLASSIAN_URL=x\n", {"PATH": "/bin"})
+        self.assertEqual(env, {"PATH": "/bin"})
+
+
+class InterpreterReadiness(unittest.TestCase):
+    def probe(self, installed):
+        def run(command, **kwargs):
+            imports = command[-1].removeprefix("import ").replace(" ", "").split(",")
+            return subprocess.CompletedProcess(
+                command, 0 if set(imports) <= installed else 1
+            )
+
+        with mock.patch.object(Path, "is_file", return_value=True):
+            with mock.patch.object(live.subprocess, "run", side_effect=run):
+                return live.bridge_python()
+
+    def test_default_sdk_dependencies_make_the_interpreter_ready(self):
+        self.assertTrue(self.probe({"websockets", "claude_agent_sdk"}))
+
+    def test_api_library_alone_cannot_make_the_interpreter_ready(self):
+        with self.assertRaisesRegex(live.CouldNotRun, "claude_agent_sdk"):
+            self.probe({"websockets", "anthropic"})
 
 
 class FakeBridge:

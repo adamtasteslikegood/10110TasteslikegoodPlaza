@@ -38,7 +38,7 @@ Every row below was executed against a real checkout. The rule this table exists
 
 `docs/designs/2.5D-RPG-Prototype.md` (`PROMOTED`, 2026-04-27) **pivots the prototype from 3D first-person to 2.5D top-down** under a "10x check" scope reduction. Accepted: 2.5D top-down in Godot 2D; one generic agent sprite colour-tinted per department and one silhouette portrait; a Python WebSocket bridge with **synchronous NPC calls and timeout protection** (`D-033`, superseding the broad historical `D-006`) and asynchronous domains with buffered results and existing turn/budget caps (`D-034`); a typewriter effect in the UI faking streaming over a full JSON response; and "wait or delegate" UX where short tasks block and long ones become background delegations.
 
-Deferred: true WebSocket streaming, unique sprites per agent, 3D first-person.
+Deferred: true WebSocket streaming, unique sprites per agent, 3D first-person. **`PLATFORM-DECISIONS` `D-037` binds:** normal model execution, including NPCs, must default to Claude Code via Claude Agent SDK; Messages API is an explicit API-key-only opt-in, with no automatic fallback. Runtime correction is implemented; fresh two-client SDK recall passed with cloud API-key authentication (evidence/limits: `QUICKSTART.md`). Earlier direct-API proof is historical compatibility evidence. Owner retains merge and waived tickets for this correction.
 
 ## Which document wins — read `specs/meta/` first
 
@@ -57,7 +57,7 @@ Every governed doc declares `doc_id`/`tier`/`authority`/`status` in YAML frontma
 Every planning doc assumes this model, regardless of 2D/3D:
 
 ```
-Layer 4 — Real agent execution  (EXISTS)   claude-code, gemini-cli, MCP, SSH
+Layer 4 — Real agent execution  (D-037 DEFAULT) Claude Code via Agent SDK; explicit API-key API mode
 Layer 3 — UI-agnostic bridge    (DONE M7–M8) Python WebSocket → synchronous NPC calls, async buffered domains
 Layer 2 — Current frontend      (PARTIAL)  2.5D Godot; one of several swappable frontends
 Layer 1 — Data + config         (EXISTS)   submodule → agent .md files → agents.json
@@ -71,7 +71,7 @@ Layer 2 is named for the **role, not the implementation** (`D-020`) — a CLI ha
 
 ## Critical path
 
-The proof-of-concept milestones were **M1 → M4 → M8**. **All three are done.** M1 — `CharacterBody2D`, 8-direction, arrows plus WASD. M4 — proximity-triggered dialogue panel populated from `AgentRegistry`. M8 — player question → WebSocket bridge → real Claude SDK invocation → response rendered with typewriter effect. Shipped Sprint 4.
+The proof-of-concept milestones were **M1 → M4 → M8**. **All three are done.** M1 — `CharacterBody2D`, 8-direction, arrows plus WASD. M4 — proximity-triggered dialogue panel populated from `AgentRegistry`. M8 — player question → WebSocket bridge → real direct Messages API invocation via the `anthropic` SDK → response rendered with typewriter effect. Shipped Sprint 4.
 
 The risk profile is **regression protection**. `tests/smoke_test.tscn` is what protects it — if a change makes that test harder to keep honest, flag it.
 
@@ -117,7 +117,7 @@ Root holds the entry points: `README.md` (pitch, 4-layer architecture, departmen
 | File | Why it matters |
 |---|---|
 | `docs/designs/2.5D-RPG-Prototype.md` | **Active design** — the 2.5D pivot. |
-| `docs/designs/platform-decisions.md` | **Platform authority**, including domain scope (`D-034`), M10 non-secret config (`D-035`) and bounded local archives/diagnostics (`D-036`). Scope test: would it survive replacing the whole frontend? If it dies with the 2.5D prototype it belongs in the design doc. |
+| `docs/designs/platform-decisions.md` | **Platform authority**, including domain scope (`D-034`), M10 non-secret config (`D-035`), bounded local archives/diagnostics (`D-036`) and default-runtime/explicit-API policy (`D-037`). Scope test: would it survive replacing the whole frontend? If it dies with the 2.5D prototype it belongs in the design doc. |
 | `docs/agent-directory.md` | **Taxonomy authority (`D-017`)** — every agent count derives from here. |
 | `docs/delivery-coordinates.md` | **Atlassian taxonomy authority (`D-026`)** — every Jira key, board role, space and page id. |
 | `specs/meta/` | **Start here.** See the section above. |

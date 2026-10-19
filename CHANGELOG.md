@@ -11,11 +11,28 @@ section at release time. PR references in parentheses.
 **Two version axes, deliberately separate.** This file and the tags track the
 **application**: the 3D era was `0.0.x`, and the 2.5D line is `0.1.y`. The
 `doc_set_version:` in every governed document's frontmatter is the **document
-set's** number and is unrelated — it reached `0.2.15` on its own axis. Prose that
+set's** number and is unrelated — it reached `0.2.16` on its own axis. Prose that
 cites `v0.2.7` or `v0.2.8` as software releases is conflating the two; those were
 spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
+
+### Changed — NPC execution through Claude Code (`D-037`)
+
+- NPC calls now default to Claude Code through Agent SDK, with native CLI
+  authentication. `CONVERSATION_BACKEND` adds a validated 21st non-secret setting;
+  `messages_api` remains an explicit API-key-only mode, without automatic fallback.
+- Fresh SDK clients receive bounded JSON conversation history per request;
+  successful terminal output and cleanup precede history commit. The 60-second
+  operation deadline and 4096 output cap remain; SDK cleanup can add about
+  20 seconds. Model assignments, domain behavior and display/disk bounds remain.
+- Separate live SDK/CLI evidence passed two-turn recall through real Godot and
+  Python clients at 2026-10-18 22:32:53 UTC with a cloud API key and Haiku 5.5;
+  four distinct observed SDK session IDs. Four live requests; billed amount not
+  measured. Earlier API smoke remains historical direct-provider compatibility
+  evidence, and frozen Sprint 6 proof is untouched. Owner readback, laptop
+  subscription use and desktop acceptance remain unverified; the runner's open
+  manifest does not prove graceful shutdown. M12–M15 remain planned.
 
 ### Added — M11 NPC conversation history and controls
 
@@ -28,9 +45,11 @@ spec-set versions, and no application release existed before `v0.1.22`.
 - npm/CI gates for store, transport and real-panel scenes plus deterministic
   real Godot-client/Python-bridge delayed-response/reconnect integration using a
   fake provider. Existing smoke and bridge tests remain required.
-- Required deterministic gates pass, and a bounded real API smoke recalls the
-  nonce through Godot's current rendered assistant span and plain Python on the
-  first attempt (two turns each). Frozen Sprint 6 evidence remains unchanged.
+- Required deterministic gates pass. The earlier bounded direct Messages API
+  smoke recalled the nonce through Godot's current rendered assistant span and
+  plain Python on the first attempt (two turns each); it is historical
+  compatibility evidence, not Agent SDK proof. Frozen Sprint 6 evidence remains
+  unchanged; separate corrected-runtime evidence is recorded above.
 - Desktop mouse/keyboard/clipboard and OS-window acceptance remains outstanding;
   `QUICKSTART.md` publishes the checklist. M12–M15 remain planned.
 

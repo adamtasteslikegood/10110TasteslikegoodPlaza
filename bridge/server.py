@@ -9,6 +9,7 @@ D-015: ws://localhost:8765.
 """
 
 import asyncio
+from contextlib import asynccontextmanager
 import json
 import os
 from pathlib import Path
@@ -20,7 +21,7 @@ import websockets
 
 from bridge.config import BridgeConfig, ConfigError, default_config, load_config
 from bridge.observability import BridgeRecorder, RequestContext
-from bridge.conversation import ConversationEngine
+from bridge.conversation import ConversationEngine, ExecutionMetadata
 from bridge.domain_session import _SDK_ENV_PASSTHROUGH
 from bridge.domain_manager import DomainManager
 from bridge.protocol import (
@@ -41,6 +42,49 @@ _LIFECYCLE_TYPES = {
     "refocus_domain",
     "deactivate_domain",
 }
+
+
+def _is_domain_request(data):
+    return data.get("type") in (
+        "domain_query",
+        "resume",
+        "activate_domain",
+        "background_domain",
+        "refocus_domain",
+        "deactivate_domain",
+    )
+
+
+async def _drain(task):
+    """Join an owned task despite repeated cancellation of its owner."""
+    while not task.done():
+        try:
+            await asyncio.shield(task)
+        except asyncio.CancelledError:
+            continue
+        except Exception:
+            break
+    if not task.cancelled():
+        task.exception()
+
+
+@asynccontextmanager
+async def _drained_listener(listener):
+    """Close sockets and join their handlers before recorder shutdown.
+
+    Repeated raw cancellation of serve() must not abandon WebSocket __aexit__
+    while those handlers are draining their SDK workers.
+    """
+    await listener.__aenter__()
+    try:
+        yield
+    finally:
+        cleanup = asyncio.create_task(listener.__aexit__(*sys.exc_info()))
+        try:
+            await asyncio.shield(cleanup)
+        except asyncio.CancelledError:
+            await _drain(cleanup)
+            raise
 
 
 class BridgeServer:
@@ -67,14 +111,7 @@ class BridgeServer:
             self._recorder.event(name, context, **metadata)
 
     def _context(self, data, connection_id):
-        domain = data.get("type") in (
-            "domain_query",
-            "resume",
-            "activate_domain",
-            "background_domain",
-            "refocus_domain",
-            "deactivate_domain",
-        )
+        domain = _is_domain_request(data)
         request_id = data.get("request_id")
         if not isinstance(request_id, str) or not request_id.strip():
             request_id = str(uuid.uuid4())
@@ -217,24 +254,31 @@ class BridgeServer:
             return entries
         return [make_error("", "", "invalid_request", f"Unknown type: {msg_type}")]
 
-    def _message(self, context, role, content, outcome):
+    def _message(self, context, role, content, outcome, metadata=None):
         if self._recorder is not None and context.agent_id is not None:
-            self._recorder.message(context, role, content, outcome)
+            self._recorder.message(
+                context,
+                role,
+                content,
+                outcome,
+                provider_session_id=metadata.provider_session_id if metadata else None,
+            )
 
     async def _conversation(self, data, histories, context):
+        metadata = ExecutionMetadata()
         task = data.get("task")
         record = context.agent_id is not None and isinstance(task, str) and bool(task)
         if record:
             self._message(context, "user", task, "input")
         try:
-            resp = await self._call_conversation(data, histories)
+            resp = await self._call_conversation(data, histories, metadata)
         except asyncio.CancelledError:
             if record:
-                self._message(context, "error", "cancelled", "cancelled")
+                self._message(context, "error", "cancelled", "cancelled", metadata)
             raise
         except Exception:
             if record:
-                self._message(context, "error", "engine_error", "failure")
+                self._message(context, "error", "engine_error", "failure", metadata)
             raise
         if record:
             success = resp.get("status") == "ok"
@@ -243,17 +287,18 @@ class BridgeServer:
                 "assistant" if success else "error",
                 resp.get("output", "") if success else "conversation_error",
                 "success" if success else "failure",
+                metadata,
             )
         return resp
 
-    async def _call_conversation(self, data, histories):
+    async def _call_conversation(self, data, histories, metadata):
         agent_id = data.get("agent_id")
         if histories is None or not isinstance(agent_id, str):
-            return await asyncio.to_thread(self.conversation.handle_request, data)
+            return await self.conversation.handle_request(data, metadata=metadata)
         # Store only exchanges the engine successfully extended. Context stays
         # per connection and agent, and failed calls leave no history key.
         history = histories.get(agent_id, [])
-        resp = await asyncio.to_thread(self.conversation.handle_request, data, history)
+        resp = await self.conversation.handle_request(data, history, metadata=metadata)
         if history:
             histories[agent_id] = history
         return resp
@@ -294,19 +339,50 @@ class BridgeServer:
             connection_id, str(uuid.uuid4()), None, "transport", None
         )
         self._event("connection_opened", context)
-        # Conversation history lives exactly as long as the connection, one
-        # list per agent. The loop below answers one message before reading
-        # the next, so the worker thread that extends a list never races
-        # another request on the same connection.
+        # Each connection processes one request at a time. Only NPC work is
+        # cancelled on peer closure; domain dispatch retains its own lifetime.
         histories: dict[str, list] = {}
+        active = None
+        peer_closed = False
+
+        async def watch_closed():
+            nonlocal peer_closed
+            await websocket.wait_closed()
+            peer_closed = True
+            if active is not None:
+                active.cancel()
+                await _drain(active)
+
+        watcher = asyncio.create_task(watch_closed(), name="npc-peer-disconnect")
         try:
             async for raw in websocket:
-                responses = await self.dispatch_raw(
-                    raw, histories, connection_id=connection_id
-                )
+                # Classify before yielding to the watcher. dispatch_raw remains
+                # responsible for JSON errors and request validation.
+                try:
+                    data = json.loads(raw)
+                except (json.JSONDecodeError, TypeError):
+                    data = None
+                if isinstance(data, dict) and _is_domain_request(data):
+                    responses = await self.dispatch_raw(
+                        raw, histories, connection_id=connection_id
+                    )
+                else:
+                    # A buffered frame can arrive after wait_closed completed.
+                    if peer_closed:
+                        break
+                    active = asyncio.create_task(
+                        self.dispatch_raw(raw, histories, connection_id=connection_id)
+                    )
+                    responses = await asyncio.shield(active)
+                    active = None
                 for resp in responses:
                     await websocket.send(json.dumps(resp))
         finally:
+            if active is not None:
+                active.cancel()
+                await _drain(active)
+            watcher.cancel()
+            await _drain(watcher)
             self._websocket = None
             self._event("connection_closed", context)
 
@@ -337,10 +413,12 @@ class BridgeServer:
         clean = False
         serve_failure = None
         try:
-            async with websockets.serve(
-                self._handle_connection,
-                LISTEN_HOST,
-                LISTEN_PORT,
+            async with _drained_listener(
+                websockets.serve(
+                    self._handle_connection,
+                    LISTEN_HOST,
+                    LISTEN_PORT,
+                )
             ):
                 print(
                     f"Bridge running on ws://{LISTEN_HOST}:{LISTEN_PORT}",

@@ -1,23 +1,19 @@
-"""Conversation engine — one request, one model call, for NPC chat.
+"""Async NPC validation/history facade; one request and one full response.
 
-Evolved from bridge.py's handle_request(). Uses the Anthropic Messages API
-with Haiku for low-cost personality-driven NPC interactions.
-
-The engine holds no state of its own. A caller that wants a conversation
-passes the turns so far as `history` and the engine extends it; the server
-keeps one per connection and agent (bridge/PROTOCOL.md, "Conversation
-history"). Called without one, every request stands alone, as it did in M8.
-
-D-005: zero UI awareness.
-D-006: synchronous with timeout.
+D-005: zero UI awareness. D-033 keeps blocking conversation UX and its deadline.
+D-037 defaults execution to Claude Code, with explicit API-key compatibility.
+History belongs to the caller and changes only after successful adapter cleanup.
 """
-
-import os
-
-from anthropic import Anthropic
 
 from bridge.agents import load_agent
 from bridge.config import BridgeConfig, default_config
+from bridge.conversation_backend import (
+    ConversationBackend,
+    ConversationFailure,
+    ExecutionMetadata,
+)
+from bridge.conversation_sdk import ClaudeCodeBackend
+from bridge.conversation_api import MessagesAPIBackend
 from bridge.protocol import make_error, make_success, validate_agent_id
 
 # Compatibility names derive from the same validated built-ins as runtime defaults.
@@ -28,48 +24,27 @@ DEFAULT_MAX_TOKENS = _DEFAULT_CONFIG.conversation_max_output_tokens
 MAX_HISTORY_MESSAGES = _DEFAULT_CONFIG.context_max_messages
 
 
-def build_client():
-    """Build an Anthropic client, resolving credentials in priority order.
-
-    1. ANTHROPIC_API_KEY (sk-ant-..., x-api-key header)
-    2. ANTHROPIC_AUTH_TOKEN (Authorization: Bearer)
-    3. CLAUDE_CODE_OAUTH_TOKEN (bridge-local alias)
-    4. CLAUDE_CODE_0AUTH_TOKEN (alternate spelling)
-    5. SDK reads ~/.config/anthropic/ automatically
-    """
-    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
-    if api_key.startswith("sk-ant-"):
-        return Anthropic(api_key=api_key)
-
-    auth_token = (
-        os.environ.get("ANTHROPIC_AUTH_TOKEN")
-        or os.environ.get("CLAUDE_CODE_OAUTH_TOKEN")
-        or os.environ.get("CLAUDE_CODE_0AUTH_TOKEN")
-    )
-    if auth_token:
-        return Anthropic(auth_token=auth_token)
-
-    return Anthropic()
-
-
 class ConversationEngine:
-    """Request/response engine for NPC chat and story content.
-
-    Each call is one Haiku invocation — no tool use, no background
-    execution, and no state on the engine. Earlier turns reach the model
-    only through the `history` the caller hands to handle_request().
-    """
+    """Validation and success-only bounded history, independent of backend."""
 
     def __init__(
         self,
-        client=None,
+        backend: ConversationBackend | None = None,
         model=None,
         timeout=None,
         *,
         config: BridgeConfig | None = None,
     ):
         self._config = config if config is not None else default_config()
-        self._client = client if client is not None else build_client()
+        self._backend = (
+            backend
+            if backend is not None
+            else (
+                ClaudeCodeBackend()
+                if self._config.conversation_backend == "claude_code"
+                else MessagesAPIBackend()
+            )
+        )
         self._model = (
             model
             if model is not None
@@ -85,7 +60,7 @@ class ConversationEngine:
     def model(self) -> str:
         return self._model
 
-    def handle_request(self, request, history=None):
+    async def handle_request(self, request, history=None, *, metadata=None):
         """Answer one request.
 
         `history` is the caller's list of earlier messages with this agent,
@@ -123,16 +98,22 @@ class ConversationEngine:
         if definition is None:
             return make_error(agent_id, task, "not_found", f"No agent '{agent_id}'")
 
+        # Copy before the first await; even oversized caller input is bounded.
+        messages = [
+            dict(message)
+            for message in (history or [])[-self._config.context_max_messages :]
+        ]
+        messages.append({"role": "user", "content": task})
+        metadata = metadata if metadata is not None else ExecutionMetadata()
         try:
-            response = self._client.messages.create(
+            output = await self._backend.complete(
+                definition=definition,
+                messages=messages,
                 model=self._model,
-                max_tokens=self._config.conversation_max_output_tokens,
-                system=definition,
-                messages=[*(history or []), {"role": "user", "content": task}],
                 timeout=self._timeout,
+                max_output_tokens=self._config.conversation_max_output_tokens,
+                metadata=metadata,
             )
-            parts = [b.text for b in response.content if hasattr(b, "text")]
-            output = "\n\n".join(parts) if parts else ""
             # The API rejects an empty assistant turn, so an exchange with no
             # text is not one the next request could replay.
             if history is not None and output:
@@ -140,6 +121,8 @@ class ConversationEngine:
                 history.append({"role": "assistant", "content": output})
                 del history[: -self._config.context_max_messages]
             return make_success(agent_id, task, output)
+        except ConversationFailure as exc:
+            return make_error(agent_id, task, exc.category, str(exc))
         except Exception as exc:
             exc_name = type(exc).__name__
             if "auth" in exc_name.lower() or "authentication" in str(exc).lower():

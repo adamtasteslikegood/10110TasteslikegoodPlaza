@@ -29,7 +29,7 @@ that exits 2 writes nothing and leaves the previous file in place, which is why
 the gate refuses a transcript older than the run it just made.
 
 Exit codes: 0 both clients recalled the nonce; 1 they did not, or the path
-broke; 2 it could not be run -- no credential, no bridge dependencies, no
+broke; 2 it could not be run -- authentication refused, no bridge dependencies, no
 Godot, port in use. A 2 is never evidence either way.
 """
 
@@ -69,9 +69,8 @@ GODOT_SECONDS = 300
 # tests/test_sprint_6_live.py holds it to.
 RUN_SECONDS = 780
 MIN_TRY_SECONDS = 30
-# What bridge/conversation.py's build_client reads. The digit-zero spelling is
-# a typo the bridge accepts on purpose (issue #258); it is listed because a
-# working .env on this project carries it.
+# Explicit credential variables inherited by Claude Code. Native saved CLI login
+# also works without these. The digit-zero alias remains supported (issue #258).
 CREDENTIAL_VARS = (
     "ANTHROPIC_API_KEY",
     "ANTHROPIC_AUTH_TOKEN",
@@ -101,12 +100,13 @@ def dotenv() -> dict:
 
 
 def bridge_environment() -> dict:
-    """The bridge's environment, with ONE source's credential in it.
+    """Preserve native CLI auth and choose one source for explicit credentials.
 
     ./.env wins and the two are never mixed, the rule sprint_5_gate.py's
     resolve_credential gives its reason for: a shell keeps exporting a value
-    after it has left the file. The bridge takes the first of CREDENTIAL_VARS
-    it finds, so a stale exported key would otherwise outrank the file's token.
+    after it has left the file. A stale exported key must not compete with the
+    file's token. Claude Code chooses its authentication source; only a real
+    request can establish that authentication works.
     """
     env = dict(os.environ)
     from_file = {k: v for k, v in dotenv().items() if k in CREDENTIAL_VARS and v}
@@ -114,12 +114,6 @@ def bridge_environment() -> dict:
         for name in CREDENTIAL_VARS:
             env.pop(name, None)
         env.update(from_file)
-    if not any(env.get(name) for name in CREDENTIAL_VARS):
-        raise CouldNotRun(
-            "no Claude credential: set one of "
-            + ", ".join(CREDENTIAL_VARS)
-            + " in ./.env or the environment"
-        )
     return env
 
 
@@ -130,13 +124,13 @@ def bridge_python() -> str:
         if not candidate.is_file():
             continue
         probe = subprocess.run(
-            [str(candidate), "-c", "import websockets, anthropic"],
+            [str(candidate), "-c", "import websockets, claude_agent_sdk"],
             capture_output=True,
         )
         if probe.returncode == 0:
             return str(candidate)
     raise CouldNotRun(
-        "no interpreter with the bridge's dependencies (websockets, anthropic); "
+        "no interpreter with the bridge's dependencies (websockets, claude_agent_sdk); "
         "tried .venv/bin/python and " + sys.executable
     )
 

@@ -48,7 +48,7 @@ async def test_no_usable_id_preserves_exact_legacy_shape(
 ):
     client, _, _ = offline_clients
     if provider_fails:
-        client.messages.create.side_effect = RuntimeError("provider unavailable")
+        client.reply.side_effect = RuntimeError("provider unavailable")
     server = BridgeServer(config=runtime_config)
     expected = {
         "agent_id": "agent",
@@ -110,7 +110,7 @@ async def test_validation_errors_keep_fields_and_echo_id(
             "request_id": "invalid-input",
         }
     ]
-    offline_clients[0].messages.create.assert_not_called()
+    offline_clients[0].reply.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -126,7 +126,7 @@ async def test_provider_errors_echo_id_without_changing_error_fields(
     failure, error_type, message, runtime_config, offline_clients
 ):
     client, _, _ = offline_clients
-    client.messages.create.side_effect = failure
+    client.reply.side_effect = failure
     server = BridgeServer(config=runtime_config)
     histories = {}
     assert await server.dispatch(

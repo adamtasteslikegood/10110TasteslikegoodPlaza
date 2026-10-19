@@ -4,7 +4,7 @@ title: Bridge-first platform — local observability and conversation UI
 tier: 2
 authority: implementation
 status: ACTIVE
-doc_set_version: 0.2.15
+doc_set_version: 0.2.16
 last_updated: 2026-10
 owner: adamtasteslikegood
 derives_from: [PLATFORM-DECISIONS, DESIGN-25D]
@@ -30,6 +30,11 @@ The owner explicitly confirmed synchronous NPC calls with timeout (`D-033`,
 superseding `D-006`) and asynchronous domains with buffered results and existing turn/budget caps
 (`D-034`). `PLATFORM-DECISIONS` ratifies centralized non-secret settings (`D-035`)
 and bounded local archives/diagnostics (`D-036`), with the exact contracts below.
+The subsequent runtime correction `D-037` is implemented: normal model execution,
+including NPCs, defaults to Claude Code through Agent SDK; direct Messages API
+conversation is an explicit API-key-only opt-in with no automatic fallback.
+The CLI retains its native authentication handling. See [Quick start](../../../QUICKSTART.md)
+for the fresh cloud SDK recall evidence, authentication and remaining limits.
 
 ## 1. Purpose and scope
 
@@ -59,7 +64,7 @@ validated settings and bounded archives. See §§5–6 and the
 [operating guide](../../../QUICKSTART.md#bridge-settings-and-archives-m10).
 This snapshot is not evidence of later UI features or durable recovery:
 
-| Concern | Current implementation | Boundary |
+| Concern | Pre-M10 implementation | Boundary |
 |---|---|---|
 | Ordinary NPC conversation | Messages API with the agent definition as system prompt | All Godot NPC questions use this path; department membership does not select a domain session. |
 | Model context | Server holds history per WebSocket connection and agent | Last 40 messages/20 successful exchanges; disconnect/restart loses it. No durable conversation ID. |
@@ -75,9 +80,12 @@ Sources: [conversation engine](../../../bridge/conversation.py),
 [Godot client](../../../scenes/bridge/ws_client.gd), and
 [dialogue panel](../../../scenes/hud/dialogue_panel.gd).
 
-The API-key live test completed two-turn recall from Godot and Python during
-onboarding; the owner separately reported local Claude Code credential operation
-on a laptop. Neither observation proves domain tool execution or restart recovery.
+The earlier API-key live test completed two-turn recall from Godot and Python
+through the direct Messages API during onboarding. It bypassed the required
+default runtime and is historical direct-provider compatibility evidence only.
+The owner separately reported laptop Claude Code credential operation; that report
+did not prove SDK execution in this environment. Neither observation proves
+domain tool execution or restart recovery.
 
 ## 3. Milestone sequence and acceptance
 
@@ -138,6 +146,7 @@ The following approved complete settings set is implemented in
   "OPUS_MODEL": "claude-opus-5-5",
   "FABLE_MODEL": "claude-fable-5-1",
   "ADVISOR_MODEL": "FABLE_MODEL",
+  "CONVERSATION_BACKEND": "claude_code",
   "CONVERSATION_TIER": "haiku",
   "DOMAIN_TIER": "sonnet",
   "CONVERSATION_TIMEOUT_SECONDS": 60,
@@ -227,7 +236,9 @@ Transcript records contain schema version, sequence number, UTC timestamp,
 run/connection/request/agent IDs, engine, model, message role and content, and
 outcome. Add domain, output and provider-session IDs only when actually available.
 Record user input, successful replies and failures as distinguishable records.
-Never invent a provider session ID for a Messages API conversation. Serialize
+Record NPC provider-session IDs only when actually supplied by SDK/runtime;
+fresh per-request IDs do not imply resume or durable recovery. Never invent one
+for a Messages API conversation. Serialize
 appends, flush each completed record and preserve per-conversation order. A reader
 must tolerate an incomplete final line after a crash without treating it as a
 complete message; malformed earlier lines produce a diagnostic rather than silent
@@ -352,10 +363,14 @@ real disconnect/reconnect. It verifies assistant-only rendered output, fresh
 server context without replay, and aggregate Unicode display bounds. Existing
 smoke remains required. All six actual desktop outcomes below remain outstanding;
 record results using the [operating checklist](../../../QUICKSTART.md#desktop-acceptance-checklist--outstanding).
-A bounded real NPC API smoke on 2026-10-18 also passed first-attempt nonce recall
-in Godot's current rendered assistant span and plain Python (two turns each),
-using temporary evidence/archive paths. Owner readback remains outstanding.
-Automated/API coverage is not full M11 desktop acceptance or M12 execution proof.
+The earlier direct Messages API smoke on 2026-10-18 passed two-client recall;
+it is historical compatibility evidence, not SDK execution proof. A separate real
+Agent SDK/Claude Code run passed at 22:32:53 UTC with cloud API-key authentication,
+Haiku 5.5, two turns each from Godot and Python on the first attempt and four
+distinct observed SDK session IDs. [Fresh evidence](../../../specs/evidence/npc-sdk-live-2026-10-18.json)
+retains the transcript and limits; frozen Sprint 6 evidence is unchanged.
+Owner readback remains outstanding. This does not establish laptop subscription
+use, desktop acceptance, graceful runner shutdown or M12 domain execution.
 
 Use deterministic headless checks for stored data, input dispatch, geometry and
 request correlation, plus desktop mouse/keyboard verification for actual resizing

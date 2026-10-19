@@ -1,5 +1,10 @@
 # Bridge Domain Architecture — Design Spec
 
+> **Historical runtime design.** `D-037` now governs normal execution: Claude Code
+> through Agent SDK by default, explicit API-key-only Messages API compatibility,
+> no automatic fallback. The two-engine provider split below is dated input;
+> use [Quick start](../../../QUICKSTART.md) for current operation and evidence.
+
 > **Scope clarification, 2026-10-18:** this dated brainstorm remains design input,
 > not proof of shipped durability. Conversation history is now connection/agent
 > scoped; the engine receives those turns from the server rather than storing

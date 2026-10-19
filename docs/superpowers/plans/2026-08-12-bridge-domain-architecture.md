@@ -1,5 +1,10 @@
 # Bridge Domain Architecture — Phase 1 Implementation Plan
 
+> **Historical runtime design.** `D-037` now governs normal execution: Claude Code
+> through Agent SDK by default, explicit API-key-only Messages API compatibility,
+> no automatic fallback. The two-engine provider split below is dated input;
+> use [Quick start](../../../QUICKSTART.md) for current operation and evidence.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Evolve the bridge from a single-request pipe into a two-engine architecture — a stateless conversation engine (Haiku, NPC chat) and a persistent domain session engine (Agent SDK, tool use, background execution with resume) — behind a shared protocol layer that routes messages and maintains backward compatibility with the existing Godot client.

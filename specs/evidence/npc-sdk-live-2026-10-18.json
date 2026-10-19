@@ -1,0 +1,152 @@
+{
+  "schema_version": 1,
+  "description": "Separate controller-observed corrected-runtime smoke; not a Sprint 6 gate replacement.",
+  "provenance": {
+    "runtime_commit": "769da9db517644e91c3ea661d142504d13e80b56",
+    "summary_source": "/workspace/plaza-npc-sdk-live-evidence-summary.json",
+    "result_source": "/workspace/plaza-npc-sdk-live-result.json",
+    "smoke_log_source": "/workspace/plaza-npc-sdk-live-smoke.log",
+    "archive_source": "/workspace/plaza-npc-sdk-live-logs-g8wr7e9d/runs/20261018T223244216718Z-6d223b476aef413da75cdc1674925c2e",
+    "versions_source": "Controller-observed installed runtime versions, reported with the live-run handoff."
+  },
+  "runtime": {
+    "backend": "claude_code",
+    "claude_agent_sdk_version": "0.2.136",
+    "claude_code_cli_version": "2.1.228",
+    "model": "claude-haiku-5-5"
+  },
+  "summary": {
+    "captured_at": "2026-10-18T22:32:53+00:00",
+    "result": "PASS",
+    "clients": 2,
+    "turns_per_client": 2,
+    "tries_per_client": 1,
+    "backend": "claude_code",
+    "model": "claude-haiku-5-5",
+    "observed_sdk_session_ids": 4,
+    "all_successes_have_sdk_session_ids": true,
+    "credential_source": "cloud API key inherited by real Claude Code/Agent SDK",
+    "owner_read": false,
+    "local_subscription_proven": false,
+    "desktop_acceptance_proven": false,
+    "frozen_sprint_evidence_modified": false,
+    "manifest_status": "open",
+    "runner_shutdown": "existing Sprint 6 runner terminates bridge with SIGTERM; open manifest is not graceful shutdown evidence",
+    "cost": "four live Haiku requests; billed amount not measured",
+    "port_8765_free_after_run": true
+  },
+  "transcript": {
+    "captured_at": "2026-10-18T22:32:53+00:00",
+    "nonce": "kestrel-3bc2a76c",
+    "agent_id": "systems-architect",
+    "owner_read": false,
+    "clients": {
+      "godot": {
+        "turns": [
+          {
+            "sent": "The project I am working on is called kestrel-3bc2a76c. Reply with just the word OK.",
+            "received": "OK"
+          },
+          {
+            "sent": "What is the project I am working on called? Reply with the name only.",
+            "received": "kestrel-3bc2a76c"
+          }
+        ],
+        "recalled": true,
+        "tries": [
+          {
+            "try": 1,
+            "turns": [
+              {
+                "sent": "The project I am working on is called kestrel-3bc2a76c. Reply with just the word OK.",
+                "received": "OK"
+              },
+              {
+                "sent": "What is the project I am working on called? Reply with the name only.",
+                "received": "kestrel-3bc2a76c"
+              }
+            ],
+            "recalled": true
+          }
+        ]
+      },
+      "python": {
+        "turns": [
+          {
+            "sent": "The project I am working on is called kestrel-3bc2a76c. Reply with just the word OK.",
+            "received": "OK"
+          },
+          {
+            "sent": "What is the project I am working on called? Reply with the name only.",
+            "received": "kestrel-3bc2a76c"
+          }
+        ],
+        "recalled": true,
+        "tries": [
+          {
+            "try": 1,
+            "turns": [
+              {
+                "sent": "The project I am working on is called kestrel-3bc2a76c. Reply with just the word OK.",
+                "received": "OK"
+              },
+              {
+                "sent": "What is the project I am working on called? Reply with the name only.",
+                "received": "kestrel-3bc2a76c"
+              }
+            ],
+            "recalled": true
+          }
+        ]
+      }
+    }
+  },
+  "observed_success_metadata": [
+    {
+      "timestamp": "2026-10-18T22:32:47.233451+00:00",
+      "connection_id": "0619567d-2c2b-4eaf-a68b-9dc0a294421f",
+      "request_id": "50acbd6321558ce13ecdca0af684ab7c:1:1",
+      "provider_session_id": "5fb7f970-9662-4910-8dd7-f2dd10083ac3",
+      "model": "claude-haiku-5-5",
+      "content": "OK"
+    },
+    {
+      "timestamp": "2026-10-18T22:32:49.719713+00:00",
+      "connection_id": "0619567d-2c2b-4eaf-a68b-9dc0a294421f",
+      "request_id": "50acbd6321558ce13ecdca0af684ab7c:1:2",
+      "provider_session_id": "e0c72787-89e8-4dc7-9527-28de8925bea4",
+      "model": "claude-haiku-5-5",
+      "content": "kestrel-3bc2a76c"
+    },
+    {
+      "timestamp": "2026-10-18T22:32:51.624886+00:00",
+      "connection_id": "999c0f7a-5a29-4da0-9ad8-e0964453338b",
+      "request_id": "6131496c-431f-4b9a-acc0-73fab99f0abb",
+      "provider_session_id": "9a089055-b959-4bcc-9ea1-02afeaef6951",
+      "model": "claude-haiku-5-5",
+      "content": "OK"
+    },
+    {
+      "timestamp": "2026-10-18T22:32:53.414556+00:00",
+      "connection_id": "999c0f7a-5a29-4da0-9ad8-e0964453338b",
+      "request_id": "328da57f-7908-450d-a683-91cf16f1fb3b",
+      "provider_session_id": "78dc31fb-2d98-4c47-9a34-9a05ca04e829",
+      "model": "claude-haiku-5-5",
+      "content": "kestrel-3bc2a76c"
+    }
+  ],
+  "manifest_observation": {
+    "run_id": "6d223b476aef413da75cdc1674925c2e",
+    "status": "open",
+    "ended_at": null
+  },
+  "limits": [
+    "Cloud API key inherited by actual Claude Code via Agent SDK; no direct Messages API invocation in this run.",
+    "Four live Haiku requests; billed amount not measured.",
+    "No local subscription entitlement, authentication, quota or billing proof.",
+    "No desktop mouse, keyboard, clipboard or OS-window acceptance; owner_read remains false.",
+    "Fresh observed SDK session IDs do not prove durable resume, domain lifecycle or M12 completion.",
+    "Existing runner uses SIGTERM and left manifest open; no graceful shutdown proof.",
+    "Frozen Sprint 6 evidence is unchanged."
+  ]
+}

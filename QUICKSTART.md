@@ -2,7 +2,8 @@
 
 This repo is **a running Godot prototype with a live agent bridge**. `godot .`
 opens a walkable 2.5D office; pressing Enter near an NPC lets you ask a question
-that routes through a Python WebSocket bridge to the Claude SDK and back.
+that routes through a Python WebSocket bridge to Claude Code via the Claude
+Agent SDK and back (`D-037`).
 
 For what has shipped and what's next, see the § Repository state and § Critical path
 sections in [`CLAUDE.md`](CLAUDE.md).
@@ -61,20 +62,36 @@ pip install -r requirements.txt   # pinned bridge runtime, tests and lint tools
 pip install pyyaml                 # only for regenerating agents.json
 ```
 
-**Anthropic API key** — the bridge calls the Claude API (Messages API for NPC
-chat, Agent SDK for domain sessions). Create a key at
-[console.anthropic.com/settings/keys](https://console.anthropic.com/settings/keys):
+**Claude Code authentication** — normal model execution, including every NPC
+conversation, defaults to Claude Code through the Claude Agent SDK (`D-037`). The
+pinned Python SDK supplies the CLI runtime. Keep existing supported native CLI
+credentials/bindings; an API-key environment variable is **not required** for the
+default backend when native Claude Code authentication works. The bridge does not
+read credential files or choose the CLI's authentication source. The historical
+`CLAUDE_CODE_0AUTH_TOKEN` spelling contains a digit zero; it maps to canonical
+`CLAUDE_CODE_OAUTH_TOKEN` only when canonical is absent or empty.
+
+Execution path and authentication/billing are separate: a cloud API key inherited
+by Claude Code still executes through Agent SDK/CLI. Native subscription or
+setup-token use depends on the account's supported Claude Code entitlement; this
+guide makes no subscription, quota or billing guarantee. Consult the current
+[Agent SDK authentication documentation](https://code.claude.com/docs/en/agent-sdk/quickstart)
+for applicable account/product terms. Do not replace working native bindings just
+because one environment variable is absent. To diagnose environment bindings,
+report only variable names and set/unset status, never values or credential files.
+
+**Explicit Messages API compatibility mode** — select this only when you intend
+direct API execution. Set `ANTHROPIC_API_KEY` securely in your environment, then:
 
 ```bash
-export ANTHROPIC_API_KEY="sk-ant-..."
+PLAZA_CONVERSATION_BACKEND=messages_api python3 bridge/bridge.py
 ```
 
-> "Unless previously approved, Anthropic does not allow third party developers
-> to offer claude.ai login or rate limits for their products, including agents
-> built on the Claude Agent SDK. Please use the API key authentication methods
-> described in this document instead."
->
-> — [Anthropic Agent SDK QuickStart](https://code.claude.com/docs/en/agent-sdk/quickstart)
+This mode requires a nonempty API key and rejects known OAuth/setup-token forms
+before HTTP; it never uses OAuth/auth-token fallbacks. Credentials do not select
+the backend. Missing/failing CLI authentication, timeout or any other default-path
+failure is returned visibly; the bridge never switches to Messages API automatically.
+The default is `CONVERSATION_BACKEND=claude_code`, including in the shipped config.
 
 ## 3. Run the demo
 
@@ -91,9 +108,11 @@ godot .
 
 Walk around with **arrow keys or WASD**. Approach an NPC — a dialogue panel opens
 showing their name, role, and department. Click the text input at the bottom, type
-a question, and press **Enter**. The bridge sends it to the Claude Messages API with the
-agent's `.md` definition as system prompt; the response renders with a typewriter
-effect. Press **Escape** to release the input and walk to the next agent.
+a question, and press **Enter**. The bridge sends the agent's `.md` definition as
+system prompt and the bounded JSON conversation transcript through Agent SDK to
+Claude Code. The full response renders with a typewriter effect. Explicitly
+selected `messages_api` uses the separate direct API adapter. Press **Escape** to
+release the input and walk to the next agent.
 
 Without the bridge running, the game still opens and you can walk and see agent
 info — questions will show a "Bridge not connected" error until you start
@@ -135,6 +154,14 @@ The three retention limits are independent:
 
 - **Model context:** bridge `CONTEXT_MAX_MESSAGES` defaults to 40 messages per
   agent/connection, retaining successful exchanges only. Reconnect resets it.
+  Every SDK request creates a fresh client, submits one JSON transcript and
+  disconnects before success is committed to history. No SDK client/session is
+  retained or resumed; continuity comes from the bridge's bounded transcript.
+  Only successful terminal assistant output enters history; errors, truncation
+  and cancelled requests do not. NPC chat is text-only, with tools/MCP/skills and
+  discretionary project/user hooks/plugins disabled; mandatory managed policy
+  remains effective. Observed SDK session IDs are recorder metadata, not durable
+  resume handles or extra response fields.
 - **Frontend display:** Project Settings `plaza/chat/history_max_messages=200`
   and `plaza/chat/history_max_bytes=1048576` bound each known agent across all
   reconnect generations, drafts, pending/failed messages and archived drafts.
@@ -171,7 +198,7 @@ The shipped `../.local/bridge-logs` therefore selects `.local/bridge-logs/` in t
 checkout. That directory is Git-ignored; choosing/ignoring a custom external root
 is the operator's responsibility. The committed config remains tracked.
 
-These are all 20 keys and their built-in/shipped defaults:
+These are all 21 keys and their built-in/shipped defaults:
 
 | Key | Default | Constraint / meaning |
 |---|---|---|
@@ -181,10 +208,11 @@ These are all 20 keys and their built-in/shipped defaults:
 | `OPUS_MODEL` | `claude-opus-5-5` | Nonempty provider ID |
 | `FABLE_MODEL` | `claude-fable-5-1` | Nonempty provider ID |
 | `ADVISOR_MODEL` | `FABLE_MODEL` | Symbolic reference to one of the four model keys |
+| `CONVERSATION_BACKEND` | `claude_code` | Exactly `claude_code` or explicit `messages_api`; no automatic fallback |
 | `CONVERSATION_TIER` | `haiku` | `haiku`, `sonnet`, `opus`, `fable` |
 | `DOMAIN_TIER` | `sonnet` | Same four tiers |
-| `CONVERSATION_TIMEOUT_SECONDS` | `60` | Positive finite number |
-| `CONVERSATION_MAX_OUTPUT_TOKENS` | `4096` | Positive integer |
+| `CONVERSATION_TIMEOUT_SECONDS` | `60` | Positive finite operation deadline; SDK cleanup can extend elapsed time as below |
+| `CONVERSATION_MAX_OUTPUT_TOKENS` | `4096` | Positive integer; SDK passes the cap through supported `CLAUDE_CODE_MAX_OUTPUT_TOKENS` |
 | `CONTEXT_MAX_MESSAGES` | `40` | Even integer, at least 2; connection/agent model context |
 | `DOMAIN_MAX_TURNS` | `20` | Positive integer; existing domain execution cap |
 | `DOMAIN_MAX_BUDGET_USD` | `1.0` | Positive finite number; existing domain budget cap |
@@ -204,7 +232,13 @@ the explicit tier. The future-use helper `config.advisor_for("sonnet")` resolves
 That relationship is checked when resolving; choosing Fable for ordinary chat
 remains valid. There is **no advisor execution or default advisory routing**.
 Keep credentials in the existing environment/SDK bindings, never in this config
-or other non-secret settings; authentication precedence is unchanged.
+or other non-secret settings. Native CLI authentication owns the default mode;
+explicit `messages_api` accepts only `ANTHROPIC_API_KEY`.
+
+The default 60-second operation deadline covers SDK connect/query/receive.
+Disconnect runs before a response/history commit; the installed SDK's bounded
+subprocess cleanup escalation can add approximately 20 seconds, including after
+cancellation. Do not treat the deadline as an instantaneous teardown guarantee.
 
 ### Inspect and manage recording
 
@@ -305,20 +339,34 @@ no credentials or network provider. Python-only environments may skip it when
 Godot is absent; `npm run test:bridge-integration` and the Godot CI job require it.
 Existing smoke and the separate real two-client conversation harness remain gates.
 
-A bounded real API smoke on 2026-10-18 passed two turns each through Godot and
-plain Python on the first attempt. Godot recall was checked only within the
-current assistant span of the rendered label. The run used temporary plan/output
-and archive paths, preserving frozen Sprint 6 evidence. This establishes current
-NPC Messages API conversation behavior; owner transcript readback and desktop
-interaction acceptance remain outstanding. It does not establish M12 Agent SDK
-domain execution.
+The earlier bounded API smoke on 2026-10-18 passed two turns each through Godot
+and plain Python on the first attempt, checking Godot recall within the current
+rendered assistant span. That historical run used the direct Messages API path,
+bypassing the required default runtime. It proves direct-provider compatibility,
+not Agent SDK execution; future API-mode runs must explicitly select and identify
+`messages_api`.
+
+A separate controller-observed run **passed at 2026-10-18 22:32:53 UTC** through
+real Agent SDK **0.2.136** / Claude Code CLI **2.1.228**, backend `claude_code`,
+model `claude-haiku-5-5`: Godot and plain Python each recalled the nonce in two
+turns on their first attempt, with four distinct observed SDK session IDs.
+[Fresh evidence and transcript](specs/evidence/npc-sdk-live-2026-10-18.json) preserve
+this run separately from frozen Sprint 6 evidence. Authentication was the cloud
+API key inherited by the CLI, not direct Messages API execution. Four live Haiku
+requests ran; billed amount was not measured. `owner_read` remains false.
+This proves neither laptop subscription authentication nor desktop acceptance,
+M12 domain lifecycle/background execution or durable resume. The existing runner
+stopped the bridge with SIGTERM and left its manifest open; the run does not prove
+graceful shutdown. Deterministic fake-provider coverage above remains independent
+of this live result.
 
 ### Desktop acceptance checklist — outstanding
 
 M11 is implemented with deterministic automated coverage. Actual desktop mouse,
 keyboard, clipboard and OS-window acceptance has **not been performed** here.
 Record date, platform, observed result and any issue for each item before calling
-M11 accepted; headless checks and API smoke do not replace these observations.
+M11 accepted; headless checks and live conversation smoke do not replace these
+observations.
 
 - [ ] A→B→A restores ordered transcript, drafts and reading position. Let A succeed
   late while B is visible, then make B fail; each result stays with its agent.
