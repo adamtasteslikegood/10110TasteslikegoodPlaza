@@ -583,6 +583,10 @@ workspace/reservation observation in `bridge/workspace.py` and
   approval. Keep the three-file grammar/caps and verify bounded round-trip
   retention before ready; checkpoint failure preserves the initialized repo
   and reports unsaved/failed without automatically repeating initialization.
+  Bound Chief responses by the configured NPC deadline too: after valid in-budget
+  approval, return approved/initializing progress if service-owned setup outlasts
+  the caller budget. Keep initialization tracked, domain execution blocked until
+  ready, and no automatic retries. Review timeout still authorizes no Git mutation.
   Keep the configured NPC deadline across preflight/model/reply; bounded cleanup
   follows the existing pattern. An unconfigured bridge retains current NPC behavior.
   Reader dispatches without awaiting NPC work. Bound each connection to one NPC
