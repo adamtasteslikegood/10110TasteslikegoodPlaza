@@ -1,0 +1,132 @@
+{
+  "kind": "post-run-inspection-ledger",
+  "date": "2026-10-21",
+  "accepted_evidence": "m12-live-2026-10-21.json",
+  "guard_evidence": "m12-guard-2026-10-21.json",
+  "attempts": [
+    {
+      "attempt": 1,
+      "accepted": false,
+      "process_exit_code": 1,
+      "evidence_file": "m12-live-2026-10-21-attempt1.json",
+      "evidence_sha256": "51a68bbabb6d91cee630d7314b4f6f3643fdfb8098ddfc3d46822e0321654a08",
+      "runtime_commit": "13e2e6480adef402176ca794be88ebbf6b61290d",
+      "raw_artifacts": "/tmp/plaza-m12-live-84xgkwag",
+      "provider_invocations": 0,
+      "sdk_reported_terminal_cost_usd": 0,
+      "observation": "Runner assumed ordinary NPC requests had type=query and early cleanup had a memory attachment; actual legacy request omits type. Zero provider calls. Corrected in 48292bb.",
+      "actual_manifests": [
+        {
+          "run_id": "5536930bec774c99ae13a8c038cb0f72",
+          "status": "closed",
+          "ended_at": "2026-10-21T17:49:26.001704+00:00"
+        }
+      ]
+    },
+    {
+      "attempt": 2,
+      "accepted": false,
+      "process_exit_code": 1,
+      "evidence_file": "m12-live-2026-10-21-attempt2.json",
+      "evidence_sha256": "9d9c464017e1b8a556d169825eaa23ace4ab8d6b92ef42131e8bae5c2806b754",
+      "runtime_commit": "48292bbbb728cf5208bc8d1f67c3395b4f518a66",
+      "raw_artifacts": "/tmp/plaza-m12-live-fev2s5vl",
+      "provider_invocations": 1,
+      "sdk_reported_terminal_cost_usd": 0.05788875,
+      "observation": "Real Chief independently declined: unborn=false was interpreted as committed history for an empty non-Git directory. Clarified inspected-state instructions without changing proposal/flags/decision autonomy in 9f4b903.",
+      "actual_manifests": [
+        {
+          "run_id": "f1d35fe66a0d457bb6dcbf3f641b7031",
+          "status": "closed",
+          "ended_at": "2026-10-21T17:53:06.743981+00:00"
+        }
+      ],
+      "chief_denial": {
+        "proposal_id": "4bed61f0-6fcb-44bf-b970-41d79fdaf4cb",
+        "digest": "d939c28980e85fac7751b9040be3c8d2eb4fb071278806521a16e32de0a3976c",
+        "approved": false,
+        "reason": "The proposal sets unborn to false, meaning the repository at the stated root already has history. Initializing main and creating an initial commit applies only to an unborn repository, so this request does not match the stated operation. The proposal also lists no seed files, so the only permitted action would be an empty commit, which would be inappropriate on an already-initialized repository. Rejected for review; a corrected proposal with unborn set to true, or a clarified intent for the existing history, is needed before approval."
+      }
+    },
+    {
+      "attempt": 3,
+      "accepted": false,
+      "process_exit_code": 1,
+      "evidence_file": "m12-live-2026-10-21-attempt3.json",
+      "evidence_sha256": "ef0f66c5d6d4b3dfb5bb1d7c7d48562f63d1bf65962be0201977abede889f235",
+      "runtime_commit": "9f4b903ddd6a699997e5512b25d0246973f62f80",
+      "raw_artifacts": "/tmp/plaza-m12-live-wxbe9fgd",
+      "provider_invocations": 5,
+      "sdk_reported_terminal_cost_usd": 0.43966325,
+      "observation": "All actual flows completed cleanly, but isolation comparison sampled pre-Stop revision10 rather than final closed revision11. Direct post-B canonical read matched actual A closed snapshot; failed report remains failed. Corrected in e535435.",
+      "actual_manifests": [
+        {
+          "run_id": "7c5448311f604ef7a7d845b18af0c191",
+          "status": "closed",
+          "ended_at": "2026-10-21T18:01:40.034339+00:00"
+        },
+        {
+          "run_id": "4dfc5f6d0cfb47b3a3f31b11cbf89346",
+          "status": "closed",
+          "ended_at": "2026-10-21T18:01:32.987489+00:00"
+        },
+        {
+          "run_id": "1d96c41a6b0d43e78e3f1347d6f1c542",
+          "status": "closed",
+          "ended_at": "2026-10-21T18:01:25.026168+00:00"
+        }
+      ]
+    },
+    {
+      "attempt": 4,
+      "accepted": false,
+      "process_exit_code": 1,
+      "evidence_file": "m12-live-2026-10-21-attempt4.json",
+      "evidence_sha256": "33fd333589dd2a5209abcc0e2eecec711e79ef7b17c2f4f9e0c1a7dfc18d37c3",
+      "runtime_commit": "e53543501edd2ecf170b21aedf185b36bfe1d74b",
+      "raw_artifacts": "/tmp/plaza-m12-live-vk5jt4ga",
+      "provider_invocations": 3,
+      "sdk_reported_terminal_cost_usd": 0.22262975,
+      "observation": "SDK-created file and receipt matched nonce; terminal preserved a fenced JSON answer under normal decoder fallback. Runner incorrectly required raw terminal bytes equal nonce. Strict semantic assertion now preserves raw Godot/plain/store parity; corrected in c128b54.",
+      "actual_manifests": [
+        {
+          "run_id": "554fff3ee1b242bb90c72e8d20a5df81",
+          "status": "closed",
+          "ended_at": "2026-10-21T18:06:30.126781+00:00"
+        }
+      ]
+    },
+    {
+      "attempt": 5,
+      "accepted": true,
+      "process_exit_code": 0,
+      "evidence_file": "m12-live-2026-10-21.json",
+      "evidence_sha256": "2e2a34e7ae02ed15565708c9aa3c3697ef9a2f45eec653e7aee369d102ba5430",
+      "runtime_commit": "c128b543d73864099002247c7f32854e2b020c3f",
+      "raw_artifacts": "/tmp/plaza-m12-live-dx6igvw6",
+      "provider_invocations": 5,
+      "sdk_reported_terminal_cost_usd": 0.240059,
+      "observation": "Complete accepted Linux headless flow; separate laptop binary and desktop acceptance remain open.",
+      "actual_manifests": [
+        {
+          "run_id": "db7bb294ddf64904b7fecf9e3cdaac70",
+          "status": "closed",
+          "ended_at": "2026-10-21T18:10:45.417548+00:00"
+        },
+        {
+          "run_id": "19c83778071b4012976ad6dd73bf8cc3",
+          "status": "closed",
+          "ended_at": "2026-10-21T18:10:39.768665+00:00"
+        },
+        {
+          "run_id": "40a9d265b6ce4ad4a3ee6e3f52522cae",
+          "status": "closed",
+          "ended_at": "2026-10-21T18:10:31.589676+00:00"
+        }
+      ]
+    }
+  ],
+  "guard_reported_terminal_cost_usd": 0.753546,
+  "all_reported_terminal_cost_usd": 1.71378675,
+  "auth_category": "cloud API-key authentication through inherited managed proxy/CA; native subscription billing not established"
+}

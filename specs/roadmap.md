@@ -4,13 +4,13 @@ title: 10110 TastesLike Plaza — Bridge-First Platform Roadmap
 tier: 3
 authority: derived
 status: ACTIVE
-doc_set_version: 0.2.16
+doc_set_version: 0.2.17
 last_updated: 2026-10
 owner: adamtasteslikegood
 derives_from: [PROJECT-OVERVIEW, DESIGN-25D, SPEC-DRIVERS-025, BRIDGE-PLATFORM-DESIGN]
 enforcement: asserted
 gates: [Validate Specs:live, Export Godot 4 Prototype:live]
-weakest_claim: M9 is complete; M10 and M11 are implemented and deterministically tested; M11 desktop acceptance is outstanding; M12–M15 remain planned.
+weakest_claim: M9 is complete; M10/M11 are implemented and locally accepted by the owner; M12 implementation has deterministic and Linux live evidence; laptop binary and desktop acceptance remain open; M13–M15 remain planned.
 ---
 
 # 10110 TastesLike Plaza — Bridge-First Platform Roadmap
@@ -31,7 +31,7 @@ remain deferred frontend milestones. M11 improves NPC conversation; it does not
 complete or replace M5 or M6.
 
 The owner approved the written bridge-first design and M10 plan on 2026-10-18.
-M9 is complete; M10 and M11 are implemented and deterministically tested; M11 desktop acceptance is outstanding; M12–M15 remain planned.
+M9 is complete; M10/M11 are implemented and locally accepted by the owner; M12 implementation has deterministic and Linux live evidence; laptop binary and desktop acceptance remain open; M13–M15 remain planned.
 M10 acceptance covers offline configuration, archive/lifecycle and loopback service
 tests; it does not establish later UI features or durable application recovery.
 `D-033` supersedes broad `D-006` with scoped synchronous NPC calls; `D-034`
@@ -44,11 +44,11 @@ and its limits separately from the historical direct API proof below.
 | Milestone | Scope | Status |
 |---|---|---|
 | **M9** | Align the design, protocol documentation and roadmap around the bridge-first platform direction; review the written spec | Complete — owner written-spec approval 2026-10-18 |
-| **M10** | Validated central configuration, JSONL run/agent transcripts and standard debug logs with quotas and retention | Implemented — deterministic bridge and loopback acceptance |
-| **M11** | Godot NPC conversation history, late responses, mouse window resizing and basic keyboard/scroll controls | Implemented — deterministic coverage; desktop acceptance outstanding |
-| **M12** | Domain lifecycle and execution connected to the UI and verified with a live SDK run | Planned after M11 |
+| **M10** | Validated central configuration, JSONL run/agent transcripts and standard debug logs with quotas and retention | Implemented and locally accepted by owner 2026-10-21 |
+| **M11** | Godot NPC conversation history, late responses, mouse window resizing and basic keyboard/scroll controls | Implemented and locally accepted by owner 2026-10-21 |
+| **M12** | Configured project/worktree bootstrap, native three-file memory and domain execution through clients | Implementation has deterministic and Linux live evidence; laptop binary and desktop acceptance remain open |
 | **M13** | Durable local user/project/domain application state in SQLite, with explicit restart semantics | Planned after M12 |
-| **M14** | Worktree-isolated execution | Planned after M13 |
+| **M14** | Independent execution workspaces beyond M12's minimum | Planned; sequencing with M13 to be reviewed |
 | **M15** | Authenticated hosted durable state; hosted provider remains unselected | Planned after M14 |
 
 The detailed scope and acceptance contract live in `BRIDGE-PLATFORM-DESIGN`;
@@ -448,11 +448,23 @@ surfaces remain outside that sequence unless a later design schedules them.
 
 ## Phase 3 — Bridge-first platform (approved M9–M15)
 
+> **Scope update, 2026-10-21:** the owner accepted M10/M11 laptop operation
+> and approved the M12 direction with a dedicated execution Git worktree now.
+> The bridge creates/reuses that worktree and three project-scoped memory files;
+> non-Git projects first require Chief Architect confirmation to initialize `main`.
+> The [detailed M12 spec](../docs/superpowers/specs/2026-10-21-m12-domain-execution-design.md)
+> is ACTIVE, with written approval recorded 2026-10-21. The
+> [implementation plan](../docs/superpowers/plans/2026-10-21-m12-project-execution.md)
+> is owner-approved for subagent-driven execution. M12 implementation has deterministic
+> and Linux live evidence; merge, laptop binary and desktop acceptance remain open. M13/M14
+> sequencing may change or combine state and isolation; M15's provider remains
+> unselected. See the owner update in `BRIDGE-PLATFORM-DESIGN`.
+
 The following milestones derive from `BRIDGE-PLATFORM-DESIGN` (`ACTIVE`,
 owner-approved 2026-10-18). M9's documentation approval is complete. M10 has
 implemented settings/recording and deterministic acceptance coverage. M11 has
-implemented history/controls and automated coverage; desktop acceptance remains
-outstanding. M12–M15 acceptance criteria describe future verification.
+implemented history/controls and automated coverage, with owner laptop acceptance
+recorded 2026-10-21. M12 has recorded Linux live evidence with desktop acceptance open; M13–M15 describe future verification.
 Existing M8 conversation behavior remains the regression baseline.
 
 ### Milestone 9 — Align and review the platform direction
@@ -487,16 +499,18 @@ application state introduced in M13.
 headless coverage plus a real Godot-client/Python-bridge fake-provider integration
 for delayed responses, per-agent failure, pending disconnect and fresh reconnect.
 Display limits include all retained generations and drafts; provider context and
-disk quotas remain independent. Existing smoke is preserved. Desktop mouse,
-keyboard, clipboard and OS-window acceptance remains outstanding; record results
-against the [operating checklist](../QUICKSTART.md#desktop-acceptance-checklist--outstanding)
-before marking M11 fully accepted. The earlier direct Messages API recall smoke
+disk quotas remain independent. Existing smoke is preserved. On 2026-10-21 the
+owner accepted M10/M11 operation on the laptop
+([PLZG-284](https://tasteslikegood.atlassian.net/browse/PLZG-284));
+this is owner-reported milestone acceptance; no itemized desktop test log was supplied.
+The earlier direct Messages API recall smoke
 is historical compatibility evidence only. A separate real Claude Code/Agent SDK
 smoke passed at 2026-10-18 22:32:53 UTC: two-turn recall from Godot and Python,
 first attempt each, cloud API key inherited by CLI, four distinct observed SDK
 session IDs. [Fresh evidence](evidence/npc-sdk-live-2026-10-18.json) records its
-limits; owner readback and laptop subscription verification remain outstanding.
-The runner's open manifest is not graceful-shutdown proof. M12 remains planned.
+limits. The owner separately confirmed laptop Claude subscription and API-token
+authentication on 2026-10-21; the output cap was a setting. The runner's open
+manifest remains insufficient graceful-shutdown proof. M12 implementation has deterministic and Linux live evidence; laptop binary and desktop acceptance remain open.
 
 Retain history for each NPC conversation across closing and reopening its panel,
 including responses that arrive after dismissal. Add mouse resizing with the
@@ -514,6 +528,27 @@ across process restarts must follow the explicit state contract in M13.
 
 ### Milestone 12 — Domain lifecycle and live execution
 
+The owner now requires one configured project per bridge/game session, with
+`WORKSPACE_ROOT_DIR` overridden by `PLAZA_WORKSPACE_ROOT_DIR`. The bridge
+creates/reuses its dedicated execution worktree and three repository-isolated
+memory files (TODO, handoff and turn summaries). Empty/non-Git projects require
+Chief Architect confirmation before repository creation with `main`.
+Other NPCs refer the player to the Chief Architect when setup is needed; its
+interaction and affirmative decision unlock initialization without another human
+prompt. A common bridge gate verifies Git/worktree/memory readiness before tools.
+The [M12 written design](../docs/superpowers/specs/2026-10-21-m12-domain-execution-design.md)
+defines approved bootstrap, memory, reservation, lifecycle and client contracts
+(`D-038`/`D-039`). The
+[implementation plan](../docs/superpowers/plans/2026-10-21-m12-project-execution.md)
+is owner-approved for subagent-driven execution. Tasks 1–9 have reviewed
+deterministic implementation coverage, including native Godot background/refocus
+and plain-client parity. Task 10 adds the bounded live runner and operator
+instructions. The [2026-10-21 Linux live flow](evidence/m12-live-2026-10-21.json)
+and [fresh 29-case guard matrix](evidence/m12-guard-2026-10-21.json) passed;
+[recorded evidence and limits](../QUICKSTART.md#m12-live-evidence-and-desktop-checks)
+keep Linux live proof, laptop-binary verification and desktop checks distinct.
+Implementation merge and owner M12 desktop acceptance remain outstanding.
+
 Connect domain lifecycle and execution to the frontend through the UI-agnostic
 bridge contract. Verify the complete path with a live Agent SDK run, including
 the lifecycle transitions and failures named by the design. Existing backend
@@ -525,16 +560,19 @@ asynchronous buffered domain execution with existing caps (`D-034`).
 
 ### Milestone 13 — Durable local application state
 
-Persist local user, project and domain application state in SQLite. Define and
+Extend M12's bounded Markdown project notes with structured local user, project
+and domain application state in SQLite. Define and
 verify which records survive a restart, how clients recover them, and how
 interrupted or non-resumable work is represented. Application-state recovery
 must not imply that a prior SDK process continues or resumes automatically.
 JSONL transcripts and debug logs from M10 remain diagnostic records rather than
 the application's state store.
 
-### Milestone 14 — Worktree-isolated execution
+### Milestone 14 — Independent execution workspaces
 
-Isolate repository execution in worktrees under the design's ownership,
+Extend M12's minimum dedicated worktree to independently assigned workspaces.
+Its order relative to M13 may change or combine persistence and isolation in a
+provider-specific design. Isolate execution under the design's ownership,
 lifecycle and cleanup contract. Verify that concurrent or failed runs cannot
 silently alter another run's checkout or the user's primary checkout, and that
 retained work and cleanup outcomes remain inspectable.

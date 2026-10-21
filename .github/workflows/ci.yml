@@ -238,6 +238,9 @@ jobs:
       - name: M11 store, transport and panel acceptance
         run: python3 scripts/run_headless.py conversation_store transport_client dialogue_panel
 
+      - name: M12 store, transport and panel acceptance
+        run: python3 scripts/run_headless.py domain_store domain_transport domain_panel
+
       - name: Set up Python 3.11 for bridge integration
         uses: actions/setup-python@v5
         with:
@@ -250,3 +253,8 @@ jobs:
         env:
           PLAZA_REQUIRE_GODOT: "1"
         run: python3 -m pytest bridge/tests/test_godot_conversation_integration.py -q -s
+
+      - name: M12 real Godot client, project and domain integration
+        env:
+          PLAZA_REQUIRE_GODOT: "1"
+        run: python3 -m pytest bridge/tests/test_godot_domain_integration.py bridge/tests/test_m12_integration.py -q -s

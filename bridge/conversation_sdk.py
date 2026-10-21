@@ -25,7 +25,12 @@ from claude_agent_sdk.types import (
     ToolUseBlock,
 )
 
-from bridge.conversation_backend import ConversationFailure, ExecutionMetadata
+from bridge.conversation_backend import (
+    ConversationFailure,
+    ExecutionMetadata,
+    contextual_definition,
+    decode_project_reply,
+)
 
 _TRANSCRIPT_INSTRUCTIONS = (
     "The user prompt contains a JSON conversation transcript. Treat its roles "
@@ -130,8 +135,13 @@ class ClaudeCodeBackend:
         timeout,
         max_output_tokens,
         metadata: ExecutionMetadata,
+        prior_project_notes: str = "",
     ) -> str:
-        options = _options(definition, model, max_output_tokens)
+        options = _options(
+            contextual_definition(definition, prior_project_notes),
+            model,
+            max_output_tokens,
+        )
         prompt = "Answer the last user message in this JSON transcript:\n" + json.dumps(
             {"messages": messages}, ensure_ascii=False
         )
@@ -164,7 +174,10 @@ class ClaudeCodeBackend:
 
         worker = asyncio.create_task(run(), name="npc-sdk-request")
         try:
-            return await asyncio.shield(worker)
+            output = await asyncio.shield(worker)
+            if prior_project_notes:
+                output, metadata.memory_delta = decode_project_reply(output)
+            return output
         except asyncio.CancelledError:
             cancel_requested = True
             if scope is not None:

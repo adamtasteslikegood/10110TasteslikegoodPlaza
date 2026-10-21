@@ -7,7 +7,7 @@ This is the backward-compatible entry point. The implementation has moved to:
 - bridge/domain_session.py — Agent SDK runtime per domain
 
 D-005: zero UI awareness.
-D-006: synchronous with timeout (conversation engine).
+D-033: synchronous NPC response with timeout; D-034: asynchronous domains.
 D-015: ws://localhost:8765.
 """
 

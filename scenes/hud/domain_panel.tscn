@@ -1,0 +1,79 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenes/hud/domain_panel.gd" id="1"]
+
+[node name="DomainPanel" type="CanvasLayer"]
+layer = 2
+script = ExtResource("1")
+
+[node name="Global" type="VBoxContainer" parent="."]
+offset_right = 800.0
+theme_override_constants/separation = 2
+
+[node name="StatusLabel" type="Label" parent="Global"]
+text = "Workspace unavailable"
+clip_text = true
+theme_override_font_sizes/font_size = 12
+
+[node name="Toolbar" type="HFlowContainer" parent="Global"]
+
+[node name="NearbyDomainButton" type="Button" parent="Global/Toolbar"]
+text = "Domain work"
+size_flags_horizontal = 0
+
+[node name="DomainSelect" type="OptionButton" parent="Global/Toolbar"]
+size_flags_horizontal = 0
+
+[node name="RefocusButton" type="Button" parent="Global/Toolbar"]
+text = "Refocus domain remotely"
+size_flags_horizontal = 0
+
+[node name="Panel" type="PanelContainer" parent="."]
+offset_right = 800.0
+offset_bottom = 240.0
+
+[node name="Scroll" type="ScrollContainer" parent="Panel"]
+horizontal_scroll_mode = 0
+
+[node name="Rows" type="VBoxContainer" parent="Panel/Scroll"]
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="WorkspaceLabel" type="Label" parent="Panel/Scroll/Rows"]
+autowrap_mode = 3
+theme_override_font_sizes/font_size = 12
+
+[node name="StatusLabel" type="Label" parent="Panel/Scroll/Rows"]
+autowrap_mode = 3
+theme_override_font_sizes/font_size = 12
+
+[node name="ResultsLabel" type="RichTextLabel" parent="Panel/Scroll/Rows"]
+custom_minimum_size = Vector2(0, 64)
+focus_mode = 2
+selection_enabled = true
+bbcode_enabled = false
+theme_override_font_sizes/normal_font_size = 13
+
+[node name="TaskInput" type="LineEdit" parent="Panel/Scroll/Rows"]
+placeholder_text = "Task for this domain (Enter to Run)"
+expand_to_text_length = false
+
+[node name="Actions" type="HFlowContainer" parent="Panel/Scroll/Rows"]
+
+[node name="Start" type="Button" parent="Panel/Scroll/Rows/Actions"]
+text = "Start"
+
+[node name="Run" type="Button" parent="Panel/Scroll/Rows/Actions"]
+text = "Run"
+
+[node name="Refocus" type="Button" parent="Panel/Scroll/Rows/Actions"]
+text = "Refocus / replay"
+
+[node name="Background" type="Button" parent="Panel/Scroll/Rows/Actions"]
+text = "Background / Close"
+
+[node name="Stop" type="Button" parent="Panel/Scroll/Rows/Actions"]
+text = "Stop"
+
+[node name="Status" type="Button" parent="Panel/Scroll/Rows/Actions"]
+text = "Refresh status"

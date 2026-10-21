@@ -24,8 +24,14 @@ from bridge.observability import BridgeRecorder, RequestContext
 from bridge.conversation import ConversationEngine, ExecutionMetadata
 from bridge.domain_session import _SDK_ENV_PASSTHROUGH
 from bridge.domain_manager import DomainManager
+from bridge.domain_protocol import COMMANDS
+from bridge.domain_session import deliver
+from bridge.connection import ConnectionState
+from bridge.project_service import ProjectService
+from bridge.project_memory import TurnIntent
+from bridge.readiness import owned_io
+from bridge.agents import load_agent
 from bridge.protocol import (
-    RequestType,
     validate_agent_id,
     parse_request,
     validate_request,
@@ -36,23 +42,10 @@ from bridge.protocol import (
 LISTEN_HOST = "localhost"
 LISTEN_PORT = 8765
 
-_LIFECYCLE_TYPES = {
-    "activate_domain",
-    "background_domain",
-    "refocus_domain",
-    "deactivate_domain",
-}
-
 
 def _is_domain_request(data):
-    return data.get("type") in (
-        "domain_query",
-        "resume",
-        "activate_domain",
-        "background_domain",
-        "refocus_domain",
-        "deactivate_domain",
-    )
+    kind = data.get("type")
+    return isinstance(kind, str) and kind in COMMANDS
 
 
 async def _drain(task):
@@ -90,21 +83,27 @@ async def _drained_listener(listener):
 class BridgeServer:
     def __init__(
         self,
-        base_path=None,
         *,
         config: BridgeConfig | None = None,
         recorder: BridgeRecorder | None = None,
+        project_service: ProjectService | None = None,
     ):
         self._config = config if config is not None else default_config()
         self._recorder = recorder
         self._closed = False
         self.conversation = ConversationEngine(config=self._config)
-        self.domains = DomainManager(
-            base_path=base_path,
-            config=self._config,
-            recorder=recorder,
+        self.project = project_service or ProjectService(
+            self._config,
+            runtime_root=Path(__file__).resolve().parent.parent,
+            owner_run_id=str(uuid.uuid4()),
         )
-        self._websocket = None
+        self.domains = DomainManager(
+            config=self._config, project_service=self.project, recorder=recorder
+        )
+        self._connection_tasks = set()
+        self._connections = set()
+        self._npc_tasks = set()
+        self._stopping = False
 
     def _event(self, name, context=None, **metadata):
         if self._recorder is not None:
@@ -136,18 +135,28 @@ class BridgeServer:
         histories=None,
         *,
         connection_id: str | None = None,
+        emit=None,
     ) -> list[dict]:
         try:
             data = json.loads(raw_message)
         except (json.JSONDecodeError, TypeError) as exc:
             self._reject_raw(connection_id)
-            return [make_error("", "", "invalid_request", f"Bad JSON: {exc}")]
+            return await self._emit_responses(
+                [make_error("", "", "invalid_request", f"Bad JSON: {exc}")], emit
+            )
         if not isinstance(data, dict):
             self._reject_raw(connection_id)
-            return [
-                make_error("", "", "invalid_request", "Request must be a JSON object")
-            ]
-        return await self.dispatch(data, histories, connection_id=connection_id)
+            return await self._emit_responses(
+                [
+                    make_error(
+                        "", "", "invalid_request", "Request must be a JSON object"
+                    )
+                ],
+                emit,
+            )
+        return await self.dispatch(
+            data, histories, connection_id=connection_id, emit=emit
+        )
 
     def _reject_raw(self, connection_id):
         context = self._context({}, connection_id)
@@ -160,13 +169,14 @@ class BridgeServer:
         histories=None,
         *,
         connection_id: str | None = None,
+        emit=None,
     ) -> list[dict]:
         """Route one request, keeping histories and correlation caller-owned."""
         context = self._context(data, connection_id)
         started = time.monotonic()
         self._event("request_received", context)
         try:
-            responses = await self._route(data, histories, context)
+            responses = await self._route(data, histories, context, emit)
         except asyncio.CancelledError:
             self._event(
                 "request_cancelled",
@@ -193,7 +203,16 @@ class BridgeServer:
                 {**response, "request_id": request_id} for response in responses
             ]
         self._record_dispatch_outcome(data, responses, context, started)
-        return responses
+        if emit is not None and _is_domain_request(data):
+            return []
+        return await self._emit_responses(responses, emit)
+
+    async def _emit_responses(self, responses, emit):
+        if emit is None:
+            return responses
+        for packet in responses:
+            await deliver(emit, packet, self._recorder, None)
+        return []
 
     def _record_dispatch_outcome(self, data, responses, context, started):
         error = next((r for r in responses if r.get("status") == "error"), None)
@@ -215,10 +234,22 @@ class BridgeServer:
             duration_ms=(time.monotonic() - started) * 1000,
         )
 
-    async def _route(self, data, histories, context):
-        msg_type = data.get("type", "")
-        if isinstance(msg_type, str) and msg_type in _LIFECYCLE_TYPES:
-            return await self._handle_lifecycle(msg_type, data)
+    async def _route(self, data, histories, context, emit):
+        if _is_domain_request(data):
+            immediate = []
+            collecting = True
+
+            async def sink(packet):
+                if collecting:
+                    immediate.append(packet)
+                if emit is not None:
+                    await emit(packet)
+
+            try:
+                await self.domains.handle(data, context=context, emit=sink)
+            finally:
+                collecting = False
+            return immediate
         request = parse_request({**data, "request_id": context.request_id})
         error = validate_request(request)
         if error:
@@ -226,33 +257,7 @@ class BridgeServer:
                 make_error(request.agent_id, request.task, "invalid_request", error)
             ]
         self._event("engine_routing", context)
-        if request.type == RequestType.CONVERSATION:
-            return [await self._conversation(data, histories, context)]
-        if request.type == RequestType.DOMAIN_QUERY:
-            if not validate_agent_id(request.agent_id) or not isinstance(
-                request.task, str
-            ):
-                return [
-                    make_error(
-                        request.agent_id,
-                        request.task,
-                        "invalid_request",
-                        "agent_id and task must be valid strings",
-                    )
-                ]
-            result = await self.domains.handle_domain_query(
-                request,
-                on_output=self._push_output,
-                context=context,
-            )
-            return [result] if result else []
-        if request.type == RequestType.RESUME:
-            entries = self.domains.handle_resume(request.domain_id, request.cursor)
-            state = self.domains.get_domain_state(request.domain_id)
-            if state and state.get("state") == "backgrounded":
-                self.domains.refocus_domain(request.domain_id)
-            return entries
-        return [make_error("", "", "invalid_request", f"Unknown type: {msg_type}")]
+        return [await self._conversation(data, histories, context)]
 
     def _message(self, context, role, content, outcome, metadata=None):
         if self._recorder is not None and context.agent_id is not None:
@@ -271,7 +276,12 @@ class BridgeServer:
         if record:
             self._message(context, "user", task, "input")
         try:
-            resp = await self._call_conversation(data, histories, metadata)
+            operation = asyncio.current_task()
+            self._npc_tasks.add(operation)
+            try:
+                resp = await self._call_conversation(data, histories, metadata)
+            finally:
+                self._npc_tasks.discard(operation)
         except asyncio.CancelledError:
             if record:
                 self._message(context, "error", "cancelled", "cancelled", metadata)
@@ -293,97 +303,149 @@ class BridgeServer:
 
     async def _call_conversation(self, data, histories, metadata):
         agent_id = data.get("agent_id")
-        if histories is None or not isinstance(agent_id, str):
-            return await self.conversation.handle_request(data, metadata=metadata)
-        # Store only exchanges the engine successfully extended. Context stays
-        # per connection and agent, and failed calls leave no history key.
-        history = histories.get(agent_id, [])
-        resp = await self.conversation.handle_request(data, history, metadata=metadata)
-        if history:
-            histories[agent_id] = history
-        return resp
-
-    async def _handle_lifecycle(self, msg_type, data):
-        domain_id = data.get("domain_id", "")
-        if not domain_id:
-            return [make_error("", "", "invalid_request", "domain_id is required")]
-
-        if msg_type == "activate_domain":
-            result = await self.domains.activate_domain(domain_id)
-            return [result]
-        elif msg_type == "background_domain":
-            return [self.domains.background_domain(domain_id)]
-        elif msg_type == "refocus_domain":
-            return [self.domains.refocus_domain(domain_id)]
-        elif msg_type == "deactivate_domain":
-            result = await self.domains.deactivate_domain(domain_id)
-            return [result]
-        return []
-
-    async def _push_output(self, domain_id, entry):
-        if self._websocket:
-            resp = make_success(
-                entry.agent_id,
-                entry.task,
-                entry.output,
-                domain_id=domain_id,
-                request_id=entry.request_id,
-                output_id=str(entry.output_id),
+        history = (
+            histories.get(agent_id, [])
+            if histories is not None and isinstance(agent_id, str)
+            else None
+        )
+        options = dict(metadata=metadata)
+        if self._config.workspace_root_dir is None:
+            response = (
+                await self.conversation.handle_request(data, history, **options)
+                if history is not None
+                else await self.conversation.handle_request(data, **options)
             )
-            await self._websocket.send(json.dumps(resp))
+        else:
+            response = await self._project_conversation(data, history, metadata)
+        if histories is not None and history:
+            histories[agent_id] = history
+        return response
+
+    async def _project_conversation(self, data, history, metadata):
+        agent, task = data.get("agent_id"), data.get("task")
+        if not validate_agent_id(agent) or not isinstance(task, str) or not task:
+            return make_error(
+                "", "", "invalid_request", "agent_id and task are required"
+            )
+        if load_agent(agent) is None:
+            return make_error(agent, task, "not_found", "Agent is unavailable")
+        deadline = (
+            asyncio.get_running_loop().time()
+            + self._config.conversation_timeout_seconds
+        )
+        guidance = await self.project.interact_setup(
+            agent, data.get("request_id", ""), deadline=deadline
+        )
+        if guidance is not None:
+            return make_success(agent, task, guidance)
+        turn = TurnIntent(
+            str(uuid.uuid4()),
+            data.get("request_id") or str(uuid.uuid4()),
+            self.project.owner_run_id,
+            agent,
+            None,
+            None,
+            task,
+        )
+        prepared = None
+        attempted = False
+        outcome, output = "error", "Not executed: project preflight failed"
+        response = None
+        try:
+            async with asyncio.timeout_at(deadline):
+                memory = self.project.require_memory()
+                attempted = True
+                prepared = asyncio.create_task(
+                    self.project.require_readiness().prepare_turn(turn)
+                )
+                snapshot = await asyncio.shield(prepared)
+                self.project.publish_memory(snapshot)
+                response = await self.conversation.handle_request(
+                    data,
+                    history,
+                    metadata=metadata,
+                    prior_project_notes=snapshot.as_context(),
+                    deadline=deadline,
+                )
+                outcome = "success" if response.get("status") == "ok" else "error"
+                output = (
+                    response.get("output", "")
+                    if outcome == "success"
+                    else "Conversation failed"
+                )
+        except asyncio.CancelledError:
+            outcome, output = "cancelled", "Cancelled before conversation completed"
+            raise
+        except TimeoutError:
+            response = make_error(
+                agent, task, "timeout", "Conversation deadline expired"
+            )
+        except Exception as error:
+            response = make_error(
+                agent,
+                task,
+                getattr(error, "code", "memory_unavailable"),
+                "Project memory or workspace is unavailable",
+            )
+        finally:
+            if attempted:
+
+                async def settle():
+                    if prepared is not None:
+                        await _drain(prepared)
+                        if not prepared.cancelled() and prepared.exception() is None:
+                            self.project.publish_memory(prepared.result())
+                    result = await owned_io(
+                        memory.finish_turn,
+                        turn.turn_id,
+                        outcome=outcome,
+                        output=output,
+                        delta=metadata.memory_delta if outcome == "success" else None,
+                    )
+                    self.project.publish_memory(result)
+
+                worker = asyncio.create_task(settle(), name="npc-memory-settlement")
+                try:
+                    await asyncio.shield(worker)
+                except asyncio.CancelledError:
+                    await _drain(worker)
+                    # An already completed response/history remains successful.
+                    if outcome != "success":
+                        raise
+        return response
 
     async def _handle_connection(self, websocket):
-        self._websocket = websocket
-        connection_id = str(uuid.uuid4())
+        connection = ConnectionState(
+            websocket, self.dispatch_raw, project_snapshot=self.project.snapshot
+        )
+        self._connections.add(connection)
         context = RequestContext(
-            connection_id, str(uuid.uuid4()), None, "transport", None
+            connection.connection_id, str(uuid.uuid4()), None, "transport", None
         )
         self._event("connection_opened", context)
-        # Each connection processes one request at a time. Only NPC work is
-        # cancelled on peer closure; domain dispatch retains its own lifetime.
-        histories: dict[str, list] = {}
-        active = None
-        peer_closed = False
 
         async def watch_closed():
-            nonlocal peer_closed
             await websocket.wait_closed()
-            peer_closed = True
-            if active is not None:
-                active.cancel()
-                await _drain(active)
+            await connection.close()
 
         watcher = asyncio.create_task(watch_closed(), name="npc-peer-disconnect")
         try:
             async for raw in websocket:
-                # Classify before yielding to the watcher. dispatch_raw remains
-                # responsible for JSON errors and request validation.
+                if self._stopping:
+                    break
                 try:
                     data = json.loads(raw)
                 except (json.JSONDecodeError, TypeError):
                     data = None
-                if isinstance(data, dict) and _is_domain_request(data):
-                    responses = await self.dispatch_raw(
-                        raw, histories, connection_id=connection_id
-                    )
-                else:
-                    # A buffered frame can arrive after wait_closed completed.
-                    if peer_closed:
-                        break
-                    active = asyncio.create_task(
-                        self.dispatch_raw(raw, histories, connection_id=connection_id)
-                    )
-                    responses = await asyncio.shield(active)
-                    active = None
-                for resp in responses:
-                    await websocket.send(json.dumps(resp))
+                operation = connection.submit(raw, data)
+                if operation is not None:
+                    self._connection_tasks.add(operation)
+                    operation.add_done_callback(self._connection_tasks.discard)
         finally:
-            if active is not None:
-                active.cancel()
-                await _drain(active)
+            await connection.close()
             watcher.cancel()
             await _drain(watcher)
-            self._websocket = None
+            self._connections.discard(connection)
             self._event("connection_closed", context)
 
     def close(self, *, clean: bool = True) -> None:
@@ -396,28 +458,50 @@ class BridgeServer:
             self._recorder.close(clean=clean)
 
     async def _shutdown_domains(self):
+        await self.domains.shutdown()
+
+    async def _shutdown(self):
+        self._stopping = True
         failure = None
-        for domain_id in self.domains.list_active_domains():
-            try:
-                await self.domains.deactivate_domain(domain_id)
-            except asyncio.CancelledError as exc:
-                failure = exc
-            except Exception as exc:
-                if failure is None:
-                    failure = exc
+        try:
+            await self._shutdown_domains()
+        except BaseException as error:
+            failure = error
+        for connection in tuple(self._connections):
+            await connection.close()
+        for task in tuple(self._npc_tasks):
+            task.cancel()
+            await _drain(task)
+        for task in tuple(self._connection_tasks):
+            await _drain(task)
+        try:
+            await self.project.close()
+        except BaseException as error:
+            failure = failure or error
         if failure is not None:
             raise failure
 
     async def serve(self, *, stop_event: asyncio.Event | None = None):
-        """Serve until cancelled or an explicit normal stop is requested."""
+        """Close admission; drain domains, NPC/setup IO and run ownership, then logs."""
         clean = False
-        serve_failure = None
+        primary = None
+        cleanup = None
+
+        async def shutdown():
+            nonlocal cleanup
+            if cleanup is None:
+                cleanup = asyncio.create_task(self._shutdown())
+            try:
+                await asyncio.shield(cleanup)
+            except asyncio.CancelledError:
+                await _drain(cleanup)
+                raise
+
         try:
+            await self.project.start()
             async with _drained_listener(
                 websockets.serve(
-                    self._handle_connection,
-                    LISTEN_HOST,
-                    LISTEN_PORT,
+                    self._handle_connection, LISTEN_HOST, LISTEN_PORT, origins=[None]
                 )
             ):
                 print(
@@ -425,22 +509,31 @@ class BridgeServer:
                     file=sys.stderr,
                 )
                 self._event("bridge_started")
-                if stop_event is None:
-                    await asyncio.Future()
-                else:
-                    await stop_event.wait()
+                try:
+                    if stop_event is None:
+                        await asyncio.Future()
+                    else:
+                        await stop_event.wait()
+                except BaseException as error:
+                    primary = error
+                    raise
+                finally:
+                    try:
+                        await shutdown()
+                    except BaseException as error:
+                        if primary is None or isinstance(error, asyncio.CancelledError):
+                            raise
             clean = True
-        except BaseException as exc:
-            serve_failure = exc
+        except BaseException as error:
+            primary = error
             raise
         finally:
             try:
-                await self._shutdown_domains()
-            except BaseException as exc:
+                if cleanup is None:
+                    await shutdown()
+            except BaseException as error:
                 clean = False
-                # Preserve the listener's original failure/cancellation while
-                # allowing a new caller cancellation during shutdown to escape.
-                if serve_failure is None or isinstance(exc, asyncio.CancelledError):
+                if primary is None or isinstance(error, asyncio.CancelledError):
                     raise
             finally:
                 self.close(clean=clean)

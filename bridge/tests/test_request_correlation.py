@@ -179,13 +179,17 @@ async def test_missing_agent_error_echoes_id(
         "deactivate_domain",
     ],
 )
-async def test_domain_and_lifecycle_validation_do_not_gain_conversation_echo(
+async def test_domain_validation_uses_explicit_correlation_without_fabricating_ids(
     request_type, runtime_config, offline_clients
 ):
     server = BridgeServer(config=runtime_config)
     response = await server.dispatch({"type": request_type, "request_id": "metadata"})
     assert response[0]["error_type"] == "invalid_request"
-    assert "request_id" not in response[0]
+    assert response[0]["type"] == "domain_error"
+    assert response[0]["request_id"] == "metadata"
+    missing = await server.dispatch({"type": request_type})
+    assert missing[0]["error_type"] == "invalid_request"
+    assert "request_id" not in missing[0]
 
 
 @pytest.mark.asyncio

@@ -7,7 +7,7 @@ var send_observation: Dictionary = {}
 
 
 func _send_text(payload: String) -> Error:
-	if fail_send:
+	if fail_send and not JSON.parse_string(payload).has("type"):
 		var parsed: Dictionary = JSON.parse_string(payload)
 		send_observation = {
 			"payload": parsed,

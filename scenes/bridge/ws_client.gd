@@ -4,6 +4,7 @@ extends Node
 ## bridge sees opaque request IDs, never frontend state (D-005 / D-015).
 const BRIDGE_URL := "ws://localhost:8765"
 const RECONNECT_DELAY := 3.0
+const DomainState := preload("res://scenes/bridge/domain_store.gd")
 const Store := preload("res://scenes/bridge/conversation_store.gd")
 
 @export var bridge_url := BRIDGE_URL
@@ -13,6 +14,17 @@ var conversations := Store.new(
 	int(ProjectSettings.get_setting("plaza/chat/history_max_messages", 200)),
 	int(ProjectSettings.get_setting("plaza/chat/history_max_bytes", 1048576))
 )
+var domains := DomainState.new()
+# Domain/discovery correlation never shares the NPC request map.
+var _domain_requests: Dictionary = {}
+var _discovery_request := ""
+var _refresh_workspace := false
+var _status_queue: Array[String] = []
+var _resume_queue: Array[String] = []
+var _recover_domains: Dictionary = {}
+# A failed observation waits for explicit retry or a new connection.
+var _failed_status_domains: Dictionary = {}
+var _workspace_poll := 0.0
 var _socket := WebSocketPeer.new()
 var _connected := false
 var _pending_requests: Dictionary = {}
@@ -41,7 +53,7 @@ func _attempt_connect() -> void:
 		_schedule_reconnect()
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	_socket.poll()
 	match _socket.get_ready_state():
 		WebSocketPeer.STATE_OPEN:
@@ -50,8 +62,14 @@ func _process(_delta: float) -> void:
 				_reconnect_timer.stop()
 				conversations.begin_connection()
 				_notify_connection()
+				describe_workspace()
 			while _socket.get_available_packet_count() > 0:
 				_on_message(_socket.get_packet().get_string_from_utf8())
+			_workspace_poll += delta
+			if _workspace_poll >= 2.0:
+				_workspace_poll = 0.0
+				if workspace_snapshot().get("stage") in ["preparing", "reviewing", "initializing"]:
+					describe_workspace()
 		WebSocketPeer.STATE_CLOSED:
 			if _connected:
 				_on_connection_closed()
@@ -60,6 +78,17 @@ func _process(_delta: float) -> void:
 
 func _on_connection_closed() -> void:
 	_connected = false
+	_failed_status_domains.clear()
+	domains.disconnect_connection()
+	_domain_requests.clear()
+	_discovery_request = ""
+	_refresh_workspace = false
+	_status_queue.clear()
+	_resume_queue.clear()
+	for domain_id in domains.domain_ids():
+		_recover_domains[domain_id] = true
+		GameEvents.domain_changed.emit(domain_id, "connection", "")
+	GameEvents.workspace_changed.emit("connection", "")
 	var pending := _pending_requests.duplicate(true)
 	conversations.disconnect_connection("Connection lost during query")
 	_pending_requests.clear()
@@ -157,6 +186,9 @@ func _on_message(raw: String) -> void:
 		_protocol_diagnostic("expected a JSON object")
 		return
 	var parsed: Dictionary = json.data
+	if parsed.get("type") in ["workspace_state", "domain_state", "domain_accepted", "domain_result", "domain_error", "resume_complete"]:
+		_on_domain_packet(parsed)
+		return
 	var request_id: Variant = parsed.get("request_id")
 	if not request_id is String or not _pending_requests.has(request_id):
 		_protocol_diagnostic("missing, unknown or completed request ID")
@@ -178,8 +210,10 @@ func _on_message(raw: String) -> void:
 			_pending_requests.erase(request_id)
 			GameEvents.conversation_changed.emit(pending.agent_id, "reply", request_id)
 			GameEvents.agent_response_received.emit(pending.agent_id, output)
+			describe_workspace()
 	elif status is String and status == "error" and parsed.get("error_type") is String and parsed.get("message") is String:
 		_fail_request(request_id, parsed.error_type, parsed.message)
+		describe_workspace()
 	else:
 		_protocol_diagnostic("invalid conversation response fields")
 
@@ -191,3 +225,184 @@ func _protocol_diagnostic(message: String) -> void:
 
 func is_bridge_connected() -> bool:
 	return _connected
+
+
+func workspace_snapshot() -> Dictionary:
+	return domains.workspace_snapshot()
+
+
+func domain_snapshot(domain_id: String) -> Dictionary:
+	return domains.snapshot(domain_id)
+
+
+func set_domain_draft(domain_id: String, text: String) -> bool:
+	if not domains.set_draft(domain_id, text): return false
+	GameEvents.domain_changed.emit(domain_id, "draft", "")
+	return true
+
+
+func mark_domain_read(domain_id: String, output_id: String) -> void:
+	domains.mark_read(domain_id, output_id)
+	GameEvents.domain_changed.emit(domain_id, "read", "")
+
+
+func describe_workspace() -> String:
+	if not _connected: return ""
+	if _discovery_request != "":
+		if _domain_requests.get(_discovery_request, {}).get("type") == "describe_workspace": return _discovery_request
+		_refresh_workspace = true
+		return ""
+	return _send_domain_command({"type": "describe_workspace"})
+
+
+func domain_status(domain_id: String) -> String:
+	_failed_status_domains.erase(domain_id)
+	if not _connected or not DomainState.valid_domain(domain_id) or domain_snapshot(domain_id).is_empty(): return ""
+	if _discovery_request != "":
+		var current: Dictionary = _domain_requests.get(_discovery_request, {})
+		if current.get("type") == "domain_status" and current.get("domain_id") == domain_id: return _discovery_request
+		if domain_id not in _status_queue: _status_queue.append(domain_id)
+		return ""
+	return _send_domain_command({"type": "domain_status", "domain_id": domain_id})
+
+
+func activate_domain(domain_id: String) -> String:
+	return _send_domain_command({"type": "activate_domain", "domain_id": domain_id})
+
+
+func send_domain_query(domain_id: String, agent_id: String, task: String) -> String:
+	if not AgentRegistry.has_agent(agent_id): return ""
+	return _generation_command("domain_query", domain_id, {"agent_id": agent_id, "task": task})
+
+
+func background_domain(domain_id: String) -> String:
+	return _generation_command("background_domain", domain_id)
+
+
+func refocus_domain(domain_id: String) -> String:
+	return _generation_command("refocus_domain", domain_id)
+
+
+func deactivate_domain(domain_id: String) -> String:
+	return _generation_command("deactivate_domain", domain_id)
+
+
+func resume_domain(domain_id: String) -> String:
+	return _generation_command("resume", domain_id, {"cursor": domain_snapshot(domain_id).get("received_cursor", "0")})
+
+
+func _generation_command(kind: String, domain_id: String, extra: Dictionary = {}) -> String:
+	var packet := {"type": kind, "domain_id": domain_id, "domain_session_id": domain_snapshot(domain_id).get("domain_session_id", "")}
+	packet.merge(extra)
+	return _send_domain_command(packet)
+
+
+func _send_domain_command(packet: Dictionary) -> String:
+	var socket_open := _socket.get_ready_state() == WebSocketPeer.STATE_OPEN
+	if not _connected or not socket_open:
+		return ""
+	_request_counter += 1
+	var id := "%s:domain:%d" % [_session_id, _request_counter]
+	packet.request_id = id
+	var superseded: Dictionary = domain_snapshot(packet.domain_id).get("pending_control", {}) if packet.has("domain_id") else {}
+	if not domains.admit_command(packet):
+		return ""
+	if packet.type == "deactivate_domain" and superseded.get("type") == "activate_domain":
+		_domain_requests.erase(superseded.request_id)
+	_domain_requests[id] = packet.duplicate(true)
+	if packet.type in ["describe_workspace", "domain_status"]:
+		_discovery_request = id
+	if packet.has("domain_id"):
+		GameEvents.domain_changed.emit(packet.domain_id, "input", id)
+	if _send_text(JSON.stringify(packet)) != OK:
+		# Delivery may have reached the peer. Preserve uncertain Run; never retry it.
+		domains.disconnect_connection()
+		_domain_requests.clear()
+		_discovery_request = ""
+		for domain_id in domains.domain_ids():
+			GameEvents.domain_changed.emit(domain_id, "connection", "")
+		GameEvents.workspace_changed.emit("connection", id)
+	return id
+
+
+func _on_domain_packet(packet: Dictionary) -> void:
+	if not _connected:
+		return
+	var command: Dictionary = _domain_requests.get(packet.get("request_id"), {}).duplicate(true)
+	var change := domains.apply_packet(packet)
+	if change.is_empty():
+		return
+	if change.settled:
+		_domain_requests.erase(change.request_id)
+		if _discovery_request == change.request_id:
+			_discovery_request = ""
+	# Generation replacement can retire more than the packet's own request.
+	# Mirror only currently pending controls/queries, without completed-ID sets.
+	for id in _domain_requests.keys():
+		var pending: Dictionary = _domain_requests[id]
+		if pending.type in ["describe_workspace", "domain_status"]:
+			continue
+		var current := domain_snapshot(pending.domain_id)
+		var query_pending: bool = id == current.get("pending_query", {}).get("request_id")
+		var control_pending: bool = id == current.get("pending_control", {}).get("request_id")
+		if not query_pending and not control_pending:
+			_domain_requests.erase(id)
+	if change.project_changed:
+		# Commit both stores before presenting the authoritative new binding.
+		_pending_requests.clear()
+		conversations = Store.new(
+			AgentRegistry.has_agent,
+			int(ProjectSettings.get_setting("plaza/chat/history_max_messages", 200)),
+			int(ProjectSettings.get_setting("plaza/chat/history_max_bytes", 1048576))
+		)
+		conversations.begin_connection()
+		_domain_requests.clear()
+		_discovery_request = ""
+		_status_queue.clear()
+		_resume_queue.clear()
+		_recover_domains.clear()
+		_failed_status_domains.clear()
+		_notify_connection()
+	if change.scope == "workspace":
+		GameEvents.workspace_changed.emit(change.reason, change.request_id)
+		if change.reason == "workspace_state":
+			for domain_id in _recover_domains:
+				_queue_status_observation(domain_id)
+			var reservation: Variant = workspace_snapshot().get("reservation")
+			if reservation is Dictionary and DomainState.valid_domain(reservation.get("domain_id")):
+				_queue_status_observation(reservation.domain_id)
+	else:
+		if change.reason == "domain_error" and command.get("type") == "domain_status":
+			_failed_status_domains[change.domain_id] = true
+			_status_queue.erase(change.domain_id)
+			_resume_queue.erase(change.domain_id)
+		GameEvents.domain_changed.emit(change.domain_id, change.reason, change.request_id)
+		var failed_control: bool = change.reason == "domain_error" and command.get("type") != "domain_status"
+		if change.reason in ["resume_complete", "status_stale"] or failed_control:
+			domain_status(change.domain_id)
+		if change.reason == "domain_state" and command.get("type") == "domain_status" and _recover_domains.has(change.domain_id):
+			_recover_domains.erase(change.domain_id)
+			if domain_snapshot(change.domain_id).domain_session_id != "":
+				_resume_queue.append(change.domain_id)
+		var settled_control: bool = change.reason == "domain_state" and command.get("type") != "domain_status" and change.settled
+		if change.reason == "domain_result" or failed_control or settled_control:
+			describe_workspace()
+	_pump_discovery()
+
+
+func _queue_status_observation(domain_id: String) -> void:
+	if domain_id not in _status_queue and not _failed_status_domains.has(domain_id):
+		_status_queue.append(domain_id)
+
+
+func _pump_discovery() -> void:
+	if _discovery_request == "":
+		if _refresh_workspace:
+			_refresh_workspace = false
+			describe_workspace()
+		elif not _status_queue.is_empty():
+			domain_status(_status_queue.pop_front())
+	if not _resume_queue.is_empty():
+		var domain_id: String = _resume_queue[0]
+		if not resume_domain(domain_id).is_empty():
+			_resume_queue.pop_front()

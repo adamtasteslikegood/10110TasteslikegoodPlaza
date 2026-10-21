@@ -39,6 +39,7 @@ _DEFAULTS: dict[str, object] = {
     "TRANSCRIPT_MAX_FILE_BYTES": 5242880,
     "LOG_MAX_TOTAL_BYTES": 104857600,
     "LOG_MAX_AGE_DAYS": 14,
+    "WORKSPACE_ROOT_DIR": None,
 }
 _TEXT_KEYS = frozenset(
     {
@@ -96,6 +97,7 @@ class BridgeConfig:
     log_max_total_bytes: int
     log_max_age_days: int
     source_path: Path
+    workspace_root_dir: Path | None = None
 
     def model_for(self, tier: str) -> str:
         """Resolve an approved tier without model fallback or upgrades."""
@@ -118,8 +120,8 @@ class BridgeConfig:
         """Return only schema values, safe for an effective-settings manifest."""
         return {
             field.name.upper(): (
-                str(self.log_dir)
-                if field.name == "log_dir"
+                str(getattr(self, field.name))
+                if isinstance(getattr(self, field.name), Path)
                 else getattr(self, field.name)
             )
             for field in fields(self)
@@ -175,6 +177,22 @@ def _build(values: Mapping[str, object], source_path: Path) -> BridgeConfig:
             "TRANSCRIPT_MAX_FILE_BYTES must not exceed LOG_MAX_TOTAL_BYTES"
         )
     attributes = {key.lower(): value for key, value in values.items()}
+    workspace = values["WORKSPACE_ROOT_DIR"]
+    if workspace is not None:
+        if not isinstance(workspace, str) or not workspace.strip():
+            raise ConfigError("WORKSPACE_ROOT_DIR must be null or a nonempty path")
+        try:
+            workspace_path = Path(workspace)
+            if not workspace_path.is_absolute():
+                workspace_path = source_path.parent / workspace_path
+            workspace_path = workspace_path.resolve(strict=True)
+            if not workspace_path.is_dir():
+                raise ValueError("not a directory")
+            attributes["workspace_root_dir"] = workspace_path
+        except (OSError, ValueError, RuntimeError):
+            raise ConfigError(
+                "WORKSPACE_ROOT_DIR must identify an existing directory"
+            ) from None
     try:
         log_dir = Path(values["LOG_DIR"])
         if not log_dir.is_absolute():
@@ -258,7 +276,7 @@ def load_config(
         key = name.removeprefix("PLAZA_")
         if key not in _DEFAULTS:
             raise ConfigError(f"unknown config override {name}")
-        if key in _TEXT_KEYS:
+        if key in _TEXT_KEYS or key == "WORKSPACE_ROOT_DIR":
             values[key] = raw
         else:
             try:

@@ -20,37 +20,26 @@ def mock_engines(monkeypatch):
         "status": "ok",
     }
 
+    from bridge.domain_protocol import (
+        validate_domain_command,
+        error_packet,
+        DomainCommandError,
+    )
+    from bridge.domain_session import deliver
+
     domain_mgr = AsyncMock()
-    domain_mgr.handle_domain_query = AsyncMock(return_value=None)
-    domain_mgr.activate_domain = AsyncMock(
-        return_value={
-            "type": "domain_state",
-            "domain_id": "engineering",
-            "state": "active",
-            "unread_count": 0,
-        }
-    )
-    domain_mgr.handle_resume = MagicMock(return_value=[])
-    # Synchronous in DomainManager. Left as the AsyncMock default it returns an
-    # un-awaited coroutine, which is truthy, so the resume branch passed by
-    # accident and leaked a RuntimeWarning.
-    domain_mgr.get_domain_state = MagicMock(return_value=None)
-    domain_mgr.background_domain = MagicMock(
-        return_value={
-            "type": "domain_state",
-            "domain_id": "engineering",
-            "state": "backgrounded",
-            "unread_count": 0,
-        }
-    )
-    domain_mgr.refocus_domain = MagicMock(
-        return_value={
-            "type": "domain_state",
-            "domain_id": "engineering",
-            "state": "active",
-            "unread_count": 0,
-        }
-    )
+    domain_mgr.replies = []
+
+    async def handle(command, *, context, emit):
+        try:
+            validate_domain_command(command)
+        except DomainCommandError:
+            await deliver(emit, error_packet(command, "invalid_request"), None, context)
+            return
+        for packet in domain_mgr.replies:
+            await deliver(emit, packet, None, context)
+
+    domain_mgr.handle.side_effect = handle
 
     monkeypatch.setattr("bridge.server.ConversationEngine", lambda **kw: conv_engine)
     monkeypatch.setattr("bridge.server.DomainManager", lambda **kw: domain_mgr)
@@ -82,46 +71,57 @@ class TestBridgeServerDispatch:
                 "domain_id": "engineering",
                 "agent_id": "systems-architect",
                 "task": "review",
+                "domain_session_id": "generation",
                 "request_id": "r1",
             }
         )
-        domain_mgr.handle_domain_query.assert_awaited_once()
+        domain_mgr.handle.assert_awaited_once()
+        assert domain_mgr.handle.call_args.args[0]["type"] == "domain_query"
 
     async def test_resume_returns_buffered_entries(self, mock_engines):
         _, domain_mgr = mock_engines
-        domain_mgr.handle_resume.return_value = [
+        domain_mgr.replies = [
             {
                 "agent_id": "a",
                 "output": "buffered",
-                "status": "ok",
+                "status": "success",
+                "type": "domain_result",
                 "task": "t",
-                "output_id": "0",
+                "output_id": "1",
                 "domain_id": "engineering",
                 "request_id": "r1",
             },
         ]
         server = BridgeServer()
         resp = await server.dispatch(
-            {"type": "resume", "domain_id": "engineering", "cursor": "-1"}
+            {
+                "type": "resume",
+                "domain_id": "engineering",
+                "domain_session_id": "generation",
+                "request_id": "resume",
+                "cursor": "0",
+            }
         )
         assert len(resp) == 1
         assert resp[0]["output"] == "buffered"
-        domain_mgr.refocus_domain.assert_not_called()
+        assert domain_mgr.handle.await_count == 1
 
-    async def test_resume_refocuses_a_known_domain(self, mock_engines):
+    async def test_resume_does_not_implicitly_refocus_a_known_domain(
+        self, mock_engines
+    ):
         _, domain_mgr = mock_engines
-        domain_mgr.get_domain_state.return_value = {
-            "type": "domain_state",
-            "domain_id": "engineering",
-            "state": "backgrounded",
-            "unread_count": 1,
-        }
         server = BridgeServer()
         await server.dispatch(
-            {"type": "resume", "domain_id": "engineering", "cursor": "-1"}
+            dict(
+                type="resume",
+                domain_id="engineering",
+                domain_session_id="generation",
+                request_id="resume",
+                cursor="0",
+            )
         )
-        domain_mgr.get_domain_state.assert_called_once_with("engineering")
-        domain_mgr.refocus_domain.assert_called_once_with("engineering")
+        domain_mgr.handle.assert_awaited_once()
+        assert domain_mgr.handle.call_args.args[0]["type"] == "resume"
 
     async def test_activate_domain_dispatch(self, mock_engines):
         _, domain_mgr = mock_engines
@@ -129,7 +129,8 @@ class TestBridgeServerDispatch:
         resp = await server.dispatch(
             {"type": "activate_domain", "domain_id": "engineering"}
         )
-        domain_mgr.activate_domain.assert_awaited_once_with("engineering")
+        domain_mgr.handle.assert_awaited_once()
+        assert domain_mgr.handle.call_args.args[0]["type"] == "activate_domain"
 
     async def test_background_domain_dispatch(self, mock_engines):
         _, domain_mgr = mock_engines
@@ -137,7 +138,8 @@ class TestBridgeServerDispatch:
         resp = await server.dispatch(
             {"type": "background_domain", "domain_id": "engineering"}
         )
-        domain_mgr.background_domain.assert_called_once_with("engineering")
+        domain_mgr.handle.assert_awaited_once()
+        assert domain_mgr.handle.call_args.args[0]["type"] == "background_domain"
 
     async def test_refocus_domain_dispatch(self, mock_engines):
         _, domain_mgr = mock_engines
@@ -145,7 +147,8 @@ class TestBridgeServerDispatch:
         resp = await server.dispatch(
             {"type": "refocus_domain", "domain_id": "engineering"}
         )
-        domain_mgr.refocus_domain.assert_called_once_with("engineering")
+        domain_mgr.handle.assert_awaited_once()
+        assert domain_mgr.handle.call_args.args[0]["type"] == "refocus_domain"
 
     async def test_invalid_json_returns_error(self, mock_engines):
         server = BridgeServer()
@@ -222,7 +225,11 @@ class TestConversationHistoryRouting:
 
             async def _iterate(self):
                 for message in self.messages:
+                    count = len(self.sent)
                     yield message
+                    while len(self.sent) == count:
+                        await asyncio.sleep(0)
+                    await asyncio.sleep(0)
 
             async def wait_closed(self):
                 await asyncio.Future()
@@ -267,58 +274,56 @@ class TestConversationHistoryRouting:
 @pytest.mark.asyncio
 @pytest.mark.parametrize("shutdown", [False, True])
 async def test_domain_activation_survives_peer_close(
-    offline_clients, runtime_config, shutdown
+    tmp_path, monkeypatch, runtime_config, shutdown
 ):
-    """A closed peer must not strand the real domain lifecycle in ACTIVATING."""
     import websockets
+    from bridge.tests.domain_fakes import FakeOwner, FakeProjectService
 
-    entered, release, cancelled = asyncio.Event(), asyncio.Event(), asyncio.Event()
-    _, sdk, _ = offline_clients
+    service = FakeProjectService(tmp_path)
+    owner = FakeOwner(runtime_config, service.workspace, None, service.readiness)
+    owner.connect_gate = asyncio.Event()
 
-    async def connect():
-        entered.set()
-        try:
-            await release.wait()
-        except asyncio.CancelledError:
-            cancelled.set()
-            raise
+    def factory(config, workspace, lease, readiness):
+        owner.lease = lease
+        return owner
 
-    sdk.connect.side_effect = connect
-    server = BridgeServer(config=runtime_config)
+    monkeypatch.setattr("bridge.domain_session.DomainSDKOwner", factory)
+    server = BridgeServer(config=runtime_config, project_service=service)
     listener = await websockets.serve(server._handle_connection, "127.0.0.1", 0)
     socket = await websockets.connect(
         f"ws://127.0.0.1:{listener.sockets[0].getsockname()[1]}"
     )
     try:
         await socket.send(
-            json.dumps({"type": "activate_domain", "domain_id": "engineering"})
+            json.dumps(
+                dict(
+                    type="activate_domain", domain_id="engineering", request_id="start"
+                )
+            )
         )
-        await asyncio.wait_for(entered.wait(), 1)
-        assert server.domains.get_domain_state("engineering")["state"] == "activating"
+        packet = json.loads(await asyncio.wait_for(socket.recv(), 3))
+        assert packet["state"] == "activating"
+        await asyncio.wait_for(owner.started.wait(), 3)
+        session = server.domains._sessions["engineering"][-1]
         if shutdown:
             listener.close()
         await socket.close()
         listener.close()
-        # Closing a listener must still wait for the blocked activation. Give
-        # its real close watcher time to run before allowing connect to finish.
-        closed = asyncio.create_task(listener.wait_closed())
-        await asyncio.wait({closed}, timeout=0.1)
-        release.set()
-        await asyncio.wait_for(listener.wait_closed(), 1)
-        await closed
-        assert not cancelled.is_set()
-        assert server.domains.list_active_domains() == ["engineering"]
-        assert server.domains.get_domain_state("engineering")["state"] == "active"
+        await listener.wait_closed()
+        assert owner.lease.held and not owner.stopped.is_set()
+        owner.connect_gate.set()
+        await session.start()
+        assert session.snapshot()["state"] == "active"
         await server._shutdown_domains()
-        assert server.domains.get_domain_state("engineering")["state"] == "deactivated"
-        assert server.domains.list_active_domains() == []
-        sdk.disconnect.assert_awaited_once()
+        assert session.snapshot()["state"] == "inactive"
+        assert owner.stopped.is_set() and not owner.lease.held
     finally:
-        release.set()
+        owner.connect_gate.set()
         await socket.close()
         listener.close()
         await listener.wait_closed()
         await server._shutdown_domains()
+        service.close()
         server.close()
 
 
@@ -354,8 +359,9 @@ async def test_queued_request_after_peer_close_obeys_engine_lifetime(
         await server._handle_connection(ClosedSocket())
     except asyncio.CancelledError:
         pass
+    await asyncio.gather(*tuple(server._connection_tasks))
     conv.handle_request.assert_not_awaited()
     if request_type == "activate_domain":
-        domains.activate_domain.assert_awaited_once_with("engineering")
+        domains.handle.assert_awaited_once()
     else:
-        domains.activate_domain.assert_not_awaited()
+        domains.handle.assert_not_awaited()

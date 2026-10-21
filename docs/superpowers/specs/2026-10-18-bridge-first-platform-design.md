@@ -4,7 +4,7 @@ title: Bridge-first platform — local observability and conversation UI
 tier: 2
 authority: implementation
 status: ACTIVE
-doc_set_version: 0.2.16
+doc_set_version: 0.2.17
 last_updated: 2026-10
 owner: adamtasteslikegood
 derives_from: [PLATFORM-DECISIONS, DESIGN-25D]
@@ -22,9 +22,11 @@ keyboard controls for M11. M9 documentation alignment and written approval are
 complete; M10 settings and bounded recording are implemented with deterministic
 acceptance coverage. M11 history, correlation and controls are implemented under
 the [M11 plan](../plans/2026-10-18-m11-npc-conversations.md), with deterministic
-coverage and desktop acceptance outstanding. This ACTIVE design also specifies
+coverage and owner laptop acceptance recorded 2026-10-21. This ACTIVE design also specifies
 future durable-state functionality, so `enforcement: intended` remains.
-M12–M15 require their own detailed designs before execution.
+M12 has its owner-approved detailed design and implementation with deterministic
+and [Linux live evidence](../../../QUICKSTART.md#m12-live-evidence-and-desktop-checks);
+laptop binary and desktop acceptance remain open. M13–M15 require detailed designs before execution.
 
 The owner explicitly confirmed synchronous NPC calls with timeout (`D-033`,
 superseding `D-006`) and asynchronous domains with buffered results and existing turn/budget caps
@@ -35,6 +37,25 @@ including NPCs, defaults to Claude Code through Agent SDK; direct Messages API
 conversation is an explicit API-key-only opt-in with no automatic fallback.
 The CLI retains its native authentication handling. See [Quick start](../../../QUICKSTART.md)
 for the fresh cloud SDK recall evidence, authentication and remaining limits.
+
+**Owner scope update, 2026-10-21:** M10/M11 operation is accepted on the owner's
+laptop using local `dev`, with Claude subscription and API-token authentication;
+the output cap was a setting. This supersedes the outstanding laptop acceptance
+statements dated 2026-10-18 below, without adding cloud or shutdown evidence.
+The owner now requires a minimum dedicated execution Git worktree in M12, ahead
+of the broader worktree/runtime isolation previously grouped under M14. The
+bridge selects one project through `WORKSPACE_ROOT_DIR` with an environment
+override, creates/reuses its worktree, and creates/reads three native project
+memory files (TODO, handoff, turn summaries), isolated by repository. Empty or
+non-Git projects require Chief Architect confirmation before initialization on
+`main`. Other NPCs refer the player to that agent; interacting with the Chief
+Architect triggers review and its confirmation authorizes setup without another
+human prompt. All agent tools pass a shared Git/worktree/memory readiness check. The
+[detailed M12 specification](2026-10-21-m12-domain-execution-design.md) is ACTIVE,
+with written approval recorded 2026-10-21 (`D-038`/`D-039`). Its
+[implementation plan](../plans/2026-10-21-m12-project-execution.md) is owner-approved for
+subagent-driven execution. Richer persistence and stronger execution isolation can be
+resequenced or combined through an integrated provider; none is selected here.
 
 ## 1. Purpose and scope
 
@@ -97,9 +118,9 @@ dependencies, not a date forecast. None of M10–M15 is completed by this docume
 | M9 | Align platform direction and prototype wording | This written spec, roadmap and protocol distinguish implemented, planned and deferred behavior; documentation validation passes and the owner reviews the written spec. |
 | M10 | Central config and bounded local observability | Configuration precedence/validation, run manifests, per-agent transcripts, debug events, rotation, quota/age pruning and failure cases pass focused tests. |
 | M11 | Usable NPC conversations | Mouse resizing, viewport reflow, wheel/scrollbar/paging keys, focus behavior, A→B→A scrollback and late-response correlation meet §7 tests. |
-| M12 | Domain execution through clients | Godot activates/backgrounds/refocuses domains and consumes buffered results; a real SDK task completes while focus is elsewhere; a plain client exercises the same protocol. |
+| M12 | Configured project, worktree bootstrap, three-file memory and domain execution | Create/reuse a dedicated worktree, initialize non-Git projects only after Chief Architect confirmation, and persist isolated project notes. Godot backgrounds/refocuses real SDK work and consumes results; a plain client exercises the same protocol. Written specification approved 2026-10-21; implementation has deterministic and Linux live evidence. Laptop binary and desktop acceptance remain open. |
 | M13 | Local durable workspace state | User/project/domain-scoped conversations and execution metadata survive restart/reconnect; application-history restoration and SDK-task recovery are tested and reported separately. |
-| M14 | Worktree execution isolation | Domain work executes in assigned worktrees inside its project; concurrent changes stay isolated and can be reviewed for integration. |
+| M14 | Independent execution workspaces beyond M12's minimum | Domain work executes in assigned worktrees inside its project; concurrent changes stay isolated and can be reviewed for integration. |
 | M15 | Authenticated durable service | Authenticated ownership, isolation and recovery work across processes/devices; select the managed durability provider in that milestone's design. |
 
 ## 4. State boundaries and storage choices
@@ -112,7 +133,12 @@ For M10, use append-only JSONL for transcripts and Python standard logging for
 diagnostics. This is small enough to inspect by hand and fits bridge-run/agent
 folders. It provides an archive, not automatic conversation restoration.
 
-SQLite plus JSONL is the preferred next local option at M13: SQLite owns durable
+The owner's 2026-10-21 scope update adds bounded persistent Markdown project notes
+in M12. These support later-session context without restoring an SDK process,
+durable output buffer or complete application history. They are bridge-owned
+project data, not Plaza development-session instructions.
+
+SQLite plus JSONL is the preferred richer local option at M13: SQLite owns durable
 application state and relationships; JSONL remains diagnostic/export output. Avoid
 maintaining two independent authoritative histories. Managed durable objects are
 an option for M15, not a dependency of the local prototype.

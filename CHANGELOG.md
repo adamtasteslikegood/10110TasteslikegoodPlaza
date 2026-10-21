@@ -11,11 +11,42 @@ section at release time. PR references in parentheses.
 **Two version axes, deliberately separate.** This file and the tags track the
 **application**: the 3D era was `0.0.x`, and the 2.5D line is `0.1.y`. The
 `doc_set_version:` in every governed document's frontmatter is the **document
-set's** number and is unrelated — it reached `0.2.16` on its own axis. Prose that
+set's** number and is unrelated — it reached `0.2.17` on its own axis. Prose that
 cites `v0.2.7` or `v0.2.8` as software releases is conflating the two; those were
 spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
+
+### Added — M12 bounded acceptance and operations (PLZG-289)
+
+- Implement configured project bootstrap, real Chief approval, dedicated execution
+  worktree, bounded repository notes and generation-aware Godot domain controls;
+  Tasks 1–9 have independently reviewed deterministic coverage.
+- Add the bounded `scripts/m12_live.py` runner, fake-child/provider failure tests,
+  original SDK/default-factory observation, causal external nonce release,
+  plain-client parity, restart/isolation and actual manifest/ownership teardown
+  checks. No automatic paid retries or failed-artifact deletion.
+- Document project config, Git/POSIX requirements, retained edits, recovery
+  inspection, fixed guard-manifest activation and separate laptop/desktop gates
+  in `QUICKSTART.md`. Fresh 29-case guard and real Linux Godot/plain-client
+  acceptance passed at `c128b54`; preserve four failed reports and the accepted
+  evidence under `specs/evidence/m12-*2026-10-21*.json`. All three bridge
+  manifests closed, five SDK CLIs exited 0 and ownership detached cleanly.
+  Laptop binary and M12 desktop acceptance remain open.
+
+### Added — M12 design and implementation plan (PLZG-289)
+
+- Record owner approval of the written M12 specification at `57b631f` on
+  2026-10-21. Ratify configured project selection, reviewed repository bootstrap,
+  dedicated worktree reservation and tool readiness checks (`D-038`), plus
+  native three-file repository memory (`D-039`), in doc set `0.2.17`.
+- Add the [M12 implementation plan](docs/superpowers/plans/2026-10-21-m12-project-execution.md)
+  approved by the owner for subagent-driven execution on 2026-10-21. The approved scope includes
+  explicit Start/Run, background work, client parity and NPC referrals to the
+  Chief Architect. Runtime implementation and M12 acceptance remain pending.
+- Record the owner's 2026-10-21 laptop acceptance of M10/M11 with Claude
+  subscription and API-token authentication; the output cap was a setting.
+  This supersedes the earlier outstanding-acceptance notes below.
 
 ### Changed — NPC execution through Claude Code (`D-037`)
 

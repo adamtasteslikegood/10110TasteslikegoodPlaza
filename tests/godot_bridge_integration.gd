@@ -52,13 +52,24 @@ func _ready() -> void:
 	approach(B)
 	var b := submit("fail B")
 	check(not b.is_empty() and a != b, "B receives a distinct correlated request ID")
-	check(BridgeClient._pending_requests.size() == 2, "serial bridge retains both per-agent pending requests")
+	check(BridgeClient._pending_requests.size() == 2, "client tracks both per-agent requests before server admission")
 	check(BridgeClient.send_query(A, "duplicate") == "", "second outstanding A request is rejected")
 	check(BridgeClient._pending_requests.size() == 2, "busy rejection preserves both requests")
 	# Busy rejection is expected; count only subsequent terminal failures.
 	errors.clear()
-	progress("queued")
-	if not await until(func(): return replies.size() == 1 and errors.size() == 1):
+	if not await until(func(): return errors.size() == 1):
+		finish()
+		return
+	check(errors[0].agent == B and errors[0].kind == "conversation_busy", "server busy response is correlated to B while A runs")
+	check(BridgeClient.conversation_snapshot(B).pending.is_empty() and not BridgeClient.conversation_snapshot(A).pending.is_empty(), "busy B settles only its own request")
+	errors.clear()
+	progress("busy")
+	if not await until(func(): return replies.size() == 1):
+		finish()
+		return
+	var retry_b := submit("fail B")
+	check(not retry_b.is_empty() and retry_b != b, "explicit B submission after A has a fresh request ID")
+	if not await until(func(): return errors.size() == 1):
 		finish()
 		return
 	check(replies[0] == {"agent": A, "output": "late A success 雪"}, "late success is attributed to hidden A")
