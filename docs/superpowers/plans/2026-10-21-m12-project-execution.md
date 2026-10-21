@@ -471,7 +471,9 @@ Modify `bridge/server.py`, `bridge/conversation.py`, `bridge/conversation_backen
 `bridge/conversation_sdk.py`, `bridge/conversation_api.py`, `bridge/bridge.py`,
 `bridge/tests/test_server.py`,
 `bridge/tests/test_conversation.py`, `bridge/tests/test_conversation_backends.py`,
-`bridge/tests/test_runtime_wiring.py` and `bridge/PROTOCOL.md`.
+`bridge/tests/test_runtime_wiring.py` and `bridge/PROTOCOL.md`. Add read-only
+workspace/reservation observation in `bridge/workspace.py` and
+`bridge/workspace_lease.py`, with covering tests in their existing test files.
 
 **Interfaces:**
 - `ProjectService(config: BridgeConfig, *, runtime_root: Path, owner_run_id: str,
@@ -482,6 +484,16 @@ Modify `bridge/server.py`, `bridge/conversation.py`, `bridge/conversation_backen
   `require_readiness() -> ReadinessService`, `async close() -> None`.
   The `require_*` methods raise a safe workspace_not_ready/memory_unavailable error;
   they never select another directory. A None setup response permits ordinary chat.
+  It also exposes read-only `owner_run_id`,
+  `publish_reservation(lease: WorkspaceLease) -> None`,
+  `publish_cleanup(lease: WorkspaceLease, *, clean: bool) -> None`,
+  `publish_memory(result: MemorySnapshot|MemorySaveResult) -> None`, and
+  `async refresh_snapshot() -> dict`. Publications update cached observation only;
+  DomainSession still acquires/releases its lease. Publish reservation before
+  activating, and clear only the same lease after confirmed successful release.
+  Save failure preserves the last confirmed revision plus explicit unsaved status.
+  Snapshot refresh performs bounded read-only IO off the event loop; the ordinary
+  snapshot getter stays cheap. Discovery adds request correlation to a copy.
   Snapshot wire type is `workspace_state`, correlated with request_id; fields are
   `project_id` (nullable before identity), `stage`, `reason`, `architect_decision`,
   `workspace_id`, `project_path`, `worktree_path`, `branch`, `changed_files`,
@@ -535,7 +547,16 @@ Modify `bridge/server.py`, `bridge/conversation.py`, `bridge/conversation_backen
 - [ ] **Step 3 — Implement composition, setup interaction and bounded transport.**
   Listen while service bootstrap runs. Snapshot stages exactly unconfigured/
   needs_architect/preparing/reviewing/initializing/ready/failed. Existing Git
-  bootstrap is automatic; non-Git review starts only for a submitted
+  bootstrap is automatic. Add `load_workspace(project, *, runtime_root)` that
+  reads/validates existing ready ownership without creation or idle acquisition,
+  and a safe read-only reservation observer using existing lock/marker files.
+  A healthy foreign live holder permits discovery and NPC memory; Start still
+  returns workspace_busy. A lock-free unclean marker blocks reuse and never
+  authorizes recovery. External observations are advisory; a held marker without
+  a known cleanup-failure indication does not prove successful teardown. Do not
+  create lock files during discovery. Use `git_without_filters` for changed-file
+  counts with bounded subprocess output; never plain Git status that can execute
+  clean filters. Non-Git review starts only for a submitted
   systems-architect request. Other agents receive the spec's setup referral.
   The reviewer uses a fresh tools-disabled conversation backend, the existing NPC
   deadline/caps and an exact JSON approval schema, without ordinary project-memory
