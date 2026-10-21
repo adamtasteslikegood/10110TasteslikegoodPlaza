@@ -17,6 +17,7 @@ var execution := "idle"
 var generation := "A"
 var status_attempts := 0
 var fail_next_status := false
+var unconfigured := false
 
 func check(ok: bool, message: String) -> bool:
 	checks += 1
@@ -24,6 +25,8 @@ func check(ok: bool, message: String) -> bool:
 	return ok
 
 func workspace(id: String) -> Dictionary:
+	if unconfigured:
+		return {"type": "workspace_state", "request_id": id, "project_id": null, "workspace_id": null, "stage": "unconfigured", "reason": null, "architect_decision": null, "project_path": null, "worktree_path": null, "branch": null, "changed_files": null, "reservation": null, "memory": {"path": null, "status": "unavailable", "revision": null, "error_type": null}}
 	return {"type": "workspace_state", "request_id": id, "project_id": "P", "workspace_id": "W", "stage": "ready", "reason": null, "architect_decision": null, "project_path": "/project", "worktree_path": "/execution", "branch": "plaza/workspace-P", "changed_files": {"total": 0, "tracked": 0, "untracked": 0, "truncated": false}, "reservation": null, "memory": {"path": "/memory", "status": "saved", "revision": 8, "error_type": null}}
 
 func state(id: String, value: String = "active") -> Dictionary:
@@ -277,6 +280,7 @@ func _ready() -> void:
 	selector.item_selected.emit(1)
 	await walk(Vector2(0, -90))
 	check(not panel.visible and hud.selected_domain_id == "engineering", "global domain selection cannot inherit old anchor return")
+	await unconfigured_hud_checks()
 	finish()
 
 func pending_background_return_checks(area: Area2D) -> void:
@@ -373,6 +377,17 @@ func recovery_checks() -> void:
 	await click(button("Status"))
 	await frames(20)
 	check(status_attempts == attempts + 2 and count("domain_query") == runs, "native status recovery retries observation without retrying Run")
+	# A receipt hole and a failed recovery observation must both stay visible.
+	var incomplete_id: String = BridgeClient.resume_domain("core")
+	await frames()
+	var incomplete := state(incomplete_id)
+	incomplete.merge({"type": "resume_complete", "high_water_mark": "2", "earliest_output_id": "1", "history_gap": false}, true)
+	await deliver(incomplete)
+	fail_next_status = true
+	await click(button("Status"))
+	await frames(20)
+	check(results.text.contains("replay_incomplete") and results.text.contains("status unavailable"), "final R6 receipt notice and concurrent command failure both rendered")
+	check(results.text.contains(unknown.task) and not button("Status").disabled, "final R6 unknown input and recovery controls survive layered notices")
 	# Replay a confirmed unavailable prefix larger than int32: the HUD must show
 	# the saturated count as an at-least value, with decimal-string unread math.
 	button("Refocus").pressed.emit()
@@ -422,3 +437,11 @@ func finish() -> void:
 	if failures.is_empty(): print("domain_panel_test: OK — %d checks passed." % checks)
 	else: printerr("domain_panel_test: %d failures / %d checks." % [failures.size(), checks])
 	get_tree().quit(0 if failures.is_empty() else 1)
+
+
+func unconfigured_hud_checks() -> void:
+	unconfigured = true
+	BridgeClient.describe_workspace()
+	await frames(20)
+	check(not panel.visible and hud.selected_domain_id == "" and hud.anchor_agent_id == "" and hud._domains.is_empty(), "final R3 authoritative unconfigured discovery clears HUD selection and anchors")
+	check(input.text == "" and results.text == "" and hud.get_node("Global/StatusLabel").text.contains("unconfigured"), "final R3 HUD clears prior project text and shows unconfigured state")

@@ -286,6 +286,18 @@ async def test_stop_during_real_owner_connect(tmp_path, monkeypatch, offline_cli
         await a.send("activate_domain", "start")
         generation = (await a.reply("start", state="activating"))["domain_session_id"]
         await until(lambda: provider.clients and provider.clients[0].entered.is_set())
+        trusted = life.service.snapshot()
+        await a.send("activate_domain", "cross-domain", domain_id="design")
+        busy = await a.reply("cross-domain")
+        assert busy["error_type"] == "domain_busy" and busy["domain_id"] == "design"
+        assert busy["project_id"] == trusted["project_id"]
+        assert busy["workspace_id"] == trusted["workspace_id"]
+        await a.send("background_domain", "busy-generation", generation)
+        busy = await a.reply("busy-generation")
+        assert busy["error_type"] == "domain_busy"
+        assert busy["domain_session_id"] == generation
+        assert busy["project_id"] == trusted["project_id"]
+        assert busy["workspace_id"] == trusted["workspace_id"]
         await b.send("deactivate_domain", "stop", generation)
         assert (await b.reply("stop"))["state"] == "inactive"
         late = await a.reply("start")
@@ -405,3 +417,26 @@ async def test_terminal_memory_storage_failure_preserves_result_and_unclean_run(
         # Only dispose deliberately failed fixture handles after asserting evidence.
         for lock in life.service._memory._runs.values():
             lock.close()
+
+
+@pytest.mark.asyncio
+async def test_production_listener_rejects_supplied_origins_before_admission(
+    tmp_path, monkeypatch
+):
+    import websockets
+    from websockets.exceptions import InvalidStatus
+
+    root = repository(tmp_path)
+    provider = Provider()
+    async with Lifetime(tmp_path, root, monkeypatch, provider) as life:
+        for origin in ("http://attacker.invalid", "http://localhost:3000", "null"):
+            with pytest.raises(InvalidStatus) as rejected:
+                async with websockets.connect(life.url, origin=origin):
+                    pass
+            assert rejected.value.response.status_code == 403
+        assert not life.server._connections and not life.commands
+        native = await life.socket()
+        await native.send("describe_workspace", "native-discovery")
+        assert (await native.reply("native-discovery"))["project_id"]
+        assert len(life.server._connections) == 1
+        assert not provider.clients

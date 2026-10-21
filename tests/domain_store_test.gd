@@ -166,6 +166,7 @@ func _ready() -> void:
 	additional_vectors()
 	review_regressions()
 	archive_retention_boundary()
+	final_rebinding_regression()
 	finish()
 
 func dict_accepted() -> Dictionary:
@@ -365,3 +366,21 @@ func archive_retention_boundary() -> void:
 	check(not change.is_empty() and JSON.stringify(after).to_utf8_buffer().size() <= Store.MAX_BYTES, "R5 new-generation acknowledgment enforces complete snapshot byte cap")
 	check(after.error.get("unresolved_queries", []) == [unknown] and after.pending_query.is_empty() and after.pending_control.is_empty(), "R5 retention preserves original unknown input after state and control settle")
 	check(ids(s) == ["2", "3", "4"] and after.omitted_count == 1 and after.results[0].output == "x".repeat(262144), "R5 archival evicts only oldest whole terminal and counts omission")
+
+
+func final_rebinding_regression() -> void:
+	var s = fresh()
+	s.set_draft("core", "prior project private task")
+	s.apply_packet(result("1"))
+	s.disconnect_connection()
+	check(s.admit_command({"type": "describe_workspace", "request_id": "unconfigured-discovery"}), "final R3 discovery admitted")
+	var unconfigured := {"type": "workspace_state", "request_id": "unconfigured-discovery", "project_id": null, "workspace_id": null, "stage": "unconfigured", "reason": null, "architect_decision": null, "project_path": null, "worktree_path": null, "branch": null, "changed_files": null, "reservation": null, "memory": {"path": null, "status": "unavailable", "revision": null, "error_type": null}}
+	var changed: Dictionary = s.apply_packet(unconfigured)
+	check(changed.get("project_changed", false), "final R3 authoritative unconfigured discovery changes prior binding")
+	var current: Dictionary = s.snapshot("core")
+	check(current.project_id == "" and current.draft == "" and current.results.is_empty() and current.domain_session_id == "", "final R3 unconfigured rebinding clears prior domain data")
+	check(s.admit_command(command("activate_domain", "unconfigured-start")), "final R3 Start admitted after authoritative unconfigured discovery")
+	var rejection := {"type": "domain_error", "request_id": "unconfigured-start", "project_id": null, "domain_id": "core", "status": "error", "error_type": "workspace_unconfigured", "message": "Configure a project"}
+	check(not s.apply_packet(rejection).is_empty() and s.snapshot("core").pending_control.is_empty(), "final R3 unconfigured Start failure settles matching control")
+	check(s.snapshot("core").error.get("error_type") == "workspace_unconfigured", "final R3 unconfigured failure remains visible")
+	check(s.apply_packet(result("2")).is_empty(), "final R3 prior-project terminal stays fenced")

@@ -163,44 +163,68 @@ func disconnect_connection() -> void:
 func admit_command(packet: Dictionary) -> bool:
 	var kind: Variant = packet.get("type")
 	var id: Variant = packet.get("request_id")
-	if kind not in COMMANDS or not valid_id(id) or _commands.has(id): return false
+	if kind not in COMMANDS or not valid_id(id) or _commands.has(id):
+		return false
 	var fields := ["type", "request_id"]
-	if kind != "describe_workspace": fields.append("domain_id")
-	if kind not in ["describe_workspace", "domain_status", "activate_domain"]: fields.append("domain_session_id")
-	if kind == "domain_query": fields.append_array(["agent_id", "task"])
-	if kind == "resume": fields.append("cursor")
-	if packet.size() != fields.size(): return false
+	if kind != "describe_workspace":
+		fields.append("domain_id")
+	if kind not in ["describe_workspace", "domain_status", "activate_domain"]:
+		fields.append("domain_session_id")
+	if kind == "domain_query":
+		fields.append_array(["agent_id", "task"])
+	if kind == "resume":
+		fields.append("cursor")
+	if packet.size() != fields.size():
+		return false
 	for key in fields:
-		if not packet.has(key): return false
+		if not packet.has(key):
+			return false
 	if kind == "describe_workspace":
 		for c in _commands.values():
-			if c.type == kind: return false
+			if c.type == kind:
+				return false
 		_commands[id] = {"type": kind, "request_id": id, "epoch": _epoch}
 		return true
 	var d := _domain(packet.get("domain_id", "")) if packet.get("domain_id") is String else {}
-	if d.is_empty(): return false
+	if d.is_empty():
+		return false
 	if kind == "domain_status":
 		for c in _commands.values():
-			if c.type == kind and c.domain_id == d.domain_id: return false
+			if c.type == kind and c.domain_id == d.domain_id:
+				return false
 	elif kind == "activate_domain":
-		if not d.pending_control.is_empty(): return false
-		if not d.pending_query.is_empty() and not d.cleanup_confirmed: return false
+		if not d.pending_control.is_empty():
+			return false
+		if not d.pending_query.is_empty() and not d.cleanup_confirmed:
+			return false
 	else:
-		if not valid_id(packet.get("domain_session_id")): return false
+		if not valid_id(packet.get("domain_session_id")):
+			return false
 		if kind == "resume":
-			if not d.buckets.has(packet.domain_session_id): return false
+			if not d.buckets.has(packet.domain_session_id):
+				return false
 		elif packet.domain_session_id != d.domain_session_id:
 			return false
 		if kind == "domain_query":
-			if not d.pending_query.is_empty() or d.uncertain or d.state not in ["active", "background"]: return false
-			if not valid_id(packet.get("agent_id")) or not packet.get("task") is String or packet.task.strip_edges().is_empty() or packet.task.to_utf8_buffer().size() > 65536: return false
+			if not d.pending_query.is_empty() or d.uncertain or d.state not in ["active", "background"]:
+				return false
+			var valid_task: bool = (
+				packet.get("task") is String
+				and not packet.task.strip_edges().is_empty()
+				and packet.task.to_utf8_buffer().size() <= 65536
+			)
+			if not valid_id(packet.get("agent_id")) or not valid_task:
+				return false
 		elif kind == "resume":
-			if decimal(packet.get("cursor")) == "" or not d.pending_control.is_empty(): return false
+			if decimal(packet.get("cursor")) == "" or not d.pending_control.is_empty():
+				return false
 		elif not d.pending_control.is_empty():
-			if kind != "deactivate_domain" or d.pending_control.type != "activate_domain": return false
+			if kind != "deactivate_domain" or d.pending_control.type != "activate_domain":
+				return false
 			# Stop supersedes a still-connecting Start. Late active is now fenced.
 			_commands.erase(d.pending_control.request_id)
-	if kind not in ["domain_status", "domain_query"] and not d.pending_control.is_empty() and kind != "deactivate_domain": return false
+	if kind not in ["domain_status", "domain_query"] and not d.pending_control.is_empty() and kind != "deactivate_domain":
+		return false
 	var c := packet.duplicate(true)
 	c.epoch = _epoch
 	c.version = d.version
@@ -220,30 +244,49 @@ func admit_command(packet: Dictionary) -> bool:
 func apply_packet(packet: Dictionary) -> Dictionary:
 	var kind: Variant = packet.get("type")
 	var id: Variant = packet.get("request_id")
-	if not valid_id(id): return {}
+	if not valid_id(id):
+		return {}
 	var c: Dictionary = _commands.get(id, {})
-	if not c.is_empty() and c.epoch != _epoch: return {}
-	if kind == "workspace_state": return _apply_workspace(packet, c)
+	if not c.is_empty() and c.epoch != _epoch:
+		return {}
+	if kind == "workspace_state":
+		return _apply_workspace(packet, c)
 	if kind == "domain_error" and c.get("type") == "describe_workspace":
-		if not _valid_error(packet): return {}
+		if not _valid_error(packet):
+			return {}
 		_commands.erase(id)
 		_workspace.error = packet.duplicate(true)
 		return _change("workspace", "", kind, id)
-	if kind not in ["domain_state", "domain_accepted", "domain_result", "domain_error", "resume_complete"]: return {}
-	if not valid_domain(packet.get("domain_id")) or not _domains.has(packet.domain_id): return {}
+	if kind not in ["domain_state", "domain_accepted", "domain_result", "domain_error", "resume_complete"]:
+		return {}
+	if not valid_domain(packet.get("domain_id")) or not _domains.has(packet.domain_id):
+		return {}
 	var d: Dictionary = _domains[packet.domain_id]
-	if packet.get("project_id") != _project_id and not (_project_id == "" and packet.get("project_id") == null): return {}
-	if packet.get("workspace_id") != null and not valid_id(packet.workspace_id): return {}
+	var same_project: bool = packet.get("project_id") == _project_id
+	var unconfigured_project: bool = _project_id == "" and packet.get("project_id") == null
+	if not same_project and not unconfigured_project:
+		return {}
+	if packet.get("workspace_id") != null and not valid_id(packet.workspace_id):
+		return {}
 	var generation: Variant = packet.get("domain_session_id")
-	if generation != null and not valid_id(generation): return {}
-	if d.buckets.has(generation) and d.buckets[generation].get("workspace_id") != packet.get("workspace_id"): return {}
+	if generation != null and not valid_id(generation):
+		return {}
+	if d.buckets.has(generation):
+		var same_workspace: bool = d.buckets[generation].get("workspace_id") == packet.get("workspace_id")
+		if not same_workspace:
+			return {}
 	if not c.is_empty():
-		if c.get("domain_id") != d.domain_id: return {}
-		if c.has("domain_session_id") and c.domain_session_id != generation: return {}
-	if kind == "domain_result": return _apply_result(d, packet)
-	if c.is_empty(): return {}
+		if c.get("domain_id") != d.domain_id:
+			return {}
+		if c.has("domain_session_id") and c.domain_session_id != generation:
+			return {}
+	if kind == "domain_result":
+		return _apply_result(d, packet)
+	if c.is_empty():
+		return {}
 	if kind == "domain_error":
-		if not _valid_error(packet): return {}
+		if not _valid_error(packet):
+			return {}
 		d.error = {"error_type": packet.error_type, "message": packet.message}
 		if d.pending_query.get("request_id") == id:
 			d.pending_query = {}
@@ -252,29 +295,37 @@ func apply_packet(packet: Dictionary) -> Dictionary:
 		_settle(d, id)
 		_trim(d)
 		return _change("domain", d.domain_id, kind, id)
-	if kind == "resume_complete": return _apply_completion(d, packet, c)
+	if kind == "resume_complete":
+		return _apply_completion(d, packet, c)
 	if kind == "domain_accepted":
-		if c.type != "domain_query" or d.pending_query.get("request_id") != id or generation != d.domain_session_id: return {}
-		if packet.get("execution_state") != "running" or packet.get("agent_id") != d.pending_query.agent_id or packet.get("task") != d.pending_query.task: return {}
+		if c.type != "domain_query" or d.pending_query.get("request_id") != id or generation != d.domain_session_id:
+			return {}
+		if packet.get("execution_state") != "running" or packet.get("agent_id") != d.pending_query.agent_id or packet.get("task") != d.pending_query.task:
+			return {}
 		d.execution_state = "running"
 		d.version += 1
 		# Keep the original command until its terminal or disconnect.
 		return _change("domain", d.domain_id, kind, id, false)
-	if not _valid_state(packet): return {}
-	if c.type not in ["activate_domain", "domain_status", "background_domain", "refocus_domain", "deactivate_domain"]: return {}
+	if not _valid_state(packet):
+		return {}
+	if c.type not in ["activate_domain", "domain_status", "background_domain", "refocus_domain", "deactivate_domain"]:
+		return {}
 	if c.type == "domain_status" and c.version != d.version:
 		_settle(d, id)
 		return _change("domain", d.domain_id, "status_stale", id)
 	if generation != null and generation != d.domain_session_id:
-		if c.type not in ["activate_domain", "domain_status"]: return {}
+		if c.type not in ["activate_domain", "domain_status"]:
+			return {}
 		_switch_generation(d, generation)
 		if c.type == "activate_domain":
 			d.pending_control = {"type": c.type, "domain_id": d.domain_id, "request_id": id}
 	elif generation == null and d.domain_session_id != "":
-		if c.type != "domain_status": return {}
+		if c.type != "domain_status":
+			return {}
 		_switch_generation(d, "")
 	d.workspace_id = packet.get("workspace_id", "")
-	if d.buckets.has(generation): d.buckets[generation].workspace_id = packet.get("workspace_id")
+	if d.buckets.has(generation):
+		d.buckets[generation].workspace_id = packet.get("workspace_id")
 	d.state = packet.state
 	d.execution_state = packet.execution_state
 	d.version += 1
@@ -282,7 +333,8 @@ func apply_packet(packet: Dictionary) -> Dictionary:
 	d.cleanup_confirmed = packet.state == "inactive" and packet.execution_state == "idle"
 	_refresh_uncertainty(d)
 	var settled: bool = not (c.type == "activate_domain" and packet.state == "activating")
-	if settled: _settle(d, id)
+	if settled:
+		_settle(d, id)
 	_trim(d)
 	return _change("domain", d.domain_id, kind, id, settled)
 
@@ -476,13 +528,16 @@ func _apply_workspace(p: Dictionary, c: Dictionary) -> Dictionary:
 		if p.get(key) != null and not valid_id(p[key]): return {}
 	if not _valid_memory(p.get("memory")) or JSON.stringify(p).to_utf8_buffer().size() > MAX_BYTES: return {}
 	var project: String = p.project_id if p.get("project_id") != null else ""
-	# A transient absent setup identity does not establish a different project.
-	var changed := _project_id != "" and project != "" and project != _project_id
-	if project != "" and project != _project_id:
-		if changed: bind_project(project)
-		else:
-			_project_id = project
-			for d in _domains.values(): d.project_id = project
+	# Only an authoritative unconfigured snapshot can clear a known binding.
+	# Preparing/reviewing/initializing may temporarily lack an identity.
+	var authoritative_unconfigured: bool = p.stage == "unconfigured" and project == ""
+	var changed := _project_id != "" and project != _project_id and (project != "" or authoritative_unconfigured)
+	if changed:
+		bind_project(project)
+	elif project != "" and project != _project_id:
+		_project_id = project
+		for d in _domains.values():
+			d.project_id = project
 	var memory: Dictionary = _workspace.get("memory", {}).duplicate(true)
 	_merge_memory(memory, p.memory)
 	_workspace = p.duplicate(true)

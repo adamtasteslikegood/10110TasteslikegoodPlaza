@@ -9,10 +9,11 @@ from bridge.protocol import make_error
 
 
 class ConnectionState:
-    def __init__(self, websocket, dispatch):
+    def __init__(self, websocket, dispatch, *, project_snapshot=None):
         self.connection_id = str(uuid4())
         self.histories = {}
         self._websocket, self._dispatch = websocket, dispatch
+        self._project_snapshot = project_snapshot or (lambda: {})
         self._queue = asyncio.Queue(maxsize=32)
         self._sender = None
         self._slots = {}
@@ -77,8 +78,14 @@ class ConnectionState:
             return None
         active = self._slots.get(slot)
         if active is not None and not active.done():
+            snapshot = self._project_snapshot() if domain else {}
             packet = (
-                error_packet(data, "domain_busy")
+                error_packet(
+                    data,
+                    "domain_busy",
+                    project_id=snapshot.get("project_id"),
+                    workspace_id=snapshot.get("workspace_id"),
+                )
                 if domain
                 else make_error(
                     data.get("agent_id", ""),

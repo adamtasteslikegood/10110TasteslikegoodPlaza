@@ -415,7 +415,9 @@ class BridgeServer:
         return response
 
     async def _handle_connection(self, websocket):
-        connection = ConnectionState(websocket, self.dispatch_raw)
+        connection = ConnectionState(
+            websocket, self.dispatch_raw, project_snapshot=self.project.snapshot
+        )
         self._connections.add(connection)
         context = RequestContext(
             connection.connection_id, str(uuid.uuid4()), None, "transport", None
@@ -498,7 +500,9 @@ class BridgeServer:
         try:
             await self.project.start()
             async with _drained_listener(
-                websockets.serve(self._handle_connection, LISTEN_HOST, LISTEN_PORT)
+                websockets.serve(
+                    self._handle_connection, LISTEN_HOST, LISTEN_PORT, origins=[None]
+                )
             ):
                 print(
                     f"Bridge running on ws://{LISTEN_HOST}:{LISTEN_PORT}",

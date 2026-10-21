@@ -488,8 +488,8 @@ async def bridge_child(config_path, control, run_id):
     owners, listeners, commands, emitted = [], [], [], []
     actual_serve, original_binding = websockets.serve, session_module.DomainSDKOwner
 
-    def listen(handler, host, port):
-        listener = actual_serve(handler, "127.0.0.1", 0)
+    def listen(handler, host, port, **kwargs):
+        listener = actual_serve(handler, "127.0.0.1", 0, **kwargs)
         listeners.append(listener)
         return listener
 

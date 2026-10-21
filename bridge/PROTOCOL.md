@@ -4,6 +4,14 @@ WebSocket on `ws://localhost:8765` (D-015). JSON messages, one per WebSocket fra
 
 ## Current prototype scope
 
+The current native listener accepts a missing `Origin` header (Godot and plain
+Python clients) and rejects every supplied Origin during the handshake, including
+localhost URLs and literal `Origin: null`, before protocol admission. This is an
+Origin boundary, not local-client authentication or host isolation: another local
+process can omit or forge headers. D-005/D-020 frontend independence remains;
+a future browser frontend needs an explicit trusted-Origin and authentication
+contract before connecting directly.
+
 The request/response examples below describe the current implementation, not a
 durable platform API. NPC conversation history is connection-local; domain SDK
 clients, lifecycle state, and output buffers are bridge-process-local. Neither
@@ -203,7 +211,7 @@ No internal diagnostic UUID is fabricated into a malformed domain command.
 {"type":"resume","domain_id":"engineering","domain_session_id":"generation-uuid","cursor":"0","request_id":"replay-1"}
 ```
 
-Replay returns results above the ASCII decimal-string cursor through a captured
+Replay returns results above the ASCII decimal-string cursor (at most 128 UTF-8 bytes) through a captured
 high-water mark, ending in `resume_complete` even when empty. Results retain their
 original Run request IDs; completion carries the replay request ID. Replay does
 not refocus. IDs begin at `"1"` per generation. History gaps and the earliest
@@ -221,6 +229,13 @@ or activation work is pending. Sends are serialized, with a two-second deadline
 and at most 32 queued packets. Slow/closed sinks detach delivery; domain ownership
 continues. A terminal's originating connection is immutable; reconnecting clients
 must replay and never steal another connection's live output.
+Connection-level domain busy replies carry the current trusted project/workspace
+identity and valid supplied request/domain/generation correlation. Clients settle
+only that command and preserve its draft. Reconnecting to an authoritative
+`unconfigured` workspace (`project_id: null`) clears the prior project binding,
+NPC/domain display caches and HUD state; temporarily absent identity during setup
+does not change an established binding.
+
 
 | error_type | Meaning |
 |---|---|

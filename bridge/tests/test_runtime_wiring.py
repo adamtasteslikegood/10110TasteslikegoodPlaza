@@ -417,7 +417,9 @@ async def test_serve_lifecycle_releases_recorder_with_truthful_clean_status(
         async def __aexit__(self, *args):
             pass
 
-    monkeypatch.setattr(server_module.websockets, "serve", lambda *args: Listener())
+    monkeypatch.setattr(
+        server_module.websockets, "serve", lambda *args, **kwargs: Listener()
+    )
     server = BridgeServer(config=runtime_config, recorder=recorder)
     stopped = asyncio.Event()
     stopped.set()
@@ -530,7 +532,9 @@ async def test_shutdown_failure_still_releases_writer_unclean(
         async def __aexit__(self, *args):
             pass
 
-    monkeypatch.setattr(server_module.websockets, "serve", lambda *args: Listener())
+    monkeypatch.setattr(
+        server_module.websockets, "serve", lambda *args, **kwargs: Listener()
+    )
     server = BridgeServer(config=runtime_config, recorder=recorder)
     server._shutdown_domains = AsyncMock(side_effect=RuntimeError("disconnect failed"))
     stopped = asyncio.Event()
@@ -588,7 +592,9 @@ def bound_runtime_listener(monkeypatch):
         async def __aexit__(self, *args):
             pass
 
-    monkeypatch.setattr(server_module.websockets, "serve", lambda *args: Listener())
+    monkeypatch.setattr(
+        server_module.websockets, "serve", lambda *args, **kwargs: Listener()
+    )
 
 
 @pytest.mark.asyncio
@@ -753,7 +759,9 @@ async def test_primary_serve_failure_survives_disconnect_failure(
         async def __aexit__(self, *args):
             pass
 
-    monkeypatch.setattr(server_module.websockets, "serve", lambda *args: Listener())
+    monkeypatch.setattr(
+        server_module.websockets, "serve", lambda *args, **kwargs: Listener()
+    )
     owner.clean = False
     if primary == "cancel":
         serving = asyncio.create_task(server.serve())
@@ -859,8 +867,8 @@ async def test_shutdown_drains_domains_before_npc_and_project_detach(
     listeners = []
     actual = websockets.serve
 
-    def listen(handler, host, port):
-        result = actual(handler, "127.0.0.1", 0)
+    def listen(handler, host, port, **kwargs):
+        result = actual(handler, "127.0.0.1", 0, **kwargs)
         listeners.append(result)
         return result
 

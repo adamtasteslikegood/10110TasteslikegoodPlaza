@@ -185,9 +185,11 @@ func _domain_changed(domain_id: String, reason: String, request_id: String) -> v
 	_refresh()
 
 func _workspace_changed(_reason: String, _request_id: String) -> void:
-	var value: Variant = BridgeClient.workspace_snapshot().get("project_id")
+	var workspace := BridgeClient.workspace_snapshot()
+	var value: Variant = workspace.get("project_id")
 	var project: String = value if value is String else ""
-	if not _project_id.is_empty() and not project.is_empty() and project != _project_id:
+	var authoritative_binding: bool = not project.is_empty() or workspace.get("stage") == "unconfigured"
+	if authoritative_binding and not _project_id.is_empty() and project != _project_id:
 		_release_focus()
 		_panel.hide()
 		selected_domain_id = ""
@@ -200,7 +202,8 @@ func _workspace_changed(_reason: String, _request_id: String) -> void:
 		_domains.clear()
 		_agents.clear()
 		_select.clear()
-	_project_id = project
+	if authoritative_binding:
+		_project_id = project
 	_refresh()
 
 func _set_enabled(control: Button, enabled: bool) -> void:
@@ -256,6 +259,9 @@ func _refresh() -> void:
 	var error: Dictionary = snapshot.get("error", {})
 	if not error.is_empty():
 		lines.append("Notice: %s — %s" % [error.get("error_type", "unknown"), error.get("message", "")])
+		var command_error: Dictionary = error.get("command_error", {})
+		if not command_error.is_empty():
+			lines.append("Command notice: %s — %s" % [command_error.get("error_type", "unknown"), command_error.get("message", "")])
 		for query in error.get("unresolved_queries", []):
 			lines.append("[Unknown outcome · generation %s · request %s]\n%s" % [query.get("domain_session_id", ""), query.get("request_id", ""), query.get("task", "")])
 	_results.text = "\n\n".join(lines)

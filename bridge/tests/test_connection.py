@@ -192,6 +192,24 @@ async def test_stop_and_discovery_preempt_blocked_start_and_npc(tmp_path, monkey
             assert (
                 busy["error_type"] == "domain_busy" and busy["request_id"] == "excess"
             )
+            assert busy["project_id"] == activating["project_id"]
+            assert busy["workspace_id"] == activating["workspace_id"]
+            await socket.send(
+                json.dumps(
+                    dict(
+                        type="background_domain",
+                        domain_id="engineering",
+                        domain_session_id=activating["domain_session_id"],
+                        request_id="busy-generation",
+                    )
+                )
+            )
+            busy_generation = json.loads(await socket.recv())
+            assert busy_generation["project_id"] == activating["project_id"]
+            assert busy_generation["workspace_id"] == activating["workspace_id"]
+            assert (
+                busy_generation["domain_session_id"] == activating["domain_session_id"]
+            )
             await socket.send(
                 json.dumps(
                     dict(

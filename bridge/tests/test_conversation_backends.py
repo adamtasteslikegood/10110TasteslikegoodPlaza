@@ -786,8 +786,8 @@ async def test_repeated_server_cancellation_waits_for_npc_cleanup(
     listeners = []
     original_serve = websockets.serve
 
-    def serve(handler, host, port):
-        listener = original_serve(handler, host, 0)
+    def serve(handler, host, port, **kwargs):
+        listener = original_serve(handler, host, 0, **kwargs)
         listeners.append(listener)
         return listener
 

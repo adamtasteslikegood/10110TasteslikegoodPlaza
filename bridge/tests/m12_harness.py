@@ -208,8 +208,8 @@ class Lifetime:
         self.listeners, self.sockets = [], []
         actual = websockets.serve
 
-        def listen(handler, host, port):
-            listener = actual(handler, "127.0.0.1", 0)
+        def listen(handler, host, port, **kwargs):
+            listener = actual(handler, "127.0.0.1", 0, **kwargs)
             self.listeners.append(listener)
             return listener
 

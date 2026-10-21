@@ -196,6 +196,21 @@ class TestStrictDomainCommands:
                 )
             )
 
+    @pytest.mark.parametrize("size", [128, 129])
+    def test_replay_cursor_identifier_byte_boundary(self, size):
+        payload = dict(
+            type="resume",
+            request_id="r",
+            domain_id="d",
+            domain_session_id="s",
+            cursor="9" * size,
+        )
+        if size == 128:
+            assert self.validate(payload)["cursor"] == int("9" * size)
+        else:
+            with pytest.raises(ValueError):
+                self.validate(payload)
+
     def test_inclusive_limits_and_parsed_cursor(self):
         payload = dict(
             type="domain_query",

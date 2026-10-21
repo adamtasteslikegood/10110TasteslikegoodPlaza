@@ -86,7 +86,7 @@ def validate_domain_command(payload: object) -> dict[str, object]:
     result = dict(payload)
     if kind == "resume":
         cursor = payload["cursor"]
-        if not isinstance(cursor, str) or re.fullmatch(r"[0-9]+", cursor) is None:
+        if not valid_text(cursor) or re.fullmatch(r"[0-9]+", cursor) is None:
             raise DomainCommandError()
         try:
             result["cursor"] = int(cursor)

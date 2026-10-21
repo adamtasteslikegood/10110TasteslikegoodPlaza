@@ -379,6 +379,21 @@ async def test_controlled_child_real_serve_closes_actual_manifest_without_provid
     life = mod.LiveLifetime(tmp_path / "lifetime", project, "test")
     try:
         await life.start()
+        import websockets
+        from websockets.exceptions import InvalidStatus
+
+        with pytest.raises(InvalidStatus) as rejected:
+            async with websockets.connect(
+                life.ready["url"], origin="http://attacker.invalid"
+            ):
+                pass
+        assert rejected.value.response.status_code == 403
+        async with websockets.connect(life.ready["url"]) as native:
+            await native.send(
+                json.dumps(dict(type="describe_workspace", request_id="native"))
+            )
+            packet = json.loads(await native.recv())
+            assert packet["request_id"] == "native" and packet["stage"] == "ready"
         state = life.ready["state"]
         assert state["snapshot"]["stage"] == "ready"
         assert state["memory_marker_exists"]
