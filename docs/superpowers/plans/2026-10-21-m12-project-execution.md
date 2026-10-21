@@ -578,6 +578,11 @@ workspace/reservation observation in `bridge/workspace.py` and
   absent/invalid delta uses excerpts while preserving the visible answer. After
   repository creation, checkpoint the exact approval, seed/exclusion summary and
   initial commit into memory before reporting ready.
+  Add a narrow trusted setup-checkpoint method in `project_memory.py`, with
+  covering memory tests, because ordinary turn excerpts truncate the exact
+  approval. Keep the three-file grammar/caps and verify bounded round-trip
+  retention before ready; checkpoint failure preserves the initialized repo
+  and reports unsaved/failed without automatically repeating initialization.
   Keep the configured NPC deadline across preflight/model/reply; bounded cleanup
   follows the existing pattern. An unconfigured bridge retains current NPC behavior.
   Reader dispatches without awaiting NPC work. Bound each connection to one NPC
