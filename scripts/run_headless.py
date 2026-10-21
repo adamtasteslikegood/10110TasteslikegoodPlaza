@@ -8,6 +8,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 MARKERS = {
+    "domain_panel": r"domain_panel_test: OK — [1-9][0-9]* checks passed\.",
     "domain_store": r"domain_store_test: OK — [1-9][0-9]* checks passed\.",
     "domain_transport": r"domain_transport_test: OK — [1-9][0-9]* checks passed\.",
     "smoke": r"smoke_test: OK — [1-9][0-9]* agents, all checks passed\.",
