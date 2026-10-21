@@ -6,7 +6,7 @@
 
 This is not hypothetical. A `/cs:grill-pm` session on 2026-07-30 planned a "sundown Jira TO" sprint from a checkout **31 commits behind `origin/dev`** and produced three findings that were already fixed upstream — including "`generate_report.py` hardcodes `project = "TO"`", which had already been changed to read `ATLASSIAN_JIRA_PROJECT_KEY`. The board was stale in the other direction: tickets still open for work already merged. Three states had diverged — local tree, `origin/dev`, and the Jira board — and each looked authoritative on its own.
 
-After syncing, read [HANDOFF.md](.claude/session-memory/HANDOFF.md), [TODO.md](.claude/session-memory/TODO.md) and [PROGRESS.md](.claude/session-memory/PROGRESS.md); maintain them after substantive turns and before yielding/compaction using HANDOFF's limits. **Verify remembered state against the system that owns it.** A checkout does not own upstream state; a ticket does not own whether code is fixed.
+The general rule, which generalises the one `docs/delivery-coordinates.md` earned about boards: **verify the state you are about to assert, against the system that owns it.** A checkout does not own upstream state; a ticket does not own whether code is fixed.
 
 ## Repository state
 
@@ -14,7 +14,7 @@ This repo is **a running Godot prototype**. `project.godot` exists and `godot .`
 
 Docs split `docs/` (design and reference) from `specs/` (development process), each with its own `README.md` index. Active design is `docs/designs/2.5D-RPG-Prototype.md`; active work plan is `specs/roadmap.md`.
 
-**M1–M4, M7 and M8 are done.** The proof-of-concept critical path (M1 → M4 → M8) is complete — walk up to an NPC, type a question, get a live Claude response with typewriter effect. The owner-approved next direction is the **M9–M15 bridge-first track** in `specs/roadmap.md`; its written [design](docs/superpowers/specs/2026-10-18-bridge-first-platform-design.md) is ACTIVE, approved 2026-10-18. M9 is complete; M10 settings/recording and M11 NPC history/controls have deterministic coverage and owner laptop acceptance (2026-10-21, `QUICKSTART.md`). M5 (scripted assistant) and M6 (unlock/map) remain deferred. M12's [domain/worktree design](docs/superpowers/specs/2026-10-21-m12-domain-execution-design.md) is DRAFT for written review; M13–M15 remain planned. `specs/task-tracker.md` is `HISTORICAL`.
+**M1–M4, M7 and M8 are done.** The proof-of-concept critical path (M1 → M4 → M8) is complete — walk up to an NPC, type a question, get a live Claude response with typewriter effect. The owner-approved next direction is the **M9–M15 bridge-first track** in `specs/roadmap.md`; its written [design](docs/superpowers/specs/2026-10-18-bridge-first-platform-design.md) is ACTIVE, approved 2026-10-18. M9 is complete; M10 settings/recording and M11 NPC history/controls have deterministic coverage and owner laptop acceptance (2026-10-21, `QUICKSTART.md`). M5 (scripted assistant) and M6 (unlock/map) remain deferred. M12's [project/worktree/memory design](docs/superpowers/specs/2026-10-21-m12-domain-execution-design.md) is DRAFT for written review; M13–M15 remain planned. `specs/task-tracker.md` is `HISTORICAL`.
 
 ## Commands
 

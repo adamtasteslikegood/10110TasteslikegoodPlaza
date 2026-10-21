@@ -46,7 +46,7 @@ and its limits separately from the historical direct API proof below.
 | **M9** | Align the design, protocol documentation and roadmap around the bridge-first platform direction; review the written spec | Complete — owner written-spec approval 2026-10-18 |
 | **M10** | Validated central configuration, JSONL run/agent transcripts and standard debug logs with quotas and retention | Implemented and locally accepted by owner 2026-10-21 |
 | **M11** | Godot NPC conversation history, late responses, mouse window resizing and basic keyboard/scroll controls | Implemented and locally accepted by owner 2026-10-21 |
-| **M12** | Domain lifecycle, dedicated execution worktree and UI integration verified with a live SDK run | Design in progress; detailed spec awaiting review |
+| **M12** | Configured project/worktree bootstrap, native three-file memory and domain execution through clients | Design in progress; detailed spec awaiting review |
 | **M13** | Durable local user/project/domain application state in SQLite, with explicit restart semantics | Planned after M12 |
 | **M14** | Independent execution workspaces beyond M12's minimum | Planned; sequencing with M13 to be reviewed |
 | **M15** | Authenticated hosted durable state; hosted provider remains unselected | Planned after M14 |
@@ -450,6 +450,8 @@ surfaces remain outside that sequence unless a later design schedules them.
 
 > **Scope update, 2026-10-21:** the owner accepted M10/M11 laptop operation
 > and approved the M12 direction with a dedicated execution Git worktree now.
+> The bridge creates/reuses that worktree and three project-scoped memory files;
+> non-Git projects first require Chief Architect confirmation to initialize `main`.
 > The [detailed M12 spec](../docs/superpowers/specs/2026-10-21-m12-domain-execution-design.md)
 > is DRAFT for written review. M12 implementation is not complete. M13/M14
 > sequencing may change or combine state and isolation; M15's provider remains
@@ -523,9 +525,16 @@ across process restarts must follow the explicit state contract in M13.
 
 ### Milestone 12 — Domain lifecycle and live execution
 
-The owner now requires a dedicated execution worktree for the selected project.
+The owner now requires one configured project per bridge/game session, with
+`WORKSPACE_ROOT_DIR` overridden by `PLAZA_WORKSPACE_ROOT_DIR`. The bridge
+creates/reuses its dedicated execution worktree and three repository-isolated
+memory files (TODO, handoff and turn summaries). Empty/non-Git projects require
+Chief Architect confirmation before repository creation with `main`.
+Other NPCs refer the player to the Chief Architect when setup is needed; its
+interaction and affirmative decision unlock initialization without another human
+prompt. A common bridge gate verifies Git/worktree/memory readiness before tools.
 The [M12 written design](../docs/superpowers/specs/2026-10-21-m12-domain-execution-design.md)
-proposes the minimum reservation, lifecycle and client contract and awaits review.
+proposes bootstrap, memory, reservation, lifecycle and client contracts and awaits review.
 
 Connect domain lifecycle and execution to the frontend through the UI-agnostic
 bridge contract. Verify the complete path with a live Agent SDK run, including
@@ -538,7 +547,8 @@ asynchronous buffered domain execution with existing caps (`D-034`).
 
 ### Milestone 13 — Durable local application state
 
-Persist local user, project and domain application state in SQLite. Define and
+Extend M12's bounded Markdown project notes with structured local user, project
+and domain application state in SQLite. Define and
 verify which records survive a restart, how clients recover them, and how
 interrupted or non-resumable work is represented. Application-state recovery
 must not imply that a prior SDK process continues or resumes automatically.

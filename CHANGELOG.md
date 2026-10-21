@@ -17,18 +17,14 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
 
-### Added — compact development-session memory
-
-- Keep a working TODO, current handoff and bounded turn log in three tracked
-  Markdown files under `.claude/session-memory/`. Claude and Codex startup
-  instructions require reading, verifying and updating the current worktree's
-  context at meaningful turn boundaries. Existing external session hooks remain.
-
 ### Added — M12 domain execution design (PLZG-289)
 
 - Draft the domain lifecycle, explicit Start/Run controls, background results and
-  plain-client contract with one dedicated execution Git worktree. The proposed
-  session-length reservation separates workspace ownership from UI focus and
+  plain-client contract with one dedicated execution Git worktree. Add configured
+  project selection, automatic worktree bootstrap, Chief Architect confirmation
+  for new repositories on `main`, and bridge-native three-file project memory.
+  Include NPC referrals to the Chief Architect and a shared readiness gate before
+  agent tools. The proposed session-length reservation separates workspace ownership from UI focus and
   leaves independent workspaces and stronger runtimes for later designs.
 - Record the owner's 2026-10-21 laptop acceptance of M10/M11 with Claude
   subscription and API-token authentication; the output cap was a setting.

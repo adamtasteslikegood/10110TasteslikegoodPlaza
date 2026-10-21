@@ -97,7 +97,7 @@
       "tier": 2,
       "authority": "implementation",
       "status": "ACTIVE",
-      "note": "Owner-approved bridge-first design (2026-10-18); M9 complete. M10/M11 implemented with deterministic coverage and accepted on the owner laptop on 2026-10-21 using Claude subscription and API-token authentication. D-033–D-037 preserve scoped NPC/domain execution, central settings, bounded archives and default SDK runtime. Owner moved minimum dedicated worktree separation into M12; detailed M12 design remains DRAFT, and broader persistence/isolation/hosted providers remain future work. Prior cloud SDK recall does not prove M12 execution or graceful shutdown."
+      "note": "Owner-approved bridge-first design (2026-10-18); M9 complete. M10/M11 implemented with deterministic coverage and accepted on the owner laptop on 2026-10-21 using Claude subscription and API-token authentication. D-033–D-037 preserve scoped NPC/domain execution, central settings, bounded archives and default SDK runtime. Owner moved minimum worktree separation, configured project bootstrap and native three-file project memory into M12; detailed M12 design remains DRAFT, and broader persistence/isolation/hosted providers remain future work. Prior cloud SDK recall does not prove M12 execution or graceful shutdown."
     },
     {
       "doc_id": "M12-DOMAIN-EXECUTION-DESIGN",
@@ -105,7 +105,7 @@
       "tier": 2,
       "authority": "implementation",
       "status": "DRAFT",
-      "note": "M12 detailed design awaiting written-spec approval. Owner approved explicit Start/Run and walking-away backgrounding, and required a dedicated execution Git worktree on 2026-10-21. Proposes session-length workspace reservation, SDK ownership, reliable replay and Godot/plain-client acceptance. Runtime implementation and later persistence/sandbox providers are not claimed."
+      "note": "M12 detailed design awaiting written-spec approval. Owner requires explicit Start/Run, walking-away backgrounding, WORKSPACE_ROOT_DIR with env override, automatic dedicated worktree and native three-file repository-scoped memory. Other NPCs refer the player to the Chief Architect; its confirmation authorizes empty/non-Git project initialization on main without a second human prompt. All agent tools require Git/worktree/memory readiness. Proposes workspace reservation, SDK ownership, replay and Godot/plain-client acceptance; no runtime implementation is claimed."
     },
     {
       "doc_id": "ROADMAP",
@@ -113,7 +113,7 @@
       "tier": 3,
       "authority": "derived",
       "status": "ACTIVE",
-      "note": "Preserves M1–M8 prototype history and approved M9–M15 direction. M9 complete; M10/M11 locally accepted by owner 2026-10-21. M12 detailed design in progress, now including minimum dedicated execution worktree. M13/M14 persistence and independent workspace sequencing can change or combine; M15 provider remains unselected. M5/M6 remain deferred frontend milestones."
+      "note": "Preserves M1–M8 prototype history and approved M9–M15 direction. M9 complete; M10/M11 locally accepted by owner 2026-10-21. M12 detailed design in progress, now including configured project bootstrap, minimum dedicated execution worktree and native three-file project memory. M13/M14 persistence and independent workspace sequencing can change or combine; M15 provider remains unselected. M5/M6 remain deferred frontend milestones."
     },
     {
       "doc_id": "TASK-TRACKER",

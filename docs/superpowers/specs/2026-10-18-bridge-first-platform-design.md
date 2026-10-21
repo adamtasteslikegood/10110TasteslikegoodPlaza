@@ -42,8 +42,15 @@ the output cap was a setting. This supersedes the outstanding laptop acceptance
 statements dated 2026-10-18 below, without adding cloud or shutdown evidence.
 The owner now requires a minimum dedicated execution Git worktree in M12, ahead
 of the broader worktree/runtime isolation previously grouped under M14. The
+bridge selects one project through `WORKSPACE_ROOT_DIR` with an environment
+override, creates/reuses its worktree, and creates/reads three native project
+memory files (TODO, handoff, turn summaries), isolated by repository. Empty or
+non-Git projects require Chief Architect confirmation before initialization on
+`main`. Other NPCs refer the player to that agent; interacting with the Chief
+Architect triggers review and its confirmation authorizes setup without another
+human prompt. All agent tools pass a shared Git/worktree/memory readiness check. The
 [detailed M12 specification](2026-10-21-m12-domain-execution-design.md) is DRAFT
-for written review. Later persistence and stronger execution isolation can be
+for written review. Richer persistence and stronger execution isolation can be
 resequenced or combined through an integrated provider; none is selected here.
 
 ## 1. Purpose and scope
@@ -107,7 +114,7 @@ dependencies, not a date forecast. None of M10–M15 is completed by this docume
 | M9 | Align platform direction and prototype wording | This written spec, roadmap and protocol distinguish implemented, planned and deferred behavior; documentation validation passes and the owner reviews the written spec. |
 | M10 | Central config and bounded local observability | Configuration precedence/validation, run manifests, per-agent transcripts, debug events, rotation, quota/age pruning and failure cases pass focused tests. |
 | M11 | Usable NPC conversations | Mouse resizing, viewport reflow, wheel/scrollbar/paging keys, focus behavior, A→B→A scrollback and late-response correlation meet §7 tests. |
-| M12 | Domain execution through clients and a dedicated execution worktree | Godot activates/backgrounds/refocuses domains and consumes buffered results; a real SDK task completes while focus is elsewhere; a plain client exercises the same protocol. The owner added minimum worktree separation on 2026-10-21; details await M12 written-spec review. |
+| M12 | Configured project, worktree bootstrap, three-file memory and domain execution | Create/reuse a dedicated worktree, initialize non-Git projects only after Chief Architect confirmation, and persist isolated project notes. Godot backgrounds/refocuses real SDK work and consumes results; a plain client exercises the same protocol. Details await written-spec review. |
 | M13 | Local durable workspace state | User/project/domain-scoped conversations and execution metadata survive restart/reconnect; application-history restoration and SDK-task recovery are tested and reported separately. |
 | M14 | Independent execution workspaces beyond M12's minimum | Domain work executes in assigned worktrees inside its project; concurrent changes stay isolated and can be reviewed for integration. |
 | M15 | Authenticated durable service | Authenticated ownership, isolation and recovery work across processes/devices; select the managed durability provider in that milestone's design. |
@@ -122,7 +129,12 @@ For M10, use append-only JSONL for transcripts and Python standard logging for
 diagnostics. This is small enough to inspect by hand and fits bridge-run/agent
 folders. It provides an archive, not automatic conversation restoration.
 
-SQLite plus JSONL is the preferred next local option at M13: SQLite owns durable
+The owner's 2026-10-21 scope update adds bounded persistent Markdown project notes
+in M12. These support later-session context without restoring an SDK process,
+durable output buffer or complete application history. They are bridge-owned
+project data, not Plaza development-session instructions.
+
+SQLite plus JSONL is the preferred richer local option at M13: SQLite owns durable
 application state and relationships; JSONL remains diagnostic/export output. Avoid
 maintaining two independent authoritative histories. Managed durable objects are
 an option for M15, not a dependency of the local prototype.
