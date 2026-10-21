@@ -315,7 +315,8 @@ delta: dict|None) -> MemorySaveResult`,
 **Files:** Create `bridge/readiness.py`, `bridge/domain_sdk.py`,
 `bridge/tests/test_readiness.py`, `bridge/tests/test_domain_sdk.py`,
 `bridge/guarded_transport.py`, `bridge/tests/test_guarded_transport.py`,
-`scripts/m12_tool_guard_probe.py`, `tests/test_m12_tool_guard_probe.py`.
+`scripts/m12_tool_guard_probe.py`, `tests/test_m12_tool_guard_probe.py`,
+`bridge/tool_guard_acceptance.json`.
 Add `decode_project_reply(output: str) -> tuple[str, dict|None]` to
 `bridge/conversation_backend.py` here because DomainSDKOwner consumes it; Task 6
 will reuse the same decoder for both NPC adapters. The Task 6 envelope contract
@@ -393,6 +394,10 @@ task: str, prior_project_notes: str) -> SDKOutcome`, `async stop() -> CleanupOut
   fake-only implementation may continue, but record this gate as open and do not
   enable product tools. A bypass requires an adapter/runtime fix, then a rerun;
   fake callbacks alone cannot establish enforcement.
+  Retain sanitized acceptance with verified SDK/CLI versions, tool inventory,
+  complete required cases and hashes of the enforcement sources. Production fails
+  tools closed if that evidence is missing, invalid or stale; source changes need
+  fresh probe evidence, never a hash-only update.
 - [ ] **Step 5 — Commit:**
   `git commit -m "feat(bridge): guard tools and own domain sdk lifecycle (PLZG-289)"`.
 
@@ -460,6 +465,10 @@ Task 6; use a fake implementing it until real integration, not a second service.
 - [ ] **Step 4 — Run green**, preserving recording/source-correlation tests in
   `bridge/tests/test_runtime_wiring.py`. Assert failed delivery never changes a
   stored success and replay never writes a second execution record.
+  Verify this task at the manager/session boundary using the declared fake
+  ProjectService. Task 6 owns migration of the old server API and must restore
+  the full bridge/runtime suite before client integration. Preserve every recording
+  assertion; do not add a second legacy domain protocol for intermediate commits.
 - [ ] **Step 5 — Commit:**
   `git commit -m "feat(bridge): correlate domain lifecycle and replay (PLZG-289)"`.
 
