@@ -247,6 +247,7 @@ error_type: str|None)`; `MemoryError(code: str, message: str)`.
 `ProjectMemoryStore(workspace: ExecutionWorkspace)` methods:
 `initialize() -> MemorySnapshot`, `load() -> MemorySnapshot`,
 `attach_run(owner_run_id: str) -> FileLock`,
+`detach_run(owner_run_id: str) -> None`,
 `begin_turn(turn: TurnIntent) -> MemorySnapshot`,
 `finish_turn(turn_id: str, *, outcome: str, output: str,
 delta: dict|None) -> MemorySaveResult`,
@@ -295,10 +296,14 @@ delta: dict|None) -> MemorySaveResult`,
   into a bounded recap; retain explicit omitted counts and active ownership.
   If active entries alone exceed the cap, reject new admission, not active state.
   Run ownership uses a unique per-run operational lock under `<common>/plaza/runs/`;
-  only lock-free/missing owners can become interrupted/unknown. Clean exit removes
-  its unique run marker only after its turns settle; never reuse run IDs. A memory
-  operation has a 1s deadline and nonblocking lock admission; no provider call holds
-  its lock. Register failures as unavailable/unsaved, not empty history.
+  only lock-free/missing owners can become interrupted/unknown. Clean exit calls `detach_run` to remove its separate unique run marker only
+  after its execution turns settle, then closes the stable run lock; never reuse
+  run IDs or unlink lock files. A memory operation has a cooperative 1s budget
+  checked before/after bounded stages and nonblocking lock admission; no provider
+  call holds its lock. Callers offload IO and retain ownership until its worker
+  settles, including cancellation. A kernel IO call may exceed that budget; report
+  elapsed-budget failure and never admit a model call from a late pending save.
+  Register failures as unavailable/unsaved, not empty history.
 - [ ] **Step 4 — Run Task 3 and storage suites green.**
   Assert saved files survive new store instances and no process imports another
   repository's notes. Confirm a normal later revision remains loadable.
@@ -552,7 +557,8 @@ Modify `bridge/server.py`, `bridge/conversation.py`, `bridge/conversation_backen
   returning correlated busy errors when either is occupied.
   Serialized sends have a 2s deadline and ≤32 queued packets; closed/slow sinks
   detach delivery without cancelling domain ownership. Closing a connection drains
-  its NPC work and history only. Shutdown drains domains, then project/run ownership.
+  its NPC work and history only. Shutdown drains domains, then project/run ownership using `detach_run` after
+  owned turns settle; retain operational evidence if cleanup cannot be confirmed.
   Document packet examples, replay/busy/identity rules and setup/memory status now.
 - [ ] **Step 4 — Run green** plus all existing bridge unit tests and recording
   integration. Verify the tools-disabled Chief path cannot mutate before the
