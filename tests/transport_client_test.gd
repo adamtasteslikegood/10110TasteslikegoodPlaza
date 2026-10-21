@@ -11,6 +11,7 @@ var _b := ""
 var _events: Array[Dictionary] = []
 var _bad_notification_state := false
 var _other_session := ""
+var _incoming_npc: Array[Dictionary] = []
 
 
 func _ready() -> void:
@@ -98,6 +99,7 @@ func _frames(count: int) -> void:
 	for i in range(count):
 		if _peer != null:
 			_peer.poll()
+			_service_discovery()
 		await get_tree().process_frame
 
 
@@ -115,13 +117,21 @@ func _wait_open() -> bool:
 	return _check(false, "actual WebSocket opens before deadline")
 
 
+func _service_discovery() -> void:
+	while _peer.get_available_packet_count() > 0:
+		var parsed = JSON.parse_string(_peer.get_packet().get_string_from_utf8())
+		if parsed is Dictionary and parsed.get("type") == "describe_workspace":
+			_peer.send_text(JSON.stringify({"type": "workspace_state", "request_id": parsed.request_id, "project_id": null, "workspace_id": null, "stage": "unconfigured", "reason": null, "architect_decision": null, "project_path": null, "worktree_path": null, "branch": null, "changed_files": null, "reservation": null, "memory": {"path": null, "status": "unavailable", "revision": null, "error_type": null}}))
+		else:
+			_incoming_npc.append(parsed if parsed is Dictionary else {})
+
+
 func _receive() -> Dictionary:
 	var deadline := Time.get_ticks_msec() + 1000
 	while Time.get_ticks_msec() < deadline:
 		_peer.poll()
-		if _peer.get_available_packet_count() > 0:
-			var parsed = JSON.parse_string(_peer.get_packet().get_string_from_utf8())
-			return parsed if parsed is Dictionary else {}
+		_service_discovery()
+		if not _incoming_npc.is_empty(): return _incoming_npc.pop_front()
 		await get_tree().process_frame
 	_check(false, "outgoing packet arrives at peer")
 	return {}
@@ -275,7 +285,7 @@ func _test_disconnect_and_reconnect() -> void:
 	_check(_client.conversations.generation == generation + 1, "actual reconnect starts next generation")
 	_check(_client.conversation_snapshot(_a).draft == "" and _client.conversation_snapshot(_a).messages == archived.messages, "fresh generation does not copy draft or replay history")
 	await _frames(3)
-	_check(_peer.get_available_packet_count() == 0, "reconnect sends no automatic replay")
+	_check(_peer.get_available_packet_count() == 0 and _incoming_npc.is_empty(), "reconnect discovery sends no automatic NPC replay")
 	var fresh: String = _client.send_query(_a, "fresh")
 	var packet: Dictionary = await _receive()
 	_check(fresh != a and fresh != b and packet.request_id == fresh, "reconnect uses new unique request ID")

@@ -33,3 +33,10 @@ signal agent_query_failed(agent_id: String, error_type: String, message: String)
 ## Reasons: input, reply, failure, draft, connection, view. Empty request ID
 ## denotes a view/draft/connection change or an input rejected before admission.
 signal conversation_changed(agent_id: String, reason: String, request_id: String)
+
+
+## Workspace/domain snapshots are settled before these additive notifications.
+## Wire reasons: workspace_state, domain_state, domain_accepted, domain_result,
+## domain_error, resume_complete, status_stale. Local: input, draft, read, connection.
+signal workspace_changed(reason: String, request_id: String)
+signal domain_changed(domain_id: String, reason: String, request_id: String)
