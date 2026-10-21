@@ -3,7 +3,7 @@ anthropic==0.121.0
 anyio==4.14.2
 attrs==26.1.0
 black==26.5.1
-certifi==2026.7.22
+certifi==2026.10.19
 cffi==2.1.1
 claude-agent-sdk==0.2.136
 click==8.4.2
@@ -21,7 +21,7 @@ jiter==0.16.0
 jsonschema==4.26.0
 jsonschema-specifications==2025.9.1
 mccabe==0.7.0
-mcp==1.29.0
+mcp==1.30.0
 mypy_extensions==1.1.0
 packaging==26.3
 pathspec==1.1.1
