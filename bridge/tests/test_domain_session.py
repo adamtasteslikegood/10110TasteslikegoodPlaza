@@ -616,3 +616,142 @@ async def test_unrelated_memory_lock_still_rejects_run_without_retry(setup):
     assert packets[0]["error_type"] == "memory_unavailable"
     assert not owners[0].calls and service.memory.load().revision == revision
     assert len(session.replay(0)) == 1
+
+
+@pytest_asyncio.fixture
+async def real_owner_session(setup, monkeypatch, runtime_archive):
+    """Real idle-owner lifecycle behind the existing offline SDK client seam."""
+    from bridge.domain_sdk import DomainSDKOwner
+    from bridge.tests.test_domain_sdk import Client
+
+    session, service, _ = setup
+    recorder, writer = runtime_archive
+    session._recorder = recorder
+    clients = []
+
+    def client_factory(**kwargs):
+        client = Client(**kwargs)
+        clients.append(client)
+        return client
+
+    def owner_factory(*args):
+        return DomainSDKOwner(*args, client_factory=client_factory)
+
+    monkeypatch.setattr("bridge.domain_session.DomainSDKOwner", owner_factory)
+    await session.start()
+    return session, service, session._owner, clients, writer
+
+
+async def fail_idle_owner(owner):
+    owner.transport._fail()
+    await asyncio.wait_for(asyncio.shield(owner._worker), 2)
+    assert owner.transport.broken and owner._worker.done()
+
+
+def assert_rejected_dead_owner(packets, session, clients, writer):
+    assert [packet["type"] for packet in packets] == ["domain_error"]
+    assert packets[0]["error_type"] == "sdk_error"
+    assert packets[0]["request_id"] == "run"
+    assert packets[0]["domain_session_id"] == session.domain_session_id
+    assert len(session.replay(0)) == 1
+    assert len(clients) == 1
+    assert [name for name, _ in clients[0].calls] == ["connect", "disconnect"]
+    assert not [record for kind, record, _ in writer.records if kind == "transcript"]
+    assert not [
+        record
+        for kind, record, _ in writer.records
+        if kind == "event" and record["event"] == "execution_started"
+    ]
+
+
+@pytest.mark.asyncio
+async def test_real_idle_owner_failure_rejects_without_memory_or_execution(
+    real_owner_session,
+):
+    session, service, owner, clients, writer = real_owner_session
+    before = service.memory.load()
+    await fail_idle_owner(owner)
+    packets = []
+
+    async def emit(packet):
+        packets.append(packet)
+
+    await session.admit_query(query(), context=context(), emit=emit)
+    assert_rejected_dead_owner(packets, session, clients, writer)
+    assert service.memory.load() == before
+    assert session._broken and service.reservation.held
+    await session.admit_query(query("next"), context=context("next"), emit=emit)
+    assert packets[-1]["error_type"] == "sdk_error"
+    assert service.memory.load() == before
+    await session.stop()
+    assert service.reservation is None
+
+
+@pytest.mark.asyncio
+async def test_real_owner_failure_during_prepare_settles_nonexecuted_intent(
+    real_owner_session, monkeypatch
+):
+    session, service, owner, clients, writer = real_owner_session
+    entered, release = threading.Event(), threading.Event()
+    original = service.memory.begin_turn
+
+    def blocked(turn):
+        snapshot = original(turn)
+        entered.set()
+        release.wait(5)
+        return snapshot
+
+    monkeypatch.setattr(service.memory, "begin_turn", blocked)
+    packets = []
+
+    async def emit(packet):
+        packets.append(packet)
+
+    admission = asyncio.create_task(
+        session.admit_query(query(), context=context(), emit=emit)
+    )
+    try:
+        assert await asyncio.to_thread(entered.wait, 3)
+        assert "pending" in service.memory.load().todo
+        await fail_idle_owner(owner)
+        assert service.reservation.held and not admission.done()
+    finally:
+        release.set()
+        await admission
+    assert_rejected_dead_owner(packets, session, clients, writer)
+    snapshot = service.memory.load()
+    assert "pending" not in snapshot.todo and '"state":"error"' in snapshot.todo
+    assert "Not executed" in snapshot.progress
+    assert session._broken and service.reservation.held
+    await session.stop()
+    assert service.reservation is None
+
+
+@pytest.mark.asyncio
+async def test_retained_duplicate_replays_after_real_idle_owner_failure(
+    real_owner_session,
+):
+    session, service, owner, clients, writer = real_owner_session
+    packets = []
+
+    async def emit(packet):
+        packets.append(packet)
+
+    await session.admit_query(query(), context=context(), emit=emit)
+    await collect_until(session, packets)
+    terminal = packets[-1]
+    before = service.memory.load()
+    record_count = len(writer.records)
+    await fail_idle_owner(owner)
+    await session.admit_query(query(), context=context(), emit=emit)
+    assert packets[-1] == terminal
+    assert service.memory.load() == before
+    assert len(writer.records) == record_count
+    assert len(clients) == 1
+    assert [name for name, _ in clients[0].calls] == [
+        "connect",
+        "query",
+        "receive",
+        "disconnect",
+    ]
+    assert service.reservation.held

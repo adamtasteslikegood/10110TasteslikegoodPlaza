@@ -339,33 +339,53 @@ class DomainSession:
             self._service.publish_memory(result)
             return result
 
+    async def _require_owner_ready(self):
+        if self._stopping:
+            raise DomainCommandError("session_unavailable")
+        try:
+            # The generation already started this owner. Its public start is an
+            # idempotent readiness observation, never a reconnect/new worker.
+            await self._owner.start()
+        except Exception:
+            if self._stopping:
+                raise DomainCommandError("session_unavailable") from None
+            self._broken = True
+            raise DomainCommandError("sdk_error") from None
+        if self._stopping:
+            raise DomainCommandError("session_unavailable")
+
     async def _run(self, run, definition):
         started = time.monotonic()
+        prepare_attempted = False
         try:
             if self._stopping:
                 raise DomainCommandError("session_unavailable")
             run.preparing = True
             async with self._memory_lock:
+                await self._require_owner_ready()
+                prepare_attempted = True
                 snapshot = await self._readiness.prepare_turn(run.intent)
                 self._memory_revision = snapshot.revision
                 self._service.publish_memory(snapshot)
             run.preparing = False
-            if self._stopping:
-                raise DomainCommandError("session_unavailable")
+            # The owner may have failed while checkpoint IO was awaiting.
+            await self._require_owner_ready()
         except (Exception, asyncio.CancelledError) as error:
             run.preparing = False
             # prepare_turn can fail/cancel after its durable begin. Its owned IO
-            # has drained; finish safely settles that intent if it exists.
-            await self._save(
-                run,
-                SDKOutcome(
-                    "Not executed: admission did not complete.",
-                    "error",
-                    "not_executed",
-                    None,
-                    None,
-                ),
-            )
+            # has drained; finish safely settles that intent if it exists. An
+            # already-dead owner never began intent and must not touch memory.
+            if prepare_attempted:
+                await self._save(
+                    run,
+                    SDKOutcome(
+                        "Not executed: admission did not complete.",
+                        "error",
+                        "not_executed",
+                        None,
+                        None,
+                    ),
+                )
             packet = error_packet(
                 run.command,
                 getattr(error, "code", "memory_unavailable"),
