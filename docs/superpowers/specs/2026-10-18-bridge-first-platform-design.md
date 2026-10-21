@@ -36,6 +36,16 @@ conversation is an explicit API-key-only opt-in with no automatic fallback.
 The CLI retains its native authentication handling. See [Quick start](../../../QUICKSTART.md)
 for the fresh cloud SDK recall evidence, authentication and remaining limits.
 
+**Owner scope update, 2026-10-21:** M10/M11 operation is accepted on the owner's
+laptop using local `dev`, with Claude subscription and API-token authentication;
+the output cap was a setting. This supersedes the outstanding laptop acceptance
+statements dated 2026-10-18 below, without adding cloud or shutdown evidence.
+The owner now requires a minimum dedicated execution Git worktree in M12, ahead
+of the broader worktree/runtime isolation previously grouped under M14. The
+[detailed M12 specification](2026-10-21-m12-domain-execution-design.md) is DRAFT
+for written review. Later persistence and stronger execution isolation can be
+resequenced or combined through an integrated provider; none is selected here.
+
 ## 1. Purpose and scope
 
 Plaza is an agentic workspace built around a UI-independent bridge and execution
@@ -97,9 +107,9 @@ dependencies, not a date forecast. None of M10–M15 is completed by this docume
 | M9 | Align platform direction and prototype wording | This written spec, roadmap and protocol distinguish implemented, planned and deferred behavior; documentation validation passes and the owner reviews the written spec. |
 | M10 | Central config and bounded local observability | Configuration precedence/validation, run manifests, per-agent transcripts, debug events, rotation, quota/age pruning and failure cases pass focused tests. |
 | M11 | Usable NPC conversations | Mouse resizing, viewport reflow, wheel/scrollbar/paging keys, focus behavior, A→B→A scrollback and late-response correlation meet §7 tests. |
-| M12 | Domain execution through clients | Godot activates/backgrounds/refocuses domains and consumes buffered results; a real SDK task completes while focus is elsewhere; a plain client exercises the same protocol. |
+| M12 | Domain execution through clients and a dedicated execution worktree | Godot activates/backgrounds/refocuses domains and consumes buffered results; a real SDK task completes while focus is elsewhere; a plain client exercises the same protocol. The owner added minimum worktree separation on 2026-10-21; details await M12 written-spec review. |
 | M13 | Local durable workspace state | User/project/domain-scoped conversations and execution metadata survive restart/reconnect; application-history restoration and SDK-task recovery are tested and reported separately. |
-| M14 | Worktree execution isolation | Domain work executes in assigned worktrees inside its project; concurrent changes stay isolated and can be reviewed for integration. |
+| M14 | Independent execution workspaces beyond M12's minimum | Domain work executes in assigned worktrees inside its project; concurrent changes stay isolated and can be reviewed for integration. |
 | M15 | Authenticated durable service | Authenticated ownership, isolation and recovery work across processes/devices; select the managed durability provider in that milestone's design. |
 
 ## 4. State boundaries and storage choices

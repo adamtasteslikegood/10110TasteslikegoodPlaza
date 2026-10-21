@@ -17,6 +17,17 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
 
+### Added — M12 domain execution design (PLZG-289)
+
+- Draft the domain lifecycle, explicit Start/Run controls, background results and
+  plain-client contract with one dedicated execution Git worktree. The proposed
+  session-length reservation separates workspace ownership from UI focus and
+  leaves independent workspaces and stronger runtimes for later designs.
+- Record the owner's 2026-10-21 laptop acceptance of M10/M11 with Claude
+  subscription and API-token authentication; the output cap was a setting.
+  This supersedes the earlier outstanding-acceptance notes below. M12 remains
+  in design, awaiting written-spec review; no runtime implementation is included.
+
 ### Changed — NPC execution through Claude Code (`D-037`)
 
 - NPC calls now default to Claude Code through Agent SDK, with native CLI

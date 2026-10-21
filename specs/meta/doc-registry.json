@@ -97,7 +97,15 @@
       "tier": 2,
       "authority": "implementation",
       "status": "ACTIVE",
-      "note": "Owner-approved written bridge-first design (2026-10-18). M9 documentation alignment complete; M10 central configuration and bounded local observability implemented and tested; M11 NPC history/resizing/keyboard controls implemented with deterministic coverage; desktop acceptance outstanding. Later M12–M15 require detailed designs. Execution scope and M10 policies are ratified in PLATFORM-DECISIONS (D-034–D-036); enforcement remains intended for future durable-state functionality. M10 archives do not establish durable application state or SDK restart recovery. D-037 now requires default Claude Code/Agent SDK execution with explicit API-key-only Messages API conversation opt-in and no automatic fallback; the runtime correction and operating-document refresh are implemented. Separate real SDK/CLI two-client recall passed with a cloud API key; historical direct API evidence remains compatibility-only. Owner readback, local subscription verification and desktop acceptance remain outstanding; M12–M15 remain planned."
+      "note": "Owner-approved bridge-first design (2026-10-18); M9 complete. M10/M11 implemented with deterministic coverage and accepted on the owner laptop on 2026-10-21 using Claude subscription and API-token authentication. D-033–D-037 preserve scoped NPC/domain execution, central settings, bounded archives and default SDK runtime. Owner moved minimum dedicated worktree separation into M12; detailed M12 design remains DRAFT, and broader persistence/isolation/hosted providers remain future work. Prior cloud SDK recall does not prove M12 execution or graceful shutdown."
+    },
+    {
+      "doc_id": "M12-DOMAIN-EXECUTION-DESIGN",
+      "path": "docs/superpowers/specs/2026-10-21-m12-domain-execution-design.md",
+      "tier": 2,
+      "authority": "implementation",
+      "status": "DRAFT",
+      "note": "M12 detailed design awaiting written-spec approval. Owner approved explicit Start/Run and walking-away backgrounding, and required a dedicated execution Git worktree on 2026-10-21. Proposes session-length workspace reservation, SDK ownership, reliable replay and Godot/plain-client acceptance. Runtime implementation and later persistence/sandbox providers are not claimed."
     },
     {
       "doc_id": "ROADMAP",
@@ -105,7 +113,7 @@
       "tier": 3,
       "authority": "derived",
       "status": "ACTIVE",
-      "note": "Preserves M1–M8 prototype milestones and proof; sequences approved M9–M15 bridge-first platform work from ACTIVE BRIDGE-PLATFORM-DESIGN. M9 complete, M10/M11 implemented with deterministic coverage, M11 desktop acceptance outstanding, M12–M15 planned; M5/M6 remain deferred frontend milestones. D-037 default Claude Code/Agent SDK runtime is implemented; separate cloud SDK NPC recall is not domain lifecycle, desktop or subscription proof."
+      "note": "Preserves M1–M8 prototype history and approved M9–M15 direction. M9 complete; M10/M11 locally accepted by owner 2026-10-21. M12 detailed design in progress, now including minimum dedicated execution worktree. M13/M14 persistence and independent workspace sequencing can change or combine; M15 provider remains unselected. M5/M6 remain deferred frontend milestones."
     },
     {
       "doc_id": "TASK-TRACKER",

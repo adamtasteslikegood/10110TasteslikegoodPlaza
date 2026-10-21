@@ -360,13 +360,17 @@ stopped the bridge with SIGTERM and left its manifest open; the run does not pro
 graceful shutdown. Deterministic fake-provider coverage above remains independent
 of this live result.
 
-### Desktop acceptance checklist — outstanding
+<a id="desktop-acceptance-checklist--outstanding"></a>
 
-M11 is implemented with deterministic automated coverage. Actual desktop mouse,
-keyboard, clipboard and OS-window acceptance has **not been performed** here.
-Record date, platform, observed result and any issue for each item before calling
-M11 accepted; headless checks and live conversation smoke do not replace these
-observations.
+### Desktop acceptance checklist
+
+On 2026-10-21 the owner accepted M10/M11 operation on the laptop's local `dev`,
+using both Claude subscription and API-token authentication; the output cap was
+a setting ([PLZG-284](https://tasteslikegood.atlassian.net/browse/PLZG-284)).
+This is owner-reported milestone acceptance, separate from the cloud run above.
+No itemized desktop test log was supplied, so the reusable checklist below is
+left unticked. For future verification, record date, platform, observed result
+and any issue for each item; headless checks do not replace desktop observations.
 
 - [ ] A→B→A restores ordered transcript, drafts and reading position. Let A succeed
   late while B is visible, then make B fail; each result stays with its agent.
