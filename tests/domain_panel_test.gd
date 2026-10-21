@@ -270,7 +270,7 @@ func _ready() -> void:
 	check(not panel.visible, "reattached view closes on actual anchor departure")
 	await deliver(state(refocus_on_departure.request_id))
 	check(count("background_domain") == backgrounds_before_departure + 1 and count("resume") == resumes_before_departure, "departure during Refocus backgrounds after ack without replaying hidden view")
-	await deliver(state(latest("background_domain").request_id, "background"))
+	await pending_background_return_checks(area)
 	# Selecting another known domain must detach the previous physical anchor.
 	GameEvents.domain_changed.emit("engineering", "input", "")
 	var selector: OptionButton = hud.get_node("Global/Toolbar/DomainSelect")
@@ -278,6 +278,49 @@ func _ready() -> void:
 	await walk(Vector2(0, -90))
 	check(not panel.visible and hud.selected_domain_id == "engineering", "global domain selection cannot inherit old anchor return")
 	finish()
+
+func pending_background_return_checks(area: Area2D) -> void:
+	var background := latest("background_domain")
+	var refocuses := count("refocus_domain")
+	var resumes := count("resume")
+	var starts := count("activate_domain")
+	var runs := count("domain_query")
+	# Reverse the original test order: physically return before acknowledging
+	# Background, while the public client correctly rejects another control.
+	await walk(Vector2(0, -90))
+	check(area.overlaps_body(player) and panel.visible, "R1 actual anchor return occurs before Background ack")
+	check(count("refocus_domain") == refocuses and count("resume") == resumes, "R1 return waits for pending Background")
+	GameEvents.domain_changed.emit("core", "domain_state", "unrelated-background-ack")
+	await frames()
+	check(count("refocus_domain") == refocuses, "R1 unrelated acknowledgment cannot release Refocus")
+	lifecycle = "background"
+	await deliver(state(background.request_id, lifecycle))
+	if not check(count("refocus_domain") == refocuses + 1 and count("resume") == resumes, "R1 matching Background ack admits exactly one Refocus before replay"):
+		return
+	var refocus := latest("refocus_domain")
+	check(refocus.domain_session_id == background.domain_session_id, "R1 deferred Refocus retains exact generation")
+	await deliver(state(background.request_id, "background"))
+	GameEvents.domain_changed.emit("core", "domain_state", "unrelated-refocus-ack")
+	await frames()
+	check(count("refocus_domain") == refocuses + 1 and count("resume") == resumes, "R1 duplicate Background and unrelated Refocus acks cannot replay")
+	lifecycle = "active"
+	await deliver(state(refocus.request_id))
+	check(count("resume") == resumes + 1, "R1 only matching admitted Refocus ack releases one Resume")
+	var replay := latest("resume")
+	var complete := state(replay.request_id)
+	complete.merge({"type": "resume_complete", "high_water_mark": replay.cursor, "earliest_output_id": null, "history_gap": false}, true)
+	await deliver(complete)
+	check(count("activate_domain") == starts and count("domain_query") == runs and get_viewport().gui_get_focus_owner() == null, "R1 reordered return never Starts Runs or grabs focus")
+	# Closing again before the Background ack must cancel this view intent.
+	await walk(Vector2(0, 90))
+	background = latest("background_domain")
+	await walk(Vector2(0, -90))
+	check(area.overlaps_body(player) and count("refocus_domain") == refocuses + 1, "R1 second physical return is waiting for Background")
+	button("Background").pressed.emit()
+	await frames()
+	await deliver(state(background.request_id, "background"))
+	check(not panel.visible and count("refocus_domain") == refocuses + 1 and count("resume") == resumes + 1, "R1 Close cancels deferred Refocus and replay")
+	await walk(Vector2(0, 90))
 
 func recovery_checks() -> void:
 	input.text = "outcome must remain unknown"

@@ -8,6 +8,7 @@ var remote := false
 var _return_to_anchor := false
 var _refocus_request := ""
 var _refocus_domain := ""
+var _refocus_after_background: Dictionary = {}
 var _background_after_control: Dictionary = {}
 var _agents: Dictionary = {}
 var _domains: Array[String] = []
@@ -32,6 +33,7 @@ func _ready() -> void:
 	_global_refocus.pressed.connect(_open_remote)
 	_select.item_selected.connect(func(index):
 		if _panel.visible: _background()
+		_refocus_after_background = {}
 		selected_domain_id = _domains[index]
 		anchor_agent_id = ""
 		remote = true
@@ -79,6 +81,7 @@ func _open_nearby() -> void:
 	var domain_id: String = agent.get("dept", "")
 	if domain_id.is_empty(): return
 	if _panel.visible and selected_domain_id != domain_id: _background()
+	_refocus_after_background = {}
 	selected_domain_id = domain_id
 	_remember(domain_id)
 	_agents[domain_id] = nearby_agent_id
@@ -92,6 +95,7 @@ func _open_nearby() -> void:
 
 func _open_remote() -> void:
 	if selected_domain_id.is_empty(): return
+	_refocus_after_background = {}
 	anchor_agent_id = ""
 	remote = true
 	_return_to_anchor = false
@@ -101,19 +105,24 @@ func _open_remote() -> void:
 
 func _refocus() -> void:
 	# Store admission emits synchronously, but the matching wire ack arrives later.
+	_refocus_after_background = {}
 	if _background_after_control.get("domain_id") == selected_domain_id: _background_after_control = {}
 	var request := BridgeClient.refocus_domain(selected_domain_id)
 	if not request.is_empty():
 		_refocus_domain = selected_domain_id
 		_refocus_request = request
 	else:
-		var pending: Dictionary = BridgeClient.domain_snapshot(selected_domain_id).get("pending_control", {})
+		var snapshot := BridgeClient.domain_snapshot(selected_domain_id)
+		var pending: Dictionary = snapshot.get("pending_control", {})
 		if pending.get("type") == "refocus_domain":
 			_refocus_domain = selected_domain_id
 			_refocus_request = pending.request_id
+		elif pending.get("type") == "background_domain" and BridgeClient.is_bridge_connected():
+			_refocus_after_background = {"domain_id": selected_domain_id, "request_id": pending.request_id, "generation": snapshot.get("domain_session_id", ""), "remote": remote, "anchor_agent_id": anchor_agent_id}
 	_refresh()
 
 func _background() -> void:
+	_refocus_after_background = {}
 	_refocus_request = ""
 	_refocus_domain = ""
 	_return_to_anchor = not remote and not anchor_agent_id.is_empty()
@@ -146,6 +155,16 @@ func _draft(text: String) -> void:
 
 func _domain_changed(domain_id: String, reason: String, request_id: String) -> void:
 	_remember(domain_id)
+	if _refocus_after_background.get("domain_id") == domain_id:
+		var snapshot := BridgeClient.domain_snapshot(domain_id)
+		var intent := _refocus_after_background
+		if reason in ["domain_error", "connection"] or snapshot.get("domain_session_id") != intent.generation or selected_domain_id != domain_id or not _panel.visible or remote != intent.remote or anchor_agent_id != intent.anchor_agent_id:
+			_refocus_after_background = {}
+		elif reason == "domain_state" and request_id == intent.request_id and snapshot.get("pending_control", {}).is_empty():
+			# Continue only this visible view's exact acknowledged Background.
+			# Refocus gets its own correlation; Resume still waits for that ack.
+			_refocus_after_background = {}
+			_refocus()
 	if _background_after_control.get("domain_id") == domain_id:
 		if reason in ["domain_error", "connection"]:
 			_background_after_control = {}
@@ -176,6 +195,7 @@ func _workspace_changed(_reason: String, _request_id: String) -> void:
 		_return_to_anchor = false
 		_refocus_request = ""
 		_refocus_domain = ""
+		_refocus_after_background = {}
 		_background_after_control = {}
 		_domains.clear()
 		_agents.clear()
