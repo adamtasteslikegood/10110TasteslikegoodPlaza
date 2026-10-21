@@ -44,25 +44,80 @@ class ExecutionWorkspace:
     git_dir: Path
     branch: str
     initial_commit: str
+    source_identity: tuple[int, int]
 
 
 def _invalid(message: str = "Project workspace identity or registration is invalid"):
     return WorkspaceError("workspace_invalid", message)
 
 
-def _git(root: Path, *args: str, timeout: int = 5) -> str:
+def _git(
+    root: Path,
+    *args: str,
+    timeout: int = 5,
+    config_overrides: tuple[str, ...] = (),
+) -> str:
     environment = {
         key: value for key, value in os.environ.items() if not key.startswith("GIT_")
     }
     environment.update(GIT_TERMINAL_PROMPT="0", LC_ALL="C")
+    configuration = [
+        "core.hooksPath=" + os.devnull,
+        "core.fsmonitor=false",
+        *config_overrides,
+    ]
     result = subprocess.run(
-        ["git", "--no-optional-locks", "-C", os.fspath(root), *args],
+        [
+            "git",
+            "--no-optional-locks",
+            *[arg for value in configuration for arg in ("-c", value)],
+            "-C",
+            os.fspath(root),
+            *args,
+        ],
         capture_output=True,
         env=environment,
         timeout=timeout,
         check=True,
     )
     return os.fsdecode(result.stdout).removesuffix("\n")
+
+
+def git_without_filters(root: Path, *args: str, timeout: int = 5) -> str:
+    """Run Git without hooks/fsmonitor or external clean/smudge/process filters.
+
+    Resolve effective filter names in this actual checkout, including conditional
+    config. Override every driver only for this command, retaining built-in Git
+    conversions. Filtered files (e.g. LFS pointers) keep their committed content.
+    Use this blocking helper for later changed-file discovery as well as checkout:
+    ordinary ``git status`` can execute clean/process filters and fsmonitor hooks.
+    The caller must provide the validated checkout top-level as ``root``.
+    """
+    try:
+        keys = _git(
+            root,
+            "config",
+            "--null",
+            "--name-only",
+            "--get-regexp",
+            r"^filter\..*\.(clean|smudge|process|required)$",
+        )
+    except subprocess.CalledProcessError as error:
+        if error.returncode != 1:
+            raise
+        keys = ""
+    names = sorted({key.rsplit(".", 1)[0] for key in keys.split("\0") if key})
+    overrides = [f"core.worktree={root}"]
+    for name in names:
+        overrides.extend(
+            (
+                f"{name}.clean=",
+                f"{name}.smudge=",
+                f"{name}.process=",
+                f"{name}.required=false",
+            )
+        )
+    return _git(root, *args, timeout=timeout, config_overrides=tuple(overrides))
 
 
 def _identity(path: Path) -> tuple[int, int]:
@@ -158,7 +213,9 @@ def _read_record(common: Path) -> dict:
     return value
 
 
-def _from_record(value: dict, project_root: Path) -> ExecutionWorkspace:
+def _from_record(
+    value: dict, project_root: Path, source_identity: tuple[int, int]
+) -> ExecutionWorkspace:
     for key in ("worktree_path", "git_dir", "branch", "initial_commit"):
         if not isinstance(value.get(key), str) or not value[key]:
             raise _invalid()
@@ -171,6 +228,7 @@ def _from_record(value: dict, project_root: Path) -> ExecutionWorkspace:
         Path(value["git_dir"]),
         value["branch"],
         value["initial_commit"],
+        source_identity,
     )
 
 
@@ -204,7 +262,10 @@ def validate_workspace(workspace: ExecutionWorkspace, *, runtime_root: Path) -> 
         if common != common.resolve(strict=True):
             raise _invalid()
         value = _read_record(common)
-        if _from_record(value, workspace.project_root) != workspace:
+        if (
+            _from_record(value, workspace.project_root, workspace.source_identity)
+            != workspace
+        ):
             raise _invalid("Workspace differs from recorded ownership")
         _validate_tree(workspace, runtime_root=runtime_root)
     except WorkspaceError:
@@ -223,7 +284,8 @@ def _validate_tree(workspace: ExecutionWorkspace, *, runtime_root: Path) -> None
     source = inspect_project(workspace.project_root)
     execution = inspect_project(path)
     if (
-        source.common_git_dir != common
+        source.root_identity != workspace.source_identity
+        or source.common_git_dir != common
         or source.project_id != workspace.project_id
         or execution.common_git_dir != common
         or execution.project_id != workspace.project_id
@@ -311,7 +373,9 @@ def prepare_worktree(
             ) from None
         record_path = _record_path(common)
         if os.path.lexists(record_path):
-            workspace = _from_record(_read_record(common), project.root)
+            workspace = _from_record(
+                _read_record(common), project.root, project.root_identity
+            )
             validate_workspace(workspace, runtime_root=runtime_root)
             execution_lock = _check_idle(workspace)
             return workspace
@@ -361,17 +425,22 @@ def prepare_worktree(
             project.root,
             "worktree",
             "add",
+            "--no-checkout",
             "-b",
             branch,
             str(path),
             project.head_commit,
             timeout=30,
         )
+        # Only this fresh owned slot is populated. These commands neither switch
+        # nor reset an existing checkout, and never run configured external code.
+        git_without_filters(path, "read-tree", project.head_commit, timeout=30)
+        git_without_filters(path, "checkout-index", "--all", timeout=30)
         git_dir = Path(_git(path, "rev-parse", "--absolute-git-dir")).resolve(
             strict=True
         )
         value["git_dir"] = str(git_dir)
-        workspace = _from_record(value, project.root)
+        workspace = _from_record(value, project.root, project.root_identity)
         _validate_tree(workspace, runtime_root=runtime_root)
         execution_lock = _check_idle(workspace)
         value["state"] = "ready"

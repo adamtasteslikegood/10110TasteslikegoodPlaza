@@ -13,7 +13,7 @@ import pytest
 from bridge import project_files
 from bridge.workspace import WorkspaceError, prepare_worktree, inspect_project
 from bridge.workspace_lease import WorkspaceLease
-from bridge.tests.test_workspace import bootstrap, git
+from bridge.tests.test_workspace import bootstrap, git, replace_source_preserving_common
 
 
 def child_script(work):
@@ -29,6 +29,7 @@ from bridge.workspace_lease import WorkspaceLease
 value = json.loads({json.dumps(json.dumps(value))})
 for key in ('project_root', 'common_git_dir', 'worktree_path', 'git_dir'):
     value[key] = Path(value[key])
+value['source_identity'] = tuple(value['source_identity'])
 work = ExecutionWorkspace(**value)
 try:
     lease = WorkspaceLease.acquire(work, domain_id='other', domain_session_id='child')
@@ -74,6 +75,33 @@ def test_session_lease_blocks_other_process(tmp_path):
     )
     again.release(cleanup_confirmed=True)
     assert path.stat().st_ino == inode
+
+
+def test_replaced_source_binding_prevents_reservation(tmp_path):
+    root, runtime, work = bootstrap(tmp_path)
+    replace_source_preserving_common(root)
+    with pytest.raises(WorkspaceError) as error:
+        lease = WorkspaceLease.acquire(
+            work, domain_id="domain", domain_session_id="session"
+        )
+        # Clean up a wrongly admitted lease before reporting a failing assertion.
+        lease.release(cleanup_confirmed=True)
+    assert error.value.code == "workspace_invalid"
+    assert not (work.git_dir / "plaza-unclean.json").exists()
+
+
+def test_replaced_source_binding_fails_held_lease_validation(tmp_path):
+    root, runtime, work = bootstrap(tmp_path)
+    lease = WorkspaceLease.acquire(
+        work, domain_id="domain", domain_session_id="session"
+    )
+    try:
+        replace_source_preserving_common(root)
+        with pytest.raises(WorkspaceError) as error:
+            lease.validate()
+        assert error.value.code == "workspace_invalid"
+    finally:
+        lease.release(cleanup_confirmed=True)
 
 
 @pytest.mark.parametrize("phase", ["file", "directory"])

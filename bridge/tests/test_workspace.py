@@ -5,6 +5,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import shlex
 import subprocess
 import sys
 
@@ -95,6 +96,191 @@ def test_linked_source_reuses_recorded_identity_and_location(tmp_path):
     assert again.worktree_path == first.worktree_path
     assert again.workspace_id == first.workspace_id
     assert again.project_root == linked
+    assert again.source_identity == project.root_identity
+    assert again.source_identity != first.source_identity
+
+
+def checkout_sentinels(tmp_path, root):
+    runtime = tmp_path / "runtime"
+    runtime.mkdir(exist_ok=True)
+    (root / "tracked.txt").write_text("unsaved source sentinel\n")
+    (root / "source-only.txt").write_text("UNCOMMITTED-SECRET\n")
+    (runtime / "sentinel.txt").write_text("runtime unchanged\n")
+    script = tmp_path / "checkout-command.py"
+    script.write_text(
+        f"#!{sys.executable}\n"
+        "from pathlib import Path\nimport sys\n"
+        f"source = Path({str(root)!r})\n"
+        f"runtime = Path({str(runtime)!r})\n"
+        "(source / 'tracked.txt').write_text('executable changed source\\n')\n"
+        "(runtime / 'sentinel.txt').write_text('executable changed runtime\\n')\n"
+        "secret = (source / 'source-only.txt').read_bytes()\n"
+        "Path('copied-source.txt').write_bytes(secret)\n"
+        "sys.stdout.buffer.write(secret)\n"
+    )
+    script.chmod(0o700)
+    return runtime, script
+
+
+def source_state_without_review_filter(root):
+    return (
+        git(root, "rev-parse", "HEAD"),
+        git(
+            root,
+            "-c",
+            "filter.review.process=",
+            "-c",
+            "filter.review.clean=",
+            "-c",
+            "filter.review.required=false",
+            "status",
+            "--porcelain",
+        ),
+    )
+
+
+def assert_checkout_sentinels(root, runtime, work, before):
+    assert (root / "tracked.txt").read_text() == "unsaved source sentinel\n"
+    assert (runtime / "sentinel.txt").read_text() == "runtime unchanged\n"
+    assert (root / "source-only.txt").read_text() == "UNCOMMITTED-SECRET\n"
+    assert source_state_without_review_filter(root) == before
+    assert (work.worktree_path / "tracked.txt").read_text() == "committed\n"
+    assert not (work.worktree_path / "source-only.txt").exists()
+    assert not (work.worktree_path / "copied-source.txt").exists()
+
+
+@pytest.mark.parametrize("custom_path", [False, True])
+def test_bootstrap_never_executes_post_checkout_hook(tmp_path, custom_path):
+    root = repository(tmp_path)
+    runtime, script = checkout_sentinels(tmp_path, root)
+    hooks = root / ".git/hooks"
+    if custom_path:
+        hooks = tmp_path / "configured-hooks"
+        hooks.mkdir()
+        git(root, "config", "core.hooksPath", str(hooks))
+    hook = hooks / "post-checkout"
+    hook.write_bytes(script.read_bytes())
+    hook.chmod(0o700)
+    before = source_state_without_review_filter(root)
+    original_config = (root / ".git/config").read_bytes()
+    work = prepare_worktree(inspect_project(root), runtime_root=runtime)
+    assert_checkout_sentinels(root, runtime, work, before)
+    assert (root / ".git/config").read_bytes() == original_config
+
+
+@pytest.mark.parametrize("driver", ["smudge", "process"])
+@pytest.mark.parametrize("scope", ["local", "global", "execution_include"])
+def test_bootstrap_never_executes_external_checkout_filter(
+    tmp_path, monkeypatch, driver, scope
+):
+    root = repository(tmp_path)
+    (root / ".gitattributes").write_text("tracked.txt filter=review\n")
+    git(root, "add", ".gitattributes")
+    git(root, "commit", "-m", "filter attribute")
+    runtime, script = checkout_sentinels(tmp_path, root)
+    config_path = root / ".git/config"
+    if scope != "local":
+        xdg = tmp_path / "xdg"
+        (xdg / "git").mkdir(parents=True)
+        monkeypatch.setenv("XDG_CONFIG_HOME", str(xdg))
+        config_path = xdg / "git/config"
+        if scope == "execution_include":
+            config_path.write_text(
+                f'[includeIf "gitdir:{root}/.git/worktrees/"]\n\tpath = {xdg}/filter-config\n'
+            )
+            config_path = xdg / "filter-config"
+    command = f"{shlex.quote(sys.executable)} {shlex.quote(str(script))}"
+    git(root, "config", "--file", str(config_path), f"filter.review.{driver}", command)
+    git(root, "config", "--file", str(config_path), "filter.review.required", "true")
+    before = source_state_without_review_filter(root)
+    original_config = config_path.read_bytes()
+    work = None
+    error = None
+    try:
+        work = prepare_worktree(inspect_project(root), runtime_root=runtime)
+    except WorkspaceError as caught:
+        error = caught
+    # These assertions precede the success assertion to expose actual side effects
+    # even when Git aborts on the intentionally invalid process-filter protocol.
+    assert (root / "tracked.txt").read_text() == "unsaved source sentinel\n"
+    assert (runtime / "sentinel.txt").read_text() == "runtime unchanged\n"
+    assert error is None
+    assert_checkout_sentinels(root, runtime, work, before)
+    assert config_path.read_bytes() == original_config
+
+
+def test_unused_global_lfs_filter_does_not_block_ordinary_project(
+    tmp_path, monkeypatch
+):
+    root = repository(tmp_path)
+    xdg = tmp_path / "xdg"
+    (xdg / "git").mkdir(parents=True)
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(xdg))
+    config_path = xdg / "git/config"
+    git(
+        root,
+        "config",
+        "--file",
+        str(config_path),
+        "filter.lfs.process",
+        "missing-git-lfs filter-process",
+    )
+    git(root, "config", "--file", str(config_path), "filter.lfs.required", "true")
+    work = prepare_worktree(inspect_project(root), runtime_root=root)
+    assert (work.worktree_path / "tracked.txt").read_text() == "committed\n"
+
+
+@pytest.mark.parametrize("driver", ["clean", "process", "fsmonitor"])
+def test_git_without_filters_status_preserves_sentinels(tmp_path, driver):
+    root, runtime, work = bootstrap(tmp_path)
+    runtime, script = checkout_sentinels(tmp_path, root)
+    (work.worktree_path / ".gitattributes").write_text("tracked.txt filter=review\n")
+    (work.worktree_path / "tracked.txt").write_text(
+        "execution edited with different byte count\n"
+    )
+    command = f"{shlex.quote(sys.executable)} {shlex.quote(str(script))}"
+    key = "core.fsmonitor" if driver == "fsmonitor" else f"filter.review.{driver}"
+    git(root, "config", key, command)
+    before = (root / ".git/config").read_bytes()
+    status = ws.git_without_filters(work.worktree_path, "status", "--porcelain")
+    assert "tracked.txt" in status
+    assert (root / "tracked.txt").read_text() == "unsaved source sentinel\n"
+    assert (runtime / "sentinel.txt").read_text() == "runtime unchanged\n"
+    assert not (work.worktree_path / "copied-source.txt").exists()
+    assert (root / ".git/config").read_bytes() == before
+
+
+def replace_source_preserving_common(root):
+    before = root.stat()
+    common = (root / ".git").stat()
+    moved = root.with_name("moved-source")
+    root.rename(moved)
+    root.mkdir()
+    (moved / ".git").rename(root / ".git")
+    assert (root.stat().st_dev, root.stat().st_ino) != (before.st_dev, before.st_ino)
+    assert ((root / ".git").stat().st_dev, (root / ".git").stat().st_ino) == (
+        common.st_dev,
+        common.st_ino,
+    )
+
+
+def test_source_binding_identity_survives_same_common_directory_replacement(tmp_path):
+    root, runtime, work = bootstrap(tmp_path)
+    original = inspect_project(root)
+    replace_source_preserving_common(root)
+    replacement = inspect_project(root)
+    assert replacement.project_id == original.project_id
+    assert replacement.root_identity != original.root_identity
+    with pytest.raises(WorkspaceError) as error:
+        validate_workspace(work, runtime_root=runtime)
+    assert error.value.code == "workspace_invalid"
+    assert work.source_identity == original.root_identity
+    rebound = prepare_worktree(replacement, runtime_root=runtime)
+    assert rebound.source_identity == replacement.root_identity
+    assert rebound.workspace_id == work.workspace_id
+    assert rebound.worktree_path == work.worktree_path
+    record = json.loads((work.common_git_dir / "plaza/workspace.json").read_text())
+    assert "source_identity" not in record
 
 
 @pytest.mark.parametrize(
@@ -332,7 +518,10 @@ def test_git_commands_have_finite_timeouts(tmp_path, monkeypatch):
 
     def run(args, **kwargs):
         if args[0] == "git":
-            timeouts.append(("worktree" in args and "add" in args, kwargs["timeout"]))
+            bootstrap_command = ("worktree" in args and "add" in args) or any(
+                command in args for command in ("read-tree", "checkout-index")
+            )
+            timeouts.append((bootstrap_command, kwargs["timeout"]))
         return original(args, **kwargs)
 
     monkeypatch.setattr(subprocess, "run", run)
