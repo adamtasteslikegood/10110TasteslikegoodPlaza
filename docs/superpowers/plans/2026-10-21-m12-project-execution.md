@@ -597,7 +597,7 @@ only where automatic discovery would violate their NPC-only assumptions.
 
 **Interfaces:** `DomainStore` is a RefCounted pure state object:
 `apply_packet(packet: Dictionary) -> Dictionary`,
-`admit_command(packet: Dictionary) -> bool`, `disconnect() -> void`,
+`admit_command(packet: Dictionary) -> bool`, `disconnect_connection() -> void`,
 `bind_project(project_id: String) -> void`, `snapshot(domain_id: String) -> Dictionary`,
 `set_draft(domain_id: String, text: String) -> bool`,
 `mark_read(domain_id: String, output_id: String) -> void`.
