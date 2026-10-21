@@ -648,7 +648,7 @@ newer live state. Fresh status discovery resolves remaining lifecycle uncertaint
 Add only GameEvents `workspace_changed(reason, request_id)` and
 `domain_changed(domain_id, reason, request_id)` with String parameters.
 
-- [ ] **Step 1 — Write failing pure-store and real-loopback transport scenes.**
+- [x] **Step 1 — Write failing pure-store and real-loopback transport scenes.**
   Assert copies cannot mutate store state; stale-generation replies cannot settle
   newer commands; domain packets never settle NPC requests; 200-entry/1 MiB bounds
   include drafts and retained generations; disconnect preserves uncertain work.
@@ -665,11 +665,11 @@ Add only GameEvents `workspace_changed(reason, request_id)` and
 
   Include live/replay interleaving, empty resume_complete, 64 KiB/+1 drafts,
   project switch, reconnect discovery, activating-generation Stop and corrupt data.
-- [ ] **Step 2 — Register positive-marker aliases and run red:**
+- [x] **Step 2 — Register positive-marker aliases and run red:**
   `python3 scripts/run_headless.py domain_store domain_transport`.
   Markers are `domain_store_test: OK — N checks passed.` and analogous transport,
   with N>0. Preserve the existing timeout/error detection.
-- [ ] **Step 3 — Implement demultiplexing and bounded snapshots.**
+- [x] **Step 3 — Implement demultiplexing and bounded snapshots.**
   Route workspace/domain types before NPC validation. Keep NPC maps/context
   untouched. Store project/session/workspace IDs, lifecycle/execution, pending
   query/control, draft, results, replay and consumed cursors, omitted count,
@@ -681,9 +681,9 @@ Add only GameEvents `workspace_changed(reason, request_id)` and
   preparing/reviewing/initializing. Rebinding a different project clears NPC and
   domain cached display/drafts before presenting new project state. Reconnect to
   the same project discovers and explicitly replays without Run retry.
-- [ ] **Step 4 — Run new scenes green** plus the existing transport/conversation
+- [x] **Step 4 — Run new scenes green** plus the existing transport/conversation
   store gates, checking existing signal arities and both kinds of pending request.
-- [ ] **Step 5 — Commit:**
+- [x] **Step 5 — Commit:**
   `git commit -m "feat(godot): track workspace and domain sessions (PLZG-289)"`.
 
 ### Task 8: Render explicit controls and preserve physical NPC interaction
