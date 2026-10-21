@@ -58,7 +58,7 @@ are now documented in [Quick start](../../QUICKSTART.md).
 
 `D-038`/`D-039` follow in doc set 0.2.17 on the owner's written M12 specification
 approval, 2026-10-21. They extend the configuration/workspace and project-state
-contracts; the implementation plan awaits owner review and runtime acceptance is not
+contracts; the implementation plan is owner-approved for subagent-driven execution and runtime acceptance is not
 claimed by this ratification.
 
 ## 1. Scope — what belongs in this document

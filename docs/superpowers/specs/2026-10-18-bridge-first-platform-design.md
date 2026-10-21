@@ -51,8 +51,8 @@ Architect triggers review and its confirmation authorizes setup without another
 human prompt. All agent tools pass a shared Git/worktree/memory readiness check. The
 [detailed M12 specification](2026-10-21-m12-domain-execution-design.md) is ACTIVE,
 with written approval recorded 2026-10-21 (`D-038`/`D-039`). Its
-[implementation plan](../plans/2026-10-21-m12-project-execution.md) awaits owner
-review and execution-method selection. Richer persistence and stronger execution isolation can be
+[implementation plan](../plans/2026-10-21-m12-project-execution.md) is owner-approved for
+subagent-driven execution. Richer persistence and stronger execution isolation can be
 resequenced or combined through an integrated provider; none is selected here.
 
 ## 1. Purpose and scope
@@ -116,7 +116,7 @@ dependencies, not a date forecast. None of M10–M15 is completed by this docume
 | M9 | Align platform direction and prototype wording | This written spec, roadmap and protocol distinguish implemented, planned and deferred behavior; documentation validation passes and the owner reviews the written spec. |
 | M10 | Central config and bounded local observability | Configuration precedence/validation, run manifests, per-agent transcripts, debug events, rotation, quota/age pruning and failure cases pass focused tests. |
 | M11 | Usable NPC conversations | Mouse resizing, viewport reflow, wheel/scrollbar/paging keys, focus behavior, A→B→A scrollback and late-response correlation meet §7 tests. |
-| M12 | Configured project, worktree bootstrap, three-file memory and domain execution | Create/reuse a dedicated worktree, initialize non-Git projects only after Chief Architect confirmation, and persist isolated project notes. Godot backgrounds/refocuses real SDK work and consumes results; a plain client exercises the same protocol. Written specification approved 2026-10-21; implementation plan awaits review. |
+| M12 | Configured project, worktree bootstrap, three-file memory and domain execution | Create/reuse a dedicated worktree, initialize non-Git projects only after Chief Architect confirmation, and persist isolated project notes. Godot backgrounds/refocuses real SDK work and consumes results; a plain client exercises the same protocol. Written specification approved 2026-10-21; implementation plan approved for subagent-driven execution. |
 | M13 | Local durable workspace state | User/project/domain-scoped conversations and execution metadata survive restart/reconnect; application-history restoration and SDK-task recovery are tested and reported separately. |
 | M14 | Independent execution workspaces beyond M12's minimum | Domain work executes in assigned worktrees inside its project; concurrent changes stay isolated and can be reviewed for integration. |
 | M15 | Authenticated durable service | Authenticated ownership, isolation and recovery work across processes/devices; select the managed durability provider in that milestone's design. |

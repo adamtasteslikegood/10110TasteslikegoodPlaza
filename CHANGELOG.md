@@ -24,7 +24,7 @@ spec-set versions, and no application release existed before `v0.1.22`.
   dedicated worktree reservation and tool readiness checks (`D-038`), plus
   native three-file repository memory (`D-039`), in doc set `0.2.17`.
 - Add the [M12 implementation plan](docs/superpowers/plans/2026-10-21-m12-project-execution.md)
-  for owner review and execution-method selection. The approved scope includes
+  approved by the owner for subagent-driven execution on 2026-10-21. The approved scope includes
   explicit Start/Run, background work, client parity and NPC referrals to the
   Chief Architect. Runtime implementation and M12 acceptance remain pending.
 - Record the owner's 2026-10-21 laptop acceptance of M10/M11 with Claude

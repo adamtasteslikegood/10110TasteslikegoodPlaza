@@ -640,7 +640,7 @@ approved workspace/bootstrap/readiness and project-memory policies in
 `PLATFORM-DECISIONS` and its decision register, with doc set 0.2.17.
 The [implementation plan](../plans/2026-10-21-m12-project-execution.md) splits
 configuration/bootstrap, project memory, workspace/SDK ownership, protocol, Godot
-and verification tasks. The written plan awaits owner review and execution-method
+and verification tasks. The written plan is owner-approved for subagent-driven execution and execution-method
 selection before runtime implementation. Minimum-now versus scalable-later scope
 remains explicit.
 
