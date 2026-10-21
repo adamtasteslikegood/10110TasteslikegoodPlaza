@@ -617,19 +617,42 @@ def test_truncated_grammar_is_a_public_memory_failure(memory, name):
         store.initialize()
 
 
-def test_overly_nested_json_is_a_public_memory_failure(memory):
+@pytest.mark.parametrize(
+    "operation", ["load", "initialize", "finish_turn", "checkpoint_lifecycle"]
+)
+def test_decoder_recursion_preserves_public_failure_contract(memory, operation):
+    from bridge.workspace import _decode
+
     module, store = memory
-    store.initialize()
-    path = paths(store) / "TODO.md"
-    path.write_text(
-        '<!-- plaza-memory:v1 {"nested":'
-        + "[" * 5000
-        + "0"
-        + "]" * 5000
-        + "} -->\n# TODO\n<!-- plaza-state:{} -->\n"
-    )
-    with pytest.raises(module.MemoryError):
-        store.load()
+    turn = start(module, store)
+    nested_json = '{"nested":' + "[" * 16000 + "0" + "]" * 16000 + "}"
+    # Prove decoder exhaustion rather than merely reaching schema validation.
+    with pytest.raises(RecursionError):
+        _decode(nested_json.encode("utf-8"))
+    malformed = (
+        "<!-- plaza-memory:v1 "
+        + nested_json
+        + " -->\n# Progress\n## Older recap\n<!-- plaza-recap:{} -->\nx\n"
+    ).encode("utf-8")
+    assert len(malformed) == 32090 < 32768
+    (paths(store) / "PROGRESS.md").write_bytes(malformed)
+    before = {path: path.read_bytes() for path in paths(store).glob("*.md")}
+    if operation in {"load", "initialize"}:
+        with pytest.raises(module.MemoryError) as raised:
+            getattr(store, operation)()
+        assert raised.value.code == "memory_unavailable"
+    else:
+        result = (
+            store.finish_turn(turn.turn_id, outcome="success", output="ok", delta=None)
+            if operation == "finish_turn"
+            else store.checkpoint_lifecycle(
+                domain_id="architecture",
+                domain_session_id="generation",
+                event="background",
+            )
+        )
+        assert result == module.MemorySaveResult(False, None, "memory_unavailable")
+    assert {path: path.read_bytes() for path in before} == before
 
 
 def test_largest_valid_delta_remains_loadable(memory):

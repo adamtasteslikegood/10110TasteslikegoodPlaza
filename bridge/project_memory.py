@@ -93,11 +93,18 @@ def _comment(label, value):
     return f"<!-- plaza-{label}:{_json(value)} -->"
 
 
+def _metadata(data):
+    try:
+        return _decode(data)
+    except RecursionError:
+        raise _error() from None
+
+
 def _parse_comment(line, label):
     prefix = f"<!-- plaza-{label}:"
     if not line.startswith(prefix) or not line.endswith(" -->"):
         raise ValueError("invalid memory comment")
-    return _decode(line[len(prefix) : -4].encode("utf-8"))
+    return _metadata(line[len(prefix) : -4].encode("utf-8"))
 
 
 def _text(value, cap, *, nonempty=False):
@@ -309,7 +316,7 @@ class ProjectMemoryStore:
         prefix = "<!-- plaza-memory:v1 "
         if not lines[0].startswith(prefix) or not lines[0].endswith(" -->"):
             raise ValueError("invalid memory header")
-        header = _decode(lines[0][len(prefix) : -4].encode("utf-8"))
+        header = _metadata(lines[0][len(prefix) : -4].encode("utf-8"))
         if (
             set(header) != {"project_id", "revision", "kind"}
             or header["project_id"] != self.workspace.project_id
@@ -479,7 +486,7 @@ class ProjectMemoryStore:
     def _check_marker(self, owner, *, missing=False):
         _, marker = self._run_paths(owner)
         try:
-            value = _decode(files.read_regular(marker, max_bytes=1024))
+            value = _metadata(files.read_regular(marker, max_bytes=1024))
         except FileNotFoundError:
             if missing:
                 return
