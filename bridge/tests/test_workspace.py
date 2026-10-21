@@ -209,6 +209,61 @@ def test_bootstrap_never_executes_external_checkout_filter(
     assert config_path.read_bytes() == original_config
 
 
+@pytest.mark.parametrize("driver", ["smudge", "process"])
+def test_bootstrap_rejects_equals_filter_without_executing_it(tmp_path, driver):
+    root = repository(tmp_path)
+    (root / ".gitattributes").write_text("tracked.txt filter=review=name\n")
+    git(root, "add", ".gitattributes")
+    git(root, "commit", "-m", "equals filter attribute")
+    runtime, script = checkout_sentinels(tmp_path, root)
+    sentinel = tmp_path / "filter-ran"
+    script.write_text(
+        script.read_text() + f"\nPath({str(sentinel)!r}).write_text('executed')\n"
+    )
+    command = f"{shlex.quote(sys.executable)} {shlex.quote(str(script))}"
+    git(root, "config", f"filter.review=name.{driver}", command)
+    git(root, "config", "filter.review=name.required", "true")
+    original_config = (root / ".git/config").read_bytes()
+    caught = None
+    try:
+        prepare_worktree(inspect_project(root), runtime_root=runtime)
+    except WorkspaceError as error:
+        caught = error
+    assert not sentinel.exists()
+    assert (root / "tracked.txt").read_text() == "unsaved source sentinel\n"
+    assert (runtime / "sentinel.txt").read_text() == "runtime unchanged\n"
+    assert caught is not None and caught.code == "workspace_invalid"
+    assert (root / ".git/config").read_bytes() == original_config
+    record = json.loads((root / ".git/plaza/workspace.json").read_text())
+    assert record["state"] == "creating"
+
+
+def test_safe_status_rejects_equals_clean_filter_without_executing_it(tmp_path):
+    root, runtime, work = bootstrap(tmp_path)
+    runtime, script = checkout_sentinels(tmp_path, root)
+    (work.worktree_path / ".gitattributes").write_text(
+        "tracked.txt filter=review=name\n"
+    )
+    (work.worktree_path / "tracked.txt").write_text("changed execution bytes\n")
+    sentinel = tmp_path / "clean-filter-ran"
+    script.write_text(
+        script.read_text() + f"\nPath({str(sentinel)!r}).write_text('executed')\n"
+    )
+    command = f"{shlex.quote(sys.executable)} {shlex.quote(str(script))}"
+    git(root, "config", "filter.review=name.clean", command)
+    original_config = (root / ".git/config").read_bytes()
+    caught = None
+    try:
+        ws.git_without_filters(work.worktree_path, "status", "--porcelain", "-z")
+    except WorkspaceError as error:
+        caught = error
+    assert not sentinel.exists()
+    assert (root / "tracked.txt").read_text() == "unsaved source sentinel\n"
+    assert (runtime / "sentinel.txt").read_text() == "runtime unchanged\n"
+    assert caught is not None and caught.code == "workspace_invalid"
+    assert (root / ".git/config").read_bytes() == original_config
+
+
 def test_unused_global_lfs_filter_does_not_block_ordinary_project(
     tmp_path, monkeypatch
 ):

@@ -92,6 +92,8 @@ def git_without_filters(root: Path, *args: str, timeout: int = 5) -> str:
     Use this blocking helper for later changed-file discovery as well as checkout:
     ordinary ``git status`` can execute clean/process filters and fsmonitor hooks.
     The caller must provide the validated checkout top-level as ``root``.
+    Driver names containing '=' fail closed: Git's ``-c key=value`` transport
+    cannot represent those complete keys without splitting the subsection.
     """
     try:
         keys = _git(
@@ -107,6 +109,8 @@ def git_without_filters(root: Path, *args: str, timeout: int = 5) -> str:
             raise
         keys = ""
     names = sorted({key.rsplit(".", 1)[0] for key in keys.split("\0") if key})
+    if any("=" in name for name in names):
+        raise _invalid("Git filter driver name cannot be safely overridden")
     overrides = [f"core.worktree={root}"]
     for name in names:
         overrides.extend(
