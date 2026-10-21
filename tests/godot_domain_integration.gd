@@ -19,9 +19,13 @@ var run_request := ""
 var finished := false
 var control := ""
 var run_id := ""
+var live_mode := false
+var wait_msec := 12000
 
 func _ready() -> void:
-	get_tree().create_timer(60).timeout.connect(func():
+	live_mode = OS.get_environment("PLAZA_M12_LIVE") == "1"
+	if live_mode: wait_msec = 100000
+	get_tree().create_timer(400 if live_mode else 60).timeout.connect(func():
 		check(false, "physical integration watchdog")
 		finish())
 	control = OS.get_environment("PLAZA_M12_CONTROL")
@@ -91,7 +95,8 @@ func _ready() -> void:
 		return
 	generation = BridgeClient.domain_snapshot("engineering").domain_session_id
 	var task_input: LineEdit = hud.get_node("Panel/Scroll/Rows/TaskInput")
-	task_input.text = "execute integration sentinel"
+	task_input.text = FileAccess.get_file_as_string(control.path_join("task.txt")) if live_mode else "execute integration sentinel"
+	if live_mode: check(not task_input.text.is_empty(), "execution task supplied")
 	task_input.text_changed.emit(task_input.text)
 	task_input.grab_focus()
 	await key(KEY_ENTER)
@@ -120,7 +125,10 @@ func _ready() -> void:
 	var npc_payload := domain_identity()
 	npc_payload.merge(unrelated)
 	npc_payload.execution_state = BridgeClient.domain_snapshot("engineering").execution_state
-	check(unrelated.assistant == "unrelated core NPC reply gull" and not unrelated.assistant.contains("ibis"), "separate current NPC assistant span")
+	if live_mode:
+		check(not unrelated.assistant.is_empty(), "live separate current NPC assistant span")
+	else:
+		check(unrelated.assistant == "unrelated core NPC reply gull" and not unrelated.assistant.contains("ibis"), "separate current NPC assistant span")
 	await stage("npc_rendered", npc_payload)
 	await key(KEY_ESCAPE)
 	if not await until(func(): return has_ack("domain_result", run_request)):
@@ -258,7 +266,7 @@ func frames(n: int = 3) -> void:
 	for i in n: await get_tree().process_frame
 
 func until(predicate: Callable) -> bool:
-	var deadline := Time.get_ticks_msec() + 12000
+	var deadline := Time.get_ticks_msec() + wait_msec
 	while Time.get_ticks_msec() < deadline:
 		if predicate.call(): return true
 		await get_tree().process_frame
