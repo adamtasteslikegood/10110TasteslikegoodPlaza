@@ -178,7 +178,11 @@ class ProjectService:
 
         await owned_io(prepare)
         self._snapshot.update(stage="ready", reason=None)
-        await self.refresh_snapshot()
+        snapshot = await self.refresh_snapshot()
+        if snapshot["stage"] != "ready":
+            raise WorkspaceError(
+                snapshot["reason"], "Final workspace observation failed"
+            )
 
     async def interact_setup(self, agent_id, request_id, *, deadline=None):
         stage = self._snapshot["stage"]

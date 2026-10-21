@@ -146,6 +146,67 @@ async def test_setup_save_failure_preserves_repository_and_never_reinitializes(
 
 
 @pytest.mark.asyncio
+async def test_final_setup_observation_failure_reports_failure_without_retry(
+    tmp_path, monkeypatch
+):
+    import subprocess
+    from unittest.mock import Mock
+
+    from bridge import project_service
+    from bridge.tests.test_workspace import git
+    from bridge.workspace import WorkspaceError
+
+    root = tmp_path / "project"
+    root.mkdir()
+    decisions = []
+
+    async def review(proposal):
+        decision = dict(
+            proposal_id=proposal.proposal_id,
+            digest=proposal.digest,
+            approved=True,
+            reason="Approved seed before final observation",
+        )
+        decisions.append(decision)
+        return decision
+
+    initialize = Mock(wraps=project_service.initialize_repository)
+    monkeypatch.setattr(project_service, "initialize_repository", initialize)
+    status = Mock(side_effect=subprocess.TimeoutExpired("git status", 5))
+    monkeypatch.setattr(project_service, "git_without_filters", status)
+    service = project_service.ProjectService(
+        replace(default_config(), workspace_root_dir=root),
+        runtime_root=tmp_path / "runtime",
+        owner_run_id="run",
+        reviewer=review,
+    )
+    await settled(service)
+    try:
+        reply = await service.interact_setup("systems-architect", "first")
+        snapshot = service.snapshot()
+        assert snapshot["stage"] == "failed"
+        assert snapshot["reason"] == "workspace_invalid"
+        assert "Project setup failed: workspace_invalid" in reply
+        assert "are ready" not in reply
+        assert snapshot["architect_decision"] == decisions[0]
+        assert snapshot["memory"]["status"] == "saved"
+        commit = git(root, "rev-parse", "HEAD")
+        checkpoint = service._memory.load()
+        assert decisions[0]["reason"] in checkpoint.progress
+        assert commit in checkpoint.progress
+        with pytest.raises(WorkspaceError, match="Chief Architect") as error:
+            service.require_workspace()
+        assert error.value.code == "workspace_not_ready"
+        retry = await service.interact_setup("systems-architect", "second")
+        assert "operator inspection" in retry
+        assert git(root, "rev-parse", "HEAD") == commit
+        assert service._memory.load().progress == checkpoint.progress
+        assert len(decisions) == initialize.call_count == status.call_count == 1
+    finally:
+        await service.close()
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("decision", ["denied", "wrong_id", "extra_key", "not_boolean"])
 async def test_invalid_chief_decisions_never_mutate_git(tmp_path, decision):
     from bridge.project_service import ProjectService
