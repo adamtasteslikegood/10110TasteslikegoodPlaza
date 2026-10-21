@@ -847,6 +847,18 @@ preserves four failed reports and concrete corrections. Step 4 stays open for
 owner desktop/laptop-binary acceptance and final review; Step 5 stays open for
 external delivery/merge and milestone acceptance. No M12/Jira closure is implied.
 
+**Final correction evidence, 2026-10-21:** commits `54883c0` and `73fcfc5`
+address the eight whole-branch review findings. The full deterministic gate passed
+1,674 Python tests plus 118 subtests and pinned Godot/npm gates; the subsequent
+output-checkpoint correction passed 361 covering tests. The
+[final guard matrix](../../../specs/evidence/m12-guard-final-2026-10-21.json)
+passed all 29 cases and now supplies the exact fixed activation manifest. Its
+[attempt ledger](../../../specs/evidence/m12-guard-final-attempts-2026-10-21.json)
+preserves the prior max-turns failure and the deliberate unchanged-source second
+attempt. All historical live reports remain unchanged. Desktop/laptop acceptance
+and milestone closure are still open; these observations do not mark Steps 4–5
+complete.
+
 ## Controller handoff
 
 Recommended execution: **subagent-driven**, with one builder and fresh review per

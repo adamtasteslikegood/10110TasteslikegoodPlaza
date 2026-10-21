@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "milestone": "M12",
+  "date": "2026-10-21",
+  "source_commit": "73fcfc5ac55ffbd169a849fbc8c0a6b9d16e3aba",
+  "auth_category": "API key",
+  "purpose": "Fresh exact-source guard after final review changed the probe output preflight/publication; historical live evidence remains bound to c128b54.",
+  "attempts": [
+    {
+      "attempt": 1,
+      "artifact": "specs/evidence/m12-guard-final-2026-10-21-attempt1.json",
+      "sha256": "35fb684d6f964fc70146be78d0376694af61fcb4e1ea326dfab4e54172f564b4",
+      "exit_code": 1,
+      "accepted": false,
+      "observed_cases": 7,
+      "reported_cost_usd": 0.1846675,
+      "errors": [
+        "Required matrix is incomplete or duplicated",
+        "edit_exception: Malformed terminal observation"
+      ]
+    },
+    {
+      "attempt": 2,
+      "artifact": "specs/evidence/m12-guard-final-2026-10-21.json",
+      "sha256": "6611fd8369418f2f57aabaa14f1545af36dc55df41acc39bbe449460e6439552",
+      "exit_code": 0,
+      "accepted": true,
+      "observed_cases": 29,
+      "reported_cost_usd": 0.72207375,
+      "errors": []
+    }
+  ],
+  "decision": "Attempt 1 denied Edit and cleaned up, but repeated Reads exhausted the unchanged four-turn cap. One further full matrix was deliberately authorized after inspection, with unchanged sources, prompts, limits and validator. No automatic retry loop or acceptance relaxation.",
+  "activation": {
+    "path": "bridge/tool_guard_acceptance.json",
+    "byte_identical_to": "specs/evidence/m12-guard-final-2026-10-21.json",
+    "sha256": "6611fd8369418f2f57aabaa14f1545af36dc55df41acc39bbe449460e6439552"
+  },
+  "versions": {
+    "sdk": "0.2.136",
+    "anyio": "4.14.2",
+    "cli": "2.1.228 (Claude Code)"
+  },
+  "cli_sha256": "d535985e6941a3eb00179ccd7f52ceb0c6623a0305a518ebc4e6514f84a94c99",
+  "source_sha256": {
+    "bridge/readiness.py": "d450db937467af34b9c4882b9d822f0235e4ed2d7034973c569297f8bb4f0c21",
+    "bridge/guarded_transport.py": "e5d6b4a1af15be7ce031b08d30a9bf232fd963bb143339cb201035d355211c68",
+    "bridge/domain_sdk.py": "3422d5228a4511a002bf706f86981711953ca8d672b92daf8787ef91a74d9d23",
+    "bridge/tool_guard_evidence.py": "d3fb3e6b10c6236b16bcd9da30b96f422d18fce05d6971da5ab65bdca38dd9ed",
+    "scripts/m12_tool_guard_probe.py": "63ef4b700e0cd8689193fcbda6581ac268e1fa9e18c154424982cbffbe0df5b9"
+  }
+}

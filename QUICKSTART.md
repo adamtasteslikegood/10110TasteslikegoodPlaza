@@ -524,6 +524,16 @@ retries ran. The successful result/notes and every failed artifact tree remain
 preserved; the evidence includes their exact paths. Linux headless evidence does
 not complete M12 or establish another laptop binary or desktop behavior.
 
+After the final review corrections at `73fcfc5`, a [fresh final guard matrix](specs/evidence/m12-guard-final-2026-10-21.json)
+passed all 29 cases against the changed probe source. The fixed activation manifest
+is byte-identical to that inspected report; runtime source/version/binary validation
+passes. Its reported cost was USD 0.72207375. The [final guard attempt ledger](specs/evidence/m12-guard-final-attempts-2026-10-21.json)
+retains an earlier seven-case failure (USD 0.1846675): Edit was denied and cleanup
+completed, but repeated Reads exhausted the four-turn case limit. One further full
+attempt was deliberately authorized after inspection, with unchanged sources,
+prompts, caps and validator. The failed report remains failed. This refresh does
+not re-date the historical live flow or establish laptop/desktop acceptance.
+
 The bounded runners are deliberate paid operations with **no automatic retries**:
 
 ```bash
