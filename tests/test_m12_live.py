@@ -983,3 +983,136 @@ def test_malformed_or_oversized_proof_returns_failure_without_unbounded_traversa
     else:
         record["extra"] = float("nan")
     assert module().validate_evidence(record)
+
+
+@pytest.mark.parametrize(
+    "kind",
+    [
+        "external-symlink",
+        "dangling-symlink",
+        "directory",
+        "fifo",
+        "oversize",
+        "symlink-parent",
+    ],
+)
+def test_result_reader_rejects_wrong_location_or_nonregular_file(tmp_path, kind):
+    import os
+
+    mod = module()
+    execution = tmp_path / "execution"
+    execution.mkdir()
+    result = execution / mod.RESULT
+    if kind == "external-symlink":
+        external = tmp_path / "outside"
+        external.write_bytes(b"m12-nonce")
+        result.symlink_to(external)
+    elif kind == "dangling-symlink":
+        result.symlink_to(tmp_path / "missing")
+    elif kind == "directory":
+        result.mkdir()
+    elif kind == "fifo":
+        os.mkfifo(result)
+    elif kind == "oversize":
+        result.write_bytes(b"x" * 65537)
+    else:
+        actual = tmp_path / "actual"
+        actual.mkdir()
+        execution.rmdir()
+        execution.symlink_to(actual, target_is_directory=True)
+        result.write_bytes(b"m12-nonce")
+    with pytest.raises(mod.AcceptanceError):
+        mod.read_result(execution)
+
+
+def test_result_reader_accepts_exact_regular_file(tmp_path):
+    mod = module()
+    (tmp_path / mod.RESULT).write_bytes(b"m12-nonce")
+    assert mod.read_result(tmp_path) == b"m12-nonce"
+
+
+def test_final_preservation_rejects_matching_nonce_outside_execution(tmp_path):
+    mod = module()
+    from bridge.tests.test_workspace import repository
+    from bridge.workspace import inspect_project, prepare_worktree
+    from bridge.project_memory import ProjectMemoryStore
+
+    project = repository(tmp_path)
+    runtime = tmp_path / "runtime"
+    runtime.mkdir()
+    work = prepare_worktree(inspect_project(project), runtime_root=runtime)
+    snapshot = ProjectMemoryStore(work).initialize()
+    external = tmp_path / "external-result"
+    external.write_bytes(b"m12-nonce")
+    (work.worktree_path / mod.RESULT).symlink_to(external)
+    with pytest.raises(mod.AcceptanceError):
+        mod.assert_a_unchanged(
+            work, {"context": snapshot.as_context()}, mod.sha(b"m12-nonce")
+        )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "destination",
+    ["missing-parent", "existing", "dangling-symlink", "unwritable-parent"],
+)
+async def test_live_rejects_invalid_output_before_runtime_or_child(
+    tmp_path, monkeypatch, destination
+):
+    from bridge import domain_sdk
+
+    mod = module()
+    output = tmp_path / "report.json"
+    if destination == "unwritable-parent":
+        if not Path("/proc").is_dir():
+            pytest.skip("requires the read-only Linux proc filesystem")
+        output = Path("/proc") / (tmp_path.name + "-m12-report.json")
+    elif destination == "missing-parent":
+        output = tmp_path / "missing" / "report.json"
+    elif destination == "existing":
+        output.write_bytes(b"prior evidence")
+    else:
+        output.symlink_to(tmp_path / "missing-target")
+    entered = []
+
+    def runtime():
+        entered.append("runtime")
+        raise AssertionError("invalid output entered runtime")
+
+    monkeypatch.setattr(domain_sdk, "_verify_runtime", runtime)
+
+    async def start(*args):
+        entered.append("child")
+        raise AssertionError("invalid output entered child")
+
+    monkeypatch.setattr(mod.LiveLifetime, "start", start)
+    with pytest.raises((OSError, ValueError)):
+        await mod.main(output)
+    assert not entered
+    if destination == "existing":
+        assert output.read_bytes() == b"prior evidence"
+
+
+def test_result_reader_rejects_symlink_substitution_at_open(tmp_path, monkeypatch):
+    import os
+
+    mod = module()
+    result = tmp_path / mod.RESULT
+    result.write_bytes(b"m12-nonce")
+    external = tmp_path / "external"
+    external.write_bytes(b"m12-nonce")
+    actual_open = os.open
+    substituted = []
+
+    def substitute(path, flags, *args, **kwargs):
+        if path == mod.RESULT and kwargs.get("dir_fd") is not None:
+            result.unlink()
+            result.symlink_to(external)
+            substituted.append(True)
+        return actual_open(path, flags, *args, **kwargs)
+
+    monkeypatch.setattr(os, "open", substitute)
+    with pytest.raises(mod.AcceptanceError):
+        mod.read_result(tmp_path)
+    assert substituted == [True] and result.is_symlink()
+    assert external.read_bytes() == b"m12-nonce"

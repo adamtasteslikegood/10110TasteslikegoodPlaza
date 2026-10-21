@@ -19,6 +19,7 @@ import re
 import shlex
 import shutil
 import signal
+import stat
 import subprocess
 import sys
 import tempfile
@@ -27,6 +28,8 @@ from types import SimpleNamespace
 from uuid import uuid4
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from scripts.evidence_output import FreshEvidenceOutput
 
 ROOT = Path(__file__).resolve().parents[1]
 RESULT = "m12-result.txt"
@@ -101,6 +104,77 @@ def write_json(path, value):
     temporary = path.with_suffix(path.suffix + ".tmp")
     temporary.write_text(json.dumps(value, indent=2, allow_nan=False) + "\n")
     temporary.replace(path)
+
+
+def read_result(execution):
+    """Read only the bounded regular result at the canonical execution location."""
+    execution = Path(execution).absolute()
+    directory_fd = result_fd = None
+    try:
+        require(
+            execution.resolve(strict=True) == execution,
+            "result parent is not canonical",
+        )
+        directory_fd = os.open(execution, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+        parent = os.fstat(directory_fd)
+        current_parent = execution.stat(follow_symlinks=False)
+        require(
+            (parent.st_dev, parent.st_ino)
+            == (current_parent.st_dev, current_parent.st_ino),
+            "result parent changed",
+        )
+        before = os.stat(RESULT, dir_fd=directory_fd, follow_symlinks=False)
+        require(
+            stat.S_ISREG(before.st_mode), "result must be a regular non-symlink file"
+        )
+        result_fd = os.open(
+            RESULT, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=directory_fd
+        )
+        opened = os.fstat(result_fd)
+        require(
+            stat.S_ISREG(opened.st_mode)
+            and (before.st_dev, before.st_ino) == (opened.st_dev, opened.st_ino)
+            and opened.st_size <= 65536,
+            "result file changed or exceeds its bound",
+        )
+        chunks, size = [], 0
+        while True:
+            chunk = os.read(result_fd, min(8192, 65537 - size))
+            if not chunk:
+                break
+            chunks.append(chunk)
+            size += len(chunk)
+            require(size <= 65536, "result file exceeds its bound")
+        after = os.fstat(result_fd)
+        current = os.stat(RESULT, dir_fd=directory_fd, follow_symlinks=False)
+        require(
+            (
+                opened.st_dev,
+                opened.st_ino,
+                opened.st_size,
+                opened.st_mtime_ns,
+                opened.st_ctime_ns,
+            )
+            == (
+                after.st_dev,
+                after.st_ino,
+                after.st_size,
+                after.st_mtime_ns,
+                after.st_ctime_ns,
+            )
+            and (current.st_dev, current.st_ino) == (after.st_dev, after.st_ino)
+            and execution.resolve(strict=True) == execution
+            and execution.stat(follow_symlinks=False) == current_parent,
+            "result location or content changed while reading",
+        )
+        return b"".join(chunks)
+    except OSError as error:
+        raise AcceptanceError("result location is unavailable or unsafe") from error
+    finally:
+        if result_fd is not None:
+            os.close(result_fd)
+        if directory_fd is not None:
+            os.close(directory_fd)
 
 
 def read_json(path):
@@ -1046,7 +1120,7 @@ async def initial(life, report):
                     tool_receipts=client["tool_receipts"],
                     sdk=client,
                 )
-                data = gate.result_path.read_bytes()
+                data = read_result(gate.result_path.parent)
                 require(
                     data.decode() == result["nonce"], "result file differs from nonce"
                 )
@@ -1259,7 +1333,7 @@ async def readback(life, report, scenario):
                 notes_in_query=True,
                 nonce_not_in_task=True,
                 notes_readback=True,
-                result_unchanged=sha((Path(a["worktree_path"]) / RESULT).read_bytes())
+                result_unchanged=sha(read_result(Path(a["worktree_path"])))
                 == a["result_sha256"],
             )
         else:
@@ -2515,22 +2589,22 @@ def assert_a_unchanged(workspace, expected_notes, expected_result_hash):
     actual = ProjectMemoryStore(workspace).load()
     require(
         actual.as_context() == expected_notes["context"]
-        and sha((workspace.worktree_path / RESULT).read_bytes())
-        == expected_result_hash,
+        and sha(read_result(workspace.worktree_path)) == expected_result_hash,
         "repository A changed after its final closed snapshot",
     )
     return True
 
 
 async def main(output):
+    with FreshEvidenceOutput(output) as destination:
+        return await _run(destination)
+
+
+async def _run(output):
     from bridge.domain_sdk import _verify_runtime, GUARD_SOURCES
     from bridge.workspace import git_without_filters
     import claude_agent_sdk
 
-    require(
-        not output.exists(),
-        "output already exists; preserve evidence and choose a fresh path",
-    )
     artifacts = Path(tempfile.mkdtemp(prefix="plaza-m12-live-"))
     report = dict(
         schema_version=1,
@@ -2675,13 +2749,13 @@ async def main(output):
         )
         report["accepted"] = not report["errors"]
         sanitized = sanitize_evidence(report)
-        write_json(output, sanitized)
+        output.publish_json(sanitized)
         print(
             json.dumps(
                 dict(
                     accepted=report["accepted"],
                     errors=report["errors"],
-                    output=str(output),
+                    output=str(output.path),
                     artifacts=str(artifacts),
                 )
             ),
@@ -2726,4 +2800,4 @@ if __name__ == "__main__":
         asyncio.run(bridge_child(args.child, args.control, args.run_id))
     else:
         parser.error("--output is required") if not args.output else None
-        raise SystemExit(asyncio.run(main(args.output.resolve())))
+        raise SystemExit(asyncio.run(main(args.output.absolute())))

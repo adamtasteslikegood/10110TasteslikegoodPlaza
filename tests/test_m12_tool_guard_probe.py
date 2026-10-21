@@ -382,3 +382,92 @@ def test_execution_ids_cannot_contradict_false_execution_summary(field):
     record = complete_case("bash_deny")
     record[field] = ["tool-id"]
     assert module().case_errors(record)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "destination",
+    ["missing-parent", "existing", "dangling-symlink", "unwritable-parent"],
+)
+async def test_guard_rejects_invalid_output_before_case(
+    tmp_path, monkeypatch, destination
+):
+    mod = module()
+    output = tmp_path / "report.json"
+    if destination == "unwritable-parent":
+        if not Path("/proc").is_dir():
+            pytest.skip("requires the read-only Linux proc filesystem")
+        output = Path("/proc") / (tmp_path.name + "-m12-report.json")
+    elif destination == "missing-parent":
+        output = tmp_path / "missing" / "report.json"
+    elif destination == "existing":
+        output.write_bytes(b"prior evidence")
+    else:
+        output.symlink_to(tmp_path / "missing-target")
+    entered = []
+
+    async def run_case(name, cli):
+        entered.append(name)
+        return complete_case(name)
+
+    monkeypatch.setattr(mod, "run_case", run_case)
+    with pytest.raises((OSError, ValueError)):
+        await mod.main(output)
+    assert not entered
+    if destination == "existing":
+        assert output.read_bytes() == b"prior evidence"
+
+
+@pytest.mark.asyncio
+async def test_guard_preserves_incomplete_report_after_case_exception(
+    tmp_path, monkeypatch
+):
+    import json
+
+    mod = module()
+    entered = []
+
+    async def run_case(name, cli):
+        entered.append(name)
+        raise RuntimeError("private case diagnostic")
+
+    monkeypatch.setattr(mod, "run_case", run_case)
+    output = tmp_path / "failed.json"
+    assert await mod.main(output) == 1
+    report = json.loads(output.read_bytes())
+    assert entered == ["read_ready"] and report["accepted"] is False
+    assert report["cases"] == [] and report["errors"]
+    assert "private case diagnostic" not in output.read_text()
+
+
+@pytest.mark.asyncio
+async def test_guard_stages_completed_case_before_entering_next(tmp_path, monkeypatch):
+    import json
+
+    mod = module()
+    entered, snapshots = [], []
+
+    async def run_case(name, cli):
+        entered.append(name)
+        if len(entered) == 2:
+            staged = list(tmp_path.glob(".report.json.*.tmp"))
+            assert len(staged) == 1
+            snapshots.append(staged[0].read_bytes())
+        record = complete_case(name)
+        if len(entered) == 2:
+            record["errors"] = ["injected stop after two cases"]
+        return record
+
+    monkeypatch.setattr(mod, "run_case", run_case)
+    output = tmp_path / "report.json"
+    assert await mod.main(output) == 1
+    assert (
+        snapshots and snapshots[0]
+    ), "completed paid-case observations must be staged before the next case"
+    assert [case["name"] for case in json.loads(snapshots[0])["cases"]] == [
+        "read_ready"
+    ]
+    assert [case["name"] for case in json.loads(output.read_bytes())["cases"]] == [
+        "read_ready",
+        "read_deny",
+    ]

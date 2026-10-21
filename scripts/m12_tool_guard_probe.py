@@ -40,6 +40,8 @@ from claude_agent_sdk.types import (
     UserMessage,
 )
 
+from scripts.evidence_output import FreshEvidenceOutput
+
 from bridge.config import load_config
 from bridge.domain_sdk import (
     DomainSDKOwner,
@@ -549,6 +551,11 @@ async def run_case(name, cli):
 
 
 async def main(output):
+    with FreshEvidenceOutput(output) as destination:
+        return await _run(destination)
+
+
+async def _run(output):
     import claude_agent_sdk
 
     cli = Path(claude_agent_sdk.__file__).parent / "_bundled/claude"
@@ -581,28 +588,38 @@ async def main(output):
             for name in GUARD_SOURCES
         },
     }
-    if evidence["versions"] == VERSIONS:
-        for name in REQUIRED_CASES:
-            record = await run_case(name, str(cli))
-            evidence["cases"].append(record)
-            output.write_text(json.dumps(evidence, indent=2) + "\n")
-            print(
-                json.dumps(
-                    {
-                        "case": name,
-                        "errors": record["errors"],
-                        "seconds": record["seconds"],
-                    }
-                ),
-                flush=True,
-            )
-            # No automatic retries/fallback; stop on bypass, runtime failure or
-            # missing coverage and retain an explicitly incomplete matrix.
-            if record["errors"]:
-                break
-    evidence["errors"] = validate_evidence(evidence)
-    evidence["accepted"] = not evidence["errors"]
-    output.write_text(json.dumps(evidence, indent=2) + "\n")
+    failure = None
+    try:
+        if evidence["versions"] == VERSIONS:
+            for name in REQUIRED_CASES:
+                record = await run_case(name, str(cli))
+                evidence["cases"].append(record)
+                # Keep paid-case observations on disk during the next case;
+                # the public destination is claimed only by final publication.
+                output.checkpoint_json(evidence)
+                print(
+                    json.dumps(
+                        {
+                            "case": name,
+                            "errors": record["errors"],
+                            "seconds": record["seconds"],
+                        }
+                    ),
+                    flush=True,
+                )
+                # No automatic retries/fallback; stop on bypass, runtime failure or
+                # missing coverage and retain an explicitly incomplete matrix.
+                if record["errors"]:
+                    break
+    except BaseException as error:
+        # Preserve the partial matrix, without publishing private diagnostics.
+        failure = "probe interrupted: " + type(error).__name__
+    finally:
+        evidence["errors"] = validate_evidence(evidence)
+        if failure:
+            evidence["errors"].append(failure)
+        evidence["accepted"] = not evidence["errors"]
+        output.publish_json(evidence)
     return 0 if evidence["accepted"] else 1
 
 

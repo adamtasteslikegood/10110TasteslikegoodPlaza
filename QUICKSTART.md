@@ -195,6 +195,13 @@ not establish safe reuse. Stable lock inodes normally remain after clean Stop.
 Never apply blanket lock/marker deletion, `git reset --hard`, `git clean`, automatic
 worktree removal or a claimed daemon-killed shortcut. There is no generic recovery
 CLI; establish actual cleanup and diagnose damaged state before manual repair.
+For example, an interrupted `git worktree add` may leave a `creating` ownership
+descriptor at `<git-common-dir>/plaza/workspace.json`, with incomplete Git
+registration or an execution directory. Preserve the descriptor, registration,
+files and logs; compare their recorded identities and actual Git/lock/process
+state before deciding on a specific repair. A `creating` record is not permission
+to delete `workspace.json` or discard the execution tree.
+
 
 ## NPC conversation history and controls (M11)
 
@@ -524,8 +531,12 @@ python3 scripts/m12_tool_guard_probe.py --output /tmp/m12-tool-guard.json
 python3 scripts/m12_live.py --output /tmp/m12-live.json
 ```
 
-Choose fresh output paths with existing parents. The live runner refuses to
-replace existing evidence and retains a separate `/tmp/plaza-m12-live-*` artifact
+Choose fresh output paths with existing writable parents. Both runners reserve
+the destination before runtime/child/case work and atomically publish a complete
+report without replacing existing evidence. A sibling `.<report-name>.reserve`
+coordinates runners; interruption may retain it or a staging file for inspection.
+A publication collision preserves the other report and the attempted staging
+report. The live runner retains a separate `/tmp/plaza-m12-live-*` artifact
 tree on failure or success. Inspect raw bridge/Godot logs, stages, release/result,
 notes, markers and actual manifests before publishing its allowlisted JSON.
 Failed/partial runs, nonzero child exits, forced teardown and missing/open
@@ -558,7 +569,9 @@ Its original SDK class/default factory and production runtime verification remai
 active; transparent method/dispatch/listener observers are disclosed in evidence.
 The supervisor releases the nonce only after independently corroborated Godot
 background acknowledgment and unrelated NPC completion. It never creates the
-claimed result. Configured Haiku tasks use 8 turns/USD 0.35 each, at most 3 domain
+claimed result. Initial, restart and final result checks require a bounded regular
+file at the canonical execution location, rejecting symlinks and special files
+with no-follow open/descriptor checks. Configured Haiku tasks use 8 turns/USD 0.35 each, at most 3 domain
 queries; Chief/NPC use one turn and a 65-second operation deadline. Per-stage
 waits are 100 seconds, normal bridge drain 35 seconds; process escalation contains
 hangs but fails clean acceptance. Private artifacts can contain disposable notes
