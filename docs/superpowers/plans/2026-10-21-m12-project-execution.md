@@ -529,7 +529,7 @@ workspace/reservation observation in `bridge/workspace.py` and
   an empty list; without one, collect immediate ack/rejection replies for direct
   tests. Later terminals remain in the domain store and can be read by replay.
 
-- [ ] **Step 1 — Write failing setup, memory and socket-routing tests.**
+- [x] **Step 1 — Write failing setup, memory and socket-routing tests.**
   `test_other_npc_refers_without_reviewer_or_tools`,
   `test_chief_submission_confirms_once_without_human_prompt`,
   `test_preflight_memory_failure_prevents_provider_call`,
@@ -551,9 +551,9 @@ workspace/reservation observation in `bridge/workspace.py` and
   no global socket, setup failure reason, same-client request correlation and
   successful task/failed memory save separation. Preserve the existing NPC
   `output`/`status` response fields and successful-history commit behavior.
-- [ ] **Step 2 — Run red:**
+- [x] **Step 2 — Run red:**
   `python -m pytest bridge/tests/test_project_service.py bridge/tests/test_connection.py bridge/tests/test_server.py bridge/tests/test_conversation.py bridge/tests/test_conversation_backends.py -q`.
-- [ ] **Step 3 — Implement composition, setup interaction and bounded transport.**
+- [x] **Step 3 — Implement composition, setup interaction and bounded transport.**
   Listen while service bootstrap runs. Snapshot stages exactly unconfigured/
   needs_architect/preparing/reviewing/initializing/ready/failed. Existing Git
   bootstrap is automatic. Add `load_workspace(project, *, runtime_root)` that
@@ -599,14 +599,14 @@ workspace/reservation observation in `bridge/workspace.py` and
   its NPC work and history only. Shutdown drains domains, then project/run ownership using `detach_run` after
   owned turns settle; retain operational evidence if cleanup cannot be confirmed.
   Document packet examples, replay/busy/identity rules and setup/memory status now.
-- [ ] **Step 4 — Run green** plus all existing bridge unit tests and recording
+- [x] **Step 4 — Run green** plus all existing bridge unit tests and recording
   integration. Verify the tools-disabled Chief path cannot mutate before the
   bridge has accepted its exact structured decision.
   Migrate the existing real M11 integration fixtures (Godot test script and
   Python driver) to assert correlated busy for a second concurrent NPC request,
   then explicitly submit it after the first completes. Preserve all prior
   history/failure/reconnect checks; no implicit queue or frozen evidence edits.
-- [ ] **Step 5 — Commit:**
+- [x] **Step 5 — Commit:**
   `git commit -m "feat(bridge): route project setup and concurrent client work (PLZG-289)"`.
 
 ### Task 7: Add pure domain state and workspace/domain transport to Godot
@@ -735,7 +735,7 @@ selected domain ID and anchored-versus-remote mode. No new autoload.
 **Files:** Create `bridge/tests/test_godot_domain_integration.py`,
 `bridge/tests/test_m12_integration.py`, `tests/godot_domain_integration.gd/.tscn`.
 Modify `package.json`, `.github/workflows/ci.yml`; preserve current M11 harness and
-its 35-check marker. Reuse its real websocket/Godot subprocess pattern.
+its current 38-check marker. Reuse its real websocket/Godot subprocess pattern.
 **Consumes:** Tasks 1–8 real services, fake SDK synchronization and real temporary Git.
 **Produces:** deterministic end-to-end proof and `test:m12` / M12 integration gates.
 
