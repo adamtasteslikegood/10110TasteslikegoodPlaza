@@ -254,7 +254,7 @@ delta: dict|None) -> MemorySaveResult`,
 `checkpoint_lifecycle(*, domain_id: str, domain_session_id: str, event: str) -> MemorySaveResult`.
 `turn_id` is a bridge UUID, distinct from caller request IDs.
 
-- [ ] **Step 1 — Write failing file/restart/concurrency tests.**
+- [x] **Step 1 — Write failing file/restart/concurrency tests.**
   Include `test_initialize_reads_existing_and_repairs_only_missing`,
   `test_utf8_full_file_and_entry_bounds`, `test_other_clone_has_no_prior_context`,
   `test_two_process_checkpoint_merge`, `test_partial_revision_is_not_reinitialized`,
@@ -274,9 +274,9 @@ delta: dict|None) -> MemorySaveResult`,
   Test per-file cap and one-byte-over boundaries, multi-byte Unicode, EACCES/ENOSPC,
   fsync/replace failures, foreign IDs, invalid UTF-8, symlink/hardlink targets,
   torn three-file checkpoint and duplicate terminal updates.
-- [ ] **Step 2 — Run red:**
+- [x] **Step 2 — Run red:**
   `python -m pytest bridge/tests/test_project_memory.py -q`.
-- [ ] **Step 3 — Implement a fixed Markdown grammar and serialized merge.**
+- [x] **Step 3 — Implement a fixed Markdown grammar and serialized merge.**
   First line is `<!-- plaza-memory:v1 {"project_id":"...","revision":1,"kind":"todo"} -->`;
   parse its JSON with stdlib. TODO uses checkboxes plus per-item JSON comments
   containing stable item/turn/request/run identity and pending/success/error/
@@ -304,10 +304,10 @@ delta: dict|None) -> MemorySaveResult`,
   settles, including cancellation. A kernel IO call may exceed that budget; report
   elapsed-budget failure and never admit a model call from a late pending save.
   Register failures as unavailable/unsaved, not empty history.
-- [ ] **Step 4 — Run Task 3 and storage suites green.**
+- [x] **Step 4 — Run Task 3 and storage suites green.**
   Assert saved files survive new store instances and no process imports another
   repository's notes. Confirm a normal later revision remains loadable.
-- [ ] **Step 5 — Commit:**
+- [x] **Step 5 — Commit:**
   `git commit -m "feat(bridge): persist bounded project memory (PLZG-289)"`.
 
 ### Task 4: Guard tools and retain the SDK in one owning task
