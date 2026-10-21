@@ -598,6 +598,10 @@ workspace/reservation observation in `bridge/workspace.py` and
 - [ ] **Step 4 — Run green** plus all existing bridge unit tests and recording
   integration. Verify the tools-disabled Chief path cannot mutate before the
   bridge has accepted its exact structured decision.
+  Migrate the existing real M11 integration fixtures (Godot test script and
+  Python driver) to assert correlated busy for a second concurrent NPC request,
+  then explicitly submit it after the first completes. Preserve all prior
+  history/failure/reconnect checks; no implicit queue or frozen evidence edits.
 - [ ] **Step 5 — Commit:**
   `git commit -m "feat(bridge): route project setup and concurrent client work (PLZG-289)"`.
 
