@@ -739,7 +739,7 @@ its current 38-check marker. Reuse its real websocket/Godot subprocess pattern.
 **Consumes:** Tasks 1–8 real services, fake SDK synchronization and real temporary Git.
 **Produces:** deterministic end-to-end proof and `test:m12` / M12 integration gates.
 
-- [ ] **Step 1 — Write failing complete-flow fixtures.**
+- [x] **Step 1 — Write failing complete-flow fixtures.**
   Empty directory: submit to ordinary NPC, observe referral/no review; move player
   to Chief and submit, approve with fake reviewer, inspect main/worktree/memory.
   Start/Run A; move actual Main/Player beyond the anchor's ProximityShape radius,
@@ -760,22 +760,22 @@ its current 38-check marker. Reuse its real websocket/Godot subprocess pattern.
   Include two sockets/closed origin, Stop during connect, crash marker refusal,
   new-generation stale commands, memory-save failure, restart context and second
   repo isolation. Keep ordinary NPC and domain history assertions separate.
-- [ ] **Step 2 — Run red:**
+- [x] **Step 2 — Run red:**
   `PLAZA_REQUIRE_GODOT=1 python -m pytest bridge/tests/test_godot_domain_integration.py bridge/tests/test_m12_integration.py -q -s`.
-- [ ] **Step 3 — Close integration gaps and wire CI.**
+- [x] **Step 3 — Close integration gaps and wire CI.**
   Add `test:m12` invoking the three new headless aliases and a separate real-client
   integration command; include them in npm test and CI's Godot job. Require Godot
   via PLAZA_REQUIRE_GODOT=1, positive assertions/marker and nonzero failure on load
   errors. Keep network/provider stubs under the existing autouse prohibition.
   Update current tests whose dispatch assumptions intentionally changed, retaining
   their behavior assertions rather than deleting them to get green.
-- [ ] **Step 4 — Run the full deterministic gate once green:**
+- [x] **Step 4 — Run the full deterministic gate once green:**
   `python -m pytest bridge/tests/ tests/ -q`, `godot --headless --import`, `npm test`,
   `black --check .`, `flake8 . --select=E9,F63,F7,F82`,
   `python3 scripts/validate_specs.py`, `python3 scripts/validate_delivery_coordinates.py`.
   Resolve failures; do not re-stamp frozen sprint evidence. Record exact commands
   and results, separating environment skips from executed proof.
-- [ ] **Step 5 — Commit:**
+- [x] **Step 5 — Commit:**
   `git commit -m "test(m12): verify project setup and background execution (PLZG-289)"`.
 
 ### Task 10: Verify the actual CLI guard and record live M12 acceptance
