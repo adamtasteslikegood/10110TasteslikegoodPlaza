@@ -681,7 +681,7 @@ class LiveLifetime:
             observed.update(
                 lifecycle=client["lifecycle"], task_count=len(set(client["task_ids"]))
             )
-        return dict(
+        self.cleanup_evidence = dict(
             scenario=self.scenario,
             run_id=self.run_id,
             child_returncode=code,
@@ -696,6 +696,7 @@ class LiveLifetime:
             archive_run_id=self.ready["archive_run_id"],
             cli_returncodes=[r.get("returncode") for r in self.closed["clients"]],
         )
+        return self.cleanup_evidence
 
 
 def corroborate(state, receipt):
@@ -1250,7 +1251,6 @@ async def readback(life, report, scenario):
             "readback Stop not confirmed",
         )
         checks["stop_inactive"] = True
-    record["notes_after"] = life.state()["notes"]
 
 
 def validate_evidence(record):
@@ -1734,6 +1734,31 @@ def sanitize_evidence(record):
     return result
 
 
+def post_close_notes(life):
+    require(
+        life.child.process.returncode == 0
+        and not life.child.forced
+        and life.closed
+        and life.closed.get("run_id") == life.run_id
+        and not validate_lifetimes([life.cleanup_evidence]),
+        "post-close notes require validated normal cleanup",
+    )
+    return life.closed["notes"]
+
+
+def assert_a_unchanged(workspace, expected_notes, expected_result_hash):
+    from bridge.project_memory import ProjectMemoryStore
+
+    actual = ProjectMemoryStore(workspace).load()
+    require(
+        actual.as_context() == expected_notes["context"]
+        and sha((workspace.worktree_path / RESULT).read_bytes())
+        == expected_result_hash,
+        "repository A changed after its final closed snapshot",
+    )
+    return True
+
+
 async def main(output):
     from bridge.domain_sdk import _verify_runtime, GUARD_SOURCES
     from bridge.workspace import git_without_filters
@@ -1817,6 +1842,7 @@ async def main(output):
         await life.start()
         await initial(life, report)
         report["lifetimes"].append(await life.stop())
+        report["initial"]["notes"] = post_close_notes(life)
         life = None
         report["initial"]["checks"]["runtime_unchanged"] = (
             baseline(ROOT) == runtime_before
@@ -1826,6 +1852,7 @@ async def main(output):
         await life.start()
         await readback(life, report, "a_restart")
         report["lifetimes"].append(await life.stop())
+        report["restart"]["notes_after"] = post_close_notes(life)
         life = None
         require(not validate_lifetimes(report["lifetimes"]), "restart cleanup failed")
         a_notes = report["restart"]["notes_after"]
@@ -1854,17 +1881,14 @@ async def main(output):
         await life.start()
         await readback(life, report, "b_isolation")
         report["lifetimes"].append(await life.stop())
+        report["isolation"]["notes_after"] = post_close_notes(life)
         life = None
         a = report["initial"]
         from bridge.workspace import inspect_project, load_workspace
-        from bridge.project_memory import ProjectMemoryStore
 
         workspace = load_workspace(inspect_project(project), runtime_root=ROOT)
-        current_notes = ProjectMemoryStore(workspace).load()
-        report["isolation"]["checks"]["a_unchanged"] = (
-            current_notes.as_context() == a_notes["context"]
-            and sha((Path(a["worktree_path"]) / RESULT).read_bytes())
-            == a["result_sha256"]
+        report["isolation"]["checks"]["a_unchanged"] = assert_a_unchanged(
+            workspace, a_notes, a["result_sha256"]
         )
         report["binding"]["runtime_after"] = baseline(ROOT)
         report["completed"] = True

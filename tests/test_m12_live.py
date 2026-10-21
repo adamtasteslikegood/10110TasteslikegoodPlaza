@@ -629,3 +629,45 @@ async def test_config_override_cannot_redirect_live_child_outside_disposable_pro
         closed = await life.stop()
     assert closed["child_returncode"] != 0 and closed["closed"] is False
     assert not (project / ".git").exists() and not (other / ".git").exists()
+
+
+def test_post_stop_memory_baseline_uses_actual_closed_child_checkpoint():
+    mod = module()
+    closed_notes = dict(revision=11, context="final Stop checkpoint", sha256={})
+    life = SimpleNamespace(
+        run_id="run",
+        child=SimpleNamespace(forced=False, process=SimpleNamespace(returncode=0)),
+        closed=dict(run_id="run", notes=closed_notes),
+        cleanup_evidence=evidence()["lifetimes"][0],
+        state=lambda: dict(notes=dict(revision=10, context="before Stop")),
+    )
+    assert mod.post_close_notes(life) == closed_notes
+    assert mod.post_close_notes(life)["revision"] != life.state()["notes"]["revision"]
+    life.child.process.returncode = None
+    with pytest.raises(mod.AcceptanceError):
+        mod.post_close_notes(life)
+
+
+def test_actual_canonical_memory_change_after_baseline_fails_isolation(tmp_path):
+    mod = module()
+    from bridge.tests.test_workspace import repository
+    from bridge.workspace import inspect_project, prepare_worktree
+    from bridge.project_memory import ProjectMemoryStore
+
+    project = repository(tmp_path)
+    runtime = tmp_path / "runtime"
+    runtime.mkdir()
+    work = prepare_worktree(inspect_project(project), runtime_root=runtime)
+    store = ProjectMemoryStore(work)
+    snapshot = store.initialize()
+    (work.worktree_path / mod.RESULT).write_text("fixture-result")
+    expected = dict(context=snapshot.as_context())
+    result_sha = mod.sha(b"fixture-result")
+    assert mod.assert_a_unchanged(work, expected, result_sha)
+    assert store.checkpoint_lifecycle(
+        domain_id="engineering",
+        domain_session_id="generation",
+        event="unexpected after-A change",
+    ).saved
+    with pytest.raises(mod.AcceptanceError):
+        mod.assert_a_unchanged(work, expected, result_sha)
