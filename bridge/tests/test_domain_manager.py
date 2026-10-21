@@ -1,125 +1,359 @@
-"""Tests for bridge.domain_manager — domain session orchestration."""
+"""Public command boundary: startup visibility, generation fencing and caps."""
 
+import asyncio
 import pytest
-from unittest.mock import AsyncMock, MagicMock
-
+import pytest_asyncio
+from bridge.config import default_config
 from bridge.domain_manager import DomainManager
-from bridge.domain_session import SessionState, OutputEntry
-from bridge.protocol import BridgeRequest, RequestType
+from bridge.tests.domain_fakes import FakeProjectService, FakeOwner, context
 
 
-@pytest.fixture
-def mock_session_cls(monkeypatch):
-    sessions = {}
+@pytest_asyncio.fixture
+async def setup(tmp_path, monkeypatch):
+    service = FakeProjectService(tmp_path)
+    owners = []
 
-    def make_session(domain_id, base_path=None, **kwargs):
-        session = MagicMock()
-        session.domain_id = domain_id
-        session.state = SessionState.INACTIVE
-        session._state = SessionState.INACTIVE
-        session.buffer = MagicMock()
-        session.buffer.latest_id = -1
-        session.buffer.count_since.return_value = 0
-        session.buffer.since.return_value = []
-        session.activate = AsyncMock(
-            side_effect=lambda **kw: setattr(session, "state", SessionState.ACTIVE)
-            or setattr(session, "_state", SessionState.ACTIVE)
-        )
-        session.submit_query = AsyncMock()
-        session.background = MagicMock(
-            side_effect=lambda: setattr(session, "state", SessionState.BACKGROUNDED)
-        )
-        session.refocus = MagicMock(
-            side_effect=lambda: setattr(session, "state", SessionState.ACTIVE)
-        )
-        session.deactivate = AsyncMock(
-            side_effect=lambda: setattr(session, "state", SessionState.DEACTIVATED)
-        )
-        sessions[domain_id] = session
-        return session
+    def factory(*args):
+        owner = FakeOwner(*args)
+        owners.append(owner)
+        return owner
 
-    monkeypatch.setattr("bridge.domain_manager.DomainSession", make_session)
-    return sessions
+    monkeypatch.setattr("bridge.domain_session.DomainSDKOwner", factory, raising=False)
+    manager = DomainManager(default_config(), service)
+    yield manager, service, owners
+    await manager.shutdown()
+    service.close()
+
+
+async def command(manager, type, **kwargs):
+    packets = []
+
+    async def emit(packet):
+        packets.append(packet)
+
+    await manager.handle(
+        dict(type=type, request_id="request", domain_id="engineering", **kwargs),
+        context=context(),
+        emit=emit,
+    )
+    return packets
 
 
 @pytest.mark.asyncio
-class TestDomainManager:
-    async def test_activate_domain(self, mock_session_cls):
-        mgr = DomainManager()
-        result = await mgr.activate_domain("engineering")
-        assert result["domain_id"] == "engineering"
-        assert result["state"] == "active"
-        assert "engineering" in mgr.list_active_domains()
+async def test_activation_exposes_generation_before_connect(setup, monkeypatch):
+    manager, service, owners = setup
+    original = FakeOwner.start
 
-    async def test_activate_already_active(self, mock_session_cls):
-        mgr = DomainManager()
-        await mgr.activate_domain("engineering")
-        result = await mgr.activate_domain("engineering")
-        assert result["state"] == "active"
+    async def blocked(owner):
+        owner.connect_gate = asyncio.Event()
+        await original(owner)
 
-    async def test_submit_query_to_active_domain(self, mock_session_cls):
-        mgr = DomainManager()
-        await mgr.activate_domain("engineering")
-        req = BridgeRequest(
-            type=RequestType.DOMAIN_QUERY,
-            domain_id="engineering",
-            agent_id="systems-architect",
-            task="review code",
-            request_id="r1",
+    monkeypatch.setattr(FakeOwner, "start", blocked)
+    packets, observed = [], asyncio.Event()
+
+    async def emit(packet):
+        packets.append(packet)
+        observed.set()
+
+    start = asyncio.create_task(
+        manager.handle(
+            dict(type="activate_domain", domain_id="engineering", request_id="start"),
+            context=context("start"),
+            emit=emit,
         )
-        callback = AsyncMock()
-        result = await mgr.handle_domain_query(req, on_output=callback)
-        assert result is None  # async — output comes via callback
-        mock_session_cls["engineering"].submit_query.assert_awaited_once()
+    )
+    await observed.wait()
+    await owners[0].started.wait()
+    assert packets[0]["state"] == "activating" and service.reservation.held
+    generation = packets[0]["domain_session_id"]
+    repeated = await command(manager, "activate_domain")
+    assert repeated[0]["domain_session_id"] == generation and len(owners) == 1
+    stopped = await command(manager, "deactivate_domain", domain_session_id=generation)
+    await start
+    assert stopped[-1]["state"] == "inactive"
+    assert not any(p.get("state") == "active" for p in packets)
 
-    async def test_submit_query_to_inactive_domain(self, mock_session_cls):
-        mgr = DomainManager()
-        req = BridgeRequest(
-            type=RequestType.DOMAIN_QUERY,
-            domain_id="engineering",
-            agent_id="a",
-            task="t",
-            request_id="r1",
+
+@pytest.mark.asyncio
+async def test_stale_generation_cannot_mutate(setup):
+    manager, _, _ = setup
+    first = (await command(manager, "activate_domain"))[-1]["domain_session_id"]
+    await command(manager, "deactivate_domain", domain_session_id=first)
+    second = (await command(manager, "activate_domain"))[-1]["domain_session_id"]
+    assert first != second
+    for action in (
+        "background_domain",
+        "refocus_domain",
+        "deactivate_domain",
+        "domain_query",
+    ):
+        extra = (
+            dict(agent_id="builder", task="task") if action == "domain_query" else {}
         )
-        result = await mgr.handle_domain_query(req, on_output=AsyncMock())
-        assert result["status"] == "error"
-        assert "not active" in result["message"]
+        reply = await command(manager, action, domain_session_id=first, **extra)
+        assert reply[-1]["error_type"] == "session_unavailable"
+    assert (await command(manager, "domain_status"))[-1]["state"] == "active"
+    assert (await command(manager, "resume", domain_session_id=first, cursor="0"))[-1][
+        "type"
+    ] == "resume_complete"
 
-    async def test_background_domain(self, mock_session_cls):
-        mgr = DomainManager()
-        await mgr.activate_domain("engineering")
-        result = mgr.background_domain("engineering")
-        assert result["state"] == "backgrounded"
 
-    async def test_refocus_domain(self, mock_session_cls):
-        mgr = DomainManager()
-        await mgr.activate_domain("engineering")
-        mgr.background_domain("engineering")
-        result = mgr.refocus_domain("engineering")
-        assert result["state"] == "active"
+@pytest.mark.asyncio
+async def test_three_generations_evict_only_clean_oldest(setup):
+    manager, _, _ = setup
+    generations = []
+    for _ in range(3):
+        generation = (await command(manager, "activate_domain"))[-1][
+            "domain_session_id"
+        ]
+        generations.append(generation)
+        await command(manager, "deactivate_domain", domain_session_id=generation)
+    status = (await command(manager, "domain_status"))[-1]
+    assert status["available_generations"] == generations[1:]
+    assert (
+        await command(manager, "resume", domain_session_id=generations[0], cursor="0")
+    )[-1]["error_type"] == "session_unavailable"
 
-    async def test_resume_returns_buffered_entries(self, mock_session_cls):
-        mgr = DomainManager()
-        await mgr.activate_domain("engineering")
-        entry = OutputEntry(
-            output_id=0, agent_id="a", task="t", output="hello", request_id="r1"
+
+@pytest.mark.asyncio
+async def test_discovery_and_invalid_correlation_are_safe(setup):
+    manager, service, owners = setup
+    packets = []
+
+    async def emit(packet):
+        packets.append(packet)
+
+    await manager.handle(
+        dict(type="describe_workspace", request_id="inspect"),
+        context=context(),
+        emit=emit,
+    )
+    assert packets[-1]["request_id"] == "inspect" and not owners
+    await manager.handle(
+        dict(type="activate_domain", domain_id=[]), context=context(), emit=emit
+    )
+    assert packets[-1]["error_type"] == "invalid_request"
+    assert "request_id" not in packets[-1] and "domain_id" not in packets[-1]
+    assert "request_id" not in service.snapshot()
+
+
+@pytest.mark.asyncio
+async def test_ten_domain_ids_and_idle_reservation(setup):
+    manager, service, _ = setup
+    for i in range(11):
+        packets = []
+
+        async def emit(packet):
+            packets.append(packet)
+
+        await manager.handle(
+            dict(type="activate_domain", request_id=str(i), domain_id=f"d{i}"),
+            context=context(),
+            emit=emit,
         )
-        mock_session_cls["engineering"].buffer.since.return_value = [entry]
-        results = mgr.handle_resume("engineering", cursor=-1)
-        assert len(results) == 1
-        assert results[0]["output"] == "hello"
-        assert results[0]["output_id"] == "0"
+        if i == 0:
+            assert packets[-1]["state"] == "active"
+        else:
+            assert packets[-1]["error_type"] == "workspace_busy"
+    assert service.reservation.held
+    # Failed clean generations can be evicted; a held generation never is.
+    assert len(manager._sessions) <= 10
 
-    async def test_deactivate_domain(self, mock_session_cls):
-        mgr = DomainManager()
-        await mgr.activate_domain("engineering")
-        result = await mgr.deactivate_domain("engineering")
-        assert result["state"] == "deactivated"
 
-    async def test_get_domain_state(self, mock_session_cls):
-        mgr = DomainManager()
-        assert mgr.get_domain_state("engineering") is None
-        await mgr.activate_domain("engineering")
-        state = mgr.get_domain_state("engineering")
-        assert state["domain_id"] == "engineering"
-        assert state["state"] == "active"
+@pytest.mark.asyncio
+async def test_cancelled_start_caller_during_reservation_keeps_owned_startup(
+    setup, monkeypatch
+):
+    manager, service, owners = setup
+    entered, release = asyncio.Event(), asyncio.Event()
+    from bridge.domain_session import DomainSession
+
+    original = DomainSession._reserve
+
+    async def reserve(session):
+        entered.set()
+        await release.wait()
+        await original(session)
+
+    monkeypatch.setattr(DomainSession, "_reserve", reserve)
+    task = asyncio.create_task(command(manager, "activate_domain"))
+    await entered.wait()
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+    release.set()
+    try:
+        async with asyncio.timeout(0.5):
+            while not owners:
+                await asyncio.sleep(0.001)
+            await owners[0].started.wait()
+    finally:
+        await manager.shutdown()
+    assert owners[0].started.is_set()
+
+
+@pytest.mark.asyncio
+async def test_activation_failure_carries_new_generation_and_releases(
+    setup, monkeypatch
+):
+    manager, service, _ = setup
+
+    async def fail(owner):
+        raise RuntimeError("private startup detail")
+
+    monkeypatch.setattr(FakeOwner, "start", fail)
+    replies = await command(manager, "activate_domain")
+    assert replies[0]["state"] == "activating"
+    assert replies[-1]["error_type"] == "sdk_error"
+    assert replies[-1]["domain_session_id"] == replies[0]["domain_session_id"]
+    assert service.reservation is None
+    assert "private" not in str(replies)
+
+
+@pytest.mark.asyncio
+async def test_start_cleanup_failure_cannot_replace_generation(setup, monkeypatch):
+    manager, service, _ = setup
+
+    async def fail(owner):
+        owner.clean = False
+        raise RuntimeError("connect failed")
+
+    monkeypatch.setattr(FakeOwner, "start", fail)
+    replies = await command(manager, "activate_domain")
+    assert replies[-1]["error_type"] == "cleanup_failed"
+    generation = replies[0]["domain_session_id"]
+    repeated = await command(manager, "activate_domain")
+    assert repeated[-1]["domain_session_id"] == generation
+    assert repeated[-1]["state"] == "cleanup_failed" and service.reservation.held
+    manager._sessions["engineering"][-1]._owner.clean = True
+
+
+@pytest.mark.asyncio
+async def test_eleventh_live_identity_is_rejected_without_evicting_startup(
+    setup, monkeypatch
+):
+    manager, _, _ = setup
+    from bridge.domain_session import DomainSession
+
+    release = asyncio.Event()
+    original = DomainSession._reserve
+
+    async def blocked(session):
+        await release.wait()
+        await original(session)
+
+    monkeypatch.setattr(DomainSession, "_reserve", blocked)
+    replies = [[] for _ in range(11)]
+
+    async def start(index):
+        async def emit(packet):
+            replies[index].append(packet)
+
+        await manager.handle(
+            dict(type="activate_domain", request_id=str(index), domain_id=f"d{index}"),
+            context=context(str(index)),
+            emit=emit,
+        )
+
+    tasks = [asyncio.create_task(start(index)) for index in range(10)]
+    await asyncio.sleep(0)
+    await start(10)
+    assert replies[10][0]["error_type"] == "domain_busy"
+    assert len(manager._sessions) == 10
+    release.set()
+    await asyncio.gather(*tasks)
+    assert all(
+        reply[-1].get("state") == "active"
+        or reply[-1].get("error_type") == "workspace_busy"
+        for reply in replies[:10]
+    )
+
+
+@pytest.mark.asyncio
+async def test_workspace_busy_identifies_existing_domain(setup):
+    manager, _, _ = setup
+    await command(manager, "activate_domain")
+    packets = []
+
+    async def emit(packet):
+        packets.append(packet)
+
+    await manager.handle(
+        dict(type="activate_domain", request_id="second", domain_id="other"),
+        context=context("second"),
+        emit=emit,
+    )
+    assert packets[-1]["error_type"] == "workspace_busy"
+    assert "engineering" in packets[-1]["message"]
+
+
+@pytest.mark.asyncio
+async def test_shutdown_drains_all_generations_before_reporting_cleanup_failure(
+    setup, monkeypatch
+):
+    manager, _, owners = setup
+    first = (await command(manager, "activate_domain"))[-1]["domain_session_id"]
+    await command(manager, "deactivate_domain", domain_session_id=first)
+    await command(manager, "activate_domain")
+    old = manager._sessions["engineering"][0]
+
+    async def fail():
+        raise RuntimeError("cleanup failed")
+
+    monkeypatch.setattr(old, "stop", fail)
+    owners[-1].stop_gate = asyncio.Event()
+    shutdown = asyncio.create_task(manager.shutdown())
+    await owners[-1].stopped.wait()
+    await asyncio.sleep(0.01)
+    try:
+        assert not shutdown.done()
+    finally:
+        owners[-1].stop_gate.set()
+        try:
+            await shutdown
+        except Exception:
+            pass
+        monkeypatch.undo()
+    assert not owners[-1].lease.held
+
+
+@pytest.mark.asyncio
+async def test_cancelled_activation_delivery_detaches_caller_but_keeps_startup(
+    setup, monkeypatch
+):
+    manager, _, owners = setup
+    original = FakeOwner.start
+
+    async def blocked(owner):
+        owner.connect_gate = asyncio.Event()
+        await original(owner)
+
+    monkeypatch.setattr(FakeOwner, "start", blocked)
+    sending = asyncio.Event()
+
+    async def emit(packet):
+        sending.set()
+        await asyncio.Future()
+
+    task = asyncio.create_task(
+        manager.handle(
+            dict(type="activate_domain", request_id="start", domain_id="engineering"),
+            context=context("start"),
+            emit=emit,
+        )
+    )
+    await sending.wait()
+    task.cancel()
+    await asyncio.sleep(0.01)
+    try:
+        assert task.done()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+    finally:
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
+        await manager.shutdown()
+    assert owners[0].started.is_set()

@@ -116,7 +116,6 @@ def offline_clients(monkeypatch):
     sdk.receive_response = receive
     sdk_class = MagicMock(return_value=sdk)
     monkeypatch.setattr("bridge.conversation_sdk.ClaudeSDKClient", conversation.factory)
-    monkeypatch.setattr("bridge.domain_session.ClaudeSDKClient", sdk_class)
     monkeypatch.setattr("bridge.conversation.load_agent", lambda _: "definition")
     monkeypatch.setattr("bridge.domain_session.load_agent", lambda _: "definition")
     return conversation, sdk, sdk_class

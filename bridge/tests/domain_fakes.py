@@ -1,0 +1,124 @@
+"""Task 6's declared service seam, backed by real workspace/memory components."""
+
+import asyncio
+
+from bridge.domain_sdk import SDKOutcome, CleanupOutcome
+from bridge.observability import RequestContext
+from bridge.project_memory import ProjectMemoryStore, MemoryError
+from bridge.readiness import ReadinessService
+from bridge.tests.test_workspace import bootstrap
+
+
+class FakeProjectService:
+    owner_run_id = "domain-test-run"
+
+    def __init__(self, tmp_path):
+        _, runtime, self.workspace = bootstrap(tmp_path)
+        self.memory = ProjectMemoryStore(self.workspace)
+        self.memory.initialize()
+        self.memory.attach_run(self.owner_run_id)
+        self.readiness = ReadinessService(self.workspace, runtime, self.memory)
+        self.reservation = None
+        self.memory_result = None
+
+    def require_workspace(self):
+        return self.workspace
+
+    def require_memory(self):
+        return self.memory
+
+    def require_readiness(self):
+        return self.readiness
+
+    def publish_reservation(self, lease):
+        self.reservation = lease
+
+    def publish_cleanup(self, lease, *, clean):
+        if clean and self.reservation is lease:
+            self.reservation = None
+
+    def publish_memory(self, result):
+        self.memory_result = result
+
+    def snapshot(self):
+        return dict(
+            type="workspace_state",
+            project_id=self.workspace.project_id,
+            workspace_id=self.workspace.workspace_id,
+            stage="ready",
+        )
+
+    async def refresh_snapshot(self):
+        return self.snapshot()
+
+    def close(self):
+        try:
+            self.memory.detach_run(self.owner_run_id)
+        except MemoryError:
+            # An intentionally failed save leaves truthful pending-run evidence.
+            # Dispose only this temporary fixture's OS handles, preserving files.
+            for lock in self.memory._runs.values():
+                lock.close()
+
+
+class FakeOwner:
+    def __init__(self, config, workspace, lease, readiness):
+        self.config, self.workspace, self.lease = config, workspace, lease
+        self.started = asyncio.Event()
+        self.executing = asyncio.Event()
+        self.stopped = asyncio.Event()
+        self.connect_gate = None
+        self.execute_gate = None
+        self.stop_gate = None
+        self.calls = []
+        self.outcome = SDKOutcome("done", "success", "completed", "provider", None)
+        self.clean = True
+
+    async def start(self):
+        self.started.set()
+        if self.connect_gate:
+            await self.connect_gate.wait()
+        if self.stopped.is_set():
+            raise RuntimeError("stopped")
+
+    async def execute(self, **kwargs):
+        self.calls.append(kwargs)
+        self.executing.set()
+        if self.execute_gate:
+            await self.execute_gate.wait()
+        if self.stopped.is_set():
+            return SDKOutcome("partial", "cancelled", "stopped", "provider", None)
+        return self.outcome
+
+    async def stop(self):
+        self.stopped.set()
+        if self.connect_gate:
+            self.connect_gate.set()
+        if self.execute_gate:
+            self.execute_gate.set()
+        if self.stop_gate:
+            await self.stop_gate.wait()
+        return CleanupOutcome(self.clean, None if self.clean else "failure")
+
+
+def context(request="run", connection="origin", agent="builder"):
+    return RequestContext(connection, request, agent, "domain", "model", "engineering")
+
+
+def query(request="run", generation="generation", **changes):
+    values = dict(
+        type="domain_query",
+        domain_id="engineering",
+        domain_session_id=generation,
+        request_id=request,
+        agent_id="builder",
+        task="Build something",
+    )
+    values.update(changes)
+    return values
+
+
+async def collect_until(session, packets, count=1):
+    async with asyncio.timeout(3):
+        while len([p for p in packets if p["type"] == "domain_result"]) < count:
+            await asyncio.sleep(0.001)

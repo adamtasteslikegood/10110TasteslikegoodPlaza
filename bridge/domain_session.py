@@ -1,387 +1,596 @@
-"""Domain session — Agent SDK runtime with output buffer and lifecycle.
+"""Generation-owned domain work, admission, bounded terminals and cleanup.
 
-Each active domain gets one DomainSession. The session manages a
-ClaudeSDKClient, buffers output for resume, and enforces the 5-state
-lifecycle.
-
-D-005: this module knows domain_id strings and agent definitions, not
-       sprites, floors, or proximity triggers.
+Socket tasks only await shielded work. A generation holds its reservation until
+SDK, checkpoint and terminal-memory workers have all settled successfully enough
+to confirm cleanup. Delivery is an independent best-effort observation.
 """
 
 import asyncio
-import os
-import time
-import uuid
-from dataclasses import dataclass
+from collections import deque
+from collections.abc import Awaitable, Callable
+from copy import deepcopy
+from dataclasses import asdict, dataclass
 from enum import Enum
-from typing import Optional
-
-from claude_agent_sdk import ClaudeSDKClient, ClaudeAgentOptions
+import time
+from typing import TYPE_CHECKING
+from uuid import uuid4
 
 from bridge.agents import load_agent
-from bridge.config import BridgeConfig, default_config
+from bridge.config import BridgeConfig
+from bridge.domain_protocol import DomainCommandError, error_packet
+from bridge.domain_sdk import DomainSDKOwner, SDKOutcome
 from bridge.observability import BridgeRecorder, RequestContext
-from bridge.protocol import validate_agent_id
+from bridge.project_memory import MemorySaveResult, TurnIntent
+from bridge.readiness import owned_io
+from bridge.workspace_lease import WorkspaceLease
 
+if TYPE_CHECKING:
+    from bridge.project_service import ProjectService
 
-class SessionState(Enum):
-    INACTIVE = "inactive"
-    ACTIVATING = "activating"
-    ACTIVE = "active"
-    BACKGROUNDED = "backgrounded"
-    DEACTIVATED = "deactivated"
-
-
-_VALID_TRANSITIONS = {
-    SessionState.INACTIVE: {SessionState.ACTIVATING},
-    SessionState.ACTIVATING: {SessionState.ACTIVE},
-    SessionState.ACTIVE: {SessionState.BACKGROUNDED, SessionState.DEACTIVATED},
-    SessionState.BACKGROUNDED: {SessionState.ACTIVE, SessionState.DEACTIVATED},
-    SessionState.DEACTIVATED: set(),
-}
-
-
-class InvalidTransitionError(Exception):
-    pass
-
-
-@dataclass
-class _QueryExecution:
-    context: RequestContext
-    task: str
-    submitted_at: float
-    started: bool = False
-
-
-@dataclass
-class OutputEntry:
-    output_id: int
-    agent_id: str
-    task: str
-    output: str
-    request_id: str
-    timestamp: float = 0.0
-
-    def __post_init__(self):
-        if not self.timestamp:
-            self.timestamp = time.time()
-
-
-class OutputBuffer:
-    """Append-only buffer of agent output with monotonic ids for resume."""
-
-    def __init__(self):
-        self._entries: list[OutputEntry] = []
-        self._next_id: int = 0
-
-    def append(self, agent_id, task, output, request_id) -> OutputEntry:
-        entry = OutputEntry(
-            output_id=self._next_id,
-            agent_id=agent_id,
-            task=task,
-            output=output,
-            request_id=request_id,
-        )
-        self._next_id += 1
-        self._entries.append(entry)
-        return entry
-
-    def since(self, cursor: int) -> list[OutputEntry]:
-        return [e for e in self._entries if e.output_id > cursor]
-
-    def count_since(self, cursor: int) -> int:
-        return sum(1 for e in self._entries if e.output_id > cursor)
-
-    @property
-    def latest_id(self) -> int:
-        return self._entries[-1].output_id if self._entries else -1
-
-
-_DEFAULT_CONFIG = default_config()
-DEFAULT_DOMAIN_MODEL = _DEFAULT_CONFIG.model_for(_DEFAULT_CONFIG.domain_tier)
-DEFAULT_MAX_TURNS = _DEFAULT_CONFIG.domain_max_turns
-DEFAULT_MAX_BUDGET_USD = _DEFAULT_CONFIG.domain_max_budget_usd
-
+DomainSink = Callable[[dict], Awaitable[None]]
+# Existing server diagnostics import the credential-name inventory. This is not
+# an execution path; Task 6 moves composition to the service-based manager.
 _SDK_ENV_PASSTHROUGH = [
     "ANTHROPIC_API_KEY",
     "ANTHROPIC_AUTH_TOKEN",
     "CLAUDE_CODE_OAUTH_TOKEN",
     "CLAUDE_CODE_0AUTH_TOKEN",
 ]
+MAX_ENTRIES = 256
+MAX_OUTPUT_BYTES = 256 * 1024
+MAX_TOTAL_OUTPUT_BYTES = 4 * 1024 * 1024
 
 
-def _resolve_sdk_env() -> dict:
-    """Pass bridge auth env vars through to the Agent SDK subprocess.
+class SessionState(Enum):
+    INACTIVE = "inactive"
+    ACTIVATING = "activating"
+    ACTIVE = "active"
+    BACKGROUND = "background"
+    STOPPING = "stopping"
+    CLEANUP_FAILED = "cleanup_failed"
 
-    The SDK merges ClaudeAgentOptions.env over the inherited parent
-    environment (claude-agent-sdk 0.2.136, subprocess_cli.py), so the child
-    would see these variables anyway. Passing them explicitly is
-    belt-and-suspenders, not the mechanism that delivers them. Per D-005's
-    neighbor concern here: the bridge stays auth-agnostic about *which*
-    credential is present, it just forwards whatever is set.
-    """
-    env = {}
-    for key in _SDK_ENV_PASSTHROUGH:
-        val = os.environ.get(key)
-        if val:
-            env[key] = val
-    return env
+
+async def deliver(emit, packet, recorder=None, context=None):
+    try:
+        async with asyncio.timeout(2):
+            await emit(deepcopy(packet))
+    except (Exception, asyncio.CancelledError) as error:
+        if recorder is not None:
+            recorder.event(
+                (
+                    "delivery_cancelled"
+                    if isinstance(error, asyncio.CancelledError)
+                    else "delivery_failed"
+                ),
+                context,
+                outcome=(
+                    "cancelled"
+                    if isinstance(error, asyncio.CancelledError)
+                    else "failure"
+                ),
+            )
+        if (
+            isinstance(error, asyncio.CancelledError)
+            and asyncio.current_task().cancelling()
+        ):
+            # Detach a cancelled socket/control caller. Session-owned startup and
+            # Run jobs are shielded separately and keep their immutable sink.
+            raise
+
+
+@dataclass
+class _Run:
+    command: dict
+    context: RequestContext
+    emit: DomainSink
+    intent: TurnIntent
+    admitted: asyncio.Future
+    job: asyncio.Task | None = None
+    accepted: bool = False
+    preparing: bool = False
 
 
 class DomainSession:
-    """One Agent SDK client scoped to a single domain, with output buffering
-    and a 5-state lifecycle (INACTIVE -> ACTIVATING -> ACTIVE <-> BACKGROUNDED
-    -> DEACTIVATED).
-
-    Phase 1 accommodation hooks (no claim logic yet, just the data model):
-    `claims` and `worktree_path` exist so a later phase can add
-    worktree-per-domain isolation without changing this class's shape.
-    """
-
     def __init__(
         self,
         domain_id: str,
-        base_path: Optional[str] = None,
+        domain_session_id: str,
         *,
-        config: BridgeConfig | None = None,
-        recorder: BridgeRecorder | None = None,
+        config: BridgeConfig,
+        project_service: "ProjectService",
+        recorder: BridgeRecorder | None = None
     ):
-        self._config = config if config is not None else default_config()
-        self._recorder = recorder
-        self._model = self._config.model_for(self._config.domain_tier)
-        self.domain_id = domain_id
-        self.base_path: str = base_path or os.getcwd()
-        self.buffer = OutputBuffer()
-        self.claims: list = []
-        self.worktree_path: Optional[str] = None
-        self._session_id = str(
-            uuid.uuid5(uuid.NAMESPACE_DNS, f"bridge.domain.{domain_id}")
-        )
+        self.domain_id, self.domain_session_id = domain_id, domain_session_id
+        self._config, self._service, self._recorder = config, project_service, recorder
         self._state = SessionState.INACTIVE
-        self._client: Optional[ClaudeSDKClient] = None
-        self._active_task: Optional[asyncio.Task] = None
+        self._workspace = None
+        self._memory = None
+        self._readiness = None
+        self._lease = None
+        self._owner = None
+        self._reserve_task = None
+        self._startup = None
+        self._start_gate = asyncio.Event()
+        self._stop_task = None
+        self._stopping = False
+        self._broken = False
+        self._inflight = None
+        self._jobs = set()
+        self._entries = deque()
+        self._output_bytes = 0
+        self._highwater = 0
+        self._memory_revision = None
+        # The store intentionally rejects concurrent file-lock acquisition.
+        # Serialize this generation's own checkpoints while retaining explicit
+        # failures from unrelated NPC/process actors and storage faults.
+        self._memory_lock = asyncio.Lock()
+        self._background_checkpoint = None
 
     @property
-    def model(self) -> str:
-        return self._model
-
-    def _event(self, name, context=None, **metadata):
-        if self._recorder is not None:
-            self._recorder.event(name, context, **metadata)
+    def model(self):
+        return self._config.model_for(self._config.domain_tier)
 
     @property
-    def state(self) -> SessionState:
+    def state(self):
         return self._state
 
-    def _transition(self, target: SessionState):
-        if target not in _VALID_TRANSITIONS.get(self._state, set()):
-            raise InvalidTransitionError(
-                f"Cannot transition from {self._state.value} to {target.value}"
-            )
-        self._state = target
-        context = RequestContext(
-            None, str(uuid.uuid4()), None, "domain", self.model, self.domain_id
+    @property
+    def clean_inactive(self):
+        return (
+            self._state is SessionState.INACTIVE
+            and not (self._lease and self._lease.held)
+            and all(task.done() for task in self._jobs)
+            and (self._startup is None or self._startup.done())
         )
-        self._event("domain_transition", context, domain_state=target.value)
 
-    async def activate(self, sdk_env: Optional[dict] = None):
-        """Stand up the Agent SDK client for this domain and connect it."""
-        self._transition(SessionState.ACTIVATING)
-        options = ClaudeAgentOptions(
-            model=self.model,
-            permission_mode="acceptEdits",
-            cwd=self.worktree_path or self.base_path,
-            max_turns=self._config.domain_max_turns,
-            max_budget_usd=self._config.domain_max_budget_usd,
-            env=sdk_env if sdk_env is not None else _resolve_sdk_env(),
-            session_id=self._session_id,
+    def _identity(self):
+        return dict(
+            project_id=(
+                self._workspace.project_id
+                if self._workspace
+                else self._service.snapshot().get("project_id")
+            ),
+            workspace_id=self._workspace.workspace_id if self._workspace else None,
+            domain_id=self.domain_id,
+            domain_session_id=self.domain_session_id,
         )
-        self._client = ClaudeSDKClient(options=options)
-        await self._client.connect()
-        self._transition(SessionState.ACTIVE)
 
-    async def submit_query(
-        self,
-        agent_id,
-        task,
-        request_id,
-        on_output=None,
-        *,
-        context: RequestContext | None = None,
-    ):
-        """Schedule execution with its immutable origin; buffer before delivery."""
-        if context is None:
+    def snapshot(self):
+        execution = "idle"
+        if self._state in (SessionState.STOPPING, SessionState.CLEANUP_FAILED):
+            execution = self._state.value
+        elif self._inflight is not None:
+            execution = "running"
+        return dict(
+            type="domain_state",
+            **self._identity(),
+            state=self._state.value,
+            execution_state=execution
+        )
+
+    def _transition(self, state):
+        if self._state is state:
+            return
+        self._state = state
+        if self._recorder:
             context = RequestContext(
-                None,
-                (
-                    request_id
-                    if isinstance(request_id, str) and request_id.strip()
-                    else str(uuid.uuid4())
-                ),
-                agent_id if validate_agent_id(agent_id) else None,
-                "domain",
-                self.model,
+                None, str(uuid4()), None, "domain", self.model, self.domain_id
+            )
+            self._recorder.event("domain_transition", context, domain_state=state.value)
+
+    def _track(self, coroutine):
+        task = asyncio.create_task(coroutine)
+        self._jobs.add(task)
+
+        def done(job):
+            self._jobs.discard(job)
+            if not job.cancelled():
+                job.exception()
+
+        task.add_done_callback(done)
+        return task
+
+    async def _reserve(self):
+        self._workspace = self._service.require_workspace()
+        self._memory = self._service.require_memory()
+        self._readiness = self._service.require_readiness()
+
+        def acquire():
+            self._lease = WorkspaceLease.acquire(
+                self._workspace,
+                domain_id=self.domain_id,
+                domain_session_id=self.domain_session_id,
+            )
+
+        await owned_io(acquire)
+        self._service.publish_reservation(self._lease)
+        self._owner = DomainSDKOwner(
+            self._config, self._workspace, self._lease, self._readiness
+        )
+        if not self._stopping:
+            self._transition(SessionState.ACTIVATING)
+
+    async def _reserve_start(self):
+        """Reserve and register an owned continuation before activation delivery."""
+        if self._reserve_task is None:
+            self._reserve_task = asyncio.create_task(self._reserve())
+            self._startup = asyncio.create_task(self._start_owned())
+            self._startup.add_done_callback(
+                lambda task: None if task.cancelled() else task.exception()
+            )
+        await asyncio.shield(self._reserve_task)
+        return self.snapshot()
+
+    async def _start_owned(self):
+        try:
+            await self._reserve_task
+            await self._start_gate.wait()
+            if not self._stopping:
+                await self._owner.start()
+            if not self._stopping:
+                self._transition(SessionState.ACTIVE)
+        except Exception:
+            if not self._stopping:
+                await self._cleanup()
+            raise
+        return self.snapshot()
+
+    async def start(self) -> dict:
+        try:
+            await self._reserve_start()
+        finally:
+            self._start_gate.set()
+        await asyncio.shield(self._startup)
+        return self.snapshot()
+
+    async def _error(self, command, code, emit, context):
+        await deliver(
+            emit,
+            error_packet(
+                command,
+                code,
+                project_id=self._identity()["project_id"],
+                workspace_id=self._identity()["workspace_id"],
+            ),
+            self._recorder,
+            context,
+        )
+
+    async def admit_query(
+        self, command: dict, *, context: RequestContext, emit: DomainSink
+    ) -> None:
+        # No await before installing the single in-flight record.
+        command = dict(command)
+        if command.get("domain_session_id") != self.domain_session_id:
+            return await self._error(command, "session_unavailable", emit, context)
+        for packet in self._entries:
+            if packet["request_id"] == command["request_id"]:
+                if (packet["agent_id"], packet["task"]) != (
+                    command["agent_id"],
+                    command["task"],
+                ):
+                    return await self._error(command, "invalid_request", emit, context)
+                return await deliver(emit, packet, self._recorder, context)
+        if self._inflight is not None:
+            run = self._inflight
+            if run.command["request_id"] == command["request_id"]:
+                if run.command != command:
+                    return await self._error(command, "invalid_request", emit, context)
+                packet = await asyncio.shield(run.admitted)
+                return await deliver(emit, packet, self._recorder, context)
+            return await self._error(command, "domain_busy", emit, context)
+        if (
+            self._state not in (SessionState.ACTIVE, SessionState.BACKGROUND)
+            or self._stopping
+        ):
+            return await self._error(command, "session_unavailable", emit, context)
+        if self._broken:
+            return await self._error(command, "sdk_error", emit, context)
+        definition = load_agent(command["agent_id"])
+        if not definition:
+            return await self._error(command, "invalid_request", emit, context)
+        origin = RequestContext(
+            context.connection_id,
+            command["request_id"],
+            command["agent_id"],
+            "domain",
+            self.model,
+            self.domain_id,
+        )
+        run = _Run(
+            command,
+            origin,
+            emit,
+            TurnIntent(
+                str(uuid4()),
+                command["request_id"],
+                self._service.owner_run_id,
+                command["agent_id"],
                 self.domain_id,
-            )
-        execution = _QueryExecution(context, task, time.monotonic())
-        self._active_task = asyncio.create_task(
-            self._execute_query(
-                agent_id,
-                task,
-                request_id,
-                on_output,
-                context=context,
-                execution=execution,
-            )
+                self.domain_session_id,
+                command["task"],
+            ),
+            asyncio.get_running_loop().create_future(),
         )
-        self._active_task.add_done_callback(
-            lambda task: self._consume_task_exception(task, execution)
-        )
+        self._inflight = run
+        run.job = self._track(self._run(run, definition))
+        await asyncio.shield(run.admitted)
 
-    def _consume_task_exception(self, task, execution):
-        if task.cancelled():
-            # Cancellation can prevent the coroutine from entering even its
-            # first try block. Its source-owned callback still owns that outcome.
-            if not execution.started:
-                self._message(execution.context, "user", execution.task, "input")
-                self._record_failure(
-                    execution.context,
-                    "cancelled",
-                    execution.submitted_at,
+    async def _save(self, run, outcome):
+        async with self._memory_lock:
+            try:
+                result = await owned_io(
+                    self._memory.finish_turn,
+                    run.intent.turn_id,
+                    outcome=outcome.status,
+                    output=outcome.output,
+                    delta=outcome.memory_delta,
                 )
-        else:
-            # Consume detached exceptions without changing what awaiters receive.
-            task.exception()
-
-    def _message(self, context, role, content, outcome, **metadata):
-        if self._recorder is not None and validate_agent_id(context.agent_id):
-            self._recorder.message(context, role, content, outcome, **metadata)
-
-    async def _receive_output(self, prompt):
-        await self._client.query(prompt)
-        text_parts = []
-        provider_session_id = None
-        failed = False
-        async for msg in self._client.receive_response():
-            if hasattr(msg, "content"):
-                for block in msg.content:
-                    if hasattr(block, "text"):
-                        text_parts.append(block.text)
-            if type(msg).__name__ == "ResultMessage":
-                observed = getattr(msg, "session_id", None)
-                if isinstance(observed, str) and observed:
-                    provider_session_id = observed
-                failed = getattr(msg, "is_error", False) is True
-                break
-        return "\n\n".join(text_parts), provider_session_id, failed
-
-    async def _execute_query(
-        self,
-        agent_id,
-        task,
-        request_id,
-        on_output=None,
-        *,
-        context: RequestContext,
-        execution: _QueryExecution,
-    ):
-        execution.started = True
-        started = time.monotonic()
-        self._message(context, "user", task, "input")
-        self._event("execution_started", context)
-        try:
-            definition = load_agent(agent_id)
-            prompt = f"{definition}\n\n{task}" if definition else task
-            output, provider_session_id, failed = await self._receive_output(prompt)
-            entry = self.buffer.append(agent_id, task, output, request_id)
-        except asyncio.CancelledError:
-            self._record_failure(context, "cancelled", started)
-            raise
-        except Exception:
-            self._record_failure(context, "failure", started)
-            raise
-        outcome = "failure" if failed else "success"
-        self._message(
-            context,
-            "error" if failed else "assistant",
-            "sdk_error" if failed else output,
-            outcome,
-            output_id=str(entry.output_id),
-            provider_session_id=provider_session_id,
-        )
-        self._event(
-            "request_failed" if failed else "request_completed",
-            context,
-            outcome=outcome,
-            duration_ms=(time.monotonic() - started) * 1000,
-        )
-        if on_output:
-            await self._deliver_output(on_output, entry, context)
-
-    def _record_failure(self, context, outcome, started):
-        self._message(
-            context,
-            "error",
-            "cancelled" if outcome == "cancelled" else "sdk_error",
-            outcome,
-        )
-        self._event(
-            "request_cancelled" if outcome == "cancelled" else "request_failed",
-            context,
-            outcome=outcome,
-            duration_ms=(time.monotonic() - started) * 1000,
-        )
-
-    async def _deliver_output(self, on_output, entry, context):
-        try:
-            await on_output(self.domain_id, entry)
-        except asyncio.CancelledError:
-            self._event("delivery_cancelled", context, outcome="cancelled")
-            raise
-        except Exception:
-            self._event("delivery_failed", context, outcome="failure")
-            raise
-
-    def background(self):
-        self._transition(SessionState.BACKGROUNDED)
-
-    def refocus(self):
-        self._transition(SessionState.ACTIVE)
-
-    async def deactivate(self):
-        """Finish query cancellation and disconnect, then propagate caller cancellation."""
-        active_task = self._active_task
-        if active_task is not None and not active_task.done():
-            # Cancel before yielding so immediate submit/deactivate cannot start
-            # provider work while the teardown task is waiting to run.
-            active_task.cancel()
-        else:
-            active_task = None
-        cleanup = asyncio.create_task(self._finish_deactivation(active_task))
-        caller_cancelled = None
-        while not cleanup.done():
-            try:
-                await asyncio.shield(cleanup)
-            except asyncio.CancelledError as exc:
-                if not cleanup.cancelled():
-                    caller_cancelled = exc
             except Exception:
-                break  # retrieve and propagate the cleanup's actual exception below
-        if caller_cancelled is not None:
-            if not cleanup.cancelled():
-                cleanup.exception()
-            raise caller_cancelled
-        cleanup.result()
+                result = MemorySaveResult(
+                    False, self._memory_revision, "memory_unavailable"
+                )
+            if result.saved:
+                self._memory_revision = result.revision
+            elif result.revision is None:
+                result = MemorySaveResult(
+                    False, self._memory_revision, result.error_type
+                )
+            self._service.publish_memory(result)
+            return result
 
-    async def _finish_deactivation(self, active_task):
-        # Only this shielded task awaits expected child cancellation; caller
-        # cancellation cannot be mistaken for it or interrupt the SDK disconnect.
-        if active_task is not None:
+    async def _run(self, run, definition):
+        started = time.monotonic()
+        try:
+            if self._stopping:
+                raise DomainCommandError("session_unavailable")
+            run.preparing = True
+            async with self._memory_lock:
+                snapshot = await self._readiness.prepare_turn(run.intent)
+                self._memory_revision = snapshot.revision
+                self._service.publish_memory(snapshot)
+            run.preparing = False
+            if self._stopping:
+                raise DomainCommandError("session_unavailable")
+        except (Exception, asyncio.CancelledError) as error:
+            run.preparing = False
+            # prepare_turn can fail/cancel after its durable begin. Its owned IO
+            # has drained; finish safely settles that intent if it exists.
+            await self._save(
+                run,
+                SDKOutcome(
+                    "Not executed: admission did not complete.",
+                    "error",
+                    "not_executed",
+                    None,
+                    None,
+                ),
+            )
+            packet = error_packet(
+                run.command,
+                getattr(error, "code", "memory_unavailable"),
+                project_id=self._identity()["project_id"],
+                workspace_id=self._identity()["workspace_id"],
+            )
+            self._inflight = None
+            await deliver(run.emit, packet, self._recorder, run.context)
+            run.admitted.set_result(packet)
+            return
+        run.accepted = True
+        packet = dict(
+            type="domain_accepted",
+            **self._identity(),
+            request_id=run.command["request_id"],
+            agent_id=run.command["agent_id"],
+            task=run.command["task"],
+            execution_state="running"
+        )
+        # Sink failure cannot roll admission back; release execution after the
+        # acceptance attempt even when the originating socket disappeared.
+        await deliver(run.emit, packet, self._recorder, run.context)
+        run.admitted.set_result(packet)
+        if self._recorder:
+            self._recorder.message(run.context, "user", run.command["task"], "input")
+            self._recorder.event("execution_started", run.context)
+        try:
+            if self._stopping:
+                outcome = SDKOutcome("", "cancelled", "stopped", None, None)
+            else:
+                outcome = await self._owner.execute(
+                    agent_id=run.command["agent_id"],
+                    definition=definition,
+                    task=run.command["task"],
+                    prior_project_notes=snapshot.as_context(),
+                )
+        except Exception:
+            self._broken = True
+            outcome = SDKOutcome("", "error", "transport_error", None, None)
+        if outcome.reason in (
+            "transport_error",
+            "missing_terminal",
+            "output_limit",
+        ) or (outcome.status == "cancelled" and not self._stopping):
+            self._broken = True
+        data = outcome.output.encode("utf-8", errors="replace")
+        truncated = len(data) > MAX_OUTPUT_BYTES or outcome.reason == "output_limit"
+        output = data[:MAX_OUTPUT_BYTES].decode("utf-8", errors="ignore")
+        outcome = SDKOutcome(
+            output,
+            outcome.status,
+            outcome.reason,
+            outcome.provider_session_id,
+            outcome.memory_delta,
+        )
+        saved = await self._save(run, outcome)
+        self._highwater += 1
+        terminal = dict(
+            type="domain_result",
+            **self._identity(),
+            request_id=run.command["request_id"],
+            agent_id=run.command["agent_id"],
+            task=run.command["task"],
+            output=output,
+            output_id=str(self._highwater),
+            status=outcome.status,
+            reason=outcome.reason,
+            truncated=truncated,
+            memory=asdict(saved)
+        )
+        self._entries.append(terminal)
+        self._output_bytes += len(output.encode("utf-8"))
+        while (
+            len(self._entries) > MAX_ENTRIES
+            or self._output_bytes > MAX_TOTAL_OUTPUT_BYTES
+        ):
+            self._output_bytes -= len(self._entries.popleft()["output"].encode("utf-8"))
+        self._inflight = None
+        if self._recorder:
+            record_outcome = "failure" if outcome.status == "error" else outcome.status
+            self._recorder.message(
+                run.context,
+                "assistant" if outcome.status == "success" else "error",
+                (
+                    output
+                    if outcome.status == "success"
+                    else "cancelled" if outcome.status == "cancelled" else "sdk_error"
+                ),
+                record_outcome,
+                output_id=terminal["output_id"],
+                provider_session_id=outcome.provider_session_id,
+            )
+            self._recorder.event(
+                {
+                    "success": "request_completed",
+                    "error": "request_failed",
+                    "cancelled": "request_cancelled",
+                }[outcome.status],
+                run.context,
+                outcome=record_outcome,
+                duration_ms=(time.monotonic() - started) * 1000,
+            )
+        await deliver(run.emit, terminal, self._recorder, run.context)
+
+    async def _checkpoint(self, event):
+        async with self._memory_lock:
             try:
-                await active_task
-            except asyncio.CancelledError:
+                result = await owned_io(
+                    self._memory.checkpoint_lifecycle,
+                    domain_id=self.domain_id,
+                    domain_session_id=self.domain_session_id,
+                    event=event,
+                )
+            except Exception:
+                result = MemorySaveResult(
+                    False, self._memory_revision, "memory_unavailable"
+                )
+            if result.saved:
+                self._memory_revision = max(self._memory_revision or 0, result.revision)
+            elif result.revision is None:
+                result = MemorySaveResult(
+                    False, self._memory_revision, result.error_type
+                )
+            self._service.publish_memory(result)
+
+    def background(self) -> dict:
+        if self._state not in (SessionState.ACTIVE, SessionState.BACKGROUND):
+            raise DomainCommandError("session_unavailable")
+        if self._state is not SessionState.BACKGROUND:
+            self._transition(SessionState.BACKGROUND)
+            # One bounded background-checkpoint worker. Repeated visibility
+            # toggles while this fact is being saved share that checkpoint.
+            if (
+                self._background_checkpoint is None
+                or self._background_checkpoint.done()
+            ):
+                self._background_checkpoint = self._track(
+                    self._checkpoint("background")
+                )
+        return self.snapshot()
+
+    def refocus(self) -> dict:
+        if self._state not in (SessionState.ACTIVE, SessionState.BACKGROUND):
+            raise DomainCommandError("session_unavailable")
+        self._transition(SessionState.ACTIVE)
+        return self.snapshot()
+
+    async def _cleanup(self):
+        clean = True
+        try:
+            if self._owner:
+                clean = (await self._owner.stop()).clean
+            if self._inflight and self._inflight.preparing:
+                self._inflight.job.cancel()
+            for task in tuple(self._jobs):
+                await asyncio.shield(task)
+            if self._memory and self._lease:
+                await self._checkpoint("stop" if clean else "cleanup_failed")
+            if clean and self._lease:
+                await owned_io(self._lease.release, cleanup_confirmed=True)
+        except Exception:
+            clean = False
+        if self._lease:
+            self._service.publish_cleanup(self._lease, clean=clean)
+        self._transition(
+            SessionState.INACTIVE if clean else SessionState.CLEANUP_FAILED
+        )
+        return self.snapshot()
+
+    async def _stop_owned(self):
+        if self._reserve_task:
+            try:
+                await self._reserve_task
+            except Exception:
                 pass
-        if self._client:
-            await self._client.disconnect()
-            self._client = None
-        self._transition(SessionState.DEACTIVATED)
+        result = await self._cleanup()
+        if self._startup:
+            try:
+                await self._startup
+            except Exception:
+                pass
+        return result
+
+    async def stop(self) -> dict:
+        if self.clean_inactive and self._reserve_task is None:
+            return self.snapshot()
+        if self._stop_task is None or (
+            self._stop_task.done() and self._state is SessionState.CLEANUP_FAILED
+        ):
+            self._stopping = True
+            self._transition(SessionState.STOPPING)
+            self._start_gate.set()
+            self._stop_task = asyncio.create_task(self._stop_owned())
+        # Stop's caller may disconnect, but ownership must still drain before it
+        # can report cancellation to a shutdown caller.
+        cancelled = None
+        while not self._stop_task.done():
+            try:
+                await asyncio.shield(self._stop_task)
+            except asyncio.CancelledError as error:
+                cancelled = error
+        result = self._stop_task.result()
+        if cancelled:
+            raise cancelled
+        return result
+
+    def replay(self, cursor: int) -> list[dict]:
+        if type(cursor) is not int or cursor < 0:
+            raise DomainCommandError()
+        highwater = self._highwater
+        earliest = (
+            int(self._entries[0]["output_id"]) if self._entries else highwater + 1
+        )
+        packets = [
+            deepcopy(entry)
+            for entry in self._entries
+            if cursor < int(entry["output_id"]) <= highwater
+        ]
+        packets.append(
+            dict(
+                self.snapshot(),
+                type="resume_complete",
+                high_water_mark=str(highwater),
+                earliest_output_id=str(earliest) if self._entries else None,
+                history_gap=cursor < earliest - 1,
+            )
+        )
+        return packets

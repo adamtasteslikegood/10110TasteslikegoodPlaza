@@ -1,146 +1,181 @@
-"""Domain session manager — orchestrates domain lifecycle and routing.
+"""UI-independent routing over bounded, generation-owned domain sessions."""
 
-Manages the registry of active domain sessions, routes queries, handles
-resume requests, and produces domain state notifications.
+import asyncio
+from typing import TYPE_CHECKING
+from uuid import uuid4
 
-D-005: knows domain_id strings and session states, not floors or sprites.
-"""
-
-from typing import Optional
-
-from bridge.config import BridgeConfig, default_config
-from bridge.observability import BridgeRecorder, RequestContext
-from bridge.domain_session import DomainSession, SessionState
-from bridge.protocol import (
-    BridgeRequest,
-    make_error,
-    make_success,
-    make_domain_state,
+from bridge.config import BridgeConfig
+from bridge.domain_protocol import (
+    DomainCommandError,
+    error_packet,
+    validate_domain_command,
 )
+from bridge.domain_session import DomainSession, DomainSink, SessionState, deliver
+from bridge.observability import BridgeRecorder, RequestContext
+from bridge.workspace import WorkspaceError
+
+if TYPE_CHECKING:
+    from bridge.project_service import ProjectService
 
 
 class DomainManager:
     def __init__(
         self,
-        base_path=None,
+        config: BridgeConfig,
+        project_service: "ProjectService",
         *,
-        config: BridgeConfig | None = None,
-        recorder: BridgeRecorder | None = None,
+        recorder: BridgeRecorder | None = None
     ):
-        self._config = config if config is not None else default_config()
-        self._recorder = recorder
-        self._sessions: dict[str, DomainSession] = {}
-        self._base_path = base_path
+        self._config, self._service, self._recorder = config, project_service, recorder
+        self._sessions: dict[str, list[DomainSession]] = {}
+        self._closing = False
 
-    async def activate_domain(self, domain_id) -> dict:
-        if domain_id in self._sessions:
-            session = self._sessions[domain_id]
-            if session.state in (SessionState.ACTIVE, SessionState.BACKGROUNDED):
-                return make_domain_state(
-                    domain_id,
-                    session.state.value,
-                    session.buffer.count_since(-1),
+    def _new_session(self, domain):
+        generations = self._sessions.get(domain)
+        if generations and not generations[-1].clean_inactive:
+            return generations[-1], False
+        if generations is None:
+            if len(self._sessions) >= 10:
+                old = next(
+                    (
+                        key
+                        for key, values in self._sessions.items()
+                        if all(s.clean_inactive for s in values)
+                    ),
+                    None,
                 )
+                if old is None:
+                    raise DomainCommandError("domain_busy")
+                del self._sessions[old]
+            generations = self._sessions.setdefault(domain, [])
+        if len(generations) >= 2:
+            if not generations[0].clean_inactive:
+                raise DomainCommandError("domain_busy")
+            generations.pop(0)
         session = DomainSession(
-            domain_id,
-            base_path=self._base_path,
+            domain,
+            str(uuid4()),
             config=self._config,
+            project_service=self._service,
             recorder=self._recorder,
         )
-        self._sessions[domain_id] = session
-        await session.activate()
-        return make_domain_state(domain_id, session.state.value, 0)
+        generations.append(session)
+        return session, True
 
-    async def handle_domain_query(
-        self,
-        request: BridgeRequest,
-        on_output=None,
-        *,
-        context: RequestContext | None = None,
-    ):
-        session = self._sessions.get(request.domain_id)
-        if not session or session.state not in (
-            SessionState.ACTIVE,
-            SessionState.BACKGROUNDED,
-        ):
-            return make_error(
-                request.agent_id,
-                request.task,
-                "invalid_request",
-                f"Domain '{request.domain_id}' is not active",
-            )
-        await session.submit_query(
-            request.agent_id,
-            request.task,
-            request.request_id,
-            on_output=on_output,
-            context=context,
-        )
-        return None
-
-    def handle_resume(self, domain_id, cursor=-1) -> list[dict]:
-        session = self._sessions.get(domain_id)
-        if not session:
-            return []
+    async def handle(
+        self, command: dict, *, context: RequestContext, emit: DomainSink
+    ) -> None:
+        session = None
         try:
-            cursor_int = int(cursor)
-        except (ValueError, TypeError):
-            cursor_int = -1
-        entries = session.buffer.since(cursor_int)
-        return [
-            make_success(
-                e.agent_id,
-                e.task,
-                e.output,
-                domain_id=domain_id,
-                request_id=e.request_id,
-                output_id=str(e.output_id),
+            command = validate_domain_command(command)
+            kind = command["type"]
+            if kind == "describe_workspace":
+                packet = dict(await self._service.refresh_snapshot())
+            elif kind == "domain_status":
+                generations = self._sessions.get(command["domain_id"], [])
+                packet = (
+                    generations[-1].snapshot()
+                    if generations
+                    else dict(
+                        type="domain_state",
+                        project_id=self._service.snapshot().get("project_id"),
+                        workspace_id=self._service.snapshot().get("workspace_id"),
+                        domain_id=command["domain_id"],
+                        domain_session_id=None,
+                        state="inactive",
+                        execution_state="idle",
+                    )
+                )
+                packet["available_generations"] = [
+                    s.domain_session_id for s in generations
+                ]
+            elif kind == "activate_domain":
+                if self._closing:
+                    raise DomainCommandError("session_unavailable")
+                session, created = self._new_session(command["domain_id"])
+                if not created:
+                    packet = session.snapshot()
+                else:
+                    try:
+                        packet = await session._reserve_start()
+                        await deliver(
+                            emit,
+                            dict(packet, request_id=command["request_id"]),
+                            self._recorder,
+                            context,
+                        )
+                    finally:
+                        # Release the registered continuation even on socket loss.
+                        session._start_gate.set()
+                    packet = await session.start()
+            else:
+                generations = self._sessions.get(command["domain_id"], [])
+                session = next(
+                    (
+                        s
+                        for s in generations
+                        if s.domain_session_id == command["domain_session_id"]
+                    ),
+                    None,
+                )
+                if session is None or (
+                    kind != "resume" and session is not generations[-1]
+                ):
+                    raise DomainCommandError("session_unavailable")
+                if kind == "domain_query":
+                    return await session.admit_query(
+                        command, context=context, emit=emit
+                    )
+                if kind == "resume":
+                    for packet in session.replay(command["cursor"]):
+                        if packet["type"] == "resume_complete":
+                            packet["request_id"] = command["request_id"]
+                        await deliver(emit, packet, self._recorder, context)
+                    return
+                if kind == "background_domain":
+                    packet = session.background()
+                elif kind == "refocus_domain":
+                    packet = session.refocus()
+                else:
+                    packet = await session.stop()
+            await deliver(
+                emit,
+                dict(packet, request_id=command["request_id"]),
+                self._recorder,
+                context,
             )
-            for e in entries
+        except Exception as error:
+            snapshot = self._service.snapshot()
+            code = getattr(error, "code", "sdk_error")
+            if session is not None:
+                command = dict(command, domain_session_id=session.domain_session_id)
+                if session.state is SessionState.CLEANUP_FAILED:
+                    code = "cleanup_failed"
+            packet = error_packet(
+                command,
+                code,
+                project_id=snapshot.get("project_id"),
+                workspace_id=snapshot.get("workspace_id"),
+            )
+            if code == "workspace_busy" and isinstance(error, WorkspaceError):
+                # Lease errors expose only an already-validated domain slug,
+                # never paths, provider details or arbitrary exception text.
+                packet["message"] = str(error)
+            await deliver(emit, packet, self._recorder, context)
+
+    async def shutdown(self) -> None:
+        self._closing = True
+        sessions = [
+            session
+            for generations in self._sessions.values()
+            for session in generations
         ]
-
-    def background_domain(self, domain_id) -> dict:
-        session = self._sessions.get(domain_id)
-        if not session:
-            return make_domain_state(domain_id, "inactive", 0)
-        session.background()
-        return make_domain_state(
-            domain_id,
-            session.state.value,
-            session.buffer.count_since(-1),
+        results = await asyncio.gather(
+            *(session.stop() for session in sessions), return_exceptions=True
         )
-
-    def refocus_domain(self, domain_id) -> dict:
-        session = self._sessions.get(domain_id)
-        if not session:
-            return make_domain_state(domain_id, "inactive", 0)
-        session.refocus()
-        return make_domain_state(
-            domain_id,
-            session.state.value,
-            session.buffer.count_since(-1),
-        )
-
-    async def deactivate_domain(self, domain_id) -> dict:
-        session = self._sessions.get(domain_id)
-        if not session:
-            return make_domain_state(domain_id, "deactivated", 0)
-        await session.deactivate()
-        return make_domain_state(domain_id, session.state.value, 0)
-
-    def get_domain_state(self, domain_id) -> Optional[dict]:
-        session = self._sessions.get(domain_id)
-        if not session:
-            return None
-        return make_domain_state(
-            domain_id,
-            session.state.value,
-            session.buffer.count_since(-1),
-        )
-
-    def list_active_domains(self) -> list[str]:
-        return [
-            did
-            for did, s in self._sessions.items()
-            if s.state in (SessionState.ACTIVE, SessionState.BACKGROUNDED)
-        ]
+        if any(
+            isinstance(packet, BaseException)
+            or packet["state"] == SessionState.CLEANUP_FAILED.value
+            for packet in results
+        ):
+            raise DomainCommandError("cleanup_failed")

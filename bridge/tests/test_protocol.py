@@ -141,3 +141,102 @@ class TestResponseBuilders:
         assert resp["domain_id"] == "engineering"
         assert resp["state"] == "backgrounded"
         assert resp["unread_count"] == 3
+
+
+class TestStrictDomainCommands:
+    def validate(self, payload):
+        import importlib
+
+        module = importlib.util.find_spec("bridge.domain_protocol")
+        assert module is not None, "strict domain command validator is missing"
+        return importlib.import_module(
+            "bridge.domain_protocol"
+        ).validate_domain_command(payload)
+
+    @pytest.mark.parametrize(
+        "field,value",
+        [
+            ("request_id", ""),
+            ("request_id", True),
+            ("request_id", "é" * 65),
+            ("domain_id", "../path"),
+            ("domain_id", "é"),
+            ("domain_id", "a" * 129),
+            ("domain_session_id", []),
+            ("task", "x" * (65536 + 1)),
+            ("task", "\ud800"),
+            ("agent_id", "../agent"),
+        ],
+    )
+    def test_rejects_invalid_scalars_and_byte_bounds(self, field, value):
+        payload = dict(
+            type="domain_query",
+            request_id="r",
+            domain_id="d",
+            domain_session_id="s",
+            agent_id="builder",
+            task="task",
+        )
+        payload[field] = value
+        with pytest.raises(ValueError):
+            self.validate(payload)
+
+    @pytest.mark.parametrize(
+        "cursor", [True, 0, -1, "-1", "1.0", "١", "１２", " 1", "", None]
+    )
+    def test_replay_requires_ascii_decimal_string(self, cursor):
+        with pytest.raises(ValueError):
+            self.validate(
+                dict(
+                    type="resume",
+                    request_id="r",
+                    domain_id="d",
+                    domain_session_id="s",
+                    cursor=cursor,
+                )
+            )
+
+    def test_inclusive_limits_and_parsed_cursor(self):
+        payload = dict(
+            type="domain_query",
+            request_id="é" * 64,
+            domain_id="d" * 128,
+            domain_session_id="s" * 128,
+            agent_id="builder",
+            task="é" * 32768,
+        )
+        assert self.validate(payload) == payload
+        assert (
+            self.validate(
+                dict(
+                    type="resume",
+                    request_id="r",
+                    domain_id="d",
+                    domain_session_id="s",
+                    cursor="00012",
+                )
+            )["cursor"]
+            == 12
+        )
+
+    @pytest.mark.parametrize(
+        "action",
+        [
+            "domain_query",
+            "background_domain",
+            "refocus_domain",
+            "deactivate_domain",
+            "resume",
+        ],
+    )
+    def test_requires_generation(self, action):
+        with pytest.raises(ValueError):
+            self.validate(dict(type=action, request_id="r", domain_id="d"))
+
+    def test_rejects_client_paths_and_unknown_commands(self):
+        with pytest.raises(ValueError):
+            self.validate(
+                dict(type="activate_domain", request_id="r", domain_id="d", cwd="/tmp")
+            )
+        with pytest.raises(ValueError):
+            self.validate(dict(type="bogus", request_id="r"))

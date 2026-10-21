@@ -1,169 +1,618 @@
-"""Tests for bridge.domain_session — output buffer and domain session lifecycle."""
+"""Generation ownership, real reservation/memory, deterministic admission/replay."""
 
 import asyncio
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+import threading
+from dataclasses import replace
 
-from bridge.domain_session import (
-    OutputBuffer,
-    OutputEntry,
-    SessionState,
-    DomainSession,
-    InvalidTransitionError,
+import pytest
+import pytest_asyncio
+
+from bridge.config import default_config
+from bridge.domain_session import DomainSession
+from bridge.project_memory import MemorySaveResult
+from bridge.readiness import owned_io
+from bridge.tests.domain_fakes import (
+    FakeProjectService,
+    FakeOwner,
+    context,
+    query,
+    collect_until,
 )
 
 
-class TestOutputBuffer:
-    def test_append_returns_entry_with_monotonic_id(self):
-        buf = OutputBuffer()
-        e1 = buf.append("agent-a", "task 1", "output 1", "r1")
-        e2 = buf.append("agent-b", "task 2", "output 2", "r2")
-        assert e1.output_id == 0
-        assert e2.output_id == 1
+@pytest_asyncio.fixture
+async def setup(tmp_path, monkeypatch):
+    service = FakeProjectService(tmp_path)
+    owners = []
 
-    def test_since_cursor_returns_newer_entries(self):
-        buf = OutputBuffer()
-        buf.append("a", "t", "first", "r1")
-        buf.append("a", "t", "second", "r2")
-        buf.append("a", "t", "third", "r3")
-        entries = buf.since(0)
-        assert len(entries) == 2
-        assert entries[0].output == "second"
-        assert entries[1].output == "third"
+    def factory(*args):
+        owner = FakeOwner(*args)
+        owners.append(owner)
+        return owner
 
-    def test_since_minus_one_returns_all(self):
-        buf = OutputBuffer()
-        buf.append("a", "t", "first", "r1")
-        buf.append("a", "t", "second", "r2")
-        entries = buf.since(-1)
-        assert len(entries) == 2
-
-    def test_since_latest_returns_empty(self):
-        buf = OutputBuffer()
-        buf.append("a", "t", "first", "r1")
-        entries = buf.since(0)
-        assert entries == []
-
-    def test_count_since(self):
-        buf = OutputBuffer()
-        buf.append("a", "t", "first", "r1")
-        buf.append("a", "t", "second", "r2")
-        buf.append("a", "t", "third", "r3")
-        assert buf.count_since(0) == 2
-        assert buf.count_since(-1) == 3
-        assert buf.count_since(2) == 0
-
-    def test_latest_id_empty_buffer(self):
-        buf = OutputBuffer()
-        assert buf.latest_id == -1
-
-    def test_latest_id_after_append(self):
-        buf = OutputBuffer()
-        buf.append("a", "t", "o", "r")
-        assert buf.latest_id == 0
-        buf.append("a", "t", "o", "r")
-        assert buf.latest_id == 1
-
-
-class TestSessionState:
-    def test_initial_state_is_inactive(self):
-        session = DomainSession("engineering")
-        assert session.state == SessionState.INACTIVE
-
-    def test_phase1_accommodation_defaults(self):
-        session = DomainSession("engineering")
-        assert session.claims == []
-        assert session.worktree_path is None
-        assert session.base_path is not None
-
-    def test_custom_base_path(self):
-        session = DomainSession("engineering", base_path="/custom/path")
-        assert session.base_path == "/custom/path"
-
-    def test_background_from_active(self):
-        session = DomainSession("engineering")
-        session._state = SessionState.ACTIVE
-        session.background()
-        assert session.state == SessionState.BACKGROUNDED
-
-    def test_refocus_from_backgrounded(self):
-        session = DomainSession("engineering")
-        session._state = SessionState.BACKGROUNDED
-        session.refocus()
-        assert session.state == SessionState.ACTIVE
-
-    def test_invalid_transition_raises(self):
-        session = DomainSession("engineering")
-        with pytest.raises(InvalidTransitionError):
-            session.background()
+    monkeypatch.setattr("bridge.domain_session.DomainSDKOwner", factory, raising=False)
+    monkeypatch.setattr(
+        "bridge.domain_session.load_agent",
+        lambda agent: "definition" if agent == "builder" else None,
+    )
+    session = DomainSession(
+        "engineering", "generation", config=default_config(), project_service=service
+    )
+    yield session, service, owners
+    if owners:
+        owners[0].clean = True
+        if owners[0].stop_gate:
+            owners[0].stop_gate.set()
+    await session.stop()
+    service.close()
 
 
 @pytest.mark.asyncio
-class TestDomainSessionSDK:
-    @pytest.fixture
-    def mock_sdk(self, monkeypatch):
-        mock_client = AsyncMock()
+async def test_admission_precedes_immediate_terminal(setup):
+    session, service, owners = setup
+    await session.start()
+    packets = []
 
-        async def fake_receive():
-            msg = MagicMock()
-            msg.content = [MagicMock(text="SDK response text")]
-            type(msg).__name__ = "AssistantMessage"
-            yield msg
-            result = MagicMock()
-            type(result).__name__ = "ResultMessage"
-            yield result
+    async def emit(packet):
+        if packet["type"] == "domain_accepted":
+            assert "pending" in service.memory.load().todo
+            assert not owners[0].calls
+        packets.append(packet)
 
-        mock_client.receive_response = fake_receive
-        mock_cls = MagicMock(return_value=mock_client)
-        monkeypatch.setattr("bridge.domain_session.ClaudeSDKClient", mock_cls)
-        return mock_client, mock_cls
+    await session.admit_query(query(), context=context(), emit=emit)
+    await collect_until(session, packets)
+    assert [p["type"] for p in packets] == ["domain_accepted", "domain_result"]
+    result = packets[-1]
+    assert result["status"] == "success" and result["memory"]["saved"]
+    assert result["project_id"] == service.workspace.project_id
+    assert result["domain_session_id"] == "generation" and result["output_id"] == "1"
+    assert "prior notes/data" in owners[0].calls[0]["prior_project_notes"]
+    assert service.reservation.held
 
-    async def test_activate_transitions_to_active(self, mock_sdk):
-        session = DomainSession("engineering")
-        await session.activate()
-        assert session.state == SessionState.ACTIVE
 
-    async def test_activate_connects_sdk_client(self, mock_sdk):
-        mock_client, _ = mock_sdk
-        session = DomainSession("engineering")
-        await session.activate()
-        mock_client.connect.assert_awaited_once()
+@pytest.mark.asyncio
+async def test_duplicate_run_is_not_reexecuted(setup):
+    session, _, owners = setup
+    await session.start()
+    owners[0].execute_gate = asyncio.Event()
+    packets = []
 
-    async def test_deactivate_disconnects(self, mock_sdk):
-        mock_client, _ = mock_sdk
-        session = DomainSession("engineering")
-        await session.activate()
-        await session.deactivate()
-        assert session.state == SessionState.DEACTIVATED
-        mock_client.disconnect.assert_awaited_once()
+    async def emit(packet):
+        packets.append(packet)
 
-    async def test_submit_query_buffers_output(self, mock_sdk, monkeypatch):
-        monkeypatch.setattr(
-            "bridge.domain_session.load_agent",
-            lambda aid: "You are an engineer.",
-        )
-        session = DomainSession("engineering")
-        await session.activate()
-        callback = AsyncMock()
-        await session.submit_query(
-            "systems-architect", "review code", "r1", on_output=callback
-        )
-        await asyncio.sleep(0.1)
-        assert session.buffer.latest_id == 0
-        entry = session.buffer.since(-1)[0]
-        assert entry.output == "SDK response text"
-        assert entry.agent_id == "systems-architect"
+    await session.admit_query(query(), context=context(), emit=emit)
+    await session.admit_query(query(), context=context(), emit=emit)
+    await session.admit_query(query(task="conflict"), context=context(), emit=emit)
+    await session.admit_query(query("another"), context=context("another"), emit=emit)
+    assert packets[-2]["error_type"] == "invalid_request"
+    assert packets[-1]["error_type"] == "domain_busy"
+    owners[0].execute_gate.set()
+    await collect_until(session, packets)
+    await session.admit_query(query(), context=context(), emit=emit)
+    assert len(owners[0].calls) == 1
+    assert len(session.replay(0)) == 2
+    assert packets[-1] == packets[-2]
 
-    async def test_submit_query_calls_callback(self, mock_sdk, monkeypatch):
-        monkeypatch.setattr(
-            "bridge.domain_session.load_agent",
-            lambda aid: "You are an engineer.",
-        )
-        session = DomainSession("engineering")
-        await session.activate()
-        callback = AsyncMock()
-        await session.submit_query(
-            "systems-architect", "review code", "r1", on_output=callback
-        )
-        await asyncio.sleep(0.1)
-        callback.assert_awaited_once()
+
+@pytest.mark.asyncio
+async def test_memory_save_failure_does_not_retry_completed_task(setup, monkeypatch):
+    session, service, owners = setup
+    await session.start()
+    monkeypatch.setattr(
+        service.memory,
+        "finish_turn",
+        lambda *a, **kw: MemorySaveResult(False, 2, "memory_unavailable"),
+    )
+    packets = []
+
+    async def emit(packet):
+        packets.append(packet)
+
+    await session.admit_query(query(), context=context(), emit=emit)
+    await collect_until(session, packets)
+    await session.admit_query(query(), context=context(), emit=emit)
+    assert (
+        packets[-1]["status"] == "success" and packets[-1]["memory"]["saved"] is False
+    )
+    assert len(owners[0].calls) == 1
+
+
+@pytest.mark.asyncio
+async def test_delivery_failure_and_caller_cancellation_do_not_cancel_work(setup):
+    session, _, owners = setup
+    await session.start()
+    entered, release = asyncio.Event(), asyncio.Event()
+
+    async def emit(packet):
+        if packet["type"] == "domain_accepted":
+            entered.set()
+            await release.wait()
+        raise RuntimeError("socket gone")
+
+    admission = asyncio.create_task(
+        session.admit_query(query(), context=context(), emit=emit)
+    )
+    await entered.wait()
+    admission.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await admission
+    release.set()
+    async with asyncio.timeout(3):
+        while len(session.replay(0)) == 1:
+            await asyncio.sleep(0.001)
+    assert session.replay(0)[0]["status"] == "success"
+    assert len(owners[0].calls) == 1
+
+
+@pytest.mark.asyncio
+async def test_stop_records_partial_cancel_then_releases_and_is_idempotent(setup):
+    session, service, owners = setup
+    await session.start()
+    owners[0].execute_gate = asyncio.Event()
+    packets = []
+
+    async def emit(packet):
+        packets.append(packet)
+
+    await session.admit_query(query(), context=context(), emit=emit)
+    await owners[0].executing.wait()
+    assert session.background()["state"] == "background"
+    assert session.refocus()["state"] == "active"
+    assert (await session.stop())["state"] == "inactive"
+    assert (await session.stop())["state"] == "inactive"
+    result = session.replay(0)[0]
+    assert result["status"] == "cancelled" and result["output"] == "partial"
+    assert service.reservation is None and "cancelled" in service.memory.load().todo
+
+
+@pytest.mark.asyncio
+async def test_cleanup_failure_retains_reservation(setup):
+    session, service, owners = setup
+    await session.start()
+    owners[0].clean = False
+    assert (await session.stop())["state"] == "cleanup_failed"
+    assert service.reservation.held
+    owners[0].clean = True
+    assert (await session.stop())["state"] == "inactive"
+
+
+@pytest.mark.asyncio
+async def test_stop_drains_late_prepare_and_settles_nonexecuted_intent(
+    setup, monkeypatch
+):
+    session, service, owners = setup
+    await session.start()
+    entered, release = threading.Event(), threading.Event()
+    real = service.memory.begin_turn
+
+    def blocked(turn):
+        result = real(turn)
+        entered.set()
+        release.wait(5)
+        return result
+
+    monkeypatch.setattr(service.memory, "begin_turn", blocked)
+    packets = []
+
+    async def emit(packet):
+        packets.append(packet)
+
+    admission = asyncio.create_task(
+        session.admit_query(query(), context=context(), emit=emit)
+    )
+    await asyncio.to_thread(entered.wait, 3)
+    stop = asyncio.create_task(session.stop())
+    await asyncio.sleep(0.02)
+    assert not stop.done() and service.reservation.held
+    release.set()
+    await stop
+    await admission
+    assert not owners[0].calls
+    assert "pending" not in service.memory.load().todo
+    assert not any(p["type"] == "domain_accepted" for p in packets)
+
+
+@pytest.mark.asyncio
+async def test_unknown_agent_rejected_before_checkpoint(setup):
+    session, service, owners = setup
+    await session.start()
+    revision = service.memory.load().revision
+    packets = []
+
+    async def emit(packet):
+        packets.append(packet)
+
+    await session.admit_query(query(agent_id="unknown"), context=context(), emit=emit)
+    assert packets[-1]["error_type"] == "invalid_request"
+    assert service.memory.load().revision == revision and not owners[0].calls
+
+
+@pytest.mark.asyncio
+async def test_replay_highwater_and_history_gap(setup):
+    session, _, owners = setup
+    await session.start()
+    packets = []
+
+    async def emit(packet):
+        packets.append(packet)
+
+    for i in range(258):
+        await session.admit_query(query(str(i)), context=context(str(i)), emit=emit)
+        await collect_until(session, packets, i + 1)
+    replay = session.replay(0)
+    assert len(replay) == 257
+    assert replay[-1]["history_gap"] is True and replay[-1]["earliest_output_id"] == "3"
+    assert replay[-1]["high_water_mark"] == "258"
+    assert session.replay(258)[-1]["type"] == "resume_complete"
+    await session.admit_query(query("0"), context=context("0"), emit=emit)
+    await collect_until(session, packets, 259)
+    assert len(owners[0].calls) == 259  # No unbounded lifetime tombstones.
+
+
+@pytest.mark.asyncio
+async def test_output_and_total_bytes_are_bounded_and_owner_truncation_survives(setup):
+    session, _, owners = setup
+    await session.start()
+    owners[0].outcome = replace(owners[0].outcome, output="é" * (256 * 1024))
+    packets = []
+
+    async def emit(packet):
+        packets.append(packet)
+
+    for i in range(18):
+        await session.admit_query(query(str(i)), context=context(str(i)), emit=emit)
+        await collect_until(session, packets, i + 1)
+    results = session.replay(0)[:-1]
+    assert sum(len(p["output"].encode()) for p in results) <= 4 * 1024 * 1024
+    assert all(
+        len(p["output"].encode()) <= 256 * 1024 and p["truncated"] for p in results
+    )
+    owners[0].outcome = replace(
+        owners[0].outcome, output="short", status="error", reason="output_limit"
+    )
+    await session.admit_query(query("limit"), context=context("limit"), emit=emit)
+    await collect_until(session, packets, 19)
+    assert packets[-1]["truncated"] is True
+
+
+@pytest.mark.asyncio
+async def test_prepare_failure_rejects_without_execution_and_clears_admission(
+    setup, monkeypatch
+):
+    session, service, owners = setup
+    await session.start()
+    original = service.readiness.prepare_turn
+
+    async def fail(turn):
+        await original(turn)
+        raise TimeoutError("late checkpoint")
+
+    monkeypatch.setattr(service.readiness, "prepare_turn", fail)
+    packets = []
+
+    async def emit(packet):
+        packets.append(packet)
+
+    await session.admit_query(query(), context=context(), emit=emit)
+    assert packets[-1]["error_type"] == "memory_unavailable" and not owners[0].calls
+    assert "pending" not in service.memory.load().todo
+    monkeypatch.setattr(service.readiness, "prepare_turn", original)
+    await session.admit_query(query(), context=context(), emit=emit)
+    await collect_until(session, packets)
+    assert len(owners[0].calls) == 1
+
+
+@pytest.mark.asyncio
+async def test_pending_duplicate_waits_for_durable_admission(setup, monkeypatch):
+    session, service, owners = setup
+    await session.start()
+    entered, release = asyncio.Event(), asyncio.Event()
+    original = service.readiness.prepare_turn
+
+    async def blocked(turn):
+        entered.set()
+        await release.wait()
+        return await original(turn)
+
+    monkeypatch.setattr(service.readiness, "prepare_turn", blocked)
+    owners[0].execute_gate = asyncio.Event()
+    packets = []
+
+    async def emit(packet):
+        packets.append(packet)
+
+    first = asyncio.create_task(
+        session.admit_query(query(), context=context(), emit=emit)
+    )
+    await entered.wait()
+    duplicate = asyncio.create_task(
+        session.admit_query(query(), context=context(), emit=emit)
+    )
+    await asyncio.sleep(0)
+    assert not packets and not duplicate.done()
+    release.set()
+    await first
+    await duplicate
+    assert [p["type"] for p in packets] == ["domain_accepted", "domain_accepted"]
+    await session.stop()
+    assert len(session.replay(0)) == 2
+
+
+@pytest.mark.asyncio
+async def test_stop_waits_for_terminal_memory_io_before_release(setup, monkeypatch):
+    session, service, owners = setup
+    await session.start()
+    entered, release = threading.Event(), threading.Event()
+    original = service.memory.finish_turn
+
+    def blocked(*args, **kwargs):
+        entered.set()
+        release.wait(5)
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(service.memory, "finish_turn", blocked)
+    packets = []
+
+    async def emit(packet):
+        packets.append(packet)
+
+    await session.admit_query(query(), context=context(), emit=emit)
+    await asyncio.to_thread(entered.wait, 3)
+    stop = asyncio.create_task(session.stop())
+    await asyncio.sleep(0.02)
+    assert not stop.done() and service.reservation.held
+    release.set()
+    await stop
+    assert service.reservation is None and session.replay(0)[0]["status"] == "success"
+
+
+@pytest.mark.asyncio
+async def test_mutating_sink_and_replay_cannot_change_stored_terminal(setup):
+    session, _, _ = setup
+    await session.start()
+    done = asyncio.Event()
+
+    async def emit(packet):
+        if packet["type"] == "domain_result":
+            packet["output"] = "changed"
+            packet["memory"]["saved"] = False
+            done.set()
+
+    await session.admit_query(query(), context=context(), emit=emit)
+    await done.wait()
+    replay = session.replay(0)
+    assert replay[0]["output"] == "done" and replay[0]["memory"]["saved"]
+    replay[0]["memory"]["saved"] = False
+    assert session.replay(0)[0]["memory"]["saved"]
+
+
+@pytest.mark.asyncio
+async def test_background_and_stop_checkpoint_lifecycle_without_finishing_run(setup):
+    session, service, owners = setup
+    await session.start()
+    owners[0].execute_gate = asyncio.Event()
+    packets = []
+
+    async def emit(packet):
+        packets.append(packet)
+
+    await session.admit_query(query(), context=context(), emit=emit)
+    await owners[0].executing.wait()
+    service.memory_result = None
+    session.background()
+    async with asyncio.timeout(3):
+        while service.memory_result is None:
+            await asyncio.sleep(0.005)
+    assert service.memory_result.saved
+    assert "Bridge lifecycle event: background" in service.memory.load().progress
+    assert "pending" in service.memory.load().todo
+    await session.stop()
+    progress = service.memory.load().progress
+    assert "Bridge lifecycle event: stop" in progress
+    assert "cancelled" in service.memory.load().todo
+
+
+@pytest.mark.asyncio
+async def test_direct_start_after_stop_never_reports_active(setup):
+    session, _, _ = setup
+    await session.start()
+    await session.stop()
+    assert (await session.start())["state"] == "inactive"
+
+
+@pytest.mark.asyncio
+async def test_actual_sdk_owner_receives_workspace_context_and_single_task_lifecycle(
+    setup, monkeypatch
+):
+    session, service, _ = setup
+    from bridge.domain_sdk import DomainSDKOwner
+    from bridge.tests.test_domain_sdk import Client
+
+    clients = []
+
+    def client_factory(**kwargs):
+        client = Client(**kwargs)
+        clients.append(client)
+        return client
+
+    def owner_factory(*args):
+        return DomainSDKOwner(*args, client_factory=client_factory)
+
+    monkeypatch.setattr("bridge.domain_session.DomainSDKOwner", owner_factory)
+    await session.start()
+    packets = []
+
+    async def emit(packet):
+        packets.append(packet)
+
+    await session.admit_query(query(), context=context(), emit=emit)
+    await collect_until(session, packets)
+    await session.stop()
+    assert packets[-1]["status"] == "success" and packets[-1]["output"] == "partial"
+    assert clients[0].options.cwd == str(service.workspace.worktree_path)
+    assert "prior notes/data" in clients[0].prompt
+    assert len({task for _, task in clients[0].calls}) == 1
+    assert [name for name, _ in clients[0].calls] == [
+        "connect",
+        "query",
+        "receive",
+        "disconnect",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_broken_sdk_rejects_further_runs_until_stop(setup):
+    session, _, owners = setup
+    await session.start()
+
+    async def fail(**kwargs):
+        raise RuntimeError("private transport detail")
+
+    owners[0].execute = fail
+    packets = []
+
+    async def emit(packet):
+        packets.append(packet)
+
+    await session.admit_query(query(), context=context(), emit=emit)
+    await collect_until(session, packets)
+    await session.admit_query(query("second"), context=context("second"), emit=emit)
+    assert packets[-1]["error_type"] == "sdk_error"
+    assert session.replay(0)[0]["status"] == "error"
+    assert "private" not in str(packets)
+
+
+@pytest.mark.asyncio
+async def test_lease_release_failure_retains_ownership_until_confirmed_retry(
+    setup, monkeypatch
+):
+    session, service, _ = setup
+    await session.start()
+    lease = service.reservation
+    original = lease.release
+
+    def fail(**kwargs):
+        raise OSError("cannot fsync")
+
+    monkeypatch.setattr(lease, "release", fail)
+    assert (await session.stop())["state"] == "cleanup_failed"
+    assert lease.held and service.reservation is lease
+    monkeypatch.setattr(lease, "release", original)
+    assert (await session.stop())["state"] == "inactive"
+    assert not lease.held
+
+
+@pytest.mark.asyncio
+async def test_owner_stopped_itself_rejects_further_admission(setup):
+    session, _, owners = setup
+    await session.start()
+    owners[0].outcome = replace(owners[0].outcome, status="cancelled", reason="stopped")
+    packets = []
+
+    async def emit(packet):
+        packets.append(packet)
+
+    await session.admit_query(query(), context=context(), emit=emit)
+    await collect_until(session, packets)
+    await session.admit_query(query("next"), context=context("next"), emit=emit)
+    assert (
+        packets[-1]["type"] == "domain_error"
+        and packets[-1]["error_type"] == "sdk_error"
+    )
+    assert len(owners[0].calls) == 1
+
+
+@pytest.mark.asyncio
+async def test_replay_snapshot_excludes_later_live_terminal(setup):
+    session, _, owners = setup
+    await session.start()
+    packets = []
+
+    async def emit(packet):
+        packets.append(packet)
+
+    await session.admit_query(query(), context=context(), emit=emit)
+    await collect_until(session, packets)
+    snapshot = session.replay(0)
+    owners[0].execute_gate = asyncio.Event()
+    await session.admit_query(query("later"), context=context("later"), emit=emit)
+    owners[0].execute_gate.set()
+    await collect_until(session, packets, 2)
+    assert [p["output_id"] for p in snapshot[:-1]] == ["1"]
+    assert snapshot[-1]["high_water_mark"] == "1"
+    assert session.replay(1)[0]["output_id"] == "2"
+
+
+@pytest.mark.asyncio
+async def test_owned_background_checkpoint_cannot_race_terminal_memory_save(
+    setup, monkeypatch
+):
+    session, service, owners = setup
+    await session.start()
+    owners[0].execute_gate = asyncio.Event()
+    packets = []
+
+    async def emit(packet):
+        packets.append(packet)
+
+    await session.admit_query(query(), context=context(), emit=emit)
+    await owners[0].executing.wait()
+    entered, release, terminal_entered = (
+        threading.Event(),
+        threading.Event(),
+        threading.Event(),
+    )
+    original_save = service.memory._save
+    original_finish = service.memory.finish_turn
+
+    def blocked_save(*args, **kwargs):
+        # The first background save is paused inside the real store's file lock.
+        if not entered.is_set():
+            entered.set()
+            release.wait(5)
+        return original_save(*args, **kwargs)
+
+    def observed_finish(*args, **kwargs):
+        terminal_entered.set()
+        return original_finish(*args, **kwargs)
+
+    monkeypatch.setattr(service.memory, "_save", blocked_save)
+    monkeypatch.setattr(service.memory, "finish_turn", observed_finish)
+    session.background()
+    await asyncio.to_thread(entered.wait, 3)
+    stop = asyncio.create_task(session.stop())
+    await owners[0].stopped.wait()
+    await asyncio.sleep(0.03)
+    try:
+        assert not terminal_entered.is_set()
+        assert not stop.done() and service.reservation.held
+    finally:
+        release.set()
+        await stop
+    result = session.replay(0)[0]
+    assert result["status"] == "cancelled" and result["memory"]["saved"]
+    assert "cancelled" in service.memory.load().todo
+    assert "pending" not in service.memory.load().todo
+
+
+@pytest.mark.asyncio
+async def test_unrelated_memory_lock_still_rejects_run_without_retry(setup):
+    session, service, owners = setup
+    await session.start()
+    from bridge.project_files import FileLock
+
+    revision = service.memory.load().revision
+    lock = FileLock.acquire(service.memory._base / "memory.lock")
+    packets = []
+
+    async def emit(packet):
+        packets.append(packet)
+
+    try:
+        await session.admit_query(query(), context=context(), emit=emit)
+    finally:
+        lock.close()
+    assert [p["type"] for p in packets] == ["domain_error"]
+    assert packets[0]["error_type"] == "memory_unavailable"
+    assert not owners[0].calls and service.memory.load().revision == revision
+    assert len(session.replay(0)) == 1
