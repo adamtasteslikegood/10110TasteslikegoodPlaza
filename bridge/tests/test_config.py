@@ -34,6 +34,7 @@ DEFAULTS = {
     "TRANSCRIPT_MAX_FILE_BYTES": 5242880,
     "LOG_MAX_TOTAL_BYTES": 104857600,
     "LOG_MAX_AGE_DAYS": 14,
+    "WORKSPACE_ROOT_DIR": None,
 }
 DEFAULT_PATH = Path(__file__).resolve().parents[1] / "config.json"
 INTEGER_KEYS = [
@@ -319,6 +320,7 @@ def test_valid_environment_overrides_are_parsed_by_setting_type(tmp_path):
     env = {
         f"PLAZA_{key}": value if isinstance(value, str) else json.dumps(value)
         for key, value in DEFAULTS.items()
+        if key != "WORKSPACE_ROOT_DIR"
     }
     env.update(
         PLAZA_TRANSCRIPTS_ENABLED="false",
@@ -333,6 +335,51 @@ def test_valid_environment_overrides_are_parsed_by_setting_type(tmp_path):
     assert settings.conversation_timeout_seconds == 0.5
     assert settings.haiku_model == "raw-model"
     assert settings.context_max_messages == 42
+
+
+def test_workspace_env_is_raw_and_config_relative(tmp_path, monkeypatch):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    settings_dir = tmp_path / "settings"
+    settings_dir.mkdir()
+    selected = write_config(settings_dir, {"WORKSPACE_ROOT_DIR": "../repo"})
+    monkeypatch.chdir(tmp_path.parent)
+    assert load_config(selected, environ={}).workspace_root_dir == repo.resolve()
+    assert (
+        load_config(
+            selected, environ={"PLAZA_WORKSPACE_ROOT_DIR": "../repo"}
+        ).workspace_root_dir
+        == repo.resolve()
+    )
+    assert default_config().workspace_root_dir is None
+    assert default_config().effective_settings()["WORKSPACE_ROOT_DIR"] is None
+    literal = settings_dir / "null"
+    literal.mkdir()
+    settings = load_config(selected, environ={"PLAZA_WORKSPACE_ROOT_DIR": "null"})
+    assert settings.workspace_root_dir == literal
+    assert settings.effective_settings()["WORKSPACE_ROOT_DIR"] == str(literal)
+
+
+@pytest.mark.parametrize(
+    "value", ["", "  ", True, False, 1, [], {}, "missing", "bad\u0000path"]
+)
+def test_invalid_workspace_configuration_fails(tmp_path, value):
+    with pytest.raises(ConfigError, match="WORKSPACE_ROOT_DIR"):
+        load_config(write_config(tmp_path, {"WORKSPACE_ROOT_DIR": value}), environ={})
+
+
+def test_workspace_file_rejected_and_symlink_canonicalized(tmp_path):
+    selected = write_config(tmp_path, {"WORKSPACE_ROOT_DIR": "config.json"})
+    with pytest.raises(ConfigError, match="WORKSPACE_ROOT_DIR"):
+        load_config(selected, environ={})
+    (tmp_path / "repo").mkdir()
+    (tmp_path / "alias").symlink_to(tmp_path / "repo", target_is_directory=True)
+    assert (
+        load_config(
+            selected, environ={"PLAZA_WORKSPACE_ROOT_DIR": "alias"}
+        ).workspace_root_dir
+        == tmp_path / "repo"
+    )
 
 
 @pytest.mark.parametrize(
