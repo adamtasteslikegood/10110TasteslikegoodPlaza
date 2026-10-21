@@ -1,0 +1,340 @@
+"""Acceptance must reject incomplete records and independently observed bypasses."""
+
+from copy import deepcopy
+import hashlib
+import importlib
+from pathlib import Path
+
+import pytest
+
+
+def module():
+    return importlib.import_module("scripts.m12_tool_guard_probe")
+
+
+def complete_case(name="bash_deny"):
+    lifecycle = name in {"stop_connect", "stop_idle", "stop_query", "repeated_cancel"}
+    ready = name.endswith("_ready")
+    path = name.split("_")[0]
+    target = {"read": "Read", "edit": "Edit", "mcp": "mcp__m12_fixture__sentinel"}.get(
+        path, "Bash"
+    )
+    active = name not in {"stop_connect", "stop_idle"}
+    terminal = not lifecycle and name != "bash_disconnect"
+    result = dict(
+        name=name,
+        attempted=active,
+        hook_seen=active,
+        reaped=True,
+        cleanup_clean=True,
+        sentinel_executed=ready,
+        successful_tool_result=ready,
+        successful_tool_ids=["tool-id"] if ready else [],
+        post_tool_ids=["tool-id"] if ready else [],
+        post_seen=ready,
+        decision=(
+            "unchanged"
+            if ready
+            else ("deny" if not lifecycle and name != "bash_disconnect" else None)
+        ),
+        terminal_seen=terminal,
+        owner_task_count=1,
+        child_attributed=path == "delegated",
+        mcp_invocations=1 if path == "mcp" and ready else 0,
+        normalized_denials=(
+            1
+            if name in {"bash_raw_error", "bash_malformed", "bash_missing_callback"}
+            else 0
+        ),
+        timeout_denials=1 if name == "bash_hung_callback" else 0,
+        assistant_errors=[],
+        inventory=[target] if active else [],
+        returncode=0,
+        seconds=1.0,
+        attempts=(
+            [
+                {
+                    "name": target,
+                    "id": "tool-id",
+                    "parent": "agent-parent" if path == "delegated" else None,
+                }
+            ]
+            if active
+            else []
+        ),
+        lifecycle=(
+            ["connect", "query", "receive", "disconnect"]
+            if active
+            else ["connect", "disconnect"]
+        ),
+        errors=[],
+    )
+    if path == "edit":
+        result["inventory"] = ["Read", "Edit"]
+    elif path == "delegated":
+        result["inventory"] = ["Task", "Bash"]
+        result["attempts"].append(
+            {"name": "Agent", "id": "agent-parent", "parent": None}
+        )
+    if terminal:
+        result["terminal"] = dict(
+            subtype="success",
+            is_error=False,
+            reason="completed",
+            cost_usd=0.01,
+            permission_denials=0 if ready else 1,
+        )
+    if name == "bash_disconnect":
+        result["channel_dropped"] = True
+    return result
+
+
+def complete_evidence():
+    mod = module()
+    root = Path(mod.__file__).resolve().parents[1]
+    return dict(
+        versions=mod.VERSIONS,
+        production_tools=list(mod.DOMAIN_TOOLS),
+        model=mod.MODEL,
+        cli_sha256="a" * 64,
+        case_deadline_seconds=45,
+        case_budget_usd=0.2,
+        max_queries=27,
+        watchdog_seconds=7,
+        checker_seconds=5,
+        matcher_seconds=10,
+        source_sha256={
+            name: hashlib.sha256((root / name).read_bytes()).hexdigest()
+            for name in mod.GUARD_SOURCES
+        },
+        cases=[complete_case(name) for name in mod.REQUIRED_CASES],
+    )
+
+
+def test_complete_matrix_is_accepted_before_mutations():
+    assert module().validate_evidence(complete_evidence()) == []
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "attempted",
+        "hook_seen",
+        "reaped",
+        "cleanup_clean",
+        "sentinel_executed",
+        "successful_tool_result",
+        "post_seen",
+        "terminal_seen",
+        "owner_task_count",
+        "child_attributed",
+        "mcp_invocations",
+        "normalized_denials",
+        "timeout_denials",
+        "assistant_errors",
+        "inventory",
+        "returncode",
+        "attempts",
+        "lifecycle",
+        "seconds",
+        "terminal",
+    ],
+)
+def test_missing_case_observation_fails(field):
+    record = complete_case()
+    del record[field]
+    assert module().case_errors(record), field
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("reaped", 1),
+        ("cleanup_clean", "true"),
+        ("sentinel_executed", 0),
+        ("owner_task_count", True),
+        ("mcp_invocations", False),
+        ("timeout_denials", -1),
+        ("seconds", float("nan")),
+        ("returncode", None),
+        ("attempts", {}),
+        ("lifecycle", []),
+        ("inventory", []),
+        ("assistant_errors", None),
+        ("decision", {}),
+    ],
+)
+def test_wrong_case_types_or_incomplete_observations_fail(field, value):
+    record = complete_case()
+    record[field] = value
+    assert module().case_errors(record)
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "read_deny",
+        "edit_deny",
+        "bash_deny",
+        "mcp_deny",
+        "delegated_deny",
+        "stop_connect",
+        "stop_idle",
+        "stop_query",
+        "repeated_cancel",
+    ],
+)
+@pytest.mark.parametrize(
+    "field", ["sentinel_executed", "successful_tool_result", "post_seen"]
+)
+def test_any_execution_on_denial_or_stop_fails(name, field):
+    record = complete_case(name)
+    assert module().case_errors(record) == []
+    record[field] = True
+    assert module().case_errors(record)
+
+
+def test_mcp_handler_entry_is_execution_even_if_sentinel_write_failed():
+    record = complete_case("mcp_deny")
+    record["mcp_invocations"] = 1
+    assert module().case_errors(record)
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("decision", "deny"),
+        ("decision", "allow"),
+        ("sentinel_executed", False),
+        ("successful_tool_result", False),
+        ("post_seen", False),
+    ],
+)
+def test_ready_requires_execution_and_unchanged_ordinary_permissions(field, value):
+    record = complete_case("bash_ready")
+    record[field] = value
+    assert module().case_errors(record)
+
+
+def test_delegated_and_adapter_observations_cannot_be_omitted():
+    for name, field in [
+        ("delegated_deny", "child_attributed"),
+        ("bash_raw_error", "normalized_denials"),
+        ("bash_malformed", "normalized_denials"),
+        ("bash_missing_callback", "normalized_denials"),
+        ("bash_hung_callback", "timeout_denials"),
+        ("bash_disconnect", "channel_dropped"),
+    ]:
+        record = complete_case(name)
+        record[field] = 0
+        assert module().case_errors(record)
+
+
+def test_forced_rescue_and_terminal_errors_cannot_pass():
+    record = complete_case("stop_connect")
+    record["forced_cleanup"] = True
+    assert module().case_errors(record)
+    record = complete_case()
+    record["terminal"]["is_error"] = True
+    assert module().case_errors(record)
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "versions",
+        "production_tools",
+        "model",
+        "cli_sha256",
+        "case_deadline_seconds",
+        "case_budget_usd",
+        "max_queries",
+        "watchdog_seconds",
+        "checker_seconds",
+        "matcher_seconds",
+        "source_sha256",
+        "cases",
+    ],
+)
+def test_missing_manifest_field_fails(field):
+    evidence = complete_evidence()
+    del evidence[field]
+    assert module().validate_evidence(evidence)
+
+
+def test_duplicate_missing_stale_and_malformed_evidence_fails():
+    mod = module()
+    evidence = complete_evidence()
+    evidence["cases"].pop()
+    assert mod.validate_evidence(evidence)
+    evidence = complete_evidence()
+    evidence["cases"][-1] = deepcopy(evidence["cases"][0])
+    assert mod.validate_evidence(evidence)
+    evidence = complete_evidence()
+    evidence["source_sha256"][mod.GUARD_SOURCES[0]] = "0" * 64
+    assert mod.validate_evidence(evidence)
+    for bad in [None, [], {"cases": [None]}, {"cases": {}}, {"cases": "bad"}]:
+        assert mod.validate_evidence(bad)
+
+
+def test_unverified_exposed_tool_fails_inventory_coverage():
+    record = complete_case()
+    record["inventory"].append("EndConversation")
+    assert module().case_errors(record)
+
+
+def test_delegated_parent_must_correlate_and_non_delegated_cannot_claim_child():
+    record = complete_case("delegated_deny")
+    record["attempts"][0]["parent"] = "unobserved-parent"
+    assert module().case_errors(record)
+    record = complete_case()
+    record["child_attributed"] = True
+    assert module().case_errors(record)
+
+
+def test_wrapper_denial_cannot_be_substituted_by_adapter_error():
+    record = complete_case("bash_exception")
+    record["normalized_denials"] = 1
+    assert module().case_errors(record)
+
+
+def test_parent_bash_fallback_does_not_erase_correlated_child_denial():
+    record = complete_case("delegated_timeout")
+    record["attempts"].append({"name": "Bash", "id": "parent-fallback", "parent": None})
+    record["terminal"]["permission_denials"] = 2
+    record["hook_decisions"] = {"parent-fallback": "deny"}
+    assert module().case_errors(record) == []
+    record["attempts"][0]["parent"] = "unknown-child-parent"
+    assert module().case_errors(record)
+    record["attempts"][0]["parent"] = None
+    record["hook_decisions"]["tool-id"] = "deny"
+    assert module().case_errors(record)
+
+
+def test_parent_bash_fallback_requires_its_own_observed_hook_denial():
+    record = complete_case("delegated_timeout")
+    record["attempts"].append({"name": "Bash", "id": "parent-fallback", "parent": None})
+    assert module().case_errors(record)
+    record["hook_decisions"] = {"unrelated": "deny"}
+    assert module().case_errors(record)
+
+
+def test_delegated_ready_needs_child_execution_ids_not_parent_execution():
+    record = complete_case("delegated_ready")
+    record["successful_tool_ids"] = ["parent-fallback"]
+    record["post_tool_ids"] = ["parent-fallback"]
+    assert module().case_errors(record)
+
+
+def test_denied_parent_fallback_cannot_have_result_or_post_effect():
+    record = complete_case("delegated_ready")
+    record["attempts"].append({"name": "Bash", "id": "parent-fallback", "parent": None})
+    record["hook_decisions"] = {"parent-fallback": "deny"}
+    record["successful_tool_ids"] = ["tool-id"]
+    record["post_tool_ids"] = ["tool-id"]
+    assert module().case_errors(record) == []
+    record["successful_tool_ids"].append("parent-fallback")
+    assert module().case_errors(record)
+    record["successful_tool_ids"] = ["tool-id"]
+    record["post_tool_ids"].append("parent-fallback")
+    assert module().case_errors(record)
