@@ -24,79 +24,37 @@ from claude_agent_sdk._internal.transport.subprocess_cli import SubprocessCLITra
 from bridge.config import BridgeConfig
 from bridge.conversation_backend import decode_project_reply
 from bridge.guarded_transport import GuardedTransport
-from bridge.readiness import ReadinessService, owned_io
+from bridge.readiness import HookTasks, ReadinessService, owned_io
 from bridge.workspace import ExecutionWorkspace
 from bridge.workspace_lease import WorkspaceLease
 
-SDK_VERSION = "0.2.136"
-CLI_VERSION = "2.1.228"
-ANYIO_VERSION = "4.14.2"
-DOMAIN_TOOLS = ("Read", "Edit", "Bash")
+from bridge.tool_guard_evidence import (
+    SDK_VERSION,
+    CLI_VERSION,
+    ANYIO_VERSION,
+    DOMAIN_TOOLS,
+    GUARD_SOURCES,
+    REQUIRED_GUARD_CASES,
+    validate_evidence,
+)
+
 MAX_OUTPUT_BYTES = 256 * 1024
 ACCEPTANCE_PATH = Path(__file__).with_name("tool_guard_acceptance.json")
-GUARD_SOURCES = (
-    "bridge/readiness.py",
-    "bridge/guarded_transport.py",
-    "bridge/domain_sdk.py",
-    "scripts/m12_tool_guard_probe.py",
-)
-REQUIRED_GUARD_CASES = tuple(
-    f"{path}_{mode}"
-    for path in ("read", "edit", "bash", "mcp", "delegated")
-    for mode in ("ready", "deny", "exception", "timeout")
-) + (
-    "bash_raw_error",
-    "bash_malformed",
-    "bash_missing_callback",
-    "bash_hung_callback",
-    "bash_disconnect",
-    "stop_connect",
-    "stop_idle",
-    "stop_query",
-    "repeated_cancel",
-)
 
 
 def check_acceptance(evidence, source_root):
-    """Only the exact reviewed source/runtime/inventory can activate tools.
+    """Recompute the complete shared observation/schema contract before activation.
 
-    Editing any GUARD_SOURCES file invalidates acceptance: rerun the actual probe,
-    inspect all cases, then replace the manifest. Never merely update its hashes.
-    There is no environment/configuration override.
+    Every enforcement source is bound. Source changes require a fresh exact-source
+    live probe, never a hash-only rewrite of older evidence. No production bypass.
     """
-    try:
-        if (
-            evidence["accepted"] is not True
-            or evidence["errors"] != []
-            or evidence["versions"]
-            != {
-                "sdk": SDK_VERSION,
-                "cli": CLI_VERSION + " (Claude Code)",
-                "anyio": ANYIO_VERSION,
-            }
-            or evidence["production_tools"] != list(DOMAIN_TOOLS)
-        ):
-            raise ValueError()
-        cases = evidence["cases"]
-        names = [case["name"] for case in cases]
-        if (
-            set(names) != set(REQUIRED_GUARD_CASES)
-            or len(names) != len(REQUIRED_GUARD_CASES)
-            or any(case["errors"] != [] for case in cases)
-        ):
-            raise ValueError()
-        if set(evidence["source_sha256"]) != set(GUARD_SOURCES):
-            raise ValueError()
-        for name in GUARD_SOURCES:
-            if (
-                hashlib.sha256((source_root / name).read_bytes()).hexdigest()
-                != evidence["source_sha256"][name]
-            ):
-                raise ValueError()
-    except (KeyError, TypeError, ValueError, OSError):
-        raise RuntimeError(
-            "Tool guard acceptance is missing, invalid or stale"
-        ) from None
+    if (
+        not isinstance(evidence, dict)
+        or evidence.get("accepted") is not True
+        or evidence.get("errors") != []
+        or validate_evidence(evidence, source_root)
+    ):
+        raise RuntimeError("Tool guard acceptance is missing, invalid or stale")
 
 
 @dataclass(frozen=True)
@@ -214,6 +172,7 @@ class DomainSDKOwner:
         self._partial = ""
         self._session_id = None
         self.transport = None
+        self._hook_tasks = HookTasks(self._signal_stop)
 
     def _signal_stop(self):
         self._stop_requested = True
@@ -369,6 +328,12 @@ class DomainSDKOwner:
                     on_failure=self._signal_stop,
                 )
                 client = self.client_factory(options=options, transport=self.transport)
+                # The explicit disposable factory may replace fixture callbacks.
+                # Wrap the final options before connect dispatches any SDK hooks.
+                for matcher in options.hooks.get("PreToolUse", []):
+                    matcher.hooks = [
+                        self._hook_tasks.wrap(hook) for hook in matcher.hooks
+                    ]
                 await client.connect()
                 self._connected = True
                 self._started.set()
@@ -396,6 +361,7 @@ class DomainSDKOwner:
                         )
                     )
             finally:
+                self._hook_tasks.close_admission()
                 self._connected = False
                 self._started.set()
                 if self._active is not None and not self._active.done():
@@ -433,5 +399,8 @@ class DomainSDKOwner:
                             await self.transport.close()
                         except BaseException as error:
                             cleanup_error = cleanup_error or type(error).__name__
+                    # SDK Query.close cancels detached handlers but never joins
+                    # them. Even a reaped CLI does not settle their owned IO.
+                    await self._hook_tasks.drain()
                 self._cleanup = CleanupOutcome(cleanup_error is None, cleanup_error)
         self._scope = None

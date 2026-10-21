@@ -39,6 +39,7 @@ def complete_case(name="bash_deny"):
         ),
         terminal_seen=terminal,
         owner_task_count=1,
+        hook_tasks_remaining=0,
         child_attributed=path == "delegated",
         mcp_invocations=1 if path == "mcp" and ready else 0,
         normalized_denials=(
@@ -75,6 +76,12 @@ def complete_case(name="bash_deny"):
         result["inventory"] = ["Task", "Bash"]
         result["attempts"].append(
             {"name": "Agent", "id": "agent-parent", "parent": None}
+        )
+    if name in {"stop_query", "repeated_cancel"}:
+        result.update(
+            hook_worker_entered=True,
+            hook_worker_finished=True,
+            stop_waited_for_hook_worker=True,
         )
     if terminal:
         result["terminal"] = dict(
@@ -337,4 +344,41 @@ def test_denied_parent_fallback_cannot_have_result_or_post_effect():
     assert module().case_errors(record)
     record["successful_tool_ids"] = ["tool-id"]
     record["post_tool_ids"].append("parent-fallback")
+    assert module().case_errors(record)
+
+
+def test_probe_and_activation_use_identical_strict_validator():
+    from bridge import domain_sdk, tool_guard_evidence
+
+    assert module().validate_evidence is tool_guard_evidence.validate_evidence
+    assert domain_sdk.validate_evidence is tool_guard_evidence.validate_evidence
+    assert "bridge/tool_guard_evidence.py" in tool_guard_evidence.GUARD_SOURCES
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "hook_tasks_remaining",
+        "hook_worker_entered",
+        "hook_worker_finished",
+        "stop_waited_for_hook_worker",
+    ],
+)
+def test_lifecycle_requires_observed_hook_io_settlement(field):
+    record = complete_case("stop_query")
+    record.update(
+        hook_tasks_remaining=0,
+        hook_worker_entered=True,
+        hook_worker_finished=True,
+        stop_waited_for_hook_worker=True,
+    )
+    assert module().case_errors(record) == []
+    del record[field]
+    assert module().case_errors(record)
+
+
+@pytest.mark.parametrize("field", ["successful_tool_ids", "post_tool_ids"])
+def test_execution_ids_cannot_contradict_false_execution_summary(field):
+    record = complete_case("bash_deny")
+    record[field] = ["tool-id"]
     assert module().case_errors(record)

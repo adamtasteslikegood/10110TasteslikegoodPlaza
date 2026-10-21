@@ -13,6 +13,54 @@ from bridge.workspace_lease import WorkspaceLease
 CHECK_TIMEOUT = 5
 
 
+class HookTasks:
+    """Generation-owned handlers, independent of SDK/control-ID settlement.
+
+    The pinned SDK cancels detached handlers without awaiting them. Retain each
+    actual task until it finishes, including owned_io's cancellation drain.
+    """
+
+    LIMIT = 64
+
+    def __init__(self, on_exhausted):
+        self._tasks = set()
+        self._closed = False
+        self._on_exhausted = on_exhausted
+
+    @property
+    def active_count(self):
+        return sum(not task.done() for task in self._tasks)
+
+    def wrap(self, callback):
+        async def tracked(*args):
+            if self._closed:
+                return denial()
+            if self.active_count >= self.LIMIT:
+                self.close_admission()
+                self._on_exhausted()
+                return denial()
+            task = asyncio.current_task()
+            self._tasks.add(task)
+            task.add_done_callback(self._tasks.discard)
+            return await callback(*args)
+
+        return tracked
+
+    def close_admission(self):
+        self._closed = True
+
+    async def drain(self):
+        self.close_admission()
+        tasks = tuple(self._tasks)
+        for task in tasks:
+            task.cancel()
+        # No kernel-IO timeout can safely abandon a worker or release its lease.
+        # Shutdown response-write errors are expected; all tasks must settle.
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
+        self._tasks.clear()
+
+
 def denial(
     reason: str = "Readiness check failed; stop and review setup with the Chief Architect.",
 ) -> dict:

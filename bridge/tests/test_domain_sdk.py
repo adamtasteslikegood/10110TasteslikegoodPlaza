@@ -295,6 +295,20 @@ async def test_terminal_result_utf8_output_is_bounded(owner):
     assert (await sdk.stop()).clean
 
 
+def acceptance_fixture(module):
+    """Synthetic schema fixture; this never writes or activates live evidence."""
+    import json
+
+    evidence = json.loads(module.ACCEPTANCE_PATH.read_text())
+    for record in evidence["cases"]:
+        record.setdefault("hook_tasks_remaining", 0)
+        if record["name"] in {"stop_query", "repeated_cancel"}:
+            record.setdefault("hook_worker_entered", True)
+            record.setdefault("hook_worker_finished", True)
+            record.setdefault("stop_waited_for_hook_worker", True)
+    return evidence
+
+
 def test_acceptance_manifest_requires_versions_cases_inventory_and_exact_sources(
     tmp_path,
 ):
@@ -302,18 +316,8 @@ def test_acceptance_manifest_requires_versions_cases_inventory_and_exact_sources
     import json
 
     module = importlib.import_module("bridge.domain_sdk")
-    evidence = {
-        "accepted": True,
-        "errors": [],
-        "versions": {
-            "sdk": "0.2.136",
-            "cli": "2.1.228 (Claude Code)",
-            "anyio": "4.14.2",
-        },
-        "production_tools": ["Read", "Edit", "Bash"],
-        "cases": [{"name": name, "errors": []} for name in module.REQUIRED_GUARD_CASES],
-        "source_sha256": {},
-    }
+    evidence = acceptance_fixture(module)
+    evidence["source_sha256"] = {}
     for name in module.GUARD_SOURCES:
         path = tmp_path / name
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -391,3 +395,160 @@ async def test_connect_cancel_closes_retained_transport_before_sdk_query_exists(
     finally:
         # Fixture rescue never makes the failing assertion pass.
         await clients[0].transport.close()
+
+
+@pytest.mark.parametrize("mutation", ["stripped", "executed", "limit", "terminal"])
+def test_runtime_acceptance_recomputes_complete_observations(mutation, tmp_path):
+    import hashlib
+
+    module = importlib.import_module("bridge.domain_sdk")
+    evidence = acceptance_fixture(module)
+    for name in module.GUARD_SOURCES:
+        target = tmp_path / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(b"synthetic test source")
+        evidence["source_sha256"][name] = hashlib.sha256(
+            target.read_bytes()
+        ).hexdigest()
+    module.check_acceptance(evidence, tmp_path)
+    if mutation == "stripped":
+        evidence["cases"] = [
+            {"name": c["name"], "errors": []} for c in evidence["cases"]
+        ]
+    elif mutation == "executed":
+        evidence["cases"][1]["sentinel_executed"] = True
+    elif mutation == "limit":
+        del evidence["case_deadline_seconds"]
+    else:
+        evidence["cases"][0]["terminal"] = None
+    with pytest.raises(RuntimeError, match="acceptance"):
+        module.check_acceptance(evidence, tmp_path)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("cancel_caller", ["stop", "execute"])
+async def test_installed_query_close_drains_hook_io_through_repeated_cancel(
+    tmp_path, cancel_caller
+):
+    import sys
+    import threading
+    import anyio
+    from claude_agent_sdk._internal.query import Query
+    from bridge.domain_sdk import DomainSDKOwner
+    from bridge.readiness import ReadinessService, owned_io
+
+    entered, release, finished = threading.Event(), threading.Event(), threading.Event()
+    disconnected = asyncio.Event()
+    clients = []
+
+    def blocked_read():
+        entered.set()
+        assert release.wait(10), "test fixture never released its worker"
+        finished.set()
+
+    class Ready(ReadinessService):
+        async def check_tool(self, lease, **kwargs):
+            if kwargs["tool_name"] != "__startup__":
+                await owned_io(blocked_read)
+
+    class InstalledQueryClient(Client):
+        async def connect(self):
+            self.note("connect")
+            process = await anyio.open_process(
+                [sys.executable, "-c", "import sys; sys.stdin.buffer.read()"]
+            )
+            self.transport.inner._process = process
+            self.transport.inner._stdin_stream = process.stdin
+            self.transport.process = process
+            self.query_obj = Query(self.transport, True)
+            self.query_obj.hook_callbacks["hook_0"] = self.options.hooks["PreToolUse"][
+                0
+            ].hooks[0]
+
+        async def query(self, prompt):
+            self.note("query")
+            self.query_obj._spawn_control_request_handler(
+                {
+                    "type": "control_request",
+                    "request_id": "r",
+                    "request": {
+                        "subtype": "hook_callback",
+                        "callback_id": "hook_0",
+                        "tool_use_id": "t",
+                        "input": {
+                            "hook_event_name": "PreToolUse",
+                            "tool_name": "Read",
+                            "tool_use_id": "t",
+                            "cwd": self.options.cwd,
+                        },
+                    },
+                }
+            )
+
+        async def receive_response(self):
+            self.note("receive")
+            await asyncio.Event().wait()
+            yield None
+
+        async def disconnect(self):
+            self.note("disconnect")
+            await self.query_obj.close()
+            self.query_obj.close_receive_stream()
+            disconnected.set()
+
+    def factory(**kwargs):
+        client = InstalledQueryClient(**kwargs)
+        clients.append(client)
+        return client
+
+    workspace = SimpleNamespace(worktree_path=tmp_path)
+    sdk = DomainSDKOwner(
+        load_config(),
+        workspace,
+        object(),
+        Ready(workspace, tmp_path, None),
+        client_factory=factory,
+    )
+    pending = stopping = None
+    try:
+        await sdk.start()
+        pending = asyncio.create_task(run(sdk))
+        while not entered.is_set():
+            await asyncio.sleep(0.001)
+        handler = next(iter(clients[0].query_obj._child_tasks))
+        if cancel_caller == "execute":
+            pending.cancel()
+        stopping = asyncio.create_task(sdk.stop())
+        await asyncio.sleep(0)
+        caller = stopping if cancel_caller == "stop" else pending
+        caller.cancel()
+        await disconnected.wait()
+        caller.cancel()
+        await asyncio.sleep(0)
+        assert sdk.transport.process.returncode == 0
+        assert not finished.is_set() and not handler.done()
+        assert not stopping.done(), "clean Stop preceded detached hook IO settlement"
+        assert not caller.done(), "repeated cancellation abandoned the hook worker"
+        release.set()
+        assert (await stopping).clean
+        if cancel_caller == "execute":
+            with pytest.raises(asyncio.CancelledError):
+                await pending
+        else:
+            await pending
+        assert finished.is_set() and handler.done()
+        assert len({task for _, task in clients[0].calls}) == 1
+    finally:
+        release.set()
+        if stopping is not None:
+            await asyncio.gather(stopping, return_exceptions=True)
+        else:
+            await sdk.stop()
+        if pending is not None:
+            await asyncio.gather(pending, return_exceptions=True)
+        for client in clients:
+            for handle in list(client.query_obj._child_tasks):
+                try:
+                    await handle.wait()
+                except Exception:
+                    pass  # Closed-channel response is expected during fixture teardown.

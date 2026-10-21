@@ -128,3 +128,54 @@ async def test_cancelled_begin_drains_writer(ready, monkeypatch):
     with pytest.raises(asyncio.CancelledError):
         await task
     assert "pending" in service.memory.load().todo
+
+
+@pytest.mark.asyncio
+async def test_hook_registry_retains_cancelled_io_and_bounds_new_admission(monkeypatch):
+    from bridge.readiness import HookTasks, owned_io
+
+    entered, release, finished = threading.Event(), threading.Event(), threading.Event()
+    shutdowns = []
+    calls = []
+    registry = HookTasks(lambda: shutdowns.append(True))
+    monkeypatch.setattr(registry, "LIMIT", 1)
+
+    def worker():
+        calls.append(True)
+        entered.set()
+        assert release.wait(10), "fixture worker was not released"
+        finished.set()
+
+    async def callback(*args):
+        await owned_io(worker)
+        return {}
+
+    hook = registry.wrap(callback)
+    first = asyncio.create_task(hook({}, "first", {}))
+    draining = None
+    try:
+        while not entered.is_set():
+            await asyncio.sleep(0.001)
+        first.cancel()  # Control ID may already have been settled by watchdog.
+        await asyncio.sleep(0)
+        assert not first.done() and registry.active_count == 1
+        for _ in range(100):
+            result = await hook({}, "later", {})
+            assert result["hookSpecificOutput"]["permissionDecision"] == "deny"
+        assert shutdowns == [True] and len(calls) == 1
+        assert registry.active_count == 1
+        draining = asyncio.create_task(registry.drain())
+        await asyncio.sleep(0)
+        assert not draining.done() and not finished.is_set()
+        release.set()
+        await draining
+        assert finished.is_set() and first.done() and registry.active_count == 0
+        assert (await hook({}, "after-close", {}))["hookSpecificOutput"][
+            "permissionDecision"
+        ] == "deny"
+        assert len(calls) == 1
+    finally:
+        release.set()
+        if draining:
+            await draining
+        await asyncio.gather(first, return_exceptions=True)
