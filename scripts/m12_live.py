@@ -661,9 +661,9 @@ class LiveLifetime:
             forced=self.child.forced,
             closed=manifest.get("status") == "closed",
             ended_at=manifest.get("ended_at"),
-            memory_marker_before=self.marker_before,
-            memory_marker_after=self.closed.get("memory_marker_exists", True),
-            lease_marker_after=self.closed.get("lease_marker_exists", True),
+            memory_marker_before=getattr(self, "marker_before", False),
+            memory_marker_after=self.closed.get("memory_marker_exists"),
+            lease_marker_after=self.closed.get("lease_marker_exists"),
             reservation_after=self.closed.get("reservation", {}),
             owners=owners,
             archive_run_id=self.ready["archive_run_id"],
@@ -690,11 +690,21 @@ def corroborate(state, receipt):
         domain_rendered="resume",
         stop_ack="deactivate_domain",
     )
-    require(command["type"] == expected[stage], "stage command kind mismatch")
+    if stage in ("referral_rendered", "chief_ready", "npc_rendered"):
+        expected_agent = (
+            "systems-architect" if stage == "chief_ready" else payload["agent_id"]
+        )
+        require(
+            command.get("type") in (None, "query")
+            and command.get("agent_id") == expected_agent,
+            "stage NPC command mismatch",
+        )
+    else:
+        require(command.get("type") == expected[stage], "stage command kind mismatch")
     if stage in ("referral_rendered", "chief_ready", "npc_rendered"):
         require(
             any(
-                p.get("output") == payload["assistant"] and p.get("status") == "success"
+                p.get("output") == payload["assistant"] and p.get("status") == "ok"
                 for p in packets
             ),
             "rendered NPC differs from bridge",
@@ -702,7 +712,7 @@ def corroborate(state, receipt):
     elif stage == "domain_running":
         require(
             any(
-                p["type"] == "domain_accepted"
+                p.get("type") == "domain_accepted"
                 and p["domain_session_id"] == payload["domain_session_id"]
                 for p in packets
             ),
@@ -711,7 +721,7 @@ def corroborate(state, receipt):
     elif stage in ("background_ack", "stop_ack"):
         require(
             any(
-                p["type"] == "domain_state"
+                p.get("type") == "domain_state"
                 and p["state"] == payload["state"]
                 and p["domain_session_id"] == payload["domain_session_id"]
                 for p in packets
@@ -725,7 +735,7 @@ def corroborate(state, receipt):
             )
     else:
         require(
-            any(p["type"] == "resume_complete" for p in packets),
+            any(p.get("type") == "resume_complete" for p in packets),
             "missing replay completion",
         )
         refocus = payload["refocus_request_id"]
@@ -1031,7 +1041,7 @@ async def initial(life, report):
                     )
                     await plain.reply("plain-resume", type="resume_complete")
                     terminals = [
-                        p for p in plain.packets if p["type"] == "domain_result"
+                        p for p in plain.packets if p.get("type") == "domain_result"
                     ]
                     require(
                         len(terminals) == 1

@@ -86,7 +86,10 @@ def fake_stages_and_wire():
         wire["commands"].append(dict(type=kind, request_id=payload["request_id"]))
         packet = dict(**domain, request_id=payload["request_id"], status="success")
         if kind == "query":
-            packet.update(type="response", output=payload["assistant"])
+            packet.update(type="response", status="ok", output=payload["assistant"])
+            wire["commands"][-1]["agent_id"] = (
+                "systems-architect" if stage == "chief_ready" else payload["agent_id"]
+            )
         elif kind == "domain_query":
             packet.update(type="domain_accepted")
         elif kind == "resume":
@@ -546,3 +549,31 @@ def test_nested_unknown_fields_are_allowlisted_before_publication():
     record["lifetimes"][0]["owners"][0]["options"] = {"TOKEN": "secret-value"}
     record["initial"]["wire"]["emitted"][0]["env"] = {"TOKEN": "secret-value"}
     assert "secret-value" not in json.dumps(module().sanitize_evidence(record))
+
+
+def test_legacy_npc_request_without_type_is_independently_corroborated():
+    mod = module()
+    stages, wire = fake_stages_and_wire()
+    command = wire["commands"][0]
+    command.pop("type")
+    command.update(agent_id="security-auditor", task="prepare project")
+    wire["emitted"][0]["status"] = "ok"
+    assert mod.corroborate(wire, stages[0])[0] is command
+
+
+@pytest.mark.asyncio
+async def test_pre_setup_child_closure_is_reported_without_inventing_memory_attachment(
+    tmp_path,
+):
+    mod = module()
+    project = tmp_path / "empty"
+    project.mkdir()
+    life = mod.LiveLifetime(tmp_path / "lifetime", project, "a_initial")
+    await life.start()
+    assert life.ready["state"]["snapshot"]["stage"] == "needs_architect"
+    result = await life.stop()
+    assert result["closed"] and result["child_returncode"] == 0
+    assert result["memory_marker_before"] is False
+    assert result["memory_marker_after"] is None
+    assert result["owners"] == []
+    assert mod.validate_lifetimes([result])
