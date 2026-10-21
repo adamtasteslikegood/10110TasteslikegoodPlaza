@@ -316,7 +316,7 @@ delta: dict|None) -> MemorySaveResult`,
 `bridge/tests/test_readiness.py`, `bridge/tests/test_domain_sdk.py`,
 `bridge/guarded_transport.py`, `bridge/tests/test_guarded_transport.py`,
 `scripts/m12_tool_guard_probe.py`, `tests/test_m12_tool_guard_probe.py`,
-`bridge/tool_guard_acceptance.json`.
+`bridge/tool_guard_acceptance.json`, `bridge/tool_guard_evidence.py`.
 Add `decode_project_reply(output: str) -> tuple[str, dict|None]` to
 `bridge/conversation_backend.py` here because DomainSDKOwner consumes it; Task 6
 will reuse the same decoder for both NPC adapters. The Task 6 envelope contract
@@ -337,7 +337,7 @@ lease: WorkspaceLease, readiness: ReadinessService, *, client_factory=ClaudeSDKC
 `async start() -> None`, `async execute(*, agent_id: str, definition: str,
 task: str, prior_project_notes: str) -> SDKOutcome`, `async stop() -> CleanupOutcome`.
 
-- [ ] **Step 1 — Write failing task-identity, gate and cleanup tests.**
+- [x] **Step 1 — Write failing task-identity, gate and cleanup tests.**
   `test_sdk_calls_have_one_owner_task`, `test_stop_preempts_connect`,
   `test_repeated_cancellation_drains_cleanup`, `test_tool_gate_denies_invalid_state`,
   `test_newer_npc_memory_revision_is_ready`, `test_sdk_terminal_errors_keep_partial_text`.
@@ -356,9 +356,9 @@ task: str, prior_project_notes: str) -> SDKOutcome`, `async stop() -> CleanupOut
   and hook exceptions/timeouts. Fake clients must record lifecycle task identity.
   Add probe-runner tests with harmless fake child/tool sentinels: any tool execution
   despite denial, a missing case or incomplete evidence must fail the probe.
-- [ ] **Step 2 — Run red:**
+- [x] **Step 2 — Run red:**
   `python -m pytest bridge/tests/test_readiness.py bridge/tests/test_domain_sdk.py tests/test_m12_tool_guard_probe.py -q`.
-- [ ] **Step 3 — Implement mandatory hooks and the bounded owner mailbox.**
+- [x] **Step 3 — Implement mandatory hooks and the bounded owner mailbox.**
   Hook callbacks run direct bridge checks with a 5s deadline, before the SDK hook's
   10s timeout; catch failures and return explicit denial. Reload current consistent
   memory; do not demand equality with Start's revision. Cover every enabled built-in,
@@ -387,7 +387,7 @@ task: str, prior_project_notes: str) -> SDKOutcome`, `async stop() -> CleanupOut
   Missing coverage or a tool that executes despite denial fails acceptance. Probe
   fixtures use disposable projects and explicit test-only injection, with no
   production bypass setting. See Task 10 for evidence retention and final rerun.
-- [ ] **Step 4 — Run green**, including the existing installed-transport harmless
+- [x] **Step 4 — Run green**, including the existing installed-transport harmless
   child reaping and guarded-transport tests. Run `python3 scripts/m12_tool_guard_probe.py --output
   /tmp/m12-tool-guard.json` against the actual pinned CLI before advancing to
   tool-enabled use; inspect every case. If runtime/auth is unavailable, other
@@ -398,7 +398,7 @@ task: str, prior_project_notes: str) -> SDKOutcome`, `async stop() -> CleanupOut
   complete required cases and hashes of the enforcement sources. Production fails
   tools closed if that evidence is missing, invalid or stale; source changes need
   fresh probe evidence, never a hash-only update.
-- [ ] **Step 5 — Commit:**
+- [x] **Step 5 — Commit:**
   `git commit -m "feat(bridge): guard tools and own domain sdk lifecycle (PLZG-289)"`.
 
 ### Task 5: Make domain admission, generations and replay deterministic
