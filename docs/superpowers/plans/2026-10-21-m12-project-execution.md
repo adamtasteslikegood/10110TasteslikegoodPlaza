@@ -697,7 +697,7 @@ requires it. Keep Main/HUD paths intact and mount a separate Main/DomainHUD.
 results label and passive global status. Local state: nearby/anchor agent ID,
 selected domain ID and anchored-versus-remote mode. No new autoload.
 
-- [ ] **Step 1 — Write failing real-scene panel tests.**
+- [x] **Step 1 — Write failing real-scene panel tests.**
   Cover explicit Start/Run, idle Stop-to-release copy, disabled busy controls,
   draft retention, rendered result/status, viewport focus, unrelated NPC departure,
   matching anchor departure, remote detach and return-to-anchor replay sequencing.
@@ -713,9 +713,9 @@ selected domain ID and anchored-versus-remote mode. No new autoload.
 
   Chief referrals use normal NPC text_submitted; approaching it never starts review.
   Test Tab/Shift+Tab, Escape and resizing against actual enabled controls.
-- [ ] **Step 2 — Register `domain_panel` marker and run red:**
+- [x] **Step 2 — Register `domain_panel` marker and run red:**
   `python3 scripts/run_headless.py domain_panel`.
-- [ ] **Step 3 — Implement the panel and minimal scene wiring.**
+- [x] **Step 3 — Implement the panel and minimal scene wiring.**
   Derive domain ID from AgentRegistry department. Explicit NPC-domain action
   captures its anchor; only that NPC's departure backgrounds/closes. Returning
   refocuses then resumes after acknowledgment; never starts/submits. Global Refocus
@@ -724,10 +724,10 @@ selected domain ID and anchored-versus-remote mode. No new autoload.
   setup stage, saved/unsaved memory, lifecycle/execution, unread/omitted counts and
   `Stop to release workspace`. Incoming packets update data without opening a
   panel or replacing NPC output. Keep Chief interaction in the existing NPC panel.
-- [ ] **Step 4 — Run panel and existing dialogue/smoke gates green.**
+- [x] **Step 4 — Run panel and existing dialogue/smoke gates green.**
   Use `python3 scripts/run_headless.py domain_panel dialogue_panel smoke` after
   import; preserve production world/agent taxonomy.
-- [ ] **Step 5 — Commit:**
+- [x] **Step 5 — Commit:**
   `git commit -m "feat(godot): control and revisit background domain work (PLZG-289)"`.
 
 ### Task 9: Prove the complete deterministic flow and wire required gates
