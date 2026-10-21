@@ -1,10 +1,8 @@
 """Acceptance fails closed; fake providers/children never spend model budget."""
 
 import asyncio
-from copy import deepcopy
 import importlib
 import json
-import os
 from pathlib import Path
 import sys
 from types import SimpleNamespace
@@ -115,92 +113,15 @@ def fake_stages_and_wire():
 
 
 def evidence():
-    stages, wire = fake_stages_and_wire()
-    return dict(
-        schema_version=1,
-        run_id="run",
-        completed=True,
-        errors=[],
-        initial=dict(
-            stages=stages,
-            wire=wire,
-            scene_run_id="run",
-            checks={key: True for key in module().INITIAL_CHECKS},
-            query_count=1,
-            result_count=1,
-            rendered_count=1,
-            tool_receipts=[
-                dict(
-                    cwd="/execution",
-                    result="m12-result.txt",
-                    nonce="m12-nonce",
-                    sha256="a" * 64,
-                    written_utc="2026-10-21T00:00:03+00:00",
-                )
-            ],
-            nonce="m12-nonce",
-            result_sha256="a" * 64,
-            worktree_path="/execution",
-            released_monotonic=3.0,
-            background_monotonic=1.0,
-            npc_monotonic=2.0,
-        ),
-        restart=dict(
-            checks={key: True for key in module().RESTART_CHECKS},
-            query_count=1,
-            tool_count=0,
-        ),
-        isolation=dict(
-            checks={key: True for key in module().ISOLATION_CHECKS},
-            query_count=1,
-            tool_count=0,
-        ),
-        lifetimes=[
-            dict(
-                scenario=s,
-                run_id="run" if s == "a_initial" else s,
-                child_returncode=0,
-                cli_returncodes=[0],
-                forced=False,
-                closed=True,
-                ended_at="2026-10-21T00:00:04+00:00",
-                memory_marker_before=True,
-                memory_marker_after=False,
-                lease_marker_after=False,
-                reservation_after=None,
-                owners=[
-                    dict(
-                        clean=True,
-                        worker_done=True,
-                        transport_closed=True,
-                        hook_tasks=0,
-                        returncode=0,
-                        lifecycle=["connect", "query", "receive", "disconnect"],
-                        task_count=1,
-                    )
-                ],
-            )
-            for s in ("a_initial", "a_restart", "b_isolation")
-        ],
-        binding=dict(
-            commit="a" * 40,
-            source_sha256={"scripts/m12_live.py": "b" * 64},
-            runtime_before={"head": "a"},
-            runtime_after={"head": "a"},
-        ),
-        instrumentation=module().INSTRUMENTATION,
-        versions={
-            "sdk": "0.2.136",
-            "anyio": "4.14.2",
-            "cli": "2.1.228 (Claude Code)",
-            "godot": "4.7.1",
-        },
-        auth_mode="api_key",
-        desktop_accepted=False,
+    """Complete immutable observed proof, copied for no-provider mutations."""
+    return json.loads(
+        (
+            Path(__file__).parents[1] / "specs/evidence/m12-live-2026-10-21.json"
+        ).read_text()
     )
 
 
-def test_runner_exists_and_complete_fake_observation_passes():
+def test_runner_exists_and_complete_observed_proof_passes():
     assert module().validate_evidence(evidence()) == []
 
 
@@ -583,8 +504,6 @@ async def test_pre_setup_child_closure_is_reported_without_inventing_memory_atta
 def test_scene_is_bound_to_initial_child_not_supervisor_identity():
     record = evidence()
     record["run_id"] = "separate-supervisor"
-    record["initial"]["scene_run_id"] = "run"
-    record["lifetimes"][0]["run_id"] = "run"
     assert module().validate_evidence(record) == []
 
 
@@ -705,3 +624,232 @@ def test_semantic_answer_preserves_raw_plain_json_and_one_fenced_object(output):
 def test_wrong_malformed_or_surrounded_answer_cannot_pass_by_substring(output):
     with pytest.raises(module().AcceptanceError):
         module().assert_answer_matches(output, "m12-nonce")
+
+
+PROOF_REMOVALS = (
+    [
+        (section, field)
+        for section in ("initial", "restart", "isolation")
+        for field in ("sdk", "workspace", "output")
+    ]
+    + [
+        ("initial", field)
+        for field in (
+            "godot_returncode",
+            "terminal_identity",
+            "source_before",
+            "source_after",
+            "bootstrap_notes",
+            "notes",
+            "released_utc",
+        )
+    ]
+    + [
+        (section, field)
+        for section in ("restart", "isolation")
+        for field in ("notes_before", "notes_after")
+    ]
+    + [
+        (section, "sdk", field)
+        for section in ("initial", "restart", "isolation")
+        for field in (
+            "client_id",
+            "domain",
+            "cwd",
+            "model",
+            "max_turns",
+            "max_budget_usd",
+            "tools",
+            "lifecycle",
+            "task_ids",
+            "query_count",
+            "attempts",
+            "successful_tool_ids",
+            "tool_receipts",
+            "terminals",
+            "provider_session_ids",
+            "inventory",
+        )
+    ]
+    + [
+        ("initial", "workspace", field)
+        for field in (
+            "project_id",
+            "workspace_id",
+            "project_root",
+            "worktree_path",
+            "common_git_dir",
+            "git_dir",
+            "branch",
+            "initial_commit",
+        )
+    ]
+    + [("restart", "notes_before", field) for field in ("revision", "sha256")]
+    + [
+        ("initial", "source_before", field)
+        for field in ("head", "status", "tracked_sha256")
+    ]
+    + [
+        ("initial", "tool_receipts", 0, field)
+        for field in ("cwd", "result", "nonce", "sha256", "written_utc")
+    ]
+    + [
+        ("binding", field)
+        for field in ("commit", "source_sha256", "runtime_before", "runtime_after")
+    ]
+)
+
+
+@pytest.mark.parametrize("path", PROOF_REMOVALS)
+def test_complete_proof_cannot_lose_a_required_nested_observation(path):
+    record = evidence()
+    container = record
+    for key in path[:-1]:
+        container = container[key]
+    del container[path[-1]]
+    assert module().validate_evidence(record), path
+
+
+@pytest.mark.parametrize(
+    "path,value",
+    [
+        (("initial", "godot_returncode"), 17),
+        (("initial", "godot_returncode"), False),
+        (("initial", "output"), "wrong nonce"),
+        (("restart", "output"), "wrong nonce"),
+        (("isolation", "output"), "not isolated"),
+        (("initial", "tool_receipts", 0, "written_utc"), "1900-01-01T00:00:00+00:00"),
+        (("initial", "tool_receipts", 0, "written_utc"), "not a timestamp"),
+        (("initial", "released_utc"), "2999-01-01T00:00:00+00:00"),
+        (("initial", "background_monotonic"), 1.0),
+        (("initial", "sdk", "cwd"), "/wrong"),
+        (("restart", "sdk", "query_count"), 2),
+        (("initial", "sdk", "successful_tool_ids"), ["another-tool"]),
+        (("initial", "sdk", "inventory"), ["Read", "Edit"]),
+        (("initial", "sdk", "attempts", 0, "name"), "Read"),
+        (("initial", "sdk", "tool_receipts", 0, "sha256"), "a" * 64),
+        (("initial", "sdk", "terminals", 0, "is_error"), True),
+        (("initial", "sdk", "task_ids"), [1, 2, 3]),
+        (("initial", "sdk", "max_budget_usd"), 99),
+        (("restart", "notes_before", "revision"), 999),
+        (("restart", "notes_after", "revision"), True),
+        (("restart", "notes_before", "sha256", "todo"), "a" * 64),
+        (("isolation", "notes_after", "revision"), 1),
+        (("initial", "source_after", "status"), "changed"),
+        (("initial", "source_before", "head"), "a" * 40),
+        (("initial", "workspace", "branch"), "wrong-branch"),
+        (("initial", "workspace", "project_id"), "foreign"),
+        (("initial", "workspace", "initial_commit"), "x"),
+        (("restart", "workspace", "worktree_path"), "/wrong"),
+        (("initial", "terminal_identity", "output_id"), "9"),
+        (
+            ("binding",),
+            dict(
+                commit="x",
+                source_sha256={"fake": "fake"},
+                runtime_before=None,
+                runtime_after=None,
+            ),
+        ),
+        (("binding", "source_sha256"), {"fake": "a" * 64}),
+        (("binding", "runtime_before", "head"), "x"),
+        (("versions", "cli_sha256"), "x"),
+        (("lifetimes", 0, "cli_returncodes"), [0]),
+        (("lifetimes", 1, "run_id"), "14024affc2f743f59f07f959a6d99db9"),
+        (("lifetimes", 0, "ended_at"), "1900-01-01T00:00:00+00:00"),
+    ],
+)
+def test_complete_proof_reconciles_types_identities_content_time_and_source(
+    path, value
+):
+    record = evidence()
+    container = record
+    for key in path[:-1]:
+        container = container[key]
+    container[path[-1]] = value
+    assert module().validate_evidence(record), path
+
+
+def test_pre_stop_sdk_snapshots_do_not_require_final_cleanup_observations():
+    record = evidence()
+    for section in ("initial", "restart", "isolation"):
+        sdk = record[section]["sdk"]
+        assert sdk["lifecycle"] == ["connect", "query", "receive"]
+        assert "returncode" not in sdk
+    assert not record["restart"]["sdk"]["terminals"]
+    assert module().validate_evidence(record) == []
+
+
+def test_fenced_semantic_answer_keeps_exact_stage_and_wire_output_parity():
+    record = evidence()
+    initial = record["initial"]
+    raw = "```json\n" + json.dumps({"answer": initial["nonce"]}) + "\n```"
+    previous = initial["output"]
+    initial["output"] = raw
+    stage = initial["stages"][5]["payload"]
+    stage["output"] = raw
+    stage["rendered_text"] = stage["rendered_text"].replace(previous, raw)
+    for packet in initial["wire"]["emitted"]:
+        if packet.get("type") == "domain_result":
+            packet["output"] = raw
+    assert module().validate_evidence(record) == []
+
+
+def test_write_time_reconciliation_is_not_only_duplicate_receipt_equality():
+    record = evidence()
+    for receipt in (
+        record["initial"]["tool_receipts"][0],
+        record["initial"]["sdk"]["tool_receipts"][0],
+    ):
+        receipt["written_utc"] = "1900-01-01T00:00:00+00:00"
+    assert module().validate_evidence(record)
+
+
+def test_sdk_tool_attempt_cannot_follow_its_actual_file_write():
+    record = evidence()
+    initial = record["initial"]
+    initial["sdk"]["attempts"][0]["received_utc"] = initial["stages"][5]["received_utc"]
+    assert module().validate_evidence(record)
+
+
+@pytest.mark.parametrize("mode", ["wrong_hash", "nonce_in_task", "nonce_in_b_notes"])
+def test_private_query_observations_are_checked_when_present(mode):
+    record = evidence()
+    for name in ("initial", "restart", "isolation"):
+        notes = record["initial"]["nonce"] if name == "restart" else "own project notes"
+        record[name]["sdk"]["queries"] = [
+            dict(
+                task="read current notes",
+                notes=notes,
+                notes_sha256=module().sha(notes.encode()),
+                received_utc=record["started_utc"],
+            )
+        ]
+    assert module().validate_evidence(record) == []
+    query = record["isolation" if mode == "nonce_in_b_notes" else "restart"]["sdk"][
+        "queries"
+    ][0]
+    if mode == "wrong_hash":
+        query["notes_sha256"] = "a" * 64
+    elif mode == "nonce_in_task":
+        query["task"] = record["initial"]["nonce"]
+    else:
+        query["notes"] = record["initial"]["nonce"]
+        query["notes_sha256"] = module().sha(query["notes"].encode())
+    assert module().validate_evidence(record)
+
+
+@pytest.mark.parametrize("damage", ["too_deep", "too_many", "not_json", "nan"])
+def test_malformed_or_oversized_proof_returns_failure_without_unbounded_traversal(
+    damage,
+):
+    record = evidence()
+    if damage == "too_deep":
+        record["cycle"] = record
+    elif damage == "too_many":
+        record["extra"] = [0] * 10001
+    elif damage == "not_json":
+        record["extra"] = object()
+    else:
+        record["extra"] = float("nan")
+    assert module().validate_evidence(record)

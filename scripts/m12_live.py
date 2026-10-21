@@ -1280,196 +1280,848 @@ async def readback(life, report, scenario):
         checks["stop_inactive"] = True
 
 
-def validate_evidence(record):
-    errors = []
+def _proof_fields(value, fields, label):
+    require(isinstance(value, dict) and set(fields) <= value.keys(), label + " fields")
+    return value
 
-    def check(ok, label):
-        if not ok:
-            errors.append(label)
 
-    if not isinstance(record, dict):
-        return ["evidence must be an object"]
-    check(
-        type(record.get("schema_version")) is int and record.get("schema_version") == 1,
-        "schema",
+def _proof_text(value, label, limit=128, empty=False, nul=False):
+    require(
+        isinstance(value, str)
+        and (empty or bool(value))
+        and len(value.encode()) <= limit
+        and (nul or "\x00" not in value),
+        label,
     )
-    check(
-        record.get("completed") is True and record.get("errors") == [],
-        "incomplete/errors",
+    return value
+
+
+def _proof_integer(value, label, minimum=0):
+    require(type(value) is int and minimum <= value <= 2**63 - 1, label)
+    return value
+
+
+def _proof_number(value, label):
+    require(type(value) in (int, float) and math.isfinite(value) and value >= 0, label)
+    return value
+
+
+def _proof_hash(value, label, length=64):
+    require(
+        isinstance(value, str)
+        and re.fullmatch("[0-9a-f]{" + str(length) + "}", value) is not None,
+        label,
     )
-    check(
-        record.get("instrumentation") == INSTRUMENTATION, "instrumentation disclosure"
+    return value
+
+
+def _proof_utc(value):
+    _proof_text(value, "UTC timestamp")
+    parsed = datetime.fromisoformat(value)
+    require(
+        parsed.tzinfo is not None and parsed.utcoffset().total_seconds() == 0,
+        "timestamp must be UTC",
     )
-    for section, keys in (
+    return parsed
+
+
+def _proof_path(value):
+    _proof_text(value, "absolute canonical path", 4096)
+    path = Path(value)
+    require(
+        path.is_absolute() and str(path) == value and ".." not in path.parts,
+        "absolute canonical path",
+    )
+    return path
+
+
+def _proof_bounded(record):
+    """Bound traversal before interpreting nested, possibly malformed JSON data."""
+    stack, nodes, size = [(record, 0)], 0, 0
+    while stack:
+        item, depth = stack.pop()
+        nodes += 1
+        require(nodes <= 100000 and depth <= 20, "proof structural bound")
+        if isinstance(item, dict):
+            require(
+                len(item) <= 10000 and all(isinstance(k, str) for k in item),
+                "proof object bound",
+            )
+            stack.extend((v, depth + 1) for v in item.values())
+            stack.extend((k, depth + 1) for k in item)
+        elif isinstance(item, list):
+            require(len(item) <= 10000, "proof list bound")
+            stack.extend((v, depth + 1) for v in item)
+        elif isinstance(item, str):
+            count = len(item.encode())
+            require(count <= 1024 * 1024, "proof string bound")
+            size += count
+        else:
+            require(
+                item is None or type(item) in (int, float, bool), "proof JSON scalar"
+            )
+            if type(item) is float:
+                require(math.isfinite(item), "proof finite number")
+        require(size <= 4 * 1024 * 1024, "proof byte bound")
+
+
+def _proof_hashes(value, *, names=None):
+    require(isinstance(value, dict) and len(value) <= 10000, "hash mapping")
+    if names is not None:
+        require(set(value) == set(names), "hash inventory")
+    for name, digest in value.items():
+        _proof_text(name, "hash name", 4096)
+        path = Path(name)
+        require(
+            not path.is_absolute() and ".." not in path.parts and str(path) == name,
+            "relative hash path",
+        )
+        _proof_hash(digest, "SHA-256")
+    return value
+
+
+def _proof_baseline(value):
+    _proof_fields(value, ("head", "status", "tracked_sha256"), "baseline")
+    _proof_hash(value["head"], "baseline HEAD", 40)
+    _proof_text(value["status"], "baseline status", 1024 * 1024, empty=True, nul=True)
+    _proof_hashes(value["tracked_sha256"])
+    return value
+
+
+def _proof_notes(value):
+    _proof_fields(value, ("revision", "sha256"), "notes")
+    _proof_integer(value["revision"], "memory revision", 1)
+    _proof_hashes(value["sha256"], names=("todo", "handoff", "progress"))
+    if "context" in value:
+        _proof_text(value["context"], "private notes context", 131072)
+    return {k: value[k] for k in ("revision", "sha256")}
+
+
+def _proof_workspace(value):
+    _proof_fields(
+        value,
+        (
+            "project_id",
+            "workspace_id",
+            "project_root",
+            "worktree_path",
+            "common_git_dir",
+            "git_dir",
+            "branch",
+            "initial_commit",
+        ),
+        "workspace",
+    )
+    for key in ("project_id", "workspace_id", "branch"):
+        _proof_text(value[key], "workspace " + key)
+    _proof_hash(value["initial_commit"], "initial commit", 40)
+    paths = {
+        key: _proof_path(value[key])
+        for key in ("project_root", "worktree_path", "common_git_dir", "git_dir")
+    }
+    root, execution = paths["project_root"], paths["worktree_path"]
+    require(
+        root != execution
+        and root not in execution.parents
+        and execution not in root.parents,
+        "source/execution disjoint",
+    )
+    require(
+        execution.name == "execution"
+        and execution.parent.parent == root.parent / ".plaza-worktrees"
+        and execution.parent.name.endswith("-" + value["project_id"]),
+        "sibling execution location",
+    )
+    require(
+        paths["common_git_dir"] == root / ".git"
+        and paths["git_dir"] == paths["common_git_dir"] / "worktrees/execution",
+        "workspace Git locations",
+    )
+    require(
+        value["branch"] == "plaza/workspace-" + value["project_id"],
+        "execution branch binding",
+    )
+    return value
+
+
+def _proof_cleanup(lifetimes, *, complete=False, started=None, ended=None):
+    require(
+        isinstance(lifetimes, list) and 1 <= len(lifetimes) <= 3, "bridge lifetimes"
+    )
+    if complete:
+        require(
+            len(lifetimes) == 3
+            and [r.get("scenario") for r in lifetimes]
+            == ["a_initial", "a_restart", "b_isolation"],
+            "lifetime scenarios",
+        )
+    run_ids, archive_ids, previous = set(), set(), started
+    for item in lifetimes:
+        _proof_fields(
+            item,
+            (
+                "scenario",
+                "run_id",
+                "archive_run_id",
+                "child_returncode",
+                "forced",
+                "closed",
+                "ended_at",
+                "memory_marker_before",
+                "memory_marker_after",
+                "lease_marker_after",
+                "reservation_after",
+                "owners",
+                "cli_returncodes",
+            ),
+            "lifetime",
+        )
+        require(
+            item["scenario"] in ("a_initial", "a_restart", "b_isolation"),
+            "lifetime scenario",
+        )
+        for key, seen in (("run_id", run_ids), ("archive_run_id", archive_ids)):
+            _proof_text(item[key], "lifetime " + key)
+            require(item[key] not in seen, "fresh lifetime identity")
+            seen.add(item[key])
+        require(
+            type(item["child_returncode"]) is int
+            and item["child_returncode"] == 0
+            and item["forced"] is False,
+            "nonzero/forced bridge child",
+        )
+        finished = _proof_utc(item["ended_at"])
+        require(
+            item["closed"] is True
+            and (previous is None or finished > previous)
+            and (ended is None or finished <= ended),
+            "closed manifest ordering",
+        )
+        previous = finished
+        require(
+            item["memory_marker_before"] is True
+            and item["memory_marker_after"] is False
+            and item["lease_marker_after"] is False
+            and item["reservation_after"] is None,
+            "ownership cleanup",
+        )
+        codes = item["cli_returncodes"]
+        require(
+            isinstance(codes, list)
+            and len(codes) == (3 if item["scenario"] == "a_initial" else 1)
+            and all(type(c) is int and c == 0 for c in codes),
+            "nonzero/missing CLI child",
+        )
+        require(
+            isinstance(item["owners"], list) and len(item["owners"]) == 1,
+            "one actual owner",
+        )
+        owner = _proof_fields(
+            item["owners"][0],
+            (
+                "clean",
+                "worker_done",
+                "transport_closed",
+                "hook_tasks",
+                "returncode",
+                "task_count",
+                "lifecycle",
+            ),
+            "owner cleanup",
+        )
+        require(
+            all(owner[k] is True for k in ("clean", "worker_done", "transport_closed")),
+            "SDK cleanup flags",
+        )
+        for key, expected in (("hook_tasks", 0), ("returncode", 0), ("task_count", 1)):
+            require(
+                type(owner[key]) is int and owner[key] == expected, "SDK cleanup " + key
+            )
+        require(
+            owner["lifecycle"] == ["connect", "query", "receive", "disconnect"],
+            "final SDK lifecycle",
+        )
+
+
+def _proof_sdk(value, workspace, *, initial, started, ended):
+    _proof_fields(
+        value,
+        (
+            "client_id",
+            "domain",
+            "cwd",
+            "model",
+            "max_turns",
+            "max_budget_usd",
+            "tools",
+            "lifecycle",
+            "task_ids",
+            "query_count",
+            "attempts",
+            "successful_tool_ids",
+            "tool_receipts",
+            "terminals",
+            "provider_session_ids",
+            "inventory",
+        ),
+        "SDK observation",
+    )
+    _proof_text(value["client_id"], "SDK client identity")
+    require(
+        value["domain"] is True and value["cwd"] == workspace["worktree_path"],
+        "SDK workspace binding",
+    )
+    require(
+        value["model"] == "claude-haiku-5-5"
+        and type(value["max_turns"]) is int
+        and value["max_turns"] == 8
+        and type(value["max_budget_usd"]) in (int, float)
+        and value["max_budget_usd"] == 0.35,
+        "SDK configured model/caps",
+    )
+    require(
+        value["tools"] == ["Read", "Edit", "Bash"]
+        and isinstance(value["inventory"], list)
+        and sorted(value["inventory"]) == ["Bash", "Edit", "Read"],
+        "SDK tool inventory",
+    )
+    require(
+        type(value["query_count"]) is int and value["query_count"] == 1,
+        "SDK query count",
+    )
+    # These snapshots precede Stop. They do not replace the final owner/CLI proof.
+    lifecycle = value["lifecycle"]
+    require(
+        lifecycle
+        in (
+            ["connect", "query", "receive"],
+            ["connect", "query", "receive", "disconnect"],
+        ),
+        "pre-Stop SDK lifecycle",
+    )
+    tasks = value["task_ids"]
+    require(
+        isinstance(tasks, list)
+        and len(tasks) == len(lifecycle)
+        and all(type(t) is int and t > 0 for t in tasks)
+        and len(set(tasks)) == 1,
+        "SDK one-task ownership",
+    )
+    if "returncode" in value:
+        require(
+            value["returncode"] is None
+            or type(value["returncode"]) is int
+            and value["returncode"] == 0,
+            "observed SDK exit",
+        )
+    sessions = value["provider_session_ids"]
+    require(
+        isinstance(sessions, list)
+        and 1 <= len(sessions) <= 4
+        and len(set(sessions)) == len(sessions),
+        "provider session identities",
+    )
+    for session in sessions:
+        _proof_text(session, "provider session ID")
+    for key in ("attempts", "successful_tool_ids", "tool_receipts", "terminals"):
+        require(
+            isinstance(value[key], list) and len(value[key]) <= 1, "bounded SDK " + key
+        )
+    require(
+        len(value["attempts"]) == int(initial)
+        and len(value["successful_tool_ids"]) == int(initial)
+        and len(value["tool_receipts"]) == int(initial),
+        "SDK tool execution count",
+    )
+    if initial:
+        attempt = _proof_fields(
+            value["attempts"][0],
+            ("name", "id", "parent", "received_utc"),
+            "SDK tool attempt",
+        )
+        _proof_text(attempt["id"], "tool ID")
+        require(
+            attempt["name"] == "Bash"
+            and attempt["parent"] is None
+            and value["successful_tool_ids"] == [attempt["id"]],
+            "successful sole SDK Bash identity",
+        )
+        require(
+            started <= _proof_utc(attempt["received_utc"]) <= ended,
+            "tool observation UTC",
+        )
+        require(len(value["terminals"]) == 1, "initial SDK terminal")
+    for terminal in value["terminals"]:
+        _proof_fields(
+            terminal,
+            (
+                "subtype",
+                "is_error",
+                "reason",
+                "cost_usd",
+                "permission_denials",
+                "errors",
+            ),
+            "SDK terminal",
+        )
+        require(
+            terminal["subtype"] == "success"
+            and terminal["is_error"] is False
+            and terminal["reason"] in (None, "completed")
+            and terminal["errors"] is False
+            and type(terminal["permission_denials"]) is int
+            and terminal["permission_denials"] == 0,
+            "successful SDK terminal",
+        )
+        if terminal["cost_usd"] is not None:
+            _proof_number(terminal["cost_usd"], "terminal cost")
+    if "queries" in value:
+        require(
+            isinstance(value["queries"], list) and len(value["queries"]) == 1,
+            "private SDK query count",
+        )
+        query = _proof_fields(
+            value["queries"][0],
+            ("task", "notes", "notes_sha256", "received_utc"),
+            "private SDK query",
+        )
+        _proof_text(query["task"], "private query task", 65536)
+        _proof_text(query["notes"], "private query notes", 131072, empty=True)
+        require(
+            query["notes_sha256"] == sha(query["notes"].encode())
+            and started <= _proof_utc(query["received_utc"]) <= ended,
+            "private query hash/UTC",
+        )
+    return value
+
+
+def _proof_wire(value):
+    _proof_fields(value, ("commands", "emitted"), "wire")
+    for name in ("commands", "emitted"):
+        require(
+            isinstance(value[name], list) and 1 <= len(value[name]) <= 256,
+            "wire packet bound",
+        )
+        for packet in value[name]:
+            _proof_fields(packet, ("request_id",), "wire packet")
+            _proof_text(packet["request_id"], "wire request ID")
+            for key in (
+                "type",
+                "agent_id",
+                "domain_id",
+                "domain_session_id",
+                "output_id",
+            ):
+                if key in packet:
+                    _proof_text(packet[key], "wire " + key)
+            for key in ("project_id", "workspace_id"):
+                if packet.get(key) is not None:
+                    _proof_text(packet[key], "wire " + key)
+            if "output" in packet:
+                _proof_text(packet["output"], "wire output", 262144, empty=True)
+    return value
+
+
+def _validate_proof(record):
+    from bridge.domain_sdk import GUARD_SOURCES
+    from scripts.m12_stages import StageValidator
+
+    _proof_fields(
+        record,
+        (
+            "schema_version",
+            "run_id",
+            "completed",
+            "errors",
+            "started_utc",
+            "ended_utc",
+            "auth_mode",
+            "desktop_accepted",
+            "instrumentation",
+            "versions",
+            "binding",
+            "caps",
+            "initial",
+            "restart",
+            "isolation",
+            "lifetimes",
+        ),
+        "evidence",
+    )
+    require(
+        type(record["schema_version"]) is int
+        and record["schema_version"] == 1
+        and record["completed"] is True
+        and record["errors"] == [],
+        "incomplete/error evidence",
+    )
+    require(record.get("accepted", True) is True, "report is not accepted")
+    _proof_text(record["run_id"], "supervisor identity")
+    require(
+        record["auth_mode"] in ("api_key", "native_cli")
+        and record["desktop_accepted"] is False
+        and record["instrumentation"] == INSTRUMENTATION,
+        "auth/platform/instrumentation disclosure",
+    )
+    started, ended = _proof_utc(record["started_utc"]), _proof_utc(record["ended_utc"])
+    require(ended > started, "run UTC ordering")
+    _proof_cleanup(record["lifetimes"], complete=True, started=started, ended=ended)
+    versions = _proof_fields(
+        record["versions"],
+        ("sdk", "anyio", "cli", "godot", "python", "platform", "cli_sha256"),
+        "versions",
+    )
+    require(
+        versions["sdk"] == "0.2.136"
+        and versions["anyio"] == "4.14.2"
+        and versions["cli"] == "2.1.228 (Claude Code)",
+        "pinned dependency versions",
+    )
+    for key in ("godot", "python", "platform"):
+        _proof_text(versions[key], "version " + key)
+    _proof_hash(versions["cli_sha256"], "CLI binary SHA-256")
+    expected_caps = dict(
+        domain_max_turns=8,
+        domain_max_budget_usd=0.35,
+        max_domain_queries=3,
+        npc_max_turns=1,
+        npc_deadline_seconds=65,
+        automatic_retries=0,
+    )
+    require(
+        record["caps"] == expected_caps
+        and all(type(record["caps"][k]) is type(v) for k, v in expected_caps.items()),
+        "declared caps",
+    )
+    binding = _proof_fields(
+        record["binding"],
+        ("commit", "source_sha256", "runtime_before", "runtime_after"),
+        "source binding",
+    )
+    _proof_hash(binding["commit"], "source commit", 40)
+    before, after = _proof_baseline(binding["runtime_before"]), _proof_baseline(
+        binding["runtime_after"]
+    )
+    require(
+        before == after and before["head"] == binding["commit"],
+        "unchanged runtime HEAD/status/hashes",
+    )
+    names = (
+        *GUARD_SOURCES,
+        "scripts/m12_live.py",
+        "scripts/m12_stages.py",
+        "tests/godot_domain_integration.gd",
+    )
+    _proof_hashes(binding["source_sha256"], names=names)
+    require(
+        all(
+            before["tracked_sha256"].get(name) == binding["source_sha256"][name]
+            for name in names
+        ),
+        "source fingerprints match recorded runtime",
+    )
+    sections, clients, sessions = [], set(), set()
+    for name, checks in (
         ("initial", INITIAL_CHECKS),
         ("restart", RESTART_CHECKS),
         ("isolation", ISOLATION_CHECKS),
     ):
-        data = record.get(section)
-        if not isinstance(data, dict):
-            errors.append(section + " missing")
-            continue
-        checks = data.get("checks", {})
-        check(
-            isinstance(checks, dict)
-            and set(checks) == set(keys)
-            and all(checks.get(k) is True for k in keys),
-            section + " checks",
+        section = _proof_fields(
+            record[name], ("checks", "query_count", "output", "workspace", "sdk"), name
         )
-        check(
-            type(data.get("query_count")) is int and data["query_count"] == 1,
-            section + " query count",
+        require(
+            isinstance(section["checks"], dict)
+            and set(section["checks"]) == set(checks)
+            and all(v is True for v in section["checks"].values()),
+            name + " checks",
         )
-        if section != "initial":
-            check(
-                type(data.get("tool_count")) is int and data["tool_count"] == 0,
-                section + " tool count",
+        require(
+            type(section["query_count"]) is int and section["query_count"] == 1,
+            name + " query count",
+        )
+        work = _proof_workspace(section["workspace"])
+        sdk = _proof_sdk(
+            section["sdk"],
+            work,
+            initial=name == "initial",
+            started=started,
+            ended=ended,
+        )
+        require(
+            sdk["client_id"] not in clients
+            and not (set(sdk["provider_session_ids"]) & sessions),
+            "fresh SDK invocations",
+        )
+        clients.add(sdk["client_id"])
+        sessions.update(sdk["provider_session_ids"])
+        _proof_text(section["output"], name + " output", 65536)
+        if name != "initial":
+            _proof_fields(
+                section,
+                ("tool_count", "notes_before", "notes_after"),
+                name + " readback",
             )
-    data = record.get("initial", {})
-    if isinstance(data, dict):
-        for key in ("result_count", "rendered_count"):
-            check(type(data.get(key)) is int and data[key] == 1, key)
-        try:
-            from scripts.m12_stages import StageValidator
-
-            stages = data.get("stages")
-            wire = data.get("wire")
             require(
-                isinstance(stages, list)
-                and len(stages) == 7
-                and isinstance(wire, dict),
-                "missing complete stage/wire evidence",
+                type(section["tool_count"]) is int and section["tool_count"] == 0,
+                "readback tool count",
             )
-            validator = StageValidator(data["scene_run_id"], "godot")
-            lifetimes = record.get("lifetimes", [])
+            old, new = _proof_notes(section["notes_before"]), _proof_notes(
+                section["notes_after"]
+            )
             require(
-                lifetimes and lifetimes[0].get("run_id") == data["scene_run_id"],
-                "scene/child binding mismatch",
+                new["revision"] > old["revision"], "readback memory revision ordering"
             )
-            for stage in stages:
-                validator.accept(
-                    {
-                        k: stage[k]
-                        for k in (
-                            "schema_version",
-                            "run_id",
-                            "scenario",
-                            "producer",
-                            "seq",
-                            "stage",
-                            "payload",
-                        )
-                    }
+        sections.append(section)
+    initial, restart, isolated = sections
+    _proof_fields(
+        initial,
+        (
+            "scene_run_id",
+            "result_count",
+            "rendered_count",
+            "godot_returncode",
+            "nonce",
+            "result_sha256",
+            "worktree_path",
+            "terminal_identity",
+            "source_before",
+            "source_after",
+            "bootstrap_notes",
+            "notes",
+            "stages",
+            "wire",
+            "tool_receipts",
+            "released_monotonic",
+            "released_utc",
+            "background_monotonic",
+            "npc_monotonic",
+        ),
+        "initial",
+    )
+    require(
+        type(initial["godot_returncode"]) is int and initial["godot_returncode"] == 0,
+        "Godot exit 0",
+    )
+    require(
+        all(
+            type(initial[k]) is int and initial[k] == 1
+            for k in ("result_count", "rendered_count")
+        ),
+        "one produced/rendered result",
+    )
+    nonce = _proof_text(initial["nonce"], "nonce")
+    require(
+        re.fullmatch(r"m12-[0-9a-f]{32}", nonce) is not None
+        and sha(nonce.encode()) == initial["result_sha256"],
+        "exact nonce content SHA-256",
+    )
+    _proof_hash(initial["result_sha256"], "result SHA-256")
+    require(
+        initial["worktree_path"] == initial["workspace"]["worktree_path"]
+        and restart["workspace"] == initial["workspace"],
+        "reused execution workspace",
+    )
+    require(
+        all(
+            isolated["workspace"][k] != initial["workspace"][k]
+            for k in (
+                "project_id",
+                "workspace_id",
+                "project_root",
+                "worktree_path",
+                "common_git_dir",
+                "git_dir",
+            )
+        ),
+        "independent repository identity",
+    )
+    source_before, source_after = _proof_baseline(
+        initial["source_before"]
+    ), _proof_baseline(initial["source_after"])
+    require(
+        source_before == source_after
+        and source_before["head"] == initial["workspace"]["initial_commit"],
+        "post-bootstrap source unchanged",
+    )
+    bootstrap, final_notes = _proof_notes(initial["bootstrap_notes"]), _proof_notes(
+        initial["notes"]
+    )
+    require(
+        final_notes["revision"] > bootstrap["revision"]
+        and _proof_notes(restart["notes_before"]) == final_notes,
+        "restart uses final initial notes",
+    )
+    require(
+        _proof_notes(isolated["notes_before"])["sha256"]
+        not in (final_notes["sha256"], restart["notes_after"]["sha256"]),
+        "independent B notes",
+    )
+    for section, expected in (
+        (initial, nonce),
+        (restart, nonce),
+        (isolated, "isolated"),
+    ):
+        assert_answer_matches(section["output"], expected)
+        if "queries" in section["sdk"]:
+            query = section["sdk"]["queries"][0]
+            require(nonce not in query["task"], "nonce excluded from submitted task")
+            require(
+                (nonce in query["notes"]) is (section is restart),
+                "private prior-notes nonce isolation",
+            )
+    stages, wire = initial["stages"], _proof_wire(initial["wire"])
+    require(
+        isinstance(stages, list)
+        and len(stages) == 7
+        and initial["scene_run_id"] == record["lifetimes"][0]["run_id"],
+        "complete bound scene recipe",
+    )
+    validator = StageValidator(initial["scene_run_id"], "godot")
+    previous_mono, previous_utc = -1, started
+    for index, stage in enumerate(stages, 1):
+        _proof_fields(
+            stage,
+            ("receipt_seq", "received_monotonic", "received_utc"),
+            "stage receipt",
+        )
+        mono, stamp = _proof_number(
+            stage["received_monotonic"], "receipt monotonic"
+        ), _proof_utc(stage["received_utc"])
+        require(
+            type(stage["receipt_seq"]) is int
+            and stage["receipt_seq"] == index
+            and mono > previous_mono
+            and previous_utc <= stamp <= ended,
+            "stage receipt ordering",
+        )
+        previous_mono, previous_utc = mono, stamp
+        validator.accept(
+            {
+                k: stage[k]
+                for k in (
+                    "schema_version",
+                    "run_id",
+                    "scenario",
+                    "producer",
+                    "seq",
+                    "stage",
+                    "payload",
                 )
-                corroborate(wire, stage)
-            validator.finish()
-        except (ValueError, TypeError, KeyError, IndexError):
-            errors.append("invalid or uncorroborated scene evidence")
-        receipts = data.get("tool_receipts")
-        check(
-            isinstance(receipts, list) and len(receipts) == 1,
-            "single actual tool receipt",
+            }
         )
-        if (
-            isinstance(receipts, list)
-            and len(receipts) == 1
-            and isinstance(receipts[0], dict)
-        ):
-            tool = receipts[0]
-            check(
-                tool.get("cwd") == data.get("worktree_path")
-                and tool.get("nonce") == data.get("nonce")
-                and tool.get("sha256") == data.get("result_sha256")
-                and tool.get("result") == RESULT,
-                "tool receipt binding",
-            )
-        times = [
-            data.get(k)
-            for k in ("background_monotonic", "npc_monotonic", "released_monotonic")
-        ]
-        check(
+        corroborate(wire, stage)
+    validator.finish()
+    require(
+        all(
+            validator.binding[k] == initial["workspace"][k]
+            for k in ("project_id", "workspace_id")
+        ),
+        "scene workspace identity",
+    )
+    rendered = stages[5]["payload"]
+    identity = _proof_fields(
+        initial["terminal_identity"],
+        ("project_id", "workspace_id", "domain_id", "domain_session_id", "output_id"),
+        "terminal identity",
+    )
+    require(
+        identity == {k: rendered[k] for k in identity}
+        and rendered["output"] == initial["output"],
+        "recorded/rendered terminal parity",
+    )
+    require(
+        rendered["rendered_text"].count(
+            "[%s · output %s ·" % (identity["domain_session_id"], identity["output_id"])
+        )
+        == 1,
+        "one actual rendered header",
+    )
+    terminals = [p for p in wire["emitted"] if p.get("type") == "domain_result"]
+    require(bool(terminals), "stored/plain terminal evidence")
+    for packet in terminals:
+        require(
+            all(packet.get(k) == v for k, v in identity.items())
+            and packet.get("output") == initial["output"]
+            and packet.get("status") == "success",
+            "raw terminal/identity parity",
+        )
+        saved = _proof_fields(
+            packet.get("memory"), ("saved", "revision", "error_type"), "terminal memory"
+        )
+        require(
+            saved["saved"] is True
+            and saved["error_type"] is None
+            and bootstrap["revision"]
+            < _proof_integer(saved["revision"], "saved revision", 1)
+            < final_notes["revision"],
+            "saved terminal memory revision",
+        )
+    for field in ("background_monotonic", "npc_monotonic"):
+        _proof_number(initial[field], "causal receipt monotonic")
+    require(
+        initial["background_monotonic"] == stages[3]["received_monotonic"]
+        and initial["npc_monotonic"] == stages[4]["received_monotonic"],
+        "causal stage receipt binding",
+    )
+    released_mono = _proof_number(initial["released_monotonic"], "release monotonic")
+    released_utc = _proof_utc(initial["released_utc"])
+    require(
+        initial["npc_monotonic"] < released_mono < stages[5]["received_monotonic"]
+        and _proof_utc(stages[4]["received_utc"]) <= released_utc,
+        "causal release order",
+    )
+    require(
+        isinstance(initial["tool_receipts"], list)
+        and len(initial["tool_receipts"]) == 1
+        and initial["tool_receipts"] == initial["sdk"]["tool_receipts"],
+        "SDK tool receipt parity",
+    )
+    tool = _proof_fields(
+        initial["tool_receipts"][0],
+        ("cwd", "result", "nonce", "sha256", "written_utc"),
+        "tool receipt",
+    )
+    require(
+        tool["cwd"] == initial["worktree_path"]
+        and tool["result"] == RESULT
+        and tool["nonce"] == nonce
+        and tool["sha256"] == initial["result_sha256"],
+        "tool CWD/content binding",
+    )
+    require(
+        released_utc
+        < _proof_utc(tool["written_utc"])
+        <= _proof_utc(stages[5]["received_utc"])
+        and _proof_utc(initial["sdk"]["attempts"][0]["received_utc"])
+        <= _proof_utc(tool["written_utc"])
+        and _proof_utc(stages[6]["received_utc"])
+        < _proof_utc(record["lifetimes"][0]["ended_at"]),
+        "tool attempt/write/release/Stop UTC ordering",
+    )
+
+
+def validate_evidence(record):
+    """Validate complete bounded observations, including historical source binding."""
+    try:
+        _proof_bounded(record)
+        _validate_proof(record)
+    except (
+        ValueError,
+        TypeError,
+        KeyError,
+        IndexError,
+        AttributeError,
+        OverflowError,
+        RecursionError,
+    ) as error:
+        return [
             (
-                all(type(v) in (int, float) and math.isfinite(v) for v in times)
-                and times[2] > times[1] > times[0]
-                if all(type(v) in (int, float) for v in times)
-                else False
-            ),
-            "causal release order",
-        )
-    lifetimes = record.get("lifetimes")
-    check(isinstance(lifetimes, list) and len(lifetimes) == 3, "three bridge lifetimes")
-    if isinstance(lifetimes, list):
-        check(
-            [r.get("scenario") for r in lifetimes if isinstance(r, dict)]
-            == ["a_initial", "a_restart", "b_isolation"],
-            "lifetime scenarios",
-        )
-        for item in lifetimes:
-            if not isinstance(item, dict):
-                errors.append("malformed lifetime")
-                continue
-            check(
-                type(item.get("child_returncode")) is int
-                and item["child_returncode"] == 0
-                and item.get("forced") is False,
-                "nonzero/forced bridge child",
+                str(error)
+                if isinstance(error, AcceptanceError)
+                else "malformed evidence proof"
             )
-            check(
-                item.get("closed") is True
-                and isinstance(item.get("ended_at"), str)
-                and bool(item["ended_at"]),
-                "missing/open manifest",
-            )
-            check(
-                item.get("memory_marker_before") is True
-                and item.get("memory_marker_after") is False
-                and item.get("lease_marker_after") is False
-                and "reservation_after" in item
-                and item["reservation_after"] is None,
-                "ownership cleanup",
-            )
-            codes = item.get("cli_returncodes")
-            check(
-                isinstance(codes, list)
-                and bool(codes)
-                and all(type(code) is int and code == 0 for code in codes),
-                "nonzero/missing CLI child",
-            )
-            owners = item.get("owners")
-            check(isinstance(owners, list) and len(owners) == 1, "one actual owner")
-            if isinstance(owners, list):
-                for owner in owners:
-                    check(
-                        isinstance(owner, dict)
-                        and all(
-                            owner.get(k) is True
-                            for k in ("clean", "worker_done", "transport_closed")
-                        )
-                        and type(owner.get("hook_tasks")) is int
-                        and owner["hook_tasks"] == 0
-                        and type(owner.get("returncode")) is int
-                        and owner["returncode"] == 0
-                        and type(owner.get("task_count")) is int
-                        and owner["task_count"] == 1
-                        and owner.get("lifecycle")
-                        == ["connect", "query", "receive", "disconnect"],
-                        "SDK nonzero/unclean/lifecycle",
-                    )
-    binding = record.get("binding")
-    check(
-        isinstance(binding, dict)
-        and bool(binding.get("commit"))
-        and bool(binding.get("source_sha256"))
-        and binding.get("runtime_before") == binding.get("runtime_after")
-        and "runtime_before" in binding,
-        "source/runtime binding",
-    )
-    check(
-        isinstance(record.get("versions"), dict)
-        and all(record["versions"].get(k) for k in ("sdk", "anyio", "cli", "godot")),
-        "versions",
-    )
-    return errors
+        ]
+    return []
 
 
 def sanitize_evidence(record):
@@ -1955,21 +2607,27 @@ async def main(output):
 
 
 def validate_lifetimes(lifetimes):
-    # Apply the same cleanup rules at each boundary before another paid lifetime.
-    fake = {"lifetimes": lifetimes}
-    return [
-        e
-        for e in validate_evidence(fake)
-        if e
-        in (
-            "nonzero/forced bridge child",
-            "missing/open manifest",
-            "ownership cleanup",
-            "nonzero/missing CLI child",
-            "one actual owner",
-            "SDK nonzero/unclean/lifecycle",
-        )
-    ]
+    """Validate actual final cleanup independently of pre-Stop observations."""
+    try:
+        _proof_bounded(lifetimes)
+        _proof_cleanup(lifetimes)
+    except (
+        ValueError,
+        TypeError,
+        KeyError,
+        IndexError,
+        AttributeError,
+        OverflowError,
+        RecursionError,
+    ) as error:
+        return [
+            (
+                str(error)
+                if isinstance(error, AcceptanceError)
+                else "malformed cleanup proof"
+            )
+        ]
+    return []
 
 
 if __name__ == "__main__":
