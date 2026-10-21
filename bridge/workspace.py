@@ -56,6 +56,7 @@ def _git(
     *args: str,
     timeout: int = 5,
     config_overrides: tuple[str, ...] = (),
+    max_output_bytes: int | None = None,
 ) -> str:
     environment = {
         key: value for key, value in os.environ.items() if not key.startswith("GIT_")
@@ -66,16 +67,19 @@ def _git(
         "core.fsmonitor=false",
         *config_overrides,
     ]
+    command = [
+        "git",
+        "--no-lazy-fetch",
+        "--no-optional-locks",
+        *[arg for value in configuration for arg in ("-c", value)],
+        "-C",
+        os.fspath(root),
+        *args,
+    ]
+    if max_output_bytes is not None:
+        return _bounded_git_output(command, environment, timeout, max_output_bytes)
     result = subprocess.run(
-        [
-            "git",
-            "--no-lazy-fetch",
-            "--no-optional-locks",
-            *[arg for value in configuration for arg in ("-c", value)],
-            "-C",
-            os.fspath(root),
-            *args,
-        ],
+        command,
         capture_output=True,
         env=environment,
         timeout=timeout,
@@ -84,7 +88,9 @@ def _git(
     return os.fsdecode(result.stdout).removesuffix("\n")
 
 
-def git_without_filters(root: Path, *args: str, timeout: int = 5) -> str:
+def git_without_filters(
+    root: Path, *args: str, timeout: int = 5, max_output_bytes: int | None = None
+) -> str:
     """Run Git without hooks/fsmonitor or external clean/smudge/process filters.
 
     Resolve effective filter names in this actual checkout, including conditional
@@ -122,7 +128,13 @@ def git_without_filters(root: Path, *args: str, timeout: int = 5) -> str:
                 f"{name}.required=false",
             )
         )
-    return _git(root, *args, timeout=timeout, config_overrides=tuple(overrides))
+    return _git(
+        root,
+        *args,
+        timeout=timeout,
+        config_overrides=tuple(overrides),
+        max_output_bytes=max_output_bytes,
+    )
 
 
 def _identity(path: Path) -> tuple[int, int]:
@@ -481,3 +493,60 @@ def prepare_worktree(
             execution_lock.close()
         if bootstrap_lock is not None:
             bootstrap_lock.close()
+
+
+def load_workspace(
+    project: ProjectInspection, *, runtime_root: Path
+) -> ExecutionWorkspace | None:
+    """Observe existing ownership without bootstrapping or taking idle exclusion."""
+    try:
+        if inspect_project(project.root) != project:
+            raise _invalid()
+        if project.common_git_dir is None:
+            return None
+        if not os.path.lexists(_record_path(project.common_git_dir)):
+            return None
+        workspace = _from_record(
+            _read_record(project.common_git_dir), project.root, project.root_identity
+        )
+        validate_workspace(workspace, runtime_root=runtime_root)
+        return workspace
+    except WorkspaceError:
+        raise
+    except (OSError, ValueError, RuntimeError, subprocess.SubprocessError):
+        raise _invalid() from None
+
+
+def _bounded_git_output(command, environment, timeout, limit):
+    """Drain at most limit stdout bytes; terminate/reap on cap or deadline."""
+    import selectors
+    import time
+
+    output = bytearray()
+    deadline = time.monotonic() + timeout
+    with subprocess.Popen(
+        command, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, env=environment
+    ) as process:
+        try:
+            with selectors.DefaultSelector() as selector:
+                selector.register(process.stdout, selectors.EVENT_READ)
+                while len(output) < limit:
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0 or not selector.select(remaining):
+                        raise subprocess.TimeoutExpired(command, timeout)
+                    chunk = os.read(
+                        process.stdout.fileno(), min(65536, limit - len(output))
+                    )
+                    if not chunk:
+                        code = process.wait(
+                            timeout=max(0.001, deadline - time.monotonic())
+                        )
+                        if code:
+                            raise subprocess.CalledProcessError(code, command)
+                        break
+                    output.extend(chunk)
+        finally:
+            if process.poll() is None:
+                process.kill()
+            process.wait()
+    return os.fsdecode(bytes(output))

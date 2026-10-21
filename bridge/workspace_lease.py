@@ -168,3 +168,55 @@ class WorkspaceLease:
             self.held = False
             if _owners.get(self.workspace.git_dir) is self:
                 del _owners[self.workspace.git_dir]
+
+
+def observe_reservation(workspace: ExecutionWorkspace) -> dict | None:
+    """Advisory observation; a free lock never clears an unclean marker.
+
+    Open only an existing inode. No creation, fsync, recovery or lease acquisition.
+    A held foreign marker identifies an owner; it cannot prove healthy cleanup.
+    """
+    import fcntl
+
+    path = workspace.git_dir / "plaza-execution.lock"
+    busy = False
+    try:
+        with files.directory(path.parent) as parent:
+            fd = files._open(parent, path.name, os.O_RDONLY)
+            try:
+                try:
+                    fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                except BlockingIOError:
+                    busy = True
+                marker = _observe_marker(workspace, busy)
+            finally:
+                os.close(fd)
+            return marker
+    except FileNotFoundError:
+        return _observe_marker(workspace, False)
+    except (OSError, ValueError):
+        raise _cleanup_error() from None
+
+
+def _observe_marker(workspace, busy):
+    try:
+        marker = _decode(
+            files.read_regular(workspace.git_dir / "plaza-unclean.json", max_bytes=4096)
+        )
+    except FileNotFoundError:
+        if busy:
+            raise _cleanup_error()
+        return None
+    domain, generation = marker.get("domain_id"), marker.get("domain_session_id")
+    if (
+        marker.get("schema_version") != 1
+        or marker.get("workspace_id") != workspace.workspace_id
+        or not isinstance(domain, str)
+        or not re.fullmatch(r"[a-zA-Z0-9_-]+", domain)
+        or len(domain.encode("utf-8")) > 128
+        or not isinstance(generation, str)
+        or not generation
+        or len(generation.encode("utf-8")) > 128
+    ):
+        raise _cleanup_error()
+    return dict(domain_id=domain, domain_session_id=generation, cleanup_failed=not busy)

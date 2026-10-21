@@ -169,3 +169,30 @@ class TestConversationHistory:
         assert history[0] == {"role": "user", "content": "question 3"}
         assert history[-1]["role"] == "assistant"
         assert len(sent_messages(client)) == MAX_HISTORY_MESSAGES + 1
+
+
+@pytest.mark.asyncio
+async def test_request_local_deadline_includes_reply_preparation(monkeypatch):
+    import asyncio
+    import time
+    from unittest.mock import AsyncMock
+    from bridge.conversation import ConversationEngine
+
+    monkeypatch.setattr("bridge.conversation.load_agent", lambda _: "definition")
+    backend = AsyncMock()
+
+    async def late_reply(**kwargs):
+        # Synchronous response preparation can finish after the absolute budget
+        # before the event loop gets a chance to deliver its timeout callback.
+        time.sleep(0.02)
+        return "too late"
+
+    backend.complete.side_effect = late_reply
+    history = []
+    response = await ConversationEngine(backend=backend).handle_request(
+        dict(agent_id="agent", task="work"),
+        history,
+        deadline=asyncio.get_running_loop().time() + 0.005,
+    )
+    assert response["error_type"] == "timeout"
+    assert history == []

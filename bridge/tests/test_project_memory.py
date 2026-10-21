@@ -700,3 +700,41 @@ def test_progress_retains_terminal_evidence_and_next_action(memory):
     ).saved
     assert "result-log" in store.load().progress
     assert "Next action: None recorded" in store.load().progress
+
+
+@pytest.mark.parametrize(
+    "reason",
+    ["Approved seed", "\x00" * 4096, "😀" * 1024, '<>\\"\n' * 800],
+    ids=["plain", "max-controls", "max-unicode", "escaping"],
+)
+def test_trusted_setup_checkpoint_retains_exact_decision(memory, reason):
+    import base64
+    import json
+    from bridge.repository_setup import RepoInitApproval, RepoInitProposal
+
+    module, store = memory
+    store.initialize()
+    proposal = RepoInitProposal(
+        str(uuid4()),
+        "a" * 64,
+        store.workspace.project_root,
+        store.workspace.source_identity,
+        False,
+        "main",
+        (),
+    )
+    approval = RepoInitApproval(proposal.proposal_id, proposal.digest, True, reason)
+    result = store.checkpoint_setup(proposal, approval, store.workspace.initial_commit)
+    assert result.saved
+    snapshot = store.load()
+    with store._operation() as (check, _):
+        state, _, _, _ = store._read(check)
+    entry = state["entries"][-1]
+    payload = json.loads(entry["summary"].split("Exact setup record: ", 1)[1])
+    assert (
+        base64.b64decode(payload["approval"]["reason_utf8_base64"]).decode() == reason
+    )
+    assert payload["initial_commit"] == store.workspace.initial_commit
+    assert entry["event"] == "repository_setup"
+    assert "Bridge-validated" in entry["summary"]
+    assert len(snapshot.progress.encode()) <= module.CAPS["progress"]

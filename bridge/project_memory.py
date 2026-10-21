@@ -887,3 +887,65 @@ class ProjectMemoryStore:
             return result
         except MemoryError as error:
             return MemorySaveResult(False, None, error.code)
+
+    def checkpoint_setup(
+        self, proposal, approval, initial_commit: str
+    ) -> MemorySaveResult:
+        """Record only bridge-validated repository setup, in the canonical progress file.
+
+        The bounded exact decision uses base64 UTF-8 to avoid pathological JSON
+        escaping expansion. It is short-term evidence subject to normal pruning.
+        """
+        import base64
+        from bridge.repository_setup import parse_init_approval
+
+        try:
+            approval = parse_init_approval(proposal, asdict(approval))
+            if (
+                not approval.approved
+                or initial_commit != self.workspace.initial_commit
+                or proposal.root != self.workspace.project_root
+                or proposal.root_identity != self.workspace.source_identity
+                or proposal.initial_branch != "main"
+            ):
+                raise _error()
+            decision = dict(
+                proposal_id=approval.proposal_id,
+                digest=approval.digest,
+                approved=True,
+                reason_utf8_base64=base64.b64encode(approval.reason.encode()).decode(
+                    "ascii"
+                ),
+            )
+            record = dict(
+                approval=decision,
+                initial_commit=initial_commit,
+                seed_count=len(proposal.seed_files),
+                seed_bytes=sum(s.size for s in proposal.seed_files),
+                seed_manifest_digest=proposal.digest,
+                exclusions="Credentials, ignored/generated files, symlinks and nested repositories excluded; only reviewed allowlist seeded. No exclusion inventory recorded.",
+            )
+            summary = (
+                "Bridge-validated repository setup on main. Reason excerpt: "
+                + _excerpt(approval.reason, 256)
+                + "\nExact setup record: "
+                + _json(record)
+            )
+            _text(summary, 8192)
+            with self._operation() as (check, stack):
+                state, revision, _, _ = self._read(check)
+                self._reconcile(state, check, stack)
+                self._entry(state, event="repository_setup", summary=summary)
+                snapshot = self._save(state, revision, check)
+                verified, saved_revision, _, _ = self._read(check)
+                if saved_revision != snapshot.revision or not any(
+                    e["event"] == "repository_setup" and e["summary"] == summary
+                    for e in verified["entries"]
+                ):
+                    raise _error()
+                result = MemorySaveResult(True, snapshot.revision, None)
+            return result
+        except (MemoryError, ValueError, UnicodeError) as error:
+            return MemorySaveResult(
+                False, None, getattr(error, "code", "memory_unavailable")
+            )

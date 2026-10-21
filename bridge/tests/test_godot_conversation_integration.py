@@ -14,7 +14,7 @@ import websockets
 from bridge.server import BridgeServer
 
 ROOT = Path(__file__).resolve().parents[2]
-MARKER = "godot_bridge_integration: OK — 35 checks passed."
+MARKER = "godot_bridge_integration: OK — 38 checks passed."
 
 
 @pytest.mark.asyncio
@@ -129,7 +129,7 @@ async def test_delayed_replies_failure_and_fresh_reconnect(
             output_task = asyncio.create_task(process.communicate())
             await until(lambda: progress.exists() or process.returncode is not None)
             assert process.returncode is None, (await output_task)[0].decode()
-            await until(lambda: progress.read_text() == "queued")
+            await until(lambda: progress.read_text() == "busy")
             await until(lambda: len(calls) == 1)
             release_first.set()
             await until(lambda: progress.read_text() == "disconnect")

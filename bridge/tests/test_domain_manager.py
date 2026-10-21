@@ -183,10 +183,12 @@ async def test_cancelled_start_caller_during_reservation_keeps_owned_startup(
         await task
     release.set()
     try:
-        async with asyncio.timeout(0.5):
-            while not owners:
-                await asyncio.sleep(0.001)
-            await owners[0].started.wait()
+        session = manager._sessions["engineering"][-1]
+        # Join the continuation registered before cancellation, including real
+        # Git/lease IO. This is a finite hang guard, not a product timing cap.
+        packet = await asyncio.wait_for(asyncio.shield(session._startup), 5)
+        assert packet["state"] == "active"
+        assert owners[0].started.is_set() and service.reservation.held
     finally:
         await manager.shutdown()
     assert owners[0].started.is_set()

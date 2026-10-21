@@ -5,6 +5,8 @@ D-037 defaults execution to Claude Code, with explicit API-key compatibility.
 History belongs to the caller and changes only after successful adapter cleanup.
 """
 
+import asyncio
+
 from bridge.agents import load_agent
 from bridge.config import BridgeConfig, default_config
 from bridge.conversation_backend import (
@@ -60,7 +62,15 @@ class ConversationEngine:
     def model(self) -> str:
         return self._model
 
-    async def handle_request(self, request, history=None, *, metadata=None):
+    async def handle_request(
+        self,
+        request,
+        history=None,
+        *,
+        metadata=None,
+        prior_project_notes="",
+        deadline=None,
+    ):
         """Answer one request.
 
         `history` is the caller's list of earlier messages with this agent,
@@ -106,14 +116,27 @@ class ConversationEngine:
         messages.append({"role": "user", "content": task})
         metadata = metadata if metadata is not None else ExecutionMetadata()
         try:
+            options = {}
+            if prior_project_notes:
+                options["prior_project_notes"] = prior_project_notes
+            timeout = (
+                self._timeout
+                if deadline is None
+                else deadline - asyncio.get_running_loop().time()
+            )
+            if timeout <= 0:
+                raise TimeoutError()
             output = await self._backend.complete(
                 definition=definition,
                 messages=messages,
                 model=self._model,
-                timeout=self._timeout,
+                timeout=timeout,
                 max_output_tokens=self._config.conversation_max_output_tokens,
                 metadata=metadata,
+                **options,
             )
+            if deadline is not None and asyncio.get_running_loop().time() >= deadline:
+                raise TimeoutError()
             # The API rejects an empty assistant turn, so an exchange with no
             # text is not one the next request could replay.
             if history is not None and output:

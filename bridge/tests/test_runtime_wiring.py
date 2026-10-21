@@ -224,18 +224,24 @@ async def test_connection_uuid_stays_per_socket(
     server = BridgeServer(config=runtime_config, recorder=recorder)
 
     class Socket:
+        def __init__(self):
+            self.sent = asyncio.Event()
+
         def __aiter__(self):
             return self.read()
 
         async def read(self):
             for _ in range(2):
+                self.sent.clear()
                 yield '{"agent_id":"agent","task":"hi"}'
+                await self.sent.wait()
+                await asyncio.sleep(0)
 
         async def wait_closed(self):
             await asyncio.Future()
 
         async def send(self, value):
-            pass
+            self.sent.set()
 
     await server._handle_connection(Socket())
     await server._handle_connection(Socket())
@@ -609,42 +615,27 @@ async def test_deactivate_preserves_caller_cancel_during_child_cleanup(
 
 @pytest.mark.asyncio
 async def test_stop_event_shutdown_cancel_during_child_cleanup_is_unclean(
-    runtime_config, runtime_archive, offline_clients, bound_runtime_listener
+    server_runtime, runtime_archive, bound_runtime_listener
 ):
-    recorder, writer = runtime_archive
-    _, sdk, _ = offline_clients
-    query_entered = asyncio.Event()
-    cleanup_entered = asyncio.Event()
-    release = asyncio.Event()
-
-    async def query(_):
-        query_entered.set()
-        try:
-            await asyncio.Future()
-        finally:
-            cleanup_entered.set()
-            await release.wait()
-
-    sdk.query.side_effect = query
-    server = BridgeServer(config=runtime_config, recorder=recorder)
-    await server.domains.activate_domain("domain")
-    session = server.domains._sessions["domain"]
-    await session.submit_query(
-        "agent", "task", "origin-request", context=origin(session)
-    )
-    await query_entered.wait()
+    server, session, owner = server_runtime
+    _, writer = runtime_archive
+    owner.execute_gate = asyncio.Event()
+    owner.stop_gate = asyncio.Event()
+    await server.dispatch(query("origin-request", session.domain_session_id))
+    await owner.executing.wait()
     stopped = asyncio.Event()
     stopped.set()
     serving = asyncio.create_task(server.serve(stop_event=stopped))
-    await cleanup_entered.wait()
+    await owner.stopped.wait()
     serving.cancel("shutdown-stop")
     await asyncio.sleep(0)
-    release.set()
+    assert not serving.done() and writer.closed == []
+    owner.stop_gate.set()
     with pytest.raises(asyncio.CancelledError):
         await serving
     assert writer.closed == [False]
     assert messages(writer)[-1]["outcome"] == "cancelled"
-    sdk.disconnect.assert_awaited_once()
+    assert owner.stopped.is_set() and not owner.lease.held
 
 
 @pytest.mark.asyncio
@@ -677,26 +668,43 @@ async def test_immediate_submit_deactivate_archives_origin_once_before_sdk_start
 
 @pytest.mark.asyncio
 async def test_shutdown_attempts_all_domains_and_records_before_close_after_disconnect_error(
-    runtime_config, runtime_archive, offline_clients, bound_runtime_listener
+    server_runtime, runtime_archive, bound_runtime_listener, tmp_path
 ):
+    # Defensive shutdown drains all registered generations, including a failed
+    # owner and a separately prepared generation. Normal admission uses one slot.
+    from bridge.domain_protocol import DomainCommandError
+
+    server, first_session, first = server_runtime
     recorder, writer = runtime_archive
-    _, first, sdk_class = offline_clients
-    second = AsyncMock()
-    sdk_class.side_effect = [first, second]
-    entered = {domain: asyncio.Event() for domain in ("first", "second")}
+    extra_root = tmp_path / "extra"
+    extra_root.mkdir()
+    extra = FakeProjectService(extra_root)
+    second_session = DomainSession(
+        "second",
+        "second-generation",
+        config=server._config,
+        project_service=extra,
+        recorder=recorder,
+    )
+    await second_session.start()
+    second = second_session._owner
+    server.domains._sessions["second"] = [second_session]
+    first.execute_gate = second.execute_gate = asyncio.Event()
+    first.clean = False
+    packets = []
 
-    async def first_query(_):
-        entered["first"].set()
-        await asyncio.Future()
+    async def sink(packet):
+        packets.append(packet)
 
-    async def second_query(_):
-        entered["second"].set()
-        await asyncio.Future()
-
-    first.query.side_effect = first_query
-    second.query.side_effect = second_query
-    failure = RuntimeError("credential-sentinel disconnect failed")
-    first.disconnect.side_effect = failure
+    for session in (first_session, second_session):
+        await session.admit_query(
+            query(
+                "origin-request", session.domain_session_id, domain_id=session.domain_id
+            ),
+            context=origin(session),
+            emit=sink,
+        )
+        await session._owner.executing.wait()
     close_snapshot = []
     original_close = writer.close
 
@@ -705,46 +713,36 @@ async def test_shutdown_attempts_all_domains_and_records_before_close_after_disc
         original_close(clean=clean)
 
     writer.close = close
-    server = BridgeServer(config=runtime_config, recorder=recorder)
-    for domain_id in entered:
-        await server.domains.activate_domain(domain_id)
-        session = server.domains._sessions[domain_id]
-        await session.submit_query(
-            "agent", "task", "origin-request", context=origin(session)
-        )
-        await entered[domain_id].wait()
     stopped = asyncio.Event()
     stopped.set()
     try:
-        with pytest.raises(RuntimeError) as error:
+        with pytest.raises(DomainCommandError, match="Cleanup"):
             await server.serve(stop_event=stopped)
-        assert error.value is failure
-        first.disconnect.assert_awaited_once()
-        second.disconnect.assert_awaited_once()
-        assert server.domains._sessions["second"].state.value == "deactivated"
-        assert [(r["domain_id"], r["outcome"]) for r in close_snapshot] == [
-            ("first", "input"),
-            ("second", "input"),
-            ("first", "cancelled"),
-            ("second", "cancelled"),
-        ]
+        assert first.stopped.is_set() and second.stopped.is_set()
+        assert second_session.state.value == "inactive"
+        assert sorted((r["domain_id"], r["outcome"]) for r in close_snapshot) == sorted(
+            [
+                ("engineering", "input"),
+                ("second", "input"),
+                ("engineering", "cancelled"),
+                ("second", "cancelled"),
+            ]
+        )
         assert writer.closed == [False]
         assert "credential-sentinel" not in json.dumps(writer.records)
     finally:
-        for session in server.domains._sessions.values():
-            if not session._active_task.done():
-                session._active_task.cancel()
-                with pytest.raises(asyncio.CancelledError):
-                    await session._active_task
+        first.clean = True
+        await first_session.stop()
+        extra.close()
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("primary", ["cancel", "bind_error"])
 async def test_primary_serve_failure_survives_disconnect_failure(
-    primary, runtime_config, runtime_archive, offline_clients, monkeypatch
+    primary, server_runtime, runtime_archive, monkeypatch
 ):
-    recorder, writer = runtime_archive
-    _, sdk, _ = offline_clients
+    server, session, owner = server_runtime
+    _, writer = runtime_archive
     bind_error = OSError("initial bind error")
 
     class Listener:
@@ -756,9 +754,7 @@ async def test_primary_serve_failure_survives_disconnect_failure(
             pass
 
     monkeypatch.setattr(server_module.websockets, "serve", lambda *args: Listener())
-    sdk.disconnect.side_effect = RuntimeError("secondary disconnect error")
-    server = BridgeServer(config=runtime_config, recorder=recorder)
-    await server.domains.activate_domain("domain")
+    owner.clean = False
     if primary == "cancel":
         serving = asyncio.create_task(server.serve())
         await asyncio.sleep(0)
@@ -770,7 +766,7 @@ async def test_primary_serve_failure_survives_disconnect_failure(
         with pytest.raises(OSError) as error:
             await server.serve()
         assert error.value is bind_error
-    sdk.disconnect.assert_awaited_once()
+    assert owner.stopped.is_set()
     assert writer.closed == [False]
 
 
@@ -819,3 +815,120 @@ async def submit_runtime(runtime, request="origin-request", emit=None):
 async def finish_runtime(runtime):
     _, session, _, packets, _ = runtime
     await collect_until(session, packets)
+
+
+@pytest_asyncio.fixture
+async def server_runtime(tmp_path, runtime_config, runtime_archive, monkeypatch):
+    from bridge.project_service import ProjectService
+    from bridge.tests.test_workspace import repository
+
+    config = replace(runtime_config, workspace_root_dir=repository(tmp_path))
+    service = ProjectService(
+        config, runtime_root=tmp_path / "runtime", owner_run_id="server-test-run"
+    )
+    await service.start()
+    await service._bootstrap_task
+    monkeypatch.setattr("bridge.domain_session.DomainSDKOwner", FakeOwner)
+    monkeypatch.setattr("bridge.domain_session.load_agent", lambda _: "definition")
+    server = BridgeServer(
+        config=config, project_service=service, recorder=runtime_archive[0]
+    )
+    await server.dispatch(
+        dict(type="activate_domain", domain_id="engineering", request_id="start")
+    )
+    session = server.domains._sessions["engineering"][-1]
+    owner = session._owner
+    yield server, session, owner
+    owner.clean = True
+    if owner.stop_gate:
+        owner.stop_gate.set()
+    await server._shutdown_domains()
+    await service.close()
+    server.close()
+
+
+@pytest.mark.asyncio
+async def test_shutdown_drains_domains_before_npc_and_project_detach(
+    runtime_config, monkeypatch
+):
+    import websockets
+
+    order = []
+    entered = asyncio.Event()
+    ready = asyncio.Event()
+    listeners = []
+    actual = websockets.serve
+
+    def listen(handler, host, port):
+        result = actual(handler, "127.0.0.1", 0)
+        listeners.append(result)
+        return result
+
+    monkeypatch.setattr(server_module.websockets, "serve", listen)
+    server = BridgeServer(config=runtime_config)
+    original_event = server._event
+
+    def event(name, *args, **kwargs):
+        original_event(name, *args, **kwargs)
+        if name == "bridge_started":
+            ready.set()
+        if name == "bridge_stopped":
+            order.append("recorder")
+
+    server._event = event
+
+    async def conversation(*args, **kwargs):
+        entered.set()
+        try:
+            await asyncio.Future()
+        finally:
+            order.append("npc")
+
+    server.conversation.handle_request = conversation
+
+    async def domains():
+        order.append("domains")
+
+    async def project():
+        order.append("detach")
+
+    server._shutdown_domains = domains
+    server.project.close = project
+    stop = asyncio.Event()
+    serving = asyncio.create_task(server.serve(stop_event=stop))
+    await ready.wait()
+    socket = await websockets.connect(
+        f"ws://127.0.0.1:{listeners[0].server.sockets[0].getsockname()[1]}"
+    )
+    await socket.send(json.dumps(dict(agent_id="builder", task="work")))
+    await entered.wait()
+    stop.set()
+    await serving
+    await socket.close()
+    assert order == ["domains", "npc", "detach", "recorder"]
+
+
+@pytest.mark.asyncio
+async def test_emitted_domain_rejection_records_failure_without_duplicate_delivery(
+    runtime_config, runtime_archive
+):
+    recorder, writer = runtime_archive
+    server = BridgeServer(config=runtime_config, recorder=recorder)
+    packets = []
+
+    async def emit(packet):
+        packets.append(packet)
+
+    response = await server.dispatch(
+        dict(
+            type="activate_domain", domain_id="engineering", request_id="rejected-start"
+        ),
+        connection_id="connection",
+        emit=emit,
+    )
+    assert response == [] and len(packets) == 1
+    assert packets[0]["error_type"] == "workspace_unconfigured"
+    failures = events(writer, "request_failed")
+    assert len(failures) == 1 and failures[0]["request_id"] == "rejected-start"
+    assert not events(writer, "request_completed")
+    await server._shutdown_domains()

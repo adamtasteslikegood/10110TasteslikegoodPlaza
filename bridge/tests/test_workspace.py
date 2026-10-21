@@ -638,3 +638,36 @@ def test_managed_atomic_files_are_bounded_durable_and_lock_inode_stable(
     assert lock_path.stat().st_ino == inode
     files.durable_unlink(path)
     assert not path.exists()
+
+
+def test_readonly_load_keeps_live_lease_and_does_not_prepare(tmp_path, monkeypatch):
+    from bridge.workspace_lease import WorkspaceLease, observe_reservation
+
+    root, runtime, workspace = bootstrap(tmp_path)
+    lease = WorkspaceLease.acquire(
+        workspace, domain_id="foreign", domain_session_id="generation"
+    )
+    before = (workspace.git_dir / "plaza-execution.lock").stat().st_ino
+    monkeypatch.setattr(
+        ws, "_check_idle", lambda _: pytest.fail("idle acquisition during load")
+    )
+    try:
+        assert (
+            ws.load_workspace(inspect_project(root), runtime_root=runtime) == workspace
+        )
+        assert observe_reservation(workspace) == dict(
+            domain_id="foreign", domain_session_id="generation", cleanup_failed=False
+        )
+        assert (workspace.git_dir / "plaza-execution.lock").stat().st_ino == before
+    finally:
+        lease.release(cleanup_confirmed=True)
+
+
+def test_bounded_filter_disabled_changed_files_output(tmp_path):
+    _, _, workspace = bootstrap(tmp_path)
+    for index in range(40):
+        (workspace.worktree_path / f"untracked-{index:04}").write_text("content")
+    output = ws.git_without_filters(
+        workspace.worktree_path, "status", "--porcelain=v1", "-z", max_output_bytes=100
+    )
+    assert len(output.encode()) == 100

@@ -269,3 +269,36 @@ def test_invalid_lease_identifiers_have_no_execution_marker(tmp_path, domain, se
     with pytest.raises(WorkspaceError):
         WorkspaceLease.acquire(work, domain_id=domain, domain_session_id=session)
     assert not (work.git_dir / "plaza-unclean.json").exists()
+
+
+def test_observation_never_creates_lock_and_free_marker_is_unclean(
+    tmp_path, monkeypatch
+):
+    from bridge.workspace_lease import observe_reservation
+    from bridge.tests.test_workspace import bootstrap
+
+    _, _, workspace = bootstrap(tmp_path)
+    lock = workspace.git_dir / "plaza-execution.lock"
+    lock.unlink()  # Only this fixture's known unheld bootstrap inode.
+    monkeypatch.setattr(
+        "bridge.project_files.os.fsync",
+        lambda _: pytest.fail("read-only observation fsync"),
+    )
+    assert observe_reservation(workspace) is None
+    assert not lock.exists()
+    marker = workspace.git_dir / "plaza-unclean.json"
+    import json
+
+    marker.write_text(
+        json.dumps(
+            dict(
+                schema_version=1,
+                workspace_id=workspace.workspace_id,
+                domain_id="old",
+                domain_session_id="generation",
+                lease_id="old",
+            )
+        )
+    )
+    assert observe_reservation(workspace)["cleanup_failed"] is True
+    assert not lock.exists()
