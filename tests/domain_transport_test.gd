@@ -181,6 +181,7 @@ func _ready() -> void:
 	await deliver(workspace(describe, "P2"))
 	check(client.conversation_snapshot("systems-architect").draft == "" and client.domain_snapshot("core").draft == "", "project replacement clears NPC and domain before presentation")
 	await polling_and_failure_checks()
+	await review_transport_regressions()
 	finish()
 
 func polling_and_failure_checks() -> void:
@@ -247,3 +248,106 @@ func finish() -> void:
 	else:
 		for f in failures: printerr("FAIL: " + f)
 	get_tree().quit(0 if failures.is_empty() else 1)
+
+
+func review_transport_regressions() -> void:
+	client.set_process(false)
+	client._reconnect_timer.stop()
+	client._socket.close()
+	client.queue_free()
+	peer.close()
+	peer = null
+	client = load("res://tests/domain_transport_fixture.gd").new()
+	client.bridge_url = "ws://127.0.0.1:%d" % server.get_local_port()
+	add_child(client)
+	await open()
+	var wire := await receive()
+	var reserved := workspace(wire.request_id)
+	reserved.reservation = {"domain_id": "core", "domain_session_id": "A", "cleanup_failed": false}
+	await deliver(reserved)
+	wire = await receive()
+	check(wire.get("type") == "domain_status", "R3 reserved workspace requests initial status")
+	var failure := {"type": "domain_error", "request_id": wire.request_id, "domain_id": "core", "project_id": "P", "workspace_id": "W", "status": "error", "error_type": "sdk_error", "message": "Unavailable"}
+	var before: int = client.sent.size()
+	await deliver(failure)
+	await frames(10)
+	check(client.sent.size() == before and client._discovery_request == "", "R3 status error settles quiescently with reservation")
+	# Keep a recovery entry and explicitly refresh the same reservation: no loop.
+	client._recover_domains["core"] = true
+	var id: String = client.describe_workspace()
+	wire = await receive()
+	reserved.request_id = wire.get("request_id", id)
+	before = client.sent.size()
+	await deliver(reserved)
+	await frames(10)
+	check(client.sent.size() == before, "R3 failed automatic status stays quiescent with recovery entry")
+	# A deliberate status request remains usable and can recover the session.
+	id = client.domain_status("core")
+	wire = await receive()
+	check(id != "" and wire.get("type") == "domain_status", "R3 explicit status retries remain available")
+	await deliver(state(id))
+	wire = await receive()
+	var completion := state(wire.get("request_id", "missing"))
+	completion.merge({"type": "resume_complete", "high_water_mark": "0", "earliest_output_id": null, "history_gap": false}, true)
+	await deliver(completion)
+	wire = await receive()
+	await deliver(state(wire.get("request_id", "missing")))
+	# R1: fault boundary ensures no Run frame reaches the fake bridge.
+	client.fail_domain_send = true
+	var run: String = client.send_domain_query("core", "systems-architect", "unreceived")
+	client.fail_domain_send = false
+	check(run != "", "R1 locally admitted Run can fail before wire delivery")
+	peer.close()
+	await frames(20)
+	client._reconnect_timer.start(0.01)
+	await open()
+	wire = await receive()
+	await deliver(workspace(wire.get("request_id", "missing")))
+	wire = await receive()
+	await deliver(state(wire.get("request_id", "missing")))
+	wire = await receive()
+	completion.request_id = wire.get("request_id", "missing")
+	await deliver(completion)
+	wire = await receive()
+	await deliver(state(wire.get("request_id", "missing")))
+	id = client.deactivate_domain("core")
+	await receive()
+	await deliver(state(id, "inactive"))
+	wire = await receive()
+	await deliver(workspace(wire.get("request_id", "missing")))
+	id = client.activate_domain("core")
+	check(id != "", "R1 explicit Start usable after loss, empty replay and clean Stop")
+	if id != "":
+		await receive()
+		var next := state(id)
+		next.domain_session_id = "B"
+		await deliver(next)
+		wire = await receive()
+		await deliver(workspace(wire.get("request_id", "missing")))
+	var run_count := 0
+	for packet in client.sent:
+		if packet.get("type") == "domain_query": run_count += 1
+	check(run_count == 1 and client.domain_snapshot("core").results.is_empty(), "R1 recovery never resends Run or fabricates terminal")
+	# R2: actual automatic status after incomplete replay must preserve the hole.
+	if client.domain_snapshot("core").domain_session_id != "B": return
+	id = client.resume_domain("core")
+	await receive()
+	for n in ["3", "5"]:
+		await deliver({"type": "domain_result", "request_id": "old-run-" + n, "project_id": "P", "workspace_id": "W", "domain_id": "core", "domain_session_id": "B", "output_id": n, "agent_id": "systems-architect", "task": "old", "output": "answer", "status": "success", "reason": "completed", "truncated": false, "memory": {"saved": true, "revision": 3, "error_type": null}})
+		if n == "3":
+			wire = await receive()
+			await deliver(workspace(wire.get("request_id", "missing")))
+	wire = await receive()
+	await deliver(workspace(wire.get("request_id", "missing")))
+	completion.request_id = id
+	completion.domain_session_id = "B"
+	completion.high_water_mark = "5"
+	completion.earliest_output_id = "3"
+	completion.history_gap = true
+	await deliver(completion)
+	wire = await receive()
+	var status := state(wire.get("request_id", "missing"))
+	status.domain_session_id = "B"
+	await deliver(status)
+	var snapshot: Dictionary = client.domain_snapshot("core")
+	check(snapshot.received_cursor == "3" and snapshot.uncertain and snapshot.error.get("error_type") == "replay_incomplete", "R2 automatic lifecycle status cannot erase replay hole")

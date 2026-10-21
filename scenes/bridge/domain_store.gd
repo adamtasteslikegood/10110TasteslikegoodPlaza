@@ -65,7 +65,16 @@ static func predecessor(a: String) -> String:
 
 
 # Omission notices saturate; receipt arithmetic never narrows to int64.
-static func distance_capped(a: String, b: String) -> int:
+static func distance_capped(a: String, b: String, observed_count: int = 0) -> int:
+	var difference := _subtract_decimal(a, b)
+	var known := str(observed_count)
+	if compare(difference, known) <= 0:
+		return 0
+	difference = _subtract_decimal(difference, known)
+	return 2147483647 if compare(difference, "2147483647") >= 0 else int(difference)
+
+
+static func _subtract_decimal(a: String, b: String) -> String:
 	var out := ""
 	var borrow := 0
 	var padded := b.lpad(a.length(), "0")
@@ -73,8 +82,7 @@ static func distance_capped(a: String, b: String) -> int:
 		var digit := a.unicode_at(i) - padded.unicode_at(i) - borrow
 		borrow = 1 if digit < 0 else 0
 		out = str(digit + 10 if digit < 0 else digit) + out
-	out = decimal(out)
-	return 2147483647 if compare(out, "2147483647") > 0 else int(out)
+	return decimal(out)
 
 
 func bind_project(project_id: String) -> void:
@@ -98,7 +106,7 @@ func _domain(id: String) -> Dictionary:
 	if not valid_domain(id): return {}
 	if not _domains.has(id):
 		if _domains.size() >= MAX_DOMAINS: return {}
-		_domains[id] = {"project_id": _project_id, "domain_id": id, "domain_session_id": "", "workspace_id": "", "state": "inactive", "execution_state": "idle", "pending_query": {}, "pending_control": {}, "draft": "", "results": [], "omitted_count": 0, "uncertain": false, "error": {}, "memory": {}, "buckets": {}, "version": 0}
+		_domains[id] = {"project_id": _project_id, "domain_id": id, "domain_session_id": "", "workspace_id": "", "state": "inactive", "execution_state": "idle", "pending_query": {}, "pending_control": {}, "draft": "", "results": [], "omitted_count": 0, "uncertain": false, "error": {}, "memory": {}, "buckets": {}, "version": 0, "lifecycle_uncertain": false, "query_uncertain": false, "cleanup_confirmed": false}
 	return _domains[id]
 
 
@@ -108,9 +116,20 @@ func snapshot(domain_id: String) -> Dictionary:
 	var out := d.duplicate(true)
 	out.erase("buckets")
 	out.erase("version")
+	out.erase("lifecycle_uncertain")
+	out.erase("query_uncertain")
+	out.erase("cleanup_confirmed")
 	var b: Dictionary = d.buckets.get(d.domain_session_id, {})
 	out.received_cursor = b.get("received", "0")
 	out.consumed_cursor = b.get("consumed", "0")
+	if not b.get("receipt_error", {}).is_empty():
+		out.error = b.receipt_error.duplicate(true)
+		if not d.error.is_empty(): out.error.command_error = d.error.duplicate(true)
+	var unresolved := _unresolved_queries(d)
+	if not unresolved.is_empty():
+		if out.error.is_empty():
+			out.error = {"error_type": "unknown_outcome", "message": "An earlier generation's Run outcome is unknown"}
+		out.error.unresolved_queries = unresolved
 	return out
 
 
@@ -136,7 +155,9 @@ func disconnect_connection() -> void:
 	_commands.clear()
 	for d in _domains.values():
 		d.pending_control = {}
-		if d.domain_session_id != "" or not d.pending_query.is_empty(): d.uncertain = true
+		d.lifecycle_uncertain = d.domain_session_id != ""
+		d.query_uncertain = not d.pending_query.is_empty()
+		_refresh_uncertainty(d)
 
 
 func admit_command(packet: Dictionary) -> bool:
@@ -162,9 +183,14 @@ func admit_command(packet: Dictionary) -> bool:
 		for c in _commands.values():
 			if c.type == kind and c.domain_id == d.domain_id: return false
 	elif kind == "activate_domain":
-		if not d.pending_control.is_empty() or not d.pending_query.is_empty(): return false
+		if not d.pending_control.is_empty(): return false
+		if not d.pending_query.is_empty() and not d.cleanup_confirmed: return false
 	else:
-		if not valid_id(packet.get("domain_session_id")) or packet.domain_session_id != d.domain_session_id: return false
+		if not valid_id(packet.get("domain_session_id")): return false
+		if kind == "resume":
+			if not d.buckets.has(packet.domain_session_id): return false
+		elif packet.domain_session_id != d.domain_session_id:
+			return false
 		if kind == "domain_query":
 			if not d.pending_query.is_empty() or d.uncertain or d.state not in ["active", "background"]: return false
 			if not valid_id(packet.get("agent_id")) or not packet.get("task") is String or packet.task.strip_edges().is_empty() or packet.task.to_utf8_buffer().size() > 65536: return false
@@ -219,7 +245,10 @@ func apply_packet(packet: Dictionary) -> Dictionary:
 	if kind == "domain_error":
 		if not _valid_error(packet): return {}
 		d.error = {"error_type": packet.error_type, "message": packet.message}
-		if d.pending_query.get("request_id") == id: d.pending_query = {}
+		if d.pending_query.get("request_id") == id:
+			d.pending_query = {}
+			d.query_uncertain = false
+		_refresh_uncertainty(d)
 		_settle(d, id)
 		_trim(d)
 		return _change("domain", d.domain_id, kind, id)
@@ -249,13 +278,21 @@ func apply_packet(packet: Dictionary) -> Dictionary:
 	d.state = packet.state
 	d.execution_state = packet.execution_state
 	d.version += 1
-	d.uncertain = not d.pending_query.is_empty() and c.type == "domain_status"
+	d.lifecycle_uncertain = false
+	d.cleanup_confirmed = packet.state == "inactive" and packet.execution_state == "idle"
+	_refresh_uncertainty(d)
 	var settled: bool = not (c.type == "activate_domain" and packet.state == "activating")
 	if settled: _settle(d, id)
 	return _change("domain", d.domain_id, kind, id, settled)
 
 
 func _switch_generation(d: Dictionary, generation: String) -> void:
+	# Retire input, not its outcome: no terminal exists until the bridge sends one.
+	if not d.pending_query.is_empty() and d.buckets.has(d.domain_session_id):
+		d.buckets[d.domain_session_id].unresolved_query = d.pending_query.duplicate(true)
+	d.query_uncertain = false
+	d.lifecycle_uncertain = false
+	d.cleanup_confirmed = false
 	for id in _commands.keys():
 		var c: Dictionary = _commands[id]
 		if c.get("domain_id") == d.domain_id and c.has("domain_session_id") and c.domain_session_id != generation: _commands.erase(id)
@@ -263,9 +300,10 @@ func _switch_generation(d: Dictionary, generation: String) -> void:
 	d.pending_control = {}
 	d.domain_session_id = generation
 	if generation == "": return
-	if not d.buckets.has(generation): d.buckets[generation] = {"received": "0", "consumed": "0", "observed": {}}
+	if not d.buckets.has(generation): d.buckets[generation] = {"received": "0", "consumed": "0", "observed": {}, "receipt_error": {}, "receipt_fence": "0", "unresolved_query": {}}
 	while d.buckets.size() > 2:
 		var old: String = d.buckets.keys()[0]
+		if not d.buckets[old].unresolved_query.is_empty(): d.omitted_count = mini(2147483647, d.omitted_count + 1)
 		d.buckets.erase(old)
 		for i in range(d.results.size() - 1, -1, -1):
 			if d.results[i].domain_session_id == old:
@@ -296,18 +334,21 @@ func _apply_result(d: Dictionary, p: Dictionary) -> Dictionary:
 	if b.observed.size() > MAX_SPARSE:
 		var keys: Array = b.observed.keys()
 		keys.sort_custom(func(a, z): return compare(a, z) < 0)
-		b.observed.erase(keys.back())
-		d.uncertain = true
-		d.error = {"error_type": "receipt_capacity", "message": "Receipt history needs replay"}
+		var discarded: String = keys.back()
+		b.observed.erase(discarded)
+		_receipt_problem(b, "receipt_capacity", "Receipt history needs replay", discarded)
 	if p.domain_session_id == d.domain_session_id:
 		if d.pending_query.get("request_id") == p.request_id:
 			d.pending_query = {}
 			_commands.erase(p.request_id)
 			d.execution_state = "idle"
-			d.uncertain = false
+			d.query_uncertain = false
 			d.draft = "" if d.draft == p.task else d.draft
 		d.version += 1
 		_merge_memory(d.memory, p.memory)
+	if b.unresolved_query.get("request_id") == p.request_id:
+		b.unresolved_query = {}
+	_refresh_uncertainty(d)
 	_merge_workspace_memory(p.memory)
 	_trim(d)
 	return _change("domain", d.domain_id, "domain_result", p.request_id)
@@ -326,20 +367,18 @@ func _apply_completion(d: Dictionary, p: Dictionary, c: Dictionary) -> Dictionar
 	var b: Dictionary = d.buckets[p.domain_session_id]
 	if p.history_gap and compare(predecessor(start), b.received) > 0:
 		var end := predecessor(start)
-		var missing := distance_capped(end, b.received)
+		var known := 0
 		for n in b.observed.keys():
 			if compare(n, end) <= 0:
-				missing = maxi(0, missing - 1)
+				known += 1
 				b.observed.erase(n)
+		var missing := distance_capped(end, b.received, known)
 		b.received = end
 		d.omitted_count = mini(2147483647, d.omitted_count + missing)
 	_advance(b)
 	if compare(b.received, h) < 0:
-		d.uncertain = true
-		d.error = {"error_type": "replay_incomplete", "message": "Retained output is missing; replay again"}
-	elif d.pending_query.is_empty():
-		d.uncertain = false
-		d.error = {}
+		_receipt_problem(b, "replay_incomplete", "Retained output is missing; replay again", h)
+	_refresh_uncertainty(d)
 	# Completion fields were captured before sends; never overwrite live lifecycle.
 	_settle(d, p.request_id)
 	return _change("domain", d.domain_id, "resume_complete", p.request_id)
@@ -349,6 +388,28 @@ func _advance(b: Dictionary) -> void:
 	while b.observed.has(successor(b.received)):
 		b.received = successor(b.received)
 		b.observed.erase(b.received)
+
+
+func _receipt_problem(b: Dictionary, kind: String, message: String, fence: String) -> void:
+	b.receipt_error = {"error_type": kind, "message": message}
+	if compare(fence, b.receipt_fence) > 0:
+		b.receipt_fence = fence
+
+
+func _refresh_uncertainty(d: Dictionary) -> void:
+	for bucket in d.buckets.values():
+		if compare(bucket.received, bucket.receipt_fence) >= 0:
+			bucket.receipt_error = {}
+	var current: Dictionary = d.buckets.get(d.domain_session_id, {})
+	d.uncertain = d.lifecycle_uncertain or d.query_uncertain or not current.get("receipt_error", {}).is_empty()
+
+
+func _unresolved_queries(d: Dictionary) -> Array:
+	var unresolved := []
+	for bucket in d.buckets.values():
+		if not bucket.unresolved_query.is_empty():
+			unresolved.append(bucket.unresolved_query.duplicate(true))
+	return unresolved
 
 
 func _settle(d: Dictionary, id: String) -> void:
@@ -433,7 +494,7 @@ func _trim(d: Dictionary) -> void:
 	# Count the complete exposed wire shapes, pending input and draft together.
 	# Receipt metadata is independently bounded (two buckets, 256 sparse IDs each).
 	var bytes: int = JSON.stringify(snapshot(d.domain_id)).to_utf8_buffer().size()
-	var extra := (0 if d.draft == "" else 1) + (0 if d.pending_query.is_empty() else 1)
+	var extra := (0 if d.draft == "" else 1) + (0 if d.pending_query.is_empty() else 1) + _unresolved_queries(d).size()
 	while not d.results.is_empty() and (d.results.size() + extra > MAX_ENTRIES or bytes > MAX_BYTES):
 		d.results.pop_front()
 		d.omitted_count = mini(2147483647, d.omitted_count + 1)

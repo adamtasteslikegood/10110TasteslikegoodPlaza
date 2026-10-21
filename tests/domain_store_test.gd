@@ -164,6 +164,7 @@ func _ready() -> void:
 	check(s.set_draft("engineering", "independent"), "distinct domain draft")
 	check(s.snapshot("core").draft == "" and s.snapshot("engineering").draft == "independent", "core and engineering independent")
 	additional_vectors()
+	review_regressions()
 	finish()
 
 func dict_accepted() -> Dictionary:
@@ -279,3 +280,60 @@ func additional_vectors() -> void:
 	var wrong_workspace := result("1")
 	wrong_workspace.workspace_id = "other-worktree"
 	check(s.apply_packet(wrong_workspace).is_empty(), "terminal cannot cross a generation workspace identity")
+
+
+func review_regressions() -> void:
+	# R1: loss before server admission has no terminal, even after clean Stop.
+	var s = fresh()
+	check(s.admit_command(command("domain_query", "unreceived-run")), "R1 admit locally before loss")
+	s.disconnect_connection()
+	s.admit_command(command("domain_status", "reconnected"))
+	s.apply_packet(state("reconnected"))
+	replay(s, "empty-recovery")
+	s.apply_packet(complete("empty-recovery", "0", null))
+	check(s.snapshot("core").pending_query.request_id == "unreceived-run" and s.snapshot("core").uncertain, "R1 empty replay preserves unknown outcome")
+	check(not s.admit_command(command("activate_domain", "too-early")), "R1 active generation cannot bypass unresolved Run")
+	s.admit_command(command("deactivate_domain", "clean-stop"))
+	s.apply_packet(state("clean-stop", "A", "inactive"))
+	check(s.snapshot("core").uncertain, "R1 clean Stop does not invent query outcome")
+	check(s.admit_command(command("activate_domain", "explicit-start")), "R1 explicit new Start allowed after confirmed cleanup")
+	s.apply_packet(state("explicit-start", "B"))
+	var recovered: Dictionary = s.snapshot("core")
+	check(recovered.domain_session_id == "B" and recovered.pending_query.is_empty() and recovered.results.is_empty(), "R1 new generation has no fabricated terminal or automatic Run")
+	check(recovered.error.get("unresolved_queries", []).size() == 1, "R1 retired unknown input remains inspectable")
+	# If the old Run actually reached the bridge, its later replay can resolve it.
+	var historical := command("resume", "old-replay", "A")
+	check(s.admit_command(historical), "R1 retained generation remains explicitly replayable")
+	s.apply_packet(result("1", "A", "unreceived-run"))
+	s.apply_packet(complete("old-replay", "1", "1", false, "A"))
+	check(s.snapshot("core").results.size() == 1 and s.snapshot("core").error.get("unresolved_queries", []).is_empty() and s.snapshot("core").received_cursor == "0", "R1 historical terminal resolves only archived unknown outcome")
+	# R2: lifecycle observation cannot replace missing receipt evidence.
+	s = fresh()
+	replay(s)
+	s.apply_packet(result("3"))
+	s.apply_packet(result("5"))
+	s.apply_packet(complete("replay", "5", "3", true))
+	s.admit_command(command("domain_status", "status-after-hole"))
+	check(s.snapshot("core").error.get("error_type") == "replay_incomplete", "R2 status admission preserves receipt error")
+	s.apply_packet(state("status-after-hole"))
+	check(s.snapshot("core").uncertain and s.snapshot("core").received_cursor == "3" and s.snapshot("core").error.get("error_type") == "replay_incomplete", "R2 fresh status preserves missing receipt uncertainty")
+	check(not s.admit_command(command("domain_query", "blocked-by-hole")), "R2 unresolved receipt hole still blocks Run")
+	s.apply_packet(result("4"))
+	check(not s.snapshot("core").uncertain and s.snapshot("core").error.is_empty() and s.snapshot("core").received_cursor == "5", "R2 actual hole repair resolves receipt uncertainty")
+	s = fresh()
+	for i in range(2, 259): s.apply_packet(result(str(i)))
+	s.admit_command(command("domain_status", "status-after-capacity"))
+	s.apply_packet(state("status-after-capacity"))
+	check(s.snapshot("core").uncertain and s.snapshot("core").error.get("error_type") == "receipt_capacity", "R2 status cannot erase sparse receipt loss")
+	s.apply_packet(result("1"))
+	check(s.snapshot("core").uncertain, "R2 reaching retained prefix does not prove discarded receipt")
+	s.apply_packet(result("258"))
+	check(not s.snapshot("core").uncertain and s.snapshot("core").received_cursor == "258", "R2 relearning discarded receipt resolves its uncertainty")
+	# R4: subtract known receipts before saturating the omission count.
+	for vector in [["9".repeat(128), 2147483647], ["2147483649", 2147483647], ["2147483648", 2147483646]]:
+		s = fresh()
+		replay(s)
+		s.apply_packet(result("2"))
+		s.apply_packet(result(vector[0]))
+		s.apply_packet(complete("replay", vector[0], vector[0], true))
+		check(s.snapshot("core").received_cursor == vector[0] and s.snapshot("core").omitted_count == vector[1], "R4 observed unavailable-prefix receipt is subtracted before saturation: " + vector[0])

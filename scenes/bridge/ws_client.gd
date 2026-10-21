@@ -22,6 +22,8 @@ var _refresh_workspace := false
 var _status_queue: Array[String] = []
 var _resume_queue: Array[String] = []
 var _recover_domains: Dictionary = {}
+# A failed observation waits for explicit retry or a new connection.
+var _failed_status_domains: Dictionary = {}
 var _workspace_poll := 0.0
 var _socket := WebSocketPeer.new()
 var _connected := false
@@ -76,6 +78,7 @@ func _process(delta: float) -> void:
 
 func _on_connection_closed() -> void:
 	_connected = false
+	_failed_status_domains.clear()
 	domains.disconnect_connection()
 	_domain_requests.clear()
 	_discovery_request = ""
@@ -253,6 +256,7 @@ func describe_workspace() -> String:
 
 
 func domain_status(domain_id: String) -> String:
+	_failed_status_domains.erase(domain_id)
 	if not _connected or not DomainState.valid_domain(domain_id) or domain_snapshot(domain_id).is_empty(): return ""
 	if _discovery_request != "":
 		var current: Dictionary = _domain_requests.get(_discovery_request, {})
@@ -340,23 +344,28 @@ func _on_domain_packet(packet: Dictionary) -> void:
 		_status_queue.clear()
 		_resume_queue.clear()
 		_recover_domains.clear()
+		_failed_status_domains.clear()
 		_notify_connection()
 	if change.scope == "workspace":
 		GameEvents.workspace_changed.emit(change.reason, change.request_id)
 		if change.reason == "workspace_state":
 			for domain_id in _recover_domains:
-				if domain_id not in _status_queue: _status_queue.append(domain_id)
+				if domain_id not in _status_queue and not _failed_status_domains.has(domain_id): _status_queue.append(domain_id)
 			var reservation: Variant = workspace_snapshot().get("reservation")
 			if reservation is Dictionary and DomainState.valid_domain(reservation.get("domain_id")):
-				if reservation.domain_id not in _status_queue: _status_queue.append(reservation.domain_id)
+				if reservation.domain_id not in _status_queue and not _failed_status_domains.has(reservation.domain_id): _status_queue.append(reservation.domain_id)
 	else:
+		if change.reason == "domain_error" and command.get("type") == "domain_status":
+			_failed_status_domains[change.domain_id] = true
+			_status_queue.erase(change.domain_id)
+			_resume_queue.erase(change.domain_id)
 		GameEvents.domain_changed.emit(change.domain_id, change.reason, change.request_id)
 		if change.reason in ["resume_complete", "status_stale"] or (change.reason == "domain_error" and command.get("type") != "domain_status"):
 			domain_status(change.domain_id)
 		if change.reason == "domain_state" and command.get("type") == "domain_status" and _recover_domains.has(change.domain_id):
 			_recover_domains.erase(change.domain_id)
 			if domain_snapshot(change.domain_id).domain_session_id != "": _resume_queue.append(change.domain_id)
-		if change.reason in ["domain_result", "domain_error"] or (change.reason == "domain_state" and command.get("type") != "domain_status" and change.settled):
+		if change.reason == "domain_result" or (change.reason == "domain_error" and command.get("type") != "domain_status") or (change.reason == "domain_state" and command.get("type") != "domain_status" and change.settled):
 			describe_workspace()
 	_pump_discovery()
 
