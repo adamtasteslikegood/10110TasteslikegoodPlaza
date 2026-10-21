@@ -14,7 +14,7 @@ This repo is **a running Godot prototype**. `project.godot` exists and `godot .`
 
 Docs split `docs/` (design and reference) from `specs/` (development process), each with its own `README.md` index. Active design is `docs/designs/2.5D-RPG-Prototype.md`; active work plan is `specs/roadmap.md`.
 
-**M1–M4, M7 and M8 are done.** The proof-of-concept critical path (M1 → M4 → M8) is complete — walk up to an NPC, type a question, get a live Claude response with typewriter effect. The owner-approved next direction is the **M9–M15 bridge-first track** in `specs/roadmap.md`; its written [design](docs/superpowers/specs/2026-10-18-bridge-first-platform-design.md) is ACTIVE, approved 2026-10-18. M9 is complete; M10 settings/recording and M11 NPC history/controls have deterministic coverage and owner laptop acceptance (2026-10-21, `QUICKSTART.md`). M5 (scripted assistant) and M6 (unlock/map) remain deferred. M12's [project/worktree/memory design](docs/superpowers/specs/2026-10-21-m12-domain-execution-design.md) is DRAFT for written review; M13–M15 remain planned. `specs/task-tracker.md` is `HISTORICAL`.
+**M1–M4, M7 and M8 are done.** The proof-of-concept critical path (M1 → M4 → M8) is complete — walk up to an NPC, type a question, get a live Claude response with typewriter effect. The owner-approved next direction is the **M9–M15 bridge-first track** in `specs/roadmap.md`; its written [design](docs/superpowers/specs/2026-10-18-bridge-first-platform-design.md) is ACTIVE, approved 2026-10-18. M9 is complete; M10 settings/recording and M11 NPC history/controls have deterministic coverage and owner laptop acceptance (2026-10-21, `QUICKSTART.md`). M5 (scripted assistant) and M6 (unlock/map) remain deferred. M12's [project/worktree/memory design](docs/superpowers/specs/2026-10-21-m12-domain-execution-design.md) is ACTIVE, owner-approved at `57b631f` on 2026-10-21; its [implementation plan](docs/superpowers/plans/2026-10-21-m12-project-execution.md) awaits owner review and execution-method selection. Policies `D-038`/`D-039` are ratified in doc set `0.2.17`; M12 runtime implementation/acceptance is pending. M13–M15 remain planned. `specs/task-tracker.md` is `HISTORICAL`.
 
 ## Commands
 
@@ -117,7 +117,7 @@ Root holds the entry points: `README.md` (pitch, 4-layer architecture, departmen
 | File | Why it matters |
 |---|---|
 | `docs/designs/2.5D-RPG-Prototype.md` | **Active design** — the 2.5D pivot. |
-| `docs/designs/platform-decisions.md` | **Platform authority**, including domain scope (`D-034`), M10 non-secret config (`D-035`), bounded local archives/diagnostics (`D-036`) and default-runtime/explicit-API policy (`D-037`). Scope test: would it survive replacing the whole frontend? If it dies with the 2.5D prototype it belongs in the design doc. |
+| `docs/designs/platform-decisions.md` | **Platform authority**, including domain scope (`D-034`), M10 non-secret config (`D-035`), bounded local archives/diagnostics (`D-036`), default-runtime/explicit-API policy (`D-037`), configured project/bootstrap/guarded execution (`D-038`) and native project memory (`D-039`). Scope test: would it survive replacing the whole frontend? If it dies with the 2.5D prototype it belongs in the design doc. |
 | `docs/agent-directory.md` | **Taxonomy authority (`D-017`)** — every agent count derives from here. |
 | `docs/delivery-coordinates.md` | **Atlassian taxonomy authority (`D-026`)** — every Jira key, board role, space and page id. |
 | `specs/meta/` | **Start here.** See the section above. |

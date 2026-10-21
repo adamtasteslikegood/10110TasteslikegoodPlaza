@@ -11,25 +11,25 @@ section at release time. PR references in parentheses.
 **Two version axes, deliberately separate.** This file and the tags track the
 **application**: the 3D era was `0.0.x`, and the 2.5D line is `0.1.y`. The
 `doc_set_version:` in every governed document's frontmatter is the **document
-set's** number and is unrelated — it reached `0.2.16` on its own axis. Prose that
+set's** number and is unrelated — it reached `0.2.17` on its own axis. Prose that
 cites `v0.2.7` or `v0.2.8` as software releases is conflating the two; those were
 spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
 
-### Added — M12 domain execution design (PLZG-289)
+### Added — M12 design and implementation plan (PLZG-289)
 
-- Draft the domain lifecycle, explicit Start/Run controls, background results and
-  plain-client contract with one dedicated execution Git worktree. Add configured
-  project selection, automatic worktree bootstrap, Chief Architect confirmation
-  for new repositories on `main`, and bridge-native three-file project memory.
-  Include NPC referrals to the Chief Architect and a shared readiness gate before
-  agent tools. The proposed session-length reservation separates workspace ownership from UI focus and
-  leaves independent workspaces and stronger runtimes for later designs.
+- Record owner approval of the written M12 specification at `57b631f` on
+  2026-10-21. Ratify configured project selection, reviewed repository bootstrap,
+  dedicated worktree reservation and tool readiness checks (`D-038`), plus
+  native three-file repository memory (`D-039`), in doc set `0.2.17`.
+- Add the [M12 implementation plan](docs/superpowers/plans/2026-10-21-m12-project-execution.md)
+  for owner review and execution-method selection. The approved scope includes
+  explicit Start/Run, background work, client parity and NPC referrals to the
+  Chief Architect. Runtime implementation and M12 acceptance remain pending.
 - Record the owner's 2026-10-21 laptop acceptance of M10/M11 with Claude
   subscription and API-token authentication; the output cap was a setting.
-  This supersedes the earlier outstanding-acceptance notes below. M12 remains
-  in design, awaiting written-spec review; no runtime implementation is included.
+  This supersedes the earlier outstanding-acceptance notes below.
 
 ### Changed — NPC execution through Claude Code (`D-037`)
 

@@ -4,7 +4,7 @@ title: Decision Register — every locked decision, with a citable id
 tier: 0
 authority: constitution
 status: ACTIVE
-doc_set_version: 0.2.16
+doc_set_version: 0.2.17
 last_updated: 2026-10
 owner: adamtasteslikegood
 derives_from: [META-SPEC]
@@ -85,6 +85,8 @@ domain decision `D-034`; runtime semantics are unchanged.
 | `D-035` | Central non-secret bridge settings | Startup-only built-ins → committed/default or explicitly selected JSON → documented `PLAZA_<KEY>` environment overrides; exact version-1 defaults and validation in `PLATFORM-DECISIONS` `D-035` and `BRIDGE-PLATFORM-DESIGN` §5 | Owner-approved M10 design, 2026-10-18. Both engines share explicit model/tier settings; credentials remain in existing environment bindings. Ratification authorizes implementation, not a claim that M10 is shipped. | `PLATFORM-DECISIONS` | `LOCKED` |
 | `D-036` | Bounded local archives and diagnostics | Append-only JSONL transcripts, standard logging/events, atomic run manifests, exclusive OS-backed writer lock, byte/age quotas, safe pruning and visible recording suspension; exact contract in `PLATFORM-DECISIONS` `D-036` and `BRIDGE-PLATFORM-DESIGN` §§4/6 | Owner-approved M10 design, 2026-10-18. Inspection archives remain separate from live context and future authoritative state; no restoration or durability guarantee is invented. | `PLATFORM-DECISIONS` | `LOCKED` |
 | `D-037` | Default model runtime and explicit API compatibility | Normal model execution, including NPCs, must reach Claude Code through Claude Agent SDK; direct Messages API conversation mode requires explicit selection and an API key, rejects OAuth/setup tokens and has no automatic fallback | Owner runtime-path correction and latest API-key-only opt-in clarification, 2026-10-18 (doc set 0.2.16, resolved conflict §4.14). NPCs are actual agents; credential presence does not select the backend. Preserves locked `D-033`/`D-034` timing and domain scope; ratifies a requirement, not implemented SDK proof or M12 acceptance. | `PLATFORM-DECISIONS` | `LOCKED` |
+| `D-038` | Configured project, reviewed bootstrap and guarded execution | One configured project per bridge session; automatic dedicated worktree; exact Chief Architect approval for initialization on main; session-length reservation and mandatory Git/worktree/memory checks before agent tools | Owner approved written M12 spec at 57b631f, 2026-10-21. Extends D-035 configuration with WORKSPACE_ROOT_DIR and its PLAZA_ override; preserves D-033/D-034/D-037. Client-independent setup/control policy, not sandbox or runtime acceptance evidence. | `PLATFORM-DECISIONS` | `LOCKED` |
+| `D-039` | Native three-file project memory | Bridge-owned bounded TODO/HANDOFF/PROGRESS Markdown per repository; create/read, serialized checkpoints, prior-project context, explicit persistence failures and no automatic SDK recovery | Owner written-spec approval 2026-10-21. Bounded project continuity is M12; richer structured history/recovery remains M13. Separate from D-036 diagnostics and Plaza development notes. | `PLATFORM-DECISIONS` | `LOCKED` |
 
 > **`D-024`'s command counts are disputed.** "19 of the 24 … covering 26 of the 132"
 > has not been reproduced and `AGENT-DIRECTORY` states different numbers — open
@@ -149,4 +151,4 @@ point of the tier ladder.
    `SUPERSEDED` — do not delete it — and bump `doc_set_version` across the set.
 4. Add the `D-nnn` to the origin document's `decides:` frontmatter list.
 
-*Doc set version: 0.2.16 · Last updated: October 2026*
+*Doc set version: 0.2.17 · Last updated: October 2026*

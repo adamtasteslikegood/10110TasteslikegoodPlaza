@@ -1,6 +1,6 @@
 {
   "$comment": "The index of the 10110 TastesLike Plaza doc set. This file answers 'which document wins' in machine-readable form. Governed by specs/meta/META-SPEC.md; enforced by scripts/validate_specs.py. Every markdown file under docs/, specs/, Docs/, and the root README.md must appear in exactly one of `documents` or `exempt`.",
-  "doc_set_version": "0.2.16",
+  "doc_set_version": "0.2.17",
   "documents": [
     {
       "doc_id": "META-SPEC",
@@ -65,7 +65,7 @@
       "tier": 2,
       "authority": "implementation",
       "status": "ACTIVE",
-      "note": "Authoritative for platform and repository decisions that outlive the current frontend: engine, bridge transport, agent data layer, licence, submodule and merge policy, and since v0.2.14 who merges a PR and who moves the board (D-031, D-032; D-030 superseded). Created in v0.2.7 to give the eight decisions PROJECT-OVERVIEW was wrongly named as originating an entitled home (issue #11, conflict 4.8). Doc set 0.2.15 ratifies asynchronous buffered domain execution, centralized non-secret configuration and bounded local JSONL archives/diagnostics (D-034–D-036), owner-approved 2026-10-18. Doc set 0.2.16 ratifies the owner runtime-path correction D-037: default Claude Code/Agent SDK with explicitly selected API-key-only Messages API conversation compatibility and no automatic fallback; the runtime correction is implemented with separate cloud API-key-through-SDK recall evidence, without proving subscription use or desktop acceptance."
+      "note": "Authoritative for platform and repository decisions that outlive the current frontend: engine, bridge transport, agent data layer, licence, submodule and merge policy, and since v0.2.14 who merges a PR and who moves the board (D-031, D-032; D-030 superseded). Created in v0.2.7 to give the eight decisions PROJECT-OVERVIEW was wrongly named as originating an entitled home (issue #11, conflict 4.8). Doc set 0.2.15 ratifies asynchronous buffered domain execution, centralized non-secret configuration and bounded local JSONL archives/diagnostics (D-034–D-036), owner-approved 2026-10-18. Doc set 0.2.16 ratifies the owner runtime-path correction D-037: default Claude Code/Agent SDK with explicitly selected API-key-only Messages API conversation compatibility and no automatic fallback; the runtime correction is implemented with separate cloud API-key-through-SDK recall evidence, without proving subscription use or desktop acceptance. Doc set 0.2.17 ratifies owner-approved M12 policies D-038/D-039; runtime implementation/acceptance remains pending."
     },
     {
       "doc_id": "PROJECT-OVERVIEW",
@@ -97,15 +97,15 @@
       "tier": 2,
       "authority": "implementation",
       "status": "ACTIVE",
-      "note": "Owner-approved bridge-first design (2026-10-18); M9 complete. M10/M11 implemented with deterministic coverage and accepted on the owner laptop on 2026-10-21 using Claude subscription and API-token authentication. D-033–D-037 preserve scoped NPC/domain execution, central settings, bounded archives and default SDK runtime. Owner moved minimum worktree separation, configured project bootstrap and native three-file project memory into M12; detailed M12 design remains DRAFT, and broader persistence/isolation/hosted providers remain future work. Prior cloud SDK recall does not prove M12 execution or graceful shutdown."
+      "note": "Owner-approved bridge-first design (2026-10-18); M9 complete. M10/M11 implemented with deterministic coverage and accepted on the owner laptop on 2026-10-21 using Claude subscription and API-token authentication. D-033–D-037 preserve scoped NPC/domain execution, central settings, bounded archives and default SDK runtime. Owner moved minimum worktree separation, configured project bootstrap and native three-file project memory into M12; detailed M12 written design approved 2026-10-21; implementation plan awaits review, and broader persistence/isolation/hosted providers remain future work. Prior cloud SDK recall does not prove M12 execution or graceful shutdown."
     },
     {
       "doc_id": "M12-DOMAIN-EXECUTION-DESIGN",
       "path": "docs/superpowers/specs/2026-10-21-m12-domain-execution-design.md",
       "tier": 2,
       "authority": "implementation",
-      "status": "DRAFT",
-      "note": "M12 detailed design awaiting written-spec approval. Owner requires explicit Start/Run, walking-away backgrounding, WORKSPACE_ROOT_DIR with env override, automatic dedicated worktree and native three-file repository-scoped memory. Other NPCs refer the player to the Chief Architect; its confirmation authorizes empty/non-Git project initialization on main without a second human prompt. All agent tools require Git/worktree/memory readiness. Proposes workspace reservation, SDK ownership, replay and Godot/plain-client acceptance; no runtime implementation is claimed."
+      "status": "ACTIVE",
+      "note": "M12 written specification at 57b631f approved by owner 2026-10-21; implementation plan awaits separate review. D-038/D-039 ratify project bootstrap, readiness and native memory in doc set 0.2.17. Owner requires explicit Start/Run, walking-away backgrounding, WORKSPACE_ROOT_DIR with env override, automatic dedicated worktree and native three-file repository-scoped memory. Other NPCs refer the player to the Chief Architect; its confirmation authorizes empty/non-Git project initialization on main without a second human prompt. All agent tools require Git/worktree/memory readiness. Specifies workspace reservation, SDK ownership, replay and Godot/plain-client acceptance; no runtime implementation is claimed."
     },
     {
       "doc_id": "ROADMAP",
@@ -113,7 +113,7 @@
       "tier": 3,
       "authority": "derived",
       "status": "ACTIVE",
-      "note": "Preserves M1–M8 prototype history and approved M9–M15 direction. M9 complete; M10/M11 locally accepted by owner 2026-10-21. M12 detailed design in progress, now including configured project bootstrap, minimum dedicated execution worktree and native three-file project memory. M13/M14 persistence and independent workspace sequencing can change or combine; M15 provider remains unselected. M5/M6 remain deferred frontend milestones."
+      "note": "Preserves M1–M8 prototype history and approved M9–M15 direction. M9 complete; M10/M11 locally accepted by owner 2026-10-21. M12 written design approved and implementation plan awaiting review, now including configured project bootstrap, minimum dedicated execution worktree and native three-file project memory. M13/M14 persistence and independent workspace sequencing can change or combine; M15 provider remains unselected. M5/M6 remain deferred frontend milestones."
     },
     {
       "doc_id": "TASK-TRACKER",
@@ -268,6 +268,10 @@
     {
       "path": "docs/superpowers/plans/2026-10-18-npc-sdk-execution.md",
       "reason": "Owner-authorized NPC runtime correction implementation plan derived from PLATFORM-DECISIONS D-037 and the existing D-033/D-034 scope. Execution artifact, not a new source of product authority; owner retains merge and waived ticket creation."
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-21-m12-project-execution.md",
+      "reason": "Non-authoritative M12 implementation plan derived from the owner-approved M12-DOMAIN-EXECUTION-DESIGN and D-038/D-039. Awaiting written-plan review and execution-method selection; no runtime completion claimed."
     }
   ]
 }

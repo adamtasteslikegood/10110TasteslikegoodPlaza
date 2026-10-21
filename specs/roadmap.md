@@ -4,7 +4,7 @@ title: 10110 TastesLike Plaza — Bridge-First Platform Roadmap
 tier: 3
 authority: derived
 status: ACTIVE
-doc_set_version: 0.2.16
+doc_set_version: 0.2.17
 last_updated: 2026-10
 owner: adamtasteslikegood
 derives_from: [PROJECT-OVERVIEW, DESIGN-25D, SPEC-DRIVERS-025, BRIDGE-PLATFORM-DESIGN]
@@ -46,7 +46,7 @@ and its limits separately from the historical direct API proof below.
 | **M9** | Align the design, protocol documentation and roadmap around the bridge-first platform direction; review the written spec | Complete — owner written-spec approval 2026-10-18 |
 | **M10** | Validated central configuration, JSONL run/agent transcripts and standard debug logs with quotas and retention | Implemented and locally accepted by owner 2026-10-21 |
 | **M11** | Godot NPC conversation history, late responses, mouse window resizing and basic keyboard/scroll controls | Implemented and locally accepted by owner 2026-10-21 |
-| **M12** | Configured project/worktree bootstrap, native three-file memory and domain execution through clients | Design in progress; detailed spec awaiting review |
+| **M12** | Configured project/worktree bootstrap, native three-file memory and domain execution through clients | Written spec approved 2026-10-21; implementation plan awaiting review |
 | **M13** | Durable local user/project/domain application state in SQLite, with explicit restart semantics | Planned after M12 |
 | **M14** | Independent execution workspaces beyond M12's minimum | Planned; sequencing with M13 to be reviewed |
 | **M15** | Authenticated hosted durable state; hosted provider remains unselected | Planned after M14 |
@@ -453,7 +453,9 @@ surfaces remain outside that sequence unless a later design schedules them.
 > The bridge creates/reuses that worktree and three project-scoped memory files;
 > non-Git projects first require Chief Architect confirmation to initialize `main`.
 > The [detailed M12 spec](../docs/superpowers/specs/2026-10-21-m12-domain-execution-design.md)
-> is DRAFT for written review. M12 implementation is not complete. M13/M14
+> is ACTIVE, with written approval recorded 2026-10-21. The
+> [implementation plan](../docs/superpowers/plans/2026-10-21-m12-project-execution.md)
+> awaits owner review and execution-method selection. M12 implementation is not complete. M13/M14
 > sequencing may change or combine state and isolation; M15's provider remains
 > unselected. See the owner update in `BRIDGE-PLATFORM-DESIGN`.
 
@@ -534,7 +536,10 @@ Other NPCs refer the player to the Chief Architect when setup is needed; its
 interaction and affirmative decision unlock initialization without another human
 prompt. A common bridge gate verifies Git/worktree/memory readiness before tools.
 The [M12 written design](../docs/superpowers/specs/2026-10-21-m12-domain-execution-design.md)
-proposes bootstrap, memory, reservation, lifecycle and client contracts and awaits review.
+defines approved bootstrap, memory, reservation, lifecycle and client contracts
+(`D-038`/`D-039`). The
+[implementation plan](../docs/superpowers/plans/2026-10-21-m12-project-execution.md)
+awaits owner review and execution-method selection.
 
 Connect domain lifecycle and execution to the frontend through the UI-agnostic
 bridge contract. Verify the complete path with a live Agent SDK run, including

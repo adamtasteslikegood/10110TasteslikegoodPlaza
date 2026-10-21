@@ -3,8 +3,8 @@ doc_id: M12-DOMAIN-EXECUTION-DESIGN
 title: M12 — Project worktree, short-term memory and domain execution
 tier: 2
 authority: implementation
-status: DRAFT
-doc_set_version: 0.2.16
+status: ACTIVE
+doc_set_version: 0.2.17
 last_updated: 2026-10
 owner: adamtasteslikegood
 derives_from: [PLATFORM-DECISIONS, DESIGN-25D, BRIDGE-PLATFORM-DESIGN]
@@ -42,9 +42,9 @@ Setup is part of gameplay: other NPCs direct the player to the Chief Architect;
 talking to that agent triggers review. Every agent checks Git, worktree and memory
 readiness before tools run, enforced by the bridge as well as agent context.
 
-This written specification is **DRAFT, awaiting review**. Detailed choices below,
-including the session-length workspace reservation, are proposed implementation
-decisions. M12 execution and its acceptance checks are not implemented by this specification.
+The owner **reviewed and approved this written specification on 2026-10-21**,
+including the content at commit `57b631f`. The session-length reservation and
+other detailed choices below are approved design requirements. M12 execution and its acceptance checks are not implemented by this specification.
 Tracking: [PLZG-289](https://tasteslikegood.atlassian.net/browse/PLZG-289).
 
 M10/M11 laptop operation was accepted by the owner on 2026-10-21 using local
@@ -631,15 +631,17 @@ execution tree. Shared Git administrative metadata and ordinary runtime logs are
 The live run is separate from deterministic CI and from the owner's prior M11
 laptop acceptance. M12 closes only after implementation merges, automated gates
 pass, the real tool/background/plain-client evidence is recorded, and desktop
-controls have been accepted. This draft satisfies none of those runtime gates.
+controls have been accepted. This specification satisfies none of those runtime gates.
 
 ## 9. Written-spec handoff
 
-Review this document before writing the implementation plan. On approval,
-register the workspace/bootstrap/project-memory policy at `PLATFORM-DECISIONS`
-and its decision register, following META-SPEC versioning before implementation; preserve the
-minimum-now versus scalable-later distinction. No locked decision is silently
-amended here. The plan must split configuration/bootstrap, project memory,
-workspace/SDK ownership, protocol, Godot and verification tasks with tests and exact dependencies, using this approved spec.
+Written-spec approval is recorded on 2026-10-21. `D-038`/`D-039` register the
+approved workspace/bootstrap/readiness and project-memory policies in
+`PLATFORM-DECISIONS` and its decision register, with doc set 0.2.17.
+The [implementation plan](../plans/2026-10-21-m12-project-execution.md) splits
+configuration/bootstrap, project memory, workspace/SDK ownership, protocol, Godot
+and verification tasks. The written plan awaits owner review and execution-method
+selection before runtime implementation. Minimum-now versus scalable-later scope
+remains explicit.
 
 *Last updated: October 2026*

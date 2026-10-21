@@ -4,12 +4,12 @@ title: Platform Decisions — engine, transport, data layer, licence, repo polic
 tier: 2
 authority: implementation
 status: ACTIVE
-doc_set_version: 0.2.16
+doc_set_version: 0.2.17
 last_updated: 2026-10
 owner: adamtasteslikegood
 derives_from: [META-SPEC]
 supersedes: []
-decides: [D-003, D-005, D-015, D-016, D-018, D-021, D-022, D-023, D-024, D-029, D-030, D-031, D-032, D-034, D-035, D-036, D-037]
+decides: [D-003, D-005, D-015, D-016, D-018, D-021, D-022, D-023, D-024, D-029, D-030, D-031, D-032, D-034, D-035, D-036, D-037, D-038, D-039]
 enforcement: asserted
 gates: [Validate Specs:live]
 weakest_claim: Nine of these were already made, already evidenced,
@@ -17,7 +17,7 @@ weakest_claim: Nine of these were already made, already evidenced,
 
 # Platform Decisions
 
-> **One line:** the seventeen project-level decisions (sixteen in force, `D-030`
+> **One line:** the nineteen project-level decisions (eighteen in force, `D-030`
 > superseded) that are neither concept nor
 > prototype design — engine, bridge boundary, transport, data layer, licence, and
 > repository policy — and the document entitled to originate them.
@@ -55,6 +55,11 @@ they do not claim that the planned recorder or configuration layer has shipped.
 correction and explicit API-key-only compatibility clarification. This records an
 already authorized requirement; implementation and separately captured SDK evidence
 are now documented in [Quick start](../../QUICKSTART.md).
+
+`D-038`/`D-039` follow in doc set 0.2.17 on the owner's written M12 specification
+approval, 2026-10-21. They extend the configuration/workspace and project-state
+contracts; the implementation plan awaits owner review and runtime acceptance is not
+claimed by this ratification.
 
 ## 1. Scope — what belongs in this document
 
@@ -523,6 +528,57 @@ All three decisions pass the §1 scope test: replacing the frontend leaves domai
 execution, settings and recording policy intact. `D-005` continues to require zero
 bridge awareness of rendering concepts.
 
+### `D-038` — Configured project, reviewed bootstrap and guarded execution
+
+The owner approved the written
+[M12 specification](../superpowers/specs/2026-10-21-m12-domain-execution-design.md)
+at commit `57b631f` on 2026-10-21. Its §§4.1–4.3/4.5 define the exact contract.
+One bridge session binds to one project through `WORKSPACE_ROOT_DIR`, default
+`null`, in the central configuration; `PLAZA_WORKSPACE_ROOT_DIR` overrides it.
+Relative paths use the selected config directory. This extends `D-035`'s schema
+without changing its precedence or credential handling.
+
+For a ready repository, the bridge creates/reuses a dedicated named worktree
+outside source/runtime trees, preserving edits. Missing Git waits for interaction
+with the existing `systems-architect` agent; other agents refer the client to that
+role. Its exact-proposal approval authorizes `main` initialization and a reviewed
+seed commit without a second human prompt. Startup/proximity alone do not approve
+it. Git initialization preserves excluded files and any prior index; no remote,
+push, destructive reset or automatic integration is authorized.
+
+Start acquires the initial worktree's exclusive session-length reservation; Stop
+releases it only after confirmed SDK cleanup. Backgrounding, idle time and socket
+loss retain it. SDK connect/query/disconnect share one owner task. Every enabled
+tool path must pass a bridge-enforced Git/worktree/memory readiness check; mandatory
+`PreToolUse` denial is not replaced by prompt advice or a bypassable callback.
+Uncertain teardown blocks reuse. Worktrees and cooperative locks are not host,
+network or descendant-process sandbox containment. Broader runtime providers and
+parallel workspaces remain later design work. The policy is client-independent;
+Godot's movement/referral presentation belongs to the M12 UI specification.
+
+### `D-039` — Native bounded three-file project memory
+
+M12 specification §4.4 is the exact storage/update contract approved 2026-10-21.
+The bridge creates missing and reads existing `TODO.md`, `HANDOFF.md` and
+`PROGRESS.md` under `<git-common-dir>/plaza/session-memory/`. Repository identity
+isolates them; linked worktrees share the project, separate clones do not. These
+are native project data, not development-session instructions or global memory.
+
+Bound TODO and handoff to 16 KiB each, TODO to 64 items, and progress to 32 KiB
+with 12 recent entries plus a bounded recap. Serialize checkpoints under a short
+project lock, merge against the latest revision and detect partial multi-file
+writes. Create only missing files and preserve invalid/inconsistent existing data.
+Load prior-project notes into both NPC and domain calls without granting them
+instruction authority. Validate optional memory deltas from the same model call;
+grounded excerpts provide a fallback without extra hidden summarization calls.
+
+A failed pre-invocation load/pending checkpoint blocks project execution; an
+already-completed task remains completed if saving later fails, with visible
+unsaved status. Memory never authorizes re-execution or resumes an SDK process.
+This deliberately brings bounded persistent project notes into M12; M13 retains
+richer application history and explicit task/state recovery. `D-036` diagnostic
+archives remain separate and must never prune these files.
+
 ## 4. Adding a decision here
 
 Same procedure as any entitled document —
@@ -534,4 +590,4 @@ not here. Add the `D-nnn` to this file's `decides:` list and to
 `scripts/validate_specs.py` fails the build if the two disagree, and now also fails
 if a document declares `decides:` without an authority licensed to originate.
 
-*Doc set version: 0.2.16 · Last updated: October 2026*
+*Doc set version: 0.2.17 · Last updated: October 2026*
