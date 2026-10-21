@@ -1722,6 +1722,89 @@ def _proof_wire(value):
     return value
 
 
+def _proof_plain_replay(wire, stages, identity):
+    """Require the runner's separate status/resume exchange and full replay."""
+
+    def one(packets, request_id, label):
+        matches = [
+            (index, packet)
+            for index, packet in enumerate(packets)
+            if packet["request_id"] == request_id
+        ]
+        require(len(matches) == 1, "single plain replay " + label)
+        return matches[0]
+
+    commands, packets = wire["commands"], wire["emitted"]
+    status_at, status = one(commands, "plain-status", "status command")
+    resume_at, resume = one(commands, "plain-resume", "resume command")
+    run_id = stages[2]["payload"]["request_id"]
+    run_at, _ = one(commands, run_id, "original Run command")
+    scene_resume = stages[5]["payload"]["request_id"]
+    scene_at, _ = one(commands, scene_resume, "scene resume command")
+    stop_id = stages[6]["payload"]["request_id"]
+    stop_at, _ = one(commands, stop_id, "Stop command")
+    require(
+        run_at < scene_at < status_at < resume_at < stop_at,
+        "independent plain command ordering",
+    )
+    require(
+        status.get("type") == "domain_status"
+        and resume.get("type") == "resume"
+        and resume.get("domain_session_id") == identity["domain_session_id"],
+        "independent plain command kind/generation",
+    )
+    for command in (status, resume):
+        require(
+            command.get("domain_id") == identity["domain_id"]
+            and all(
+                key not in command or command[key] == identity[key]
+                for key in ("project_id", "workspace_id", "domain_session_id")
+            ),
+            "independent plain command identity",
+        )
+    status_reply_at, status_reply = one(packets, "plain-status", "status reply")
+    complete_at, complete = one(packets, "plain-resume", "replay completion")
+    for packet, kind in ((status_reply, "domain_state"), (complete, "resume_complete")):
+        require(
+            packet.get("type") == kind
+            and all(
+                packet.get(key) == identity[key]
+                for key in (
+                    "project_id",
+                    "workspace_id",
+                    "domain_id",
+                    "domain_session_id",
+                )
+            )
+            and packet.get("state") == "active"
+            and packet.get("execution_state") == "idle",
+            "independent plain reply kind/identity/state",
+        )
+    terminals = [
+        (index, packet)
+        for index, packet in enumerate(packets)
+        if packet.get("type") == "domain_result"
+    ]
+    require(len(terminals) == 2, "original and independent replay terminal")
+    (original_at, original), (replayed_at, replayed) = terminals
+    # Replay preserves the original Run request ID, including the saved memory.
+    require(
+        original["request_id"] == run_id and replayed == original,
+        "exact original/replayed terminal identity/output/memory",
+    )
+    scene_complete_at, _ = one(packets, scene_resume, "scene replay completion")
+    stop_reply_at, _ = one(packets, stop_id, "Stop reply")
+    require(
+        original_at
+        < scene_complete_at
+        < status_reply_at
+        < replayed_at
+        < complete_at
+        < stop_reply_at,
+        "complete independent plain replay ordering",
+    )
+
+
 def _validate_proof(record):
     from bridge.domain_sdk import GUARD_SOURCES
     from scripts.m12_stages import StageValidator
@@ -2037,7 +2120,7 @@ def _validate_proof(record):
         "one actual rendered header",
     )
     terminals = [p for p in wire["emitted"] if p.get("type") == "domain_result"]
-    require(bool(terminals), "stored/plain terminal evidence")
+    require(bool(terminals), "recorded terminal evidence")
     for packet in terminals:
         require(
             all(packet.get(k) == v for k, v in identity.items())
@@ -2056,6 +2139,7 @@ def _validate_proof(record):
             < final_notes["revision"],
             "saved terminal memory revision",
         )
+    _proof_plain_replay(wire, stages, identity)
     for field in ("background_monotonic", "npc_monotonic"):
         _proof_number(initial[field], "causal receipt monotonic")
     require(

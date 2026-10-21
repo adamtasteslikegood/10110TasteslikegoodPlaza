@@ -795,6 +795,121 @@ def test_fenced_semantic_answer_keeps_exact_stage_and_wire_output_parity():
     assert module().validate_evidence(record) == []
 
 
+@pytest.mark.parametrize(
+    "damage",
+    [
+        "entire_plain_path",
+        "status_command",
+        "resume_command",
+        "status_reply",
+        "replayed_terminal",
+        "resume_complete",
+        "original_terminal",
+        "wrong_status_command_id",
+        "wrong_status_reply_id",
+        "wrong_resume_command_id",
+        "wrong_resume_complete_id",
+        "wrong_original_run_id",
+        "wrong_replayed_run_id",
+        "wrong_status_domain",
+        "wrong_resume_generation",
+        "wrong_status_generation",
+        "wrong_completion_generation",
+        "wrong_status_state",
+        "wrong_completion_execution_state",
+        "different_replayed_memory",
+        "duplicate_status_command",
+        "duplicate_status_reply",
+        "duplicate_resume_complete",
+        "reversed_commands",
+        "resume_command_after_stop",
+        "replay_before_status",
+        "replay_after_completion",
+        "status_reply_before_original",
+        "completion_after_stop",
+    ],
+)
+def test_plain_client_requires_correlated_ordered_complete_independent_replay(damage):
+    record = evidence()
+    wire = record["initial"]["wire"]
+    commands, emitted = wire["commands"], wire["emitted"]
+    status_command = next(p for p in commands if p["request_id"] == "plain-status")
+    resume_command = next(p for p in commands if p["request_id"] == "plain-resume")
+    status_reply = next(p for p in emitted if p["request_id"] == "plain-status")
+    completion = next(p for p in emitted if p["request_id"] == "plain-resume")
+    original, replay = [p for p in emitted if p.get("type") == "domain_result"]
+    # Use indices/identity: original and replay are intentionally equal packets.
+    original_index, replay_index = [
+        i for i, p in enumerate(emitted) if p.get("type") == "domain_result"
+    ]
+    if damage == "entire_plain_path":
+        for name in ("commands", "emitted"):
+            wire[name] = [
+                p for p in wire[name] if not p["request_id"].startswith("plain-")
+            ]
+        wire["emitted"].pop(replay_index - 1)
+    elif damage in ("status_command", "resume_command"):
+        commands.remove(
+            status_command if damage == "status_command" else resume_command
+        )
+    elif damage in ("status_reply", "resume_complete"):
+        emitted.remove(status_reply if damage == "status_reply" else completion)
+    elif damage in ("original_terminal", "replayed_terminal"):
+        emitted.pop(original_index if damage == "original_terminal" else replay_index)
+    elif damage.startswith("wrong_") and damage.endswith("_id"):
+        {
+            "wrong_status_command_id": status_command,
+            "wrong_status_reply_id": status_reply,
+            "wrong_resume_command_id": resume_command,
+            "wrong_resume_complete_id": completion,
+            "wrong_original_run_id": original,
+            "wrong_replayed_run_id": replay,
+        }[damage]["request_id"] = "unrelated-request"
+    elif damage == "wrong_status_domain":
+        status_command["domain_id"] = "unrelated-domain"
+    elif damage.endswith("_generation"):
+        {
+            "wrong_resume_generation": resume_command,
+            "wrong_status_generation": status_reply,
+            "wrong_completion_generation": completion,
+        }[damage]["domain_session_id"] = "unrelated-generation"
+    elif damage == "wrong_status_state":
+        status_reply["state"] = "inactive"
+    elif damage == "wrong_completion_execution_state":
+        completion["execution_state"] = "running"
+    elif damage == "different_replayed_memory":
+        replay["memory"]["revision"] -= 1
+    elif damage.startswith("duplicate_"):
+        packets, packet = {
+            "duplicate_status_command": (commands, status_command),
+            "duplicate_status_reply": (emitted, status_reply),
+            "duplicate_resume_complete": (emitted, completion),
+        }[damage]
+        packets.append(packet.copy())
+    elif damage == "reversed_commands":
+        a, b = commands.index(status_command), commands.index(resume_command)
+        commands[a], commands[b] = commands[b], commands[a]
+    elif damage == "resume_command_after_stop":
+        commands.remove(resume_command)
+        commands.append(resume_command)
+    elif damage in ("replay_before_status", "replay_after_completion"):
+        emitted.pop(replay_index)
+        at = (
+            emitted.index(status_reply)
+            if damage == "replay_before_status"
+            else len(emitted)
+        )
+        emitted.insert(at, replay)
+    elif damage == "status_reply_before_original":
+        emitted.remove(status_reply)
+        emitted.insert(original_index, status_reply)
+    else:
+        assert damage == "completion_after_stop"
+        emitted.remove(completion)
+        emitted.append(completion)
+    assert module().validate_evidence(record), damage
+
+
 def test_write_time_reconciliation_is_not_only_duplicate_receipt_equality():
     record = evidence()
     for receipt in (
