@@ -17,9 +17,9 @@ OAuth/setup-token credentials. Backend selection never follows credential
 presence or falls back automatically after failure. See the
 [authentication guide](../QUICKSTART.md#2-install-prerequisites).
 
-The shipped Godot client sends plain conversation requests only. Domain routing,
-lifecycle commands, and output replay exist in the bridge but are not yet wired
-into that client. The bridge remains unaware of rendering and controls (D-005);
+The Godot client implements NPC conversations plus configured-project discovery,
+Chief referral/review, domain lifecycle controls and bounded output replay. The bridge remains unaware of rendering and controls
+(D-005);
 see the [platform design's client requirements](../docs/superpowers/specs/2026-10-18-bridge-first-platform-design.md).
 
 Future work is separated under [Planned platform evolution](#planned-platform-evolution).
@@ -270,7 +270,7 @@ inspection before recording can resume, as documented in Quick start. Native
 Godot logs are separately configured and outside this quota. Archives are not
 context replay, durable user/project state, or SDK recovery.
 
-## Current M11 client behavior
+## Current client behavior (M11/M12)
 
 The Godot client correlates pending requests per agent and retains bounded,
 session-only display history across panel dismissal and reconnect. Disconnect
@@ -278,9 +278,15 @@ fails pending requests once and archives that generation read-only; reconnect
 starts fresh server model context. No display transcript or archived draft is
 replayed. Frontend display limits are independent of model and disk limits.
 History, resizing and keyboard controls are implemented with deterministic
-coverage; owner desktop acceptance was recorded for M11; M12 client acceptance remains outstanding. See the
+coverage; owner desktop acceptance was recorded for M11; M12 desktop acceptance
+remains outstanding. See the
 [operating guide](../QUICKSTART.md#npc-conversation-history-and-controls-m11).
-The bridge has no UI awareness, and legacy clients may omit request IDs.
+The bridge has no UI awareness, and legacy conversation clients may omit request IDs.
+M12 Godot controls and physical background/refocus have deterministic and
+recorded Linux live coverage. Laptop binary and M12 desktop acceptance remain
+open. Worktree notes survive clean restart, while
+result replay is process-local. See [M12 operations and platform limits](../QUICKSTART.md#project-work-and-domain-controls-m12)
+and [bounded live evidence](../QUICKSTART.md#m12-live-evidence-and-desktop-checks).
 
 ## Planned platform evolution
 
@@ -291,7 +297,6 @@ describes the intended boundaries and open contract decisions.
 
 | Milestone | Intended change |
 |---|---|
-| M12 | Wire the client to domain lifecycle and output replay; successful SDK NPC chat alone does not prove domain/background execution. Presentation and controls remain client concerns. |
 | M13 | Durable identities scoped by user, project, and domain, with defined restart/reconnect recovery. Exact fields and recovery semantics require implementation and verification. |
 | M14 | Broader isolation and workspace/runtime providers beyond the M12 cooperative local Git worktree. |
 | M15 | Authenticated hosted operation with durable storage and enforced ownership/access boundaries. |

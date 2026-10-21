@@ -789,14 +789,14 @@ prose, this plan and Jira only as evidence warrants. New evidence target:
 **Consumes:** Full M12 implementation, configured SDK auth, real Godot and disposable projects.
 **Produces:** reproducible probes, sanitized evidence and an honest milestone state.
 
-- [ ] **Step 1 — Write failing evidence-runner tests with fake children/providers.**
+- [x] **Step 1 — Write failing evidence-runner tests with fake children/providers.**
   Assert missing/malformed/partial evidence cannot report pass; no API key/token
   enters artifacts; nonce file absence is checked before release; the harness never
   writes the claimed agent-created result; nonzero children/cleanup fail acceptance.
   Preserve Task 4 hook-probe tests that reject a tool invoked despite denial.
-- [ ] **Step 2 — Run red:**
+- [x] **Step 2 — Run red:**
   `python -m pytest tests/test_m12_live.py tests/test_m12_tool_guard_probe.py -q`.
-- [ ] **Step 3 — Implement bounded runners and operator instructions.**
+- [x] **Step 3 — Implement bounded runners and operator instructions.**
   Probe harmless Read/Edit/Bash, MCP and delegated-agent paths under the pinned CLI;
   instrument whether tools really ran. Force readiness denial and hook exception/
   timeout; successful callbacks alone cannot pass the probe. If any path bypasses
@@ -833,6 +833,19 @@ prose, this plan and Jira only as evidence warrants. New evidence target:
   PRs against dev, attach them, satisfy required checks and all review surfaces
   under `.claude/pr-workflow.md`. Close PLZG-289 only after implementation merges,
   deterministic/live evidence passes and desktop acceptance is recorded.
+
+
+**Observed Task 10 progress, 2026-10-21:** runner/test/scene code is committed
+through `c128b543d73864099002247c7f32854e2b020c3f`. Fresh
+[guard evidence](../../../specs/evidence/m12-guard-2026-10-21.json) passed all
+29 cases; the [actual Linux live report](../../../specs/evidence/m12-live-2026-10-21.json)
+exited 0 and passed real Chief approval, causal SDK result creation, exact raw
+Godot/plain output parity, clean restart/readback and independent-repository
+isolation. Actual three bridge manifests closed, five SDK CLIs exited 0, leases
+released and memory-run markers detached. The [attempt ledger](../../../specs/evidence/m12-live-attempts-2026-10-21.json)
+preserves four failed reports and concrete corrections. Step 4 stays open for
+owner desktop/laptop-binary acceptance and final review; Step 5 stays open for
+external delivery/merge and milestone acceptance. No M12/Jira closure is implied.
 
 ## Controller handoff
 

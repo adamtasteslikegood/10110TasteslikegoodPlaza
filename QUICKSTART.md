@@ -118,6 +118,84 @@ Without the bridge running, the game still opens and you can walk and see agent
 info — questions will show a "Bridge not connected" error until you start
 `bridge/bridge.py`.
 
+## Project work and domain controls (M12)
+
+M12 project/worktree/memory and Godot domain controls are implemented on the
+PLZG-289 branch. Deterministic and Linux live evidence passed. Desktop acceptance
+remains open; see the separate
+[M12 evidence and desktop checks](#m12-live-evidence-and-desktop-checks).
+NPC chat still works when `WORKSPACE_ROOT_DIR` is JSON `null` (the default).
+Select one existing project directory before starting the bridge:
+
+```bash
+PLAZA_WORKSPACE_ROOT_DIR=/absolute/path/to/disposable-project python3 bridge/bridge.py
+```
+
+Alternatively select non-secret JSON with `BRIDGE_CONFIG_PATH`; a minimal file is
+`{"CONFIG_VERSION":1,"WORKSPACE_ROOT_DIR":"/absolute/path/to/disposable-project"}`.
+Precedence is built-ins → selected JSON → `PLAZA_` overrides. Workspace and log
+paths resolve against the selected JSON's directory, including relative env
+values. The workspace env override is a raw nonempty path: `null` means a literal
+path, not JSON null. Restart the bridge and reconnect the game to change projects;
+clients do not supply filesystem paths or switch projects within a session.
+
+M12 requires Git with linked worktrees, `--no-lazy-fetch`,
+`--no-optional-locks`, `rev-parse --path-format=absolute` and `show-ref --exists`.
+Unsupported Git fails closed; do not remove those flags. Safe project files and
+stable locks require POSIX `O_NOFOLLOW`, `O_DIRECTORY`, directory fsync and
+`fcntl.flock`. Native Windows support is not established by the venv example.
+A worktree and readiness hook provide cooperative isolation, not a host/network
+sandbox. The execution checkout, configured project and bridge runtime checkout
+must be canonically disjoint.
+
+For an empty, non-Git or unborn project, submit an ordinary NPC request to see
+its Chief Architect referral. Approaching the Chief alone does not review it:
+submit a request to **Chief Architect** (`systems-architect`). Its real review
+approves the exact `main`/seed proposal; discovery then becomes ready. The bridge
+seeds only the reviewed allowlist (an empty commit for an empty project), without
+a remote, push, blanket staging or second human approval.
+
+At the NPC whose agent should perform the work, use **Domain work**, enter the
+task, then **Start** and submit with **Run** or Enter. One domain session reserves that workspace; there is
+no hidden task queue. Walking out of the anchor backgrounds running work and
+hides its panel. Another NPC can answer while it runs. Return/refocus to retrieve
+the buffered output; replay deduplicates generation/output identity. Completion,
+hiding, backgrounding and socket loss retain the reservation. Use **Stop** and
+wait for its matching inactive reply before another domain can own the workspace.
+Default configured caps are 20 domain turns and USD 1.00 per task; the bounded
+acceptance runner deliberately uses smaller configured caps.
+
+| Retained object | Location |
+|---|---|
+| Execution files | `<project-parent>/.plaza-worktrees/<sanitized-project-name>-<project-key>/execution` |
+| Execution branch | `plaza/workspace-<project-key>` |
+| Identity descriptor | `<git-common-dir>/plaza/workspace.json` |
+| Canonical project notes | `<git-common-dir>/plaza/session-memory/{TODO,HANDOFF,PROGRESS}.md` |
+| Execution reservation | Actual execution Git directory's `plaza-execution.lock` and `plaza-unclean.json` |
+| Memory ownership | `<git-common-dir>/plaza/memory.lock` and `plaza/runs/<sha256(owner_run_id)>.lock/.json` |
+| Recording | Configured `LOG_DIR/runs/<archival-run-id>/manifest.json` |
+
+TODO/HANDOFF are at most 16 KiB each; TODO has at most 64 items. PROGRESS is at
+most 32 KiB with 12 recent entries and a bounded recap. Limits count complete
+UTF-8 files. Notes are repository data/prior context, not instruction authority,
+a complete transcript, a queue or SDK recovery. A fresh invocation loads valid
+notes; completed work is not automatically rerun. Old process-local result replay
+is not promised after bridge restart.
+
+Inspect recovery state with read-only `describe_workspace` and `domain_status`:
+record identity, worktree/branch, edits, generation, reservation and memory
+saved/unsaved status/revision. If the owner is reachable, request normal Stop and
+wait for confirmed inactive cleanup. Preserve tracked and untracked execution
+edits on success, cancellation and failure; reuse does not reset or merge them.
+On `cleanup_failed`, unavailable/unsaved memory or uncertain shutdown, retain
+files, logs, descriptor and markers. Inspect actual SDK/bridge activity, OS lock
+ownership, Git registration, canonical notes/revisions and the exact archive
+manifest. PID absence, elapsed time or a free lock with an unclean marker does
+not establish safe reuse. Stable lock inodes normally remain after clean Stop.
+Never apply blanket lock/marker deletion, `git reset --hard`, `git clean`, automatic
+worktree removal or a claimed daemon-killed shortcut. There is no generic recovery
+CLI; establish actual cleanup and diagnose damaged state before manual repair.
+
 ## NPC conversation history and controls (M11)
 
 Each NPC keeps an ordered display transcript, draft and reading position during
@@ -198,7 +276,7 @@ The shipped `../.local/bridge-logs` therefore selects `.local/bridge-logs/` in t
 checkout. That directory is Git-ignored; choosing/ignoring a custom external root
 is the operator's responsibility. The committed config remains tracked.
 
-These are all 21 keys and their built-in/shipped defaults:
+These are all 22 keys and their built-in/shipped defaults:
 
 | Key | Default | Constraint / meaning |
 |---|---|---|
@@ -223,6 +301,7 @@ These are all 21 keys and their built-in/shipped defaults:
 | `TRANSCRIPT_MAX_FILE_BYTES` | `5242880` | Integer ≥record bound; rotate before exceeding |
 | `LOG_MAX_TOTAL_BYTES` | `104857600` | Integer ≥file bound; managed archives including manifest temps |
 | `LOG_MAX_AGE_DAYS` | `14` | Positive integer; prune eligible files by age first |
+| `WORKSPACE_ROOT_DIR` | `null` | Existing project directory, or unconfigured domains; relative to selected config directory |
 
 Numeric settings reject booleans, non-finite values and fractional integer limits.
 Models have no fallback or automatic upgrade. `config.model_for("opus")` resolves
@@ -416,3 +495,86 @@ Nothing else in the repo needs them.
 | Follow the contribution flow | [`CONTRIBUTING.md`](CONTRIBUTING.md) |
 
 *Last updated: October 2026*
+
+## M12 live evidence and desktop checks
+
+On 2026-10-21 the fresh [29-case guard matrix](specs/evidence/m12-guard-2026-10-21.json)
+and [real headless M12 flow](specs/evidence/m12-live-2026-10-21.json) passed on
+Linux with SDK 0.2.136, AnyIO 4.14.2, bundled CLI 2.1.228 and Godot 4.7.1.
+The live code is committed at `c128b543d73864099002247c7f32854e2b020c3f`;
+the report also binds actual dirty documentation status and runtime/source hashes.
+All three bridge lifetimes and five SDK CLI processes exited 0; actual manifests
+are closed with `ended_at`, domain leases released and memory-run markers detached.
+The single tool result survived clean restart; fresh readback used notes without
+reexecution, and repository B received none of A's nonce/notes.
+
+The [attempt ledger](specs/evidence/m12-live-attempts-2026-10-21.json) preserves
+four failed reports and their concrete corrections, including the real Chief's
+independent denial. The accepted five-invocation run reported USD 0.240059 in
+terminal costs; the guard matrix reported USD 0.753546. These are SDK-reported
+API-key costs, not evidence of native subscription billing. No automatic paid
+retries ran. The successful result/notes and every failed artifact tree remain
+preserved; the evidence includes their exact paths. Linux headless evidence does
+not complete M12 or establish another laptop binary or desktop behavior.
+
+The bounded runners are deliberate paid operations with **no automatic retries**:
+
+```bash
+python3 scripts/m12_tool_guard_probe.py --output /tmp/m12-tool-guard.json
+python3 scripts/m12_live.py --output /tmp/m12-live.json
+```
+
+Choose fresh output paths with existing parents. The live runner refuses to
+replace existing evidence and retains a separate `/tmp/plaza-m12-live-*` artifact
+tree on failure or success. Inspect raw bridge/Godot logs, stages, release/result,
+notes, markers and actual manifests before publishing its allowlisted JSON.
+Failed/partial runs, nonzero child exits, forced teardown and missing/open
+manifests fail acceptance. Do not treat a previous output file as a new pass.
+`--help` describes the new runner without starting providers. Legacy bridge and
+Sprint 6 scripts do not implement help parsers; `--help` there may start work.
+
+The probe pins SDK 0.2.136, AnyIO 4.14.2 and bundled CLI 2.1.228. It checks 29
+Read/Edit/Bash, MCP, delegated and cancellation cases, at most 27 queries, model
+`claude-haiku-5-5`, 45 seconds and USD 0.20 **per case**, stopping at the first
+failure. MCP/delegation probe coverage does not enable them in product domains;
+production tools remain Read/Edit/Bash. A callback alone never proves denial.
+A complete exit-0 report must show real denied-tool non-execution, cleanup,
+exact source hashes, versions and the actual local bundled binary hash.
+
+The fresh `/tmp` probe is **not automatically activated**. Product activation
+reads fixed `bridge/tool_guard_acceptance.json` and independently recomputes the
+five bound sources, dependency versions and actual bundled CLI hash. There is no
+evidence-path override. On another laptop OS/architecture, run the whole bounded
+probe against the exact candidate sources/binary/auth, inspect it, and place the
+reviewed fresh report at that fixed manifest through the normal evidence/change
+workflow. Preserve Linux evidence separately and disclose the local manifest
+change. Never edit hashes alone, weaken checks or substitute a fake SDK factory.
+A failed/unavailable probe leaves that platform unaccepted and tools blocked.
+
+The live runner uses a disposable empty configured project, real tools-disabled
+Chief review, actual Godot controls/background/NPC rendering, one SDK-created
+nonce result, plain-client replay, clean restart/readback and independent repo B.
+Its original SDK class/default factory and production runtime verification remain
+active; transparent method/dispatch/listener observers are disclosed in evidence.
+The supervisor releases the nonce only after independently corroborated Godot
+background acknowledgment and unrelated NPC completion. It never creates the
+claimed result. Configured Haiku tasks use 8 turns/USD 0.35 each, at most 3 domain
+queries; Chief/NPC use one turn and a 65-second operation deadline. Per-stage
+waits are 100 seconds, normal bridge drain 35 seconds; process escalation contains
+hangs but fails clean acceptance. Private artifacts can contain disposable notes
+and output; do not publish credentials, environment, full options or raw SDK dumps.
+
+M12 acceptance status is recorded separately from historical NPC SDK evidence.
+Cloud Linux API-key runs do not prove laptop subscription billing, a different
+binary, or desktop behavior. M12 remains open until implementation merges and
+all deterministic, live and desktop gates pass. Record date, OS/Godot/CLI binary,
+tested commit, auth category and observed result for each desktop item:
+
+- [ ] Run the local guard probe with the intended laptop binary and inspect its complete evidence.
+- [ ] Submit the ordinary-NPC referral and actual Chief review; verify visible ready state.
+- [ ] Use mouse and keyboard Start/Run, edit draft, focus/escape and scroll without trapping movement.
+- [ ] Physically leave the anchor during real work; observe background state and hidden panel.
+- [ ] Reach another NPC, finish its rendered reply, then physically return/refocus and see one domain result.
+- [ ] Check foreground/background controls, request correlation, Stop and confirmed workspace release.
+- [ ] Exercise a visible unsaved-memory state; confirm its revision/warning remains visible and recovery preserves edits.
+- [ ] Restart cleanly, explicitly read prior notes, and verify separate-project isolation.

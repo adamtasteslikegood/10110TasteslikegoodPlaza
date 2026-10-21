@@ -10,7 +10,7 @@ owner: adamtasteslikegood
 derives_from: [PROJECT-OVERVIEW, DESIGN-25D, SPEC-DRIVERS-025, BRIDGE-PLATFORM-DESIGN]
 enforcement: asserted
 gates: [Validate Specs:live, Export Godot 4 Prototype:live]
-weakest_claim: M9 is complete; M10/M11 are implemented and locally accepted by the owner; M12 is in design; M13–M15 remain planned.
+weakest_claim: M9 is complete; M10/M11 are implemented and locally accepted by the owner; M12 implementation has deterministic and Linux live evidence; laptop binary and desktop acceptance remain open; M13–M15 remain planned.
 ---
 
 # 10110 TastesLike Plaza — Bridge-First Platform Roadmap
@@ -31,7 +31,7 @@ remain deferred frontend milestones. M11 improves NPC conversation; it does not
 complete or replace M5 or M6.
 
 The owner approved the written bridge-first design and M10 plan on 2026-10-18.
-M9 is complete; M10/M11 are implemented and locally accepted by the owner; M12 is in design; M13–M15 remain planned.
+M9 is complete; M10/M11 are implemented and locally accepted by the owner; M12 implementation has deterministic and Linux live evidence; laptop binary and desktop acceptance remain open; M13–M15 remain planned.
 M10 acceptance covers offline configuration, archive/lifecycle and loopback service
 tests; it does not establish later UI features or durable application recovery.
 `D-033` supersedes broad `D-006` with scoped synchronous NPC calls; `D-034`
@@ -46,7 +46,7 @@ and its limits separately from the historical direct API proof below.
 | **M9** | Align the design, protocol documentation and roadmap around the bridge-first platform direction; review the written spec | Complete — owner written-spec approval 2026-10-18 |
 | **M10** | Validated central configuration, JSONL run/agent transcripts and standard debug logs with quotas and retention | Implemented and locally accepted by owner 2026-10-21 |
 | **M11** | Godot NPC conversation history, late responses, mouse window resizing and basic keyboard/scroll controls | Implemented and locally accepted by owner 2026-10-21 |
-| **M12** | Configured project/worktree bootstrap, native three-file memory and domain execution through clients | Written spec approved 2026-10-21; implementation plan approved; execution underway |
+| **M12** | Configured project/worktree bootstrap, native three-file memory and domain execution through clients | Implementation has deterministic and Linux live evidence; laptop binary and desktop acceptance remain open |
 | **M13** | Durable local user/project/domain application state in SQLite, with explicit restart semantics | Planned after M12 |
 | **M14** | Independent execution workspaces beyond M12's minimum | Planned; sequencing with M13 to be reviewed |
 | **M15** | Authenticated hosted durable state; hosted provider remains unselected | Planned after M14 |
@@ -455,7 +455,8 @@ surfaces remain outside that sequence unless a later design schedules them.
 > The [detailed M12 spec](../docs/superpowers/specs/2026-10-21-m12-domain-execution-design.md)
 > is ACTIVE, with written approval recorded 2026-10-21. The
 > [implementation plan](../docs/superpowers/plans/2026-10-21-m12-project-execution.md)
-> is owner-approved for subagent-driven execution. M12 implementation is not complete. M13/M14
+> is owner-approved for subagent-driven execution. M12 implementation has deterministic
+> and Linux live evidence; merge, laptop binary and desktop acceptance remain open. M13/M14
 > sequencing may change or combine state and isolation; M15's provider remains
 > unselected. See the owner update in `BRIDGE-PLATFORM-DESIGN`.
 
@@ -463,7 +464,7 @@ The following milestones derive from `BRIDGE-PLATFORM-DESIGN` (`ACTIVE`,
 owner-approved 2026-10-18). M9's documentation approval is complete. M10 has
 implemented settings/recording and deterministic acceptance coverage. M11 has
 implemented history/controls and automated coverage, with owner laptop acceptance
-recorded 2026-10-21. M12–M15 acceptance criteria describe future verification.
+recorded 2026-10-21. M12 has recorded Linux live evidence with desktop acceptance open; M13–M15 describe future verification.
 Existing M8 conversation behavior remains the regression baseline.
 
 ### Milestone 9 — Align and review the platform direction
@@ -509,7 +510,7 @@ first attempt each, cloud API key inherited by CLI, four distinct observed SDK
 session IDs. [Fresh evidence](evidence/npc-sdk-live-2026-10-18.json) records its
 limits. The owner separately confirmed laptop Claude subscription and API-token
 authentication on 2026-10-21; the output cap was a setting. The runner's open
-manifest remains insufficient graceful-shutdown proof. M12 is in design.
+manifest remains insufficient graceful-shutdown proof. M12 implementation has deterministic and Linux live evidence; laptop binary and desktop acceptance remain open.
 
 Retain history for each NPC conversation across closing and reopening its panel,
 including responses that arrive after dismissal. Add mouse resizing with the
@@ -539,7 +540,14 @@ The [M12 written design](../docs/superpowers/specs/2026-10-21-m12-domain-executi
 defines approved bootstrap, memory, reservation, lifecycle and client contracts
 (`D-038`/`D-039`). The
 [implementation plan](../docs/superpowers/plans/2026-10-21-m12-project-execution.md)
-is owner-approved for subagent-driven execution.
+is owner-approved for subagent-driven execution. Tasks 1–9 have reviewed
+deterministic implementation coverage, including native Godot background/refocus
+and plain-client parity. Task 10 adds the bounded live runner and operator
+instructions. The [2026-10-21 Linux live flow](evidence/m12-live-2026-10-21.json)
+and [fresh 29-case guard matrix](evidence/m12-guard-2026-10-21.json) passed;
+[recorded evidence and limits](../QUICKSTART.md#m12-live-evidence-and-desktop-checks)
+keep Linux live proof, laptop-binary verification and desktop checks distinct.
+Implementation merge and owner M12 desktop acceptance remain outstanding.
 
 Connect domain lifecycle and execution to the frontend through the UI-agnostic
 bridge contract. Verify the complete path with a live Agent SDK run, including

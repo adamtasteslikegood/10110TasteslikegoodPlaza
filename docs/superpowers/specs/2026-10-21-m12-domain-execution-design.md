@@ -633,6 +633,15 @@ laptop acceptance. M12 closes only after implementation merges, automated gates
 pass, the real tool/background/plain-client evidence is recorded, and desktop
 controls have been accepted. This specification satisfies none of those runtime gates.
 
+**Implementation evidence, 2026-10-21:** Tasks 1–9 have reviewed deterministic
+coverage. The [fresh guard matrix](../../../specs/evidence/m12-guard-2026-10-21.json)
+and [real Linux headless flow](../../../specs/evidence/m12-live-2026-10-21.json)
+passed at live-code commit `c128b543d73864099002247c7f32854e2b020c3f`, with
+closed manifests, SDK/bridge exit 0 and detached ownership. Failed attempts remain
+recorded separately. This proves neither a different laptop binary nor desktop
+focus/controls/visible unsaved state. Implementation merge and M12 owner desktop
+acceptance remain open; see the [operator checklist](../../../QUICKSTART.md#m12-live-evidence-and-desktop-checks).
+
 ## 9. Written-spec handoff
 
 Written-spec approval is recorded on 2026-10-21. `D-038`/`D-039` register the

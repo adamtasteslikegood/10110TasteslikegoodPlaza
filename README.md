@@ -49,13 +49,16 @@ whose written specification is **ACTIVE, owner-approved 2026-10-18**. M9
 alignment is complete; M10 configuration/observability is implemented with
 deterministic acceptance coverage for validated settings and bounded local
 recording. M11 per-agent history, correlated late replies, resizing and keyboard
-controls are implemented with deterministic coverage; desktop acceptance remains
-outstanding (see the [operating guide](QUICKSTART.md#npc-conversation-history-and-controls-m11)). The
+controls are implemented with deterministic coverage and owner laptop acceptance
+recorded on 2026-10-21 (see the [operating guide](QUICKSTART.md#npc-conversation-history-and-controls-m11)). The
 [M9–M15 roadmap](specs/roadmap.md) sequences centralized settings,
 bounded local transcripts/debug logs, and usable NPC chat windows with resizing,
-keyboard controls and per-agent scrollback. User → project → domain state,
-worktree execution isolation and authenticated hosted durability are later
-milestones; they are not current prototype capabilities. The implemented default
+keyboard controls and per-agent scrollback. M12 configured-project bootstrap,
+dedicated Git worktree, bounded project notes and domain controls/replay are implemented on PLZG-289 with deterministic
+coverage; [Linux live evidence](QUICKSTART.md#m12-live-evidence-and-desktop-checks)
+has passed. Laptop binary and desktop acceptance remain open. Durable application
+state, broader workspace isolation and authenticated hosted operation remain later
+milestones. The implemented default
 runtime follows [`D-037`](docs/designs/platform-decisions.md#d-037--claude-codeagent-sdk-default-with-explicit-api-key-messages-api-opt-in):
 Claude Code through Agent SDK, with explicit API-key-only Messages API compatibility
 and no automatic fallback. See [Quick start](QUICKSTART.md) for authentication,

@@ -22,9 +22,11 @@ keyboard controls for M11. M9 documentation alignment and written approval are
 complete; M10 settings and bounded recording are implemented with deterministic
 acceptance coverage. M11 history, correlation and controls are implemented under
 the [M11 plan](../plans/2026-10-18-m11-npc-conversations.md), with deterministic
-coverage and desktop acceptance outstanding. This ACTIVE design also specifies
+coverage and owner laptop acceptance recorded 2026-10-21. This ACTIVE design also specifies
 future durable-state functionality, so `enforcement: intended` remains.
-M12–M15 require their own detailed designs before execution.
+M12 has its owner-approved detailed design and implementation with deterministic
+and [Linux live evidence](../../../QUICKSTART.md#m12-live-evidence-and-desktop-checks);
+laptop binary and desktop acceptance remain open. M13–M15 require detailed designs before execution.
 
 The owner explicitly confirmed synchronous NPC calls with timeout (`D-033`,
 superseding `D-006`) and asynchronous domains with buffered results and existing turn/budget caps
@@ -116,7 +118,7 @@ dependencies, not a date forecast. None of M10–M15 is completed by this docume
 | M9 | Align platform direction and prototype wording | This written spec, roadmap and protocol distinguish implemented, planned and deferred behavior; documentation validation passes and the owner reviews the written spec. |
 | M10 | Central config and bounded local observability | Configuration precedence/validation, run manifests, per-agent transcripts, debug events, rotation, quota/age pruning and failure cases pass focused tests. |
 | M11 | Usable NPC conversations | Mouse resizing, viewport reflow, wheel/scrollbar/paging keys, focus behavior, A→B→A scrollback and late-response correlation meet §7 tests. |
-| M12 | Configured project, worktree bootstrap, three-file memory and domain execution | Create/reuse a dedicated worktree, initialize non-Git projects only after Chief Architect confirmation, and persist isolated project notes. Godot backgrounds/refocuses real SDK work and consumes results; a plain client exercises the same protocol. Written specification approved 2026-10-21; implementation plan approved for subagent-driven execution. |
+| M12 | Configured project, worktree bootstrap, three-file memory and domain execution | Create/reuse a dedicated worktree, initialize non-Git projects only after Chief Architect confirmation, and persist isolated project notes. Godot backgrounds/refocuses real SDK work and consumes results; a plain client exercises the same protocol. Written specification approved 2026-10-21; implementation has deterministic and Linux live evidence. Laptop binary and desktop acceptance remain open. |
 | M13 | Local durable workspace state | User/project/domain-scoped conversations and execution metadata survive restart/reconnect; application-history restoration and SDK-task recovery are tested and reported separately. |
 | M14 | Independent execution workspaces beyond M12's minimum | Domain work executes in assigned worktrees inside its project; concurrent changes stay isolated and can be reviewed for integration. |
 | M15 | Authenticated durable service | Authenticated ownership, isolation and recovery work across processes/devices; select the managed durability provider in that milestone's design. |

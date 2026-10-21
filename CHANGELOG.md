@@ -17,6 +17,23 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
 
+### Added — M12 bounded acceptance and operations (PLZG-289)
+
+- Implement configured project bootstrap, real Chief approval, dedicated execution
+  worktree, bounded repository notes and generation-aware Godot domain controls;
+  Tasks 1–9 have independently reviewed deterministic coverage.
+- Add the bounded `scripts/m12_live.py` runner, fake-child/provider failure tests,
+  original SDK/default-factory observation, causal external nonce release,
+  plain-client parity, restart/isolation and actual manifest/ownership teardown
+  checks. No automatic paid retries or failed-artifact deletion.
+- Document project config, Git/POSIX requirements, retained edits, recovery
+  inspection, fixed guard-manifest activation and separate laptop/desktop gates
+  in `QUICKSTART.md`. Fresh 29-case guard and real Linux Godot/plain-client
+  acceptance passed at `c128b54`; preserve four failed reports and the accepted
+  evidence under `specs/evidence/m12-*2026-10-21*.json`. All three bridge
+  manifests closed, five SDK CLIs exited 0 and ownership detached cleanly.
+  Laptop binary and M12 desktop acceptance remain open.
+
 ### Added — M12 design and implementation plan (PLZG-289)
 
 - Record owner approval of the written M12 specification at `57b631f` on
