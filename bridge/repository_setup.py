@@ -95,7 +95,8 @@ class _Git:
     Raw stdin plumbing never asks Git to transform source content. Inherited
     GIT_* variables, global/system config and templates cannot supply programs.
     Existing local config is retained; command overrides suppress its hooks,
-    fsmonitor, signing and worktree redirection without editing it.
+    fsmonitor, signing and worktree redirection without editing it. Explicit
+    --no-lazy-fetch requires supporting Git; all transport protocols are denied.
     """
 
     def __init__(self, root: Path, temporary: Path):
@@ -115,6 +116,7 @@ class _Git:
             GIT_CONFIG_NOSYSTEM="1",
             GIT_CONFIG_GLOBAL=os.devnull,
             GIT_TERMINAL_PROMPT="0",
+            GIT_ALLOW_PROTOCOL="",
             GIT_NO_REPLACE_OBJECTS="1",
             LC_ALL="C",
             GIT_AUTHOR_NAME="Plaza Bridge",
@@ -136,6 +138,7 @@ class _Git:
         result = subprocess.run(
             [
                 "git",
+                "--no-lazy-fetch",
                 "--no-optional-locks",
                 *[arg for value in configuration for arg in ("-c", value)],
                 "-C",

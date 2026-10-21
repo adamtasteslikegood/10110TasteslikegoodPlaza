@@ -634,3 +634,118 @@ def test_local_excludes_file_is_honored_without_changing_config(tmp_path):
     assert committed_paths(root) == {"keep.txt"}
     assert (root / ".git/config").read_bytes() == before
     assert (root / "private.txt").read_text() == "excluded fixture"
+
+
+def promisor_fetch_sentinel(root, tmp_path):
+    sentinel = tmp_path / "upload-pack-ran"
+    script = tmp_path / "upload-pack.sh"
+    script.write_text(f"#!/bin/sh\ntouch {shlex.quote(str(sentinel))}\nexit 1\n")
+    script.chmod(0o755)
+    git(root, "config", "remote.origin.promisor", "true")
+    git(root, "config", "remote.origin.url", str(tmp_path / "local-remote"))
+    git(root, "config", "remote.origin.uploadpack", str(script))
+    return sentinel
+
+
+@pytest.mark.parametrize(
+    "entry", ["proposal", "inspection", "initialize", "final_inspection"]
+)
+def test_missing_head_never_executes_promisor_fetch(tmp_path, monkeypatch, entry):
+    root = project(tmp_path, unborn=True)
+    (root / "seed.txt").write_text("preserved fixture")
+    sentinel = promisor_fetch_sentinel(root, tmp_path)
+    before_config = (root / ".git/config").read_bytes()
+    proposal = setup.build_init_proposal(root)
+    missing = "1" * 40 + "\n"
+    if entry != "final_inspection":
+        (root / ".git/refs/heads/owner-topic").write_text(missing)
+    else:
+        original = subprocess.run
+
+        def corrupt_after_head_selection(args, **kwargs):
+            result = original(args, **kwargs)
+            if (
+                args[0] == "git"
+                and "symbolic-ref" in args
+                and args[-2:] == ["HEAD", "refs/heads/main"]
+            ):
+                (root / ".git/refs/heads/main").write_text(missing)
+            return result
+
+        monkeypatch.setattr(subprocess, "run", corrupt_after_head_selection)
+    caught = None
+    try:
+        if entry == "proposal":
+            setup.build_init_proposal(root)
+        elif entry == "inspection":
+            setup.inspect_project(root)
+        else:
+            setup.initialize_repository(proposal, approve(proposal))
+    except WorkspaceError as error:
+        caught = error
+    # Assert the actual execution boundary even if resolution otherwise fails.
+    assert not sentinel.exists()
+    assert caught is not None
+    assert (root / ".git/config").read_bytes() == before_config
+    assert (root / "seed.txt").read_text() == "preserved fixture"
+    if entry != "final_inspection":
+        assert not (root / ".git/refs/heads/main").exists()
+
+
+@pytest.mark.parametrize(
+    "malformed", ["missing_object", "invalid_oid", "dangling_symref", "nonbranch_head"]
+)
+def test_existing_unresolvable_head_is_never_classified_unborn(tmp_path, malformed):
+    root = project(tmp_path, unborn=True)
+    branch_ref = root / ".git/refs/heads/owner-topic"
+    if malformed == "missing_object":
+        branch_ref.write_text("1" * 40 + "\n")
+    elif malformed == "invalid_oid":
+        branch_ref.write_text("invalid object id\n")
+    elif malformed == "dangling_symref":
+        branch_ref.write_text("ref: refs/heads/missing\n")
+    else:
+        (root / ".git/HEAD").write_text("ref: refs/tags/missing\n")
+    with pytest.raises(WorkspaceError):
+        setup.build_init_proposal(root)
+    assert not (root / ".git/refs/heads/main").exists()
+
+
+def test_plumbing_missing_blob_never_executes_promisor_fetch(tmp_path, monkeypatch):
+    root = project(tmp_path, unborn=True)
+    (root / "seed.txt").write_text("reviewed fixture")
+    sentinel = promisor_fetch_sentinel(root, tmp_path)
+    proposal = setup.build_init_proposal(root)
+    original = subprocess.run
+
+    def remove_blob(args, **kwargs):
+        if args[0] == "git" and "cat-file" in args:
+            oid = args[-1]
+            (root / ".git/objects" / oid[:2] / oid[2:]).unlink()
+        return original(args, **kwargs)
+
+    monkeypatch.setattr(subprocess, "run", remove_blob)
+    caught = None
+    try:
+        setup.initialize_repository(proposal, approve(proposal))
+    except WorkspaceError as error:
+        caught = error
+    assert not sentinel.exists()
+    assert caught is not None
+    assert not (root / ".git/refs/heads/main").exists()
+    assert (root / "seed.txt").read_text() == "reviewed fixture"
+
+
+def test_inspection_rejects_git_without_required_option_support(tmp_path, monkeypatch):
+    root = project(tmp_path)
+    binary = tmp_path / "bin"
+    binary.mkdir()
+    git_script = binary / "git"
+    git_script.write_text(
+        "#!/bin/sh\necho 'unknown option: --no-lazy-fetch' >&2\nexit 129\n"
+    )
+    git_script.chmod(0o755)
+    monkeypatch.setenv("PATH", str(binary) + os.pathsep + os.environ["PATH"])
+    with pytest.raises(WorkspaceError):
+        setup.inspect_project(root)
+    assert not (root / ".git").exists()

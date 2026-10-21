@@ -60,7 +60,7 @@ def _git(
     environment = {
         key: value for key, value in os.environ.items() if not key.startswith("GIT_")
     }
-    environment.update(GIT_TERMINAL_PROMPT="0", LC_ALL="C")
+    environment.update(GIT_TERMINAL_PROMPT="0", GIT_ALLOW_PROTOCOL="", LC_ALL="C")
     configuration = [
         "core.hooksPath=" + os.devnull,
         "core.fsmonitor=false",
@@ -69,6 +69,7 @@ def _git(
     result = subprocess.run(
         [
             "git",
+            "--no-lazy-fetch",
             "--no-optional-locks",
             *[arg for value in configuration for arg in ("-c", value)],
             "-C",
@@ -134,15 +135,19 @@ def _key(common: Path) -> str:
 
 
 def inspect_project(root: Path) -> ProjectInspection:
-    """Classify an existing top-level directory without changing its contents."""
+    """Inspect locally without lazy fetching; only an absent branch is unborn.
+
+    Git must support --no-lazy-fetch; unknown options fail closed. An existing
+    branch whose commit is unavailable/corrupt is invalid, never an init target.
+    """
     try:
         root = Path(root).resolve(strict=True)
         with files.directory(root):
             identity = _identity(root)
         try:
             bare = _git(root, "rev-parse", "--is-bare-repository")
-        except subprocess.CalledProcessError:
-            if os.path.lexists(root / ".git"):
+        except subprocess.CalledProcessError as error:
+            if error.returncode != 128 or os.path.lexists(root / ".git"):
                 raise _invalid()
             return ProjectInspection(root, identity, None, None, None, None)
         if bare != "false":
@@ -164,6 +169,20 @@ def inspect_project(root: Path) -> ProjectInspection:
         except subprocess.CalledProcessError:
             if branch is None:
                 raise _invalid()
+            # Resolve HEAD only one hop: a dangling branch symref still exists,
+            # even when recursive symbolic-ref would name an absent target.
+            branch_ref = _git(root, "symbolic-ref", "--quiet", "--no-recurse", "HEAD")
+            if not branch_ref.startswith("refs/heads/"):
+                raise _invalid()
+            try:
+                _git(root, "show-ref", "--exists", branch_ref)
+            except subprocess.CalledProcessError as error:
+                # --exists examines references, not object availability. Only
+                # exit 2 establishes absence; malformed refs/errors fail closed.
+                if error.returncode != 2:
+                    raise _invalid()
+            else:
+                raise _invalid("Project HEAD refers to an unavailable commit")
             commit = None
         return ProjectInspection(root, identity, common, _key(common), commit, branch)
     except WorkspaceError:
