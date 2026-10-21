@@ -40,8 +40,21 @@ async def review_repository(config, proposal, *, deadline=None):
         )
     payload = asdict(proposal)
     payload["root"] = str(proposal.root)
+    inspected_state = (
+        "existing local Git repository with no HEAD commit"
+        if proposal.unborn
+        else "directory without local Git metadata"
+    )
     instructions = (
-        "\nReview the exact repository initialization proposal supplied as JSON data. "
+        "\nAll eligible proposals have no committed history: the inspector rejects "
+        "any project with a HEAD commit. In this proposal, unborn=true means "
+        "existing local Git metadata with no HEAD commit; unborn=false means a "
+        "non-Git directory, not an existing committed repository. "
+        "Inspected project state: " + inspected_state + ". "
+        "Empty seed_files permits an empty seed commit; it does not indicate "
+        "existing history. Review the inspected state and supplied inventory "
+        "independently; you may approve or decline. "
+        "Review the exact repository initialization proposal supplied as JSON data. "
         "Initialize main and seed only the reviewed allowlist, or an empty commit if empty. "
         "Credentials, ignored/generated files, symlinks and nested repositories are excluded. "
         "Return only an object with exactly proposal_id, digest, approved (boolean), reason "

@@ -124,6 +124,7 @@ def evidence():
         initial=dict(
             stages=stages,
             wire=wire,
+            scene_run_id="run",
             checks={key: True for key in module().INITIAL_CHECKS},
             query_count=1,
             result_count=1,
@@ -157,7 +158,7 @@ def evidence():
         lifetimes=[
             dict(
                 scenario=s,
-                run_id=s,
+                run_id="run" if s == "a_initial" else s,
                 child_returncode=0,
                 cli_returncodes=[0],
                 forced=False,
@@ -577,3 +578,54 @@ async def test_pre_setup_child_closure_is_reported_without_inventing_memory_atta
     assert result["memory_marker_after"] is None
     assert result["owners"] == []
     assert mod.validate_lifetimes([result])
+
+
+def test_scene_is_bound_to_initial_child_not_supervisor_identity():
+    record = evidence()
+    record["run_id"] = "separate-supervisor"
+    record["initial"]["scene_run_id"] = "run"
+    record["lifetimes"][0]["run_id"] = "run"
+    assert module().validate_evidence(record) == []
+
+
+def test_scene_binding_cannot_name_another_child():
+    record = evidence()
+    record["initial"]["scene_run_id"] = "foreign"
+    assert module().validate_evidence(record)
+
+
+def test_bridge_child_env_removes_only_harness_names_and_preserves_runtime_bindings(
+    monkeypatch,
+):
+    monkeypatch.setenv("PLAZA_REQUIRE_GODOT", "1")
+    monkeypatch.setenv("PLAZA_M12_LIVE", "1")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "fixture-secret")
+    monkeypatch.setenv("HTTPS_PROXY", "http://fixture-proxy")
+    monkeypatch.setenv("SSL_CERT_FILE", "/fixture-ca")
+    monkeypatch.setenv("PLAZA_DOMAIN_MAX_BUDGET_USD", "50")
+    env = module().bridge_environment()
+    assert "PLAZA_REQUIRE_GODOT" not in env and "PLAZA_M12_LIVE" not in env
+    assert env["ANTHROPIC_API_KEY"] == "fixture-secret"
+    assert env["HTTPS_PROXY"] == "http://fixture-proxy"
+    assert env["SSL_CERT_FILE"] == "/fixture-ca"
+    assert env["PLAZA_DOMAIN_MAX_BUDGET_USD"] == "50"
+
+
+@pytest.mark.asyncio
+async def test_config_override_cannot_redirect_live_child_outside_disposable_project(
+    tmp_path, monkeypatch
+):
+    mod = module()
+    project = tmp_path / "disposable"
+    project.mkdir()
+    other = tmp_path / "other"
+    other.mkdir()
+    monkeypatch.setenv("PLAZA_WORKSPACE_ROOT_DIR", str(other))
+    life = mod.LiveLifetime(tmp_path / "life", project, "a_initial")
+    try:
+        with pytest.raises(mod.AcceptanceError):
+            await life.start()
+    finally:
+        closed = await life.stop()
+    assert closed["child_returncode"] != 0 and closed["closed"] is False
+    assert not (project / ".git").exists() and not (other / ".git").exists()

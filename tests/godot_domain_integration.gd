@@ -121,7 +121,7 @@ func _ready() -> void:
 	await stage("background_ack", background)
 	await walk(Vector2(-75, 25))
 	check(security.get_node("Proximity").overlaps_body(player), "actual unrelated core NPC entry while engineering runs")
-	var unrelated := await npc_submit("unrelated core conversation", "security-auditor")
+	var unrelated := await npc_submit("In one short sentence, acknowledge this unrelated core conversation." if live_mode else "unrelated core conversation", "security-auditor")
 	var npc_payload := domain_identity()
 	npc_payload.merge(unrelated)
 	npc_payload.execution_state = BridgeClient.domain_snapshot("engineering").execution_state
@@ -214,10 +214,21 @@ func npc_submit(text: String, agent: String) -> Dictionary:
 	await until(func(): return BridgeClient.conversation_snapshot(agent).get("pending", {}).is_empty() and not current_assistant().is_empty())
 	var messages: Array = BridgeClient.conversation_snapshot(agent).messages
 	var message: Dictionary = messages.back()
+	if live_mode:
+		var body: RichTextLabel = npc_hud.get_node("Panel/Margin/Rows/BodyLabel")
+		var span: Dictionary = npc_hud.current_assistant_span()
+		if not await until(func(): return npc_hud.get_node("Panel").visible and (body.visible_characters < 0 or body.visible_characters >= span.start + span.length)):
+			await finish()
+			return {}
+		check(body.visible_characters < 0 or body.visible_characters >= span.start + span.length, "live NPC assistant span fully visible")
+		print("godot_domain_live_visible_npc: OK")
 	check(message.role == "assistant" and current_assistant() == message.content, "current assistant span matches completed " + agent)
 	return {"request_id": message.request_id, "agent_id": agent, "assistant": current_assistant()}
 
 func stage(name: String, payload: Dictionary) -> void:
+	if live_mode and not failures.is_empty():
+		await finish()
+		return
 	seq += 1
 	var path := control.path_join("%02d-%s.json" % [seq, name])
 	var file := FileAccess.open(path + ".tmp", FileAccess.WRITE)

@@ -465,6 +465,18 @@ async def bridge_child(config_path, control, run_id):
 
     control = Path(control)
     config = load_config(Path(config_path))
+    selected = read_json(Path(config_path))
+    require(
+        config.workspace_root_dir == Path(selected["WORKSPACE_ROOT_DIR"])
+        and config.conversation_backend == "claude_code"
+        and config.domain_tier == "haiku"
+        and config.model_for("haiku") == "claude-haiku-5-5"
+        and config.domain_max_turns == 8
+        and config.domain_max_budget_usd == 0.35
+        and config.conversation_max_output_tokens == 1536
+        and config.conversation_timeout_seconds == 65,
+        "environment changed disposable project/backend/model/caps",
+    )
     service = ProjectService(config, runtime_root=ROOT, owner_run_id=run_id)
     writer = RunLogWriter(config, "M12 live acceptance")
     server = BridgeServer(
@@ -573,6 +585,20 @@ async def wait_file(path, children, seconds=STAGE_SECONDS):
     return read_json(path)
 
 
+def bridge_environment():
+    environment = dict(os.environ)
+    for name in (
+        "PLAZA_REQUIRE_GODOT",
+        "PLAZA_TEST_BRIDGE_URL",
+        "PLAZA_TEST_PROGRESS",
+        "PLAZA_M12_CONTROL",
+        "PLAZA_M12_RUN_ID",
+        "PLAZA_M12_LIVE",
+    ):
+        environment.pop(name, None)
+    return environment
+
+
 class LiveLifetime:
     def __init__(self, directory, project, scenario):
         self.directory, self.project, self.scenario = directory, project, scenario
@@ -611,6 +637,7 @@ class LiveLifetime:
                 self.run_id,
             ],
             self.directory / "bridge.log",
+            env=bridge_environment(),
             cwd=ROOT,
         )
         self.ready = await wait_file(self.control / "ready.json", [self.child], 20)
@@ -857,7 +884,12 @@ async def initial(life, report):
         cwd=ROOT,
     )
     result = report["initial"] = dict(
-        checks={}, query_count=0, result_count=0, rendered_count=0, tool_receipts=[]
+        checks={},
+        query_count=0,
+        result_count=0,
+        rendered_count=0,
+        tool_receipts=[],
+        scene_run_id=life.run_id,
     )
     checks = result["checks"]
     gate = work = source_before = None
@@ -1281,7 +1313,12 @@ def validate_evidence(record):
                 and isinstance(wire, dict),
                 "missing complete stage/wire evidence",
             )
-            validator = StageValidator(record["run_id"], "godot")
+            validator = StageValidator(data["scene_run_id"], "godot")
+            lifetimes = record.get("lifetimes", [])
+            require(
+                lifetimes and lifetimes[0].get("run_id") == data["scene_run_id"],
+                "scene/child binding mismatch",
+            )
             for stage in stages:
                 validator.accept(
                     {
@@ -1444,6 +1481,7 @@ def sanitize_evidence(record):
                 "nonce",
                 "result_sha256",
                 "worktree_path",
+                "scene_run_id",
                 "released_monotonic",
                 "released_utc",
                 "background_monotonic",

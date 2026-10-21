@@ -430,8 +430,12 @@ def test_memory_publications_never_regress_last_confirmed_revision(tmp_path):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("backend", ["claude_code", "messages_api"])
+@pytest.mark.parametrize(
+    "project_state", ["empty_non_git", "populated_non_git", "existing_unborn"]
+)
+@pytest.mark.parametrize("approved", [True, False])
 async def test_actual_chief_reviewer_is_fresh_tools_disabled_exact_json(
-    tmp_path, monkeypatch, backend
+    tmp_path, monkeypatch, backend, project_state, approved
 ):
     import json
     from types import SimpleNamespace
@@ -442,12 +446,17 @@ async def test_actual_chief_reviewer_is_fresh_tools_disabled_exact_json(
 
     root = tmp_path / "project"
     root.mkdir()
-    (root / "README.md").write_text("seed")
+    if project_state == "populated_non_git":
+        (root / "README.md").write_text("seed")
+    elif project_state == "existing_unborn":
+        from bridge.tests.test_workspace import git
+
+        git(root, "init", "-b", "main")
     proposal = build_init_proposal(root)
     decision = dict(
         proposal_id=proposal.proposal_id,
         digest=proposal.digest,
-        approved=True,
+        approved=approved,
         reason="exact decision",
     )
     raw = json.dumps(decision)
@@ -465,9 +474,10 @@ async def test_actual_chief_reviewer_is_fresh_tools_disabled_exact_json(
     monkeypatch.setattr(conversation_api, "AsyncAnthropic", lambda **kwargs: manager)
     config = replace(default_config(), conversation_backend=backend)
     assert await review_repository(config, proposal) == decision
-    assert not (root / ".git").exists()
+    assert (root / ".git").exists() is (project_state == "existing_unborn")
     if backend == "claude_code":
         options = clients[0].options
+        instructions = options.system_prompt
         assert options.tools == [] and options.allowed_tools == []
         assert options.model == config.model_for(config.conversation_tier)
         assert options.setting_sources == [] and options.skills == []
@@ -476,6 +486,7 @@ async def test_actual_chief_reviewer_is_fresh_tools_disabled_exact_json(
         ]
     else:
         request = api.messages.create.call_args.kwargs
+        instructions = request["system"]
         assert "tools" not in request
         assert request["model"] == config.model_for(config.conversation_tier)
         sent = request["messages"]
@@ -483,7 +494,24 @@ async def test_actual_chief_reviewer_is_fresh_tools_disabled_exact_json(
     reviewed = json.loads(sent[0]["content"])
     assert reviewed["root"] == str(root)
     assert reviewed["root_identity"] == list(proposal.root_identity)
-    assert reviewed["seed_files"][0]["sha256"] == proposal.seed_files[0].sha256
+    assert reviewed["unborn"] is (project_state == "existing_unborn")
+    assert [entry["sha256"] for entry in reviewed["seed_files"]] == [
+        entry.sha256 for entry in proposal.seed_files
+    ]
+    assert "All eligible proposals have no committed history" in instructions
+    assert "unborn=false means a non-Git directory" in instructions
+    assert (
+        "unborn=true means existing local Git metadata with no HEAD commit"
+        in instructions
+    )
+    assert "Empty seed_files permits an empty seed commit" in instructions
+    expected_state = (
+        "existing local Git repository with no HEAD commit"
+        if project_state == "existing_unborn"
+        else "directory without local Git metadata"
+    )
+    assert "Inspected project state: " + expected_state in instructions
+    assert "you may approve or decline" in instructions
     assert reviewed["digest"] == proposal.digest
 
 

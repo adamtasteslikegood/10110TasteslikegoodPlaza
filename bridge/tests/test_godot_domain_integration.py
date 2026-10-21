@@ -24,8 +24,9 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("live_mode", [False, True])
 async def test_empty_project_physical_background_npc_and_rendered_replay(
-    tmp_path, monkeypatch, offline_clients
+    tmp_path, monkeypatch, offline_clients, live_mode
 ):
     godot = shutil.which(os.environ.get("GODOT_BIN", "godot"))
     if not godot:
@@ -62,6 +63,9 @@ async def test_empty_project_physical_background_npc_and_rendered_replay(
             "PLAZA_M12_CONTROL": str(control),
             "PLAZA_M12_RUN_ID": life.run_id,
         }
+        if live_mode:
+            env["PLAZA_M12_LIVE"] = "1"
+            (control / "task.txt").write_text("execute integration sentinel")
         process = await asyncio.create_subprocess_exec(
             godot,
             "--headless",
@@ -147,7 +151,14 @@ async def test_empty_project_physical_background_npc_and_rendered_replay(
                     assert payload["agent_id"] == "security-auditor"
                     assert payload["assistant"] == "unrelated core NPC reply gull"
                     assert conversation.reply.call_args.kwargs["messages"] == [
-                        {"role": "user", "content": "unrelated core conversation"}
+                        {
+                            "role": "user",
+                            "content": (
+                                "In one short sentence, acknowledge this unrelated core conversation."
+                                if live_mode
+                                else "unrelated core conversation"
+                            ),
+                        }
                     ]
                     npc_time = receipt["received_monotonic"]
                     provider.release.set()
@@ -208,6 +219,8 @@ async def test_empty_project_physical_background_npc_and_rendered_replay(
                 re.M,
             ), output
             assert "SCRIPT ERROR" not in output and "ERROR:" not in output, output
+            if live_mode:
+                assert output.count("godot_domain_live_visible_npc: OK") == 3, output
             print(output)
         except BaseException:
             if process.returncode is None:
