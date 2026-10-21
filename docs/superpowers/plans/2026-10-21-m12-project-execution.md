@@ -192,7 +192,7 @@ Functions: `build_init_proposal(root: Path) -> RepoInitProposal`,
 `initialize_repository(proposal: RepoInitProposal, approval: RepoInitApproval) -> ProjectInspection`.
 The model call belongs to Task 6; this module never calls a provider.
 
-- [ ] **Step 1 — Write failing exact-tree initialization tests.**
+- [x] **Step 1 — Write failing exact-tree initialization tests.**
   Cover `test_empty_approved_repo_starts_on_main`,
   `test_populated_repo_commits_only_reviewed_seed`,
   `test_unborn_prior_index_survives_without_entering_commit`,
@@ -211,9 +211,9 @@ The model call belongs to Task 6; this module never calls a provider.
 
   Include unchanged-directory identity but changed file bytes, renamed/replaced
   root, symlink seeds, conflicting `main`, ignored/generated files and two processes.
-- [ ] **Step 2 — Run red:**
+- [x] **Step 2 — Run red:**
   `python -m pytest bridge/tests/test_repository_setup.py -q`.
-- [ ] **Step 3 — Implement proposal validation and controlled Git initialization.**
+- [x] **Step 3 — Implement proposal validation and controlled Git initialization.**
   `initial_branch` is always `main`. Bound review inventory to 256 regular files,
   8 MiB total seed bytes and 64 KiB serialized proposal; refuse broader inventory
   with an actionable narrowing reason. Use Git ignore matching through disposable
@@ -230,9 +230,9 @@ The model call belongs to Task 6; this module never calls a provider.
   per command. Preserve an unborn repo's index/config; for a newly initialized
   repo with no old index install the reviewed index. Retain partial setup for
   inspection rather than deleting it or replaying stale approval.
-- [ ] **Step 4 — Run red command green**, plus Task 1 suites. Expect exact allowlist
+- [x] **Step 4 — Run red command green**, plus Task 1 suites. Expect exact allowlist
   commits and retained source/index sentinels for every failure path.
-- [ ] **Step 5 — Commit:**
+- [x] **Step 5 — Commit:**
   `git commit -m "feat(bridge): validate architect-approved repository setup (PLZG-289)"`.
 
 ### Task 3: Maintain bounded repository-scoped Markdown memory
