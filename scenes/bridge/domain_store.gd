@@ -283,6 +283,7 @@ func apply_packet(packet: Dictionary) -> Dictionary:
 	_refresh_uncertainty(d)
 	var settled: bool = not (c.type == "activate_domain" and packet.state == "activating")
 	if settled: _settle(d, id)
+	_trim(d)
 	return _change("domain", d.domain_id, kind, id, settled)
 
 

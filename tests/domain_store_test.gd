@@ -165,6 +165,7 @@ func _ready() -> void:
 	check(s.snapshot("core").draft == "" and s.snapshot("engineering").draft == "independent", "core and engineering independent")
 	additional_vectors()
 	review_regressions()
+	archive_retention_boundary()
 	finish()
 
 func dict_accepted() -> Dictionary:
@@ -337,3 +338,30 @@ func review_regressions() -> void:
 		s.apply_packet(result(vector[0]))
 		s.apply_packet(complete("replay", vector[0], vector[0], true))
 		check(s.snapshot("core").received_cursor == vector[0] and s.snapshot("core").omitted_count == vector[1], "R4 observed unavailable-prefix receipt is subtracted before saturation: " + vector[0])
+
+
+func archive_retention_boundary() -> void:
+	# R5: archived unknown-input metadata must fit before publishing new state.
+	var s = fresh()
+	for n in range(1, 5):
+		var terminal := result(str(n), "A", "old-" + str(n))
+		terminal.task = "old"
+		terminal.output = "x".repeat(262144 if n < 4 else 260350)
+		s.apply_packet(terminal)
+	var unknown := command("domain_query", "unknown")
+	unknown.task = "unknown"
+	check(s.admit_command(unknown), "R5 near-full snapshot admits unknown Run")
+	s.disconnect_connection()
+	s.admit_command(command("domain_status", "recovery"))
+	s.apply_packet(state("recovery"))
+	s.admit_command(command("deactivate_domain", "stop"))
+	s.apply_packet(state("stop", "A", "inactive"))
+	check(s.admit_command(command("activate_domain", "fresh")), "R5 explicit Start admitted after confirmed cleanup")
+	var before: Dictionary = s.snapshot("core")
+	var before_bytes := JSON.stringify(before).to_utf8_buffer().size()
+	check(before.results.size() == 4 and before_bytes <= Store.MAX_BYTES and before_bytes > Store.MAX_BYTES - 100, "R5 setup retains four whole terminals just below byte cap")
+	var change: Dictionary = s.apply_packet(state("fresh", "B"))
+	var after: Dictionary = s.snapshot("core")
+	check(not change.is_empty() and JSON.stringify(after).to_utf8_buffer().size() <= Store.MAX_BYTES, "R5 new-generation acknowledgment enforces complete snapshot byte cap")
+	check(after.error.get("unresolved_queries", []) == [unknown] and after.pending_query.is_empty() and after.pending_control.is_empty(), "R5 retention preserves original unknown input after state and control settle")
+	check(ids(s) == ["2", "3", "4"] and after.omitted_count == 1 and after.results[0].output == "x".repeat(262144), "R5 archival evicts only oldest whole terminal and counts omission")
