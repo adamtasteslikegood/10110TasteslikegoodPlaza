@@ -421,7 +421,7 @@ generation; methods `async start() -> dict`,
 `replay(cursor: int) -> list[dict]`. The service interface consumed here is declared in
 Task 6; use a fake implementing it until real integration, not a second service.
 
-- [ ] **Step 1 — Write failing lifecycle/correlation/replay tests.**
+- [x] **Step 1 — Write failing lifecycle/correlation/replay tests.**
   `test_activation_exposes_generation_before_connect`,
   `test_admission_precedes_immediate_terminal`, `test_duplicate_run_is_not_reexecuted`,
   `test_stale_generation_cannot_mutate`, `test_replay_highwater_and_history_gap`,
@@ -439,9 +439,9 @@ Task 6; use a fake implementing it until real integration, not a second service.
 
   Include 128/129-byte IDs, 64 KiB/+1 task, Unicode/digit cursors, bool-as-cursor,
   10/11 domains, 2/3 generations, pending/completed duplicates and repeat Stop.
-- [ ] **Step 2 — Run red:**
+- [x] **Step 2 — Run red:**
   `python -m pytest bridge/tests/test_domain_session.py bridge/tests/test_domain_manager.py bridge/tests/test_protocol.py -q`.
-- [ ] **Step 3 — Implement coordinator-owned admission and terminal storage.**
+- [x] **Step 3 — Implement coordinator-owned admission and terminal storage.**
   Canonical commands: describe_workspace/domain_status/activate_domain/domain_query/
   background_domain/refocus_domain/deactivate_domain/resume. All require nonempty
   request_id; domain commands require domain_id; Run/background/refocus/Stop/replay
@@ -462,14 +462,14 @@ Task 6; use a fake implementing it until real integration, not a second service.
   high-water mark and completes even when empty; pruned history reports the earliest
   retained ID/history_gap. Evict only clean inactive old generations, never a live
   lease; reject excess active identities. No automatic Run retry after retention.
-- [ ] **Step 4 — Run green**, preserving recording/source-correlation tests in
+- [x] **Step 4 — Run green**, preserving recording/source-correlation tests in
   `bridge/tests/test_runtime_wiring.py`. Assert failed delivery never changes a
   stored success and replay never writes a second execution record.
   Verify this task at the manager/session boundary using the declared fake
   ProjectService. Task 6 owns migration of the old server API and must restore
   the full bridge/runtime suite before client integration. Preserve every recording
   assertion; do not add a second legacy domain protocol for intermediate commits.
-- [ ] **Step 5 — Commit:**
+- [x] **Step 5 — Commit:**
   `git commit -m "feat(bridge): correlate domain lifecycle and replay (PLZG-289)"`.
 
 ### Task 6: Route project setup and NPC turns through responsive connections
