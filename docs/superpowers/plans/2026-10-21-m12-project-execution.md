@@ -635,9 +635,16 @@ Domain snapshot keys are `project_id`, `domain_id`, `domain_session_id`,
 `workspace_id`, `state`, `execution_state`, `pending_query`, `pending_control`,
 `draft`, `results`, `received_cursor`, `consumed_cursor`, `omitted_count`,
 `uncertain`, `error`, and `memory`. Cursor values are decimal strings; compare them
-by parsed numeric order. Results keep the full terminal wire shape. A replay
-completion advances `received_cursor` only through a contiguous observed prefix
-or an explicit history gap; interleaved live output must not skip unseen replay.
+by numeric decimal-string order without signed-64-bit narrowing; reject invalid
+or over-128-byte identifiers without cursor advancement. Results keep the full
+terminal wire shape. A replay completion advances `received_cursor` only through
+a contiguous observed prefix or an explicit history gap; interleaved live output
+must not skip unseen replay. `mark_read(domain_id, output_id)` targets only the
+current generation and cannot pass its confirmed received prefix. Replay results
+retain their original Run request IDs; only `resume_complete` carries the Resume
+request ID. Correlate completion with that replay and connection, and treat its
+lifecycle/execution fields as captured observations: they must not overwrite
+newer live state. Fresh status discovery resolves remaining lifecycle uncertainty.
 Add only GameEvents `workspace_changed(reason, request_id)` and
 `domain_changed(domain_id, reason, request_id)` with String parameters.
 
