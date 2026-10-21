@@ -809,6 +809,34 @@ def corroborate(state, receipt):
     return command, packets
 
 
+def assert_answer_matches(output, expected):
+    """Assert meaning without changing the product's preserved terminal bytes."""
+    require(
+        isinstance(output, str) and len(output.encode()) <= 65536,
+        "invalid semantic answer",
+    )
+    if output == expected:
+        return True
+    text = output.strip()
+    if text.startswith("```"):
+        match = re.fullmatch(r"```json\n([\s\S]*)\n```", text)
+        require(match is not None and text.count("```") == 2, "invalid answer fence")
+        text = match.group(1)
+    from bridge.workspace import _decode
+
+    try:
+        envelope = _decode(text.encode())
+    except (ValueError, RecursionError, UnicodeError):
+        raise AcceptanceError(
+            "answer is not exact plain text or one complete JSON object"
+        ) from None
+    require(
+        isinstance(envelope.get("answer"), str) and envelope["answer"] == expected,
+        "semantic answer mismatch",
+    )
+    return True
+
+
 def tool_task(release):
     # This program is text supplied to the real SDK. The harness never executes it.
     program = f"""import os,time,pathlib,json,hashlib,datetime
@@ -830,7 +858,7 @@ print("M12_RECEIPT "+json.dumps(receipt))"""
         + shlex.quote("exec(" + repr(program) + ")")
     )
     return (
-        "Run this exact bounded Bash command once (timeout 100000 ms); do not create the result by any other tool, do not retry it. It waits for an external supervisor. Then return JSON with answer equal to the nonce from M12_RECEIPT, and memory_delta with summary equal to that exact nonce and next_action 'Read prior notes without rerunning completed work'. Command: "
+        "Run this exact bounded Bash command once (timeout 100000 ms); do not create the result by any other tool, do not retry it. It waits for an external supervisor. Then return only one JSON object without Markdown fences or surrounding prose, with answer equal to the nonce from M12_RECEIPT, and memory_delta with summary equal to that exact nonce and next_action 'Read prior notes without rerunning completed work'. Command: "
         + command
     )
 
@@ -1020,10 +1048,9 @@ async def initial(life, report):
                 )
                 data = gate.result_path.read_bytes()
                 require(
-                    data.decode() == result["nonce"]
-                    and payload["output"] == result["nonce"],
-                    "result content/terminal differs from nonce",
+                    data.decode() == result["nonce"], "result file differs from nonce"
                 )
+                assert_answer_matches(payload["output"], result["nonce"])
                 require(
                     len(client["attempts"]) == 1
                     and client["attempts"][0]["name"] == "Bash"
@@ -1166,7 +1193,7 @@ async def readback(life, report, scenario):
             same_workspace=True,
             same_memory=True,
         )
-        task = "Without tools or file changes, read the supplied prior project notes. Return JSON with answer equal to the exact completed M12 nonce beginning m12-. Do not rerun any earlier task."
+        task = "Without tools or file changes, read the supplied prior project notes. Return only one JSON object without Markdown fences or surrounding prose, with answer equal to the exact completed M12 nonce beginning m12-. Do not rerun any earlier task."
     else:
         require(
             all(
@@ -1190,7 +1217,7 @@ async def readback(life, report, scenario):
             "B notes missing",
         )
         checks.update(different_identity=True, own_three_notes=True, no_a_notes=True)
-        task = "Without tools or file changes, inspect only supplied prior project notes. If there is no completed M12 nonce, return JSON with answer 'isolated'. Do not invent a nonce or rerun work."
+        task = "Without tools or file changes, inspect only supplied prior project notes. If there is no completed M12 nonce, return only one JSON object without Markdown fences or surrounding prose, with answer 'isolated'. Do not invent a nonce or rerun work."
     async with websockets.connect(life.ready["url"]) as socket:
         plain = Plain(socket)
         await plain.send("activate_domain", "readback-start")
@@ -1211,7 +1238,7 @@ async def readback(life, report, scenario):
             "readback failed",
         )
         expected = a["nonce"] if key == "restart" else "isolated"
-        require(terminal["output"] == expected, "notes-derived readback incorrect")
+        assert_answer_matches(terminal["output"], expected)
         state = life.state()
         clients = [c for c in state["clients"] if c["domain"]]
         require(len(clients) == 1, "unexpected readback clients")

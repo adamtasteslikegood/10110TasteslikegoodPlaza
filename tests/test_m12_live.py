@@ -671,3 +671,37 @@ def test_actual_canonical_memory_change_after_baseline_fails_isolation(tmp_path)
     ).saved
     with pytest.raises(mod.AcceptanceError):
         mod.assert_a_unchanged(work, expected, result_sha)
+
+
+@pytest.mark.parametrize(
+    "output",
+    [
+        "m12-nonce",
+        '{"answer":"m12-nonce"}',
+        '```json\n{"answer":"m12-nonce","memory_delta":{"summary":"m12-nonce"}}\n```',
+    ],
+)
+def test_semantic_answer_preserves_raw_plain_json_and_one_fenced_object(output):
+    assert module().assert_answer_matches(output, "m12-nonce") is True
+
+
+@pytest.mark.parametrize(
+    "output",
+    [
+        "wrong",
+        '{"answer":"wrong"}',
+        '{"answer":7}',
+        '{"answer":null}',
+        '{"answer":"m12-nonce"',
+        '{"answer":"m12-nonce"} trailing',
+        'prose {"answer":"m12-nonce"}',
+        'before ```json\n{"answer":"m12-nonce"}\n```',
+        '```json\n{"answer":"m12-nonce"}\n``` after',
+        '```json\n{"answer":"m12-nonce"}\n```\n```json\n{}\n```',
+        '{"answer":"wrong","answer":"m12-nonce"}',
+        '[{"answer":"m12-nonce"}]',
+    ],
+)
+def test_wrong_malformed_or_surrounded_answer_cannot_pass_by_substring(output):
+    with pytest.raises(module().AcceptanceError):
+        module().assert_answer_matches(output, "m12-nonce")
