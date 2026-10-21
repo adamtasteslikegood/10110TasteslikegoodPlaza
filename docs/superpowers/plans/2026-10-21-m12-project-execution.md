@@ -21,8 +21,9 @@ in live evidence; SDK version alone does not identify its tool-hook behavior.
 written version at `57b631f` approved by the owner on 2026-10-21.
 `D-038`/`D-039` ratify the approved policy in doc set 0.2.17.
 
-**Status:** Plan awaiting owner review and execution-method selection. All runtime
-checkboxes below are open. Planning does not establish M12 acceptance. Baseline
+**Status:** Owner approved this plan and subagent-driven execution on 2026-10-21.
+Implementation is in progress; runtime checkboxes change only with observed
+evidence. Plan approval does not establish M12 acceptance. Baseline
 is `origin/dev` at `142b17a`, plus approved design commits; fetch/status again at
 execution start and reconcile any intervening product changes before editing.
 
@@ -307,6 +308,10 @@ delta: dict|None) -> MemorySaveResult`,
 **Files:** Create `bridge/readiness.py`, `bridge/domain_sdk.py`,
 `bridge/tests/test_readiness.py`, `bridge/tests/test_domain_sdk.py`,
 `scripts/m12_tool_guard_probe.py`, `tests/test_m12_tool_guard_probe.py`.
+Add `decode_project_reply(output: str) -> tuple[str, dict|None]` to
+`bridge/conversation_backend.py` here because DomainSDKOwner consumes it; Task 6
+will reuse the same decoder for both NPC adapters. The Task 6 envelope contract
+applies verbatim (answer string plus optional memory_delta, plain-text fallback).
 Modify `bridge/tests/test_conversation_backends.py` only to share/preserve its
 harmless-child cancellation pattern, not to change NPC behavior.
 **Consumes:** Tasks 1/3; existing `BridgeConfig` and SDK result types.
@@ -471,9 +476,9 @@ Modify `bridge/server.py`, `bridge/conversation.py`, `bridge/conversation_backen
 - `ConversationEngine.handle_request(request, history=None, *, metadata=None,
   prior_project_notes: str = "")` keeps its existing response shape. Add the same
   optional keyword to `ConversationBackend.complete()` and both adapters; extend
-  existing `ExecutionMetadata` with `memory_delta: dict|None = None`. Define
-  `decode_project_reply(output: str) -> tuple[str, dict|None]` in
-  `conversation_backend.py` and use it in both NPC adapters and `DomainSDKOwner`.
+  existing `ExecutionMetadata` with `memory_delta: dict|None = None`. Reuse Task 4
+  `decode_project_reply(output: str) -> tuple[str, dict|None]` from
+  `conversation_backend.py` in both NPC adapters; DomainSDKOwner already uses it.
   For configured project context, request one JSON object with `answer: str` and
   optional `memory_delta: object`; a valid answer survives an invalid delta. Plain
   text remains valid fallback output. Unconfigured conversations bypass parsing.
@@ -770,7 +775,6 @@ sequential; use isolated worktrees for independently assigned implementation wor
 The authoring worktree under `.claude/worktrees/` is not a valid runtime execution
 worktree. A plan checkbox changes only with observed evidence, not a worker claim.
 
-Before implementation, the owner reviews this written plan and selects the execution
-method. Then use the corresponding Superpowers execution skill. Do not ask for the
-already-recorded written-spec approval again. This planning document is not the
+The owner approved this written plan and selected subagent-driven execution on
+2026-10-21. Use that Superpowers execution skill without repeating either approval. This planning document is not the
 three-file project memory feature it describes.
