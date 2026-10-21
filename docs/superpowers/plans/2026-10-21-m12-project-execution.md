@@ -121,7 +121,9 @@ Read `bridge/log_storage.py` and its tests for patterns; do not refactor diagnos
   common_git_dir: Path|None, project_id: str|None, head_commit: str|None,
   source_branch: str|None)` and `ExecutionWorkspace(project_id: str,
   workspace_id: str, project_root: Path, common_git_dir: Path, worktree_path: Path,
-  git_dir: Path, branch: str, initial_commit: str)` live in `workspace.py`.
+  git_dir: Path, branch: str, initial_commit: str,
+  source_identity: tuple[int,int])` live in `workspace.py`. The source identity
+  freezes this bridge binding; it is not one project-global source checkout lock.
 - `inspect_project(root: Path) -> ProjectInspection`;
   `prepare_worktree(project: ProjectInspection, *, runtime_root: Path) -> ExecutionWorkspace`;
   `validate_workspace(workspace: ExecutionWorkspace, *, runtime_root: Path) -> None`.
