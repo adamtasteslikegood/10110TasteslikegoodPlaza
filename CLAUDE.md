@@ -6,7 +6,7 @@
 
 This is not hypothetical. A `/cs:grill-pm` session on 2026-07-30 planned a "sundown Jira TO" sprint from a checkout **31 commits behind `origin/dev`** and produced three findings that were already fixed upstream — including "`generate_report.py` hardcodes `project = "TO"`", which had already been changed to read `ATLASSIAN_JIRA_PROJECT_KEY`. The board was stale in the other direction: tickets still open for work already merged. Three states had diverged — local tree, `origin/dev`, and the Jira board — and each looked authoritative on its own.
 
-The general rule, which generalises the one `docs/delivery-coordinates.md` earned about boards: **verify the state you are about to assert, against the system that owns it.** A checkout does not own upstream state; a ticket does not own whether code is fixed.
+After syncing, read [HANDOFF.md](.claude/session-memory/HANDOFF.md), [TODO.md](.claude/session-memory/TODO.md) and [PROGRESS.md](.claude/session-memory/PROGRESS.md); maintain them after substantive turns and before yielding/compaction using HANDOFF's limits. **Verify remembered state against the system that owns it.** A checkout does not own upstream state; a ticket does not own whether code is fixed.
 
 ## Repository state
 
