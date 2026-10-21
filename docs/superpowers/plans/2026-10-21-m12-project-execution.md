@@ -133,7 +133,7 @@ Read `bridge/log_storage.py` and its tests for patterns; do not refactor diagnos
   `.release(*, cleanup_confirmed: bool) -> None`. It exposes `.workspace`,
   `.domain_id`, `.domain_session_id` and `.held: bool` for subsequent tasks.
 
-- [ ] **Step 1 — Add failing configuration, real-Git and subprocess-lock tests.**
+- [x] **Step 1 — Add failing configuration, real-Git and subprocess-lock tests.**
   Name cases `test_workspace_env_is_raw_and_config_relative`,
   `test_bootstrap_reuses_dirty_worktree`, `test_distinct_clones_do_not_share_project`,
   `test_invalid_workspace_never_falls_back`, `test_session_lease_blocks_other_process`,
@@ -154,10 +154,10 @@ Read `bridge/log_storage.py` and its tests for patterns; do not refactor diagnos
   Parametrize empty/invalid/file paths, booleans, null env text as a literal path,
   symlinks, nested/overlapping trees, detached/source branch conflicts, foreign
   registration, stale/occupied location, concurrent bootstrap and interrupted setup.
-- [ ] **Step 2 — Run the tests red.**
+- [x] **Step 2 — Run the tests red.**
   `python -m pytest bridge/tests/test_config.py bridge/tests/test_workspace.py bridge/tests/test_workspace_lease.py -q`.
   New imports/contracts should fail; preserve the existing config tests.
-- [ ] **Step 3 — Implement the interfaces and local ownership format.**
+- [x] **Step 3 — Implement the interfaces and local ownership format.**
   Special-case nullable workspace JSON and raw env parsing; do not put it blindly
   in `_TEXT_KEYS`. Derive project key from SHA-256 of canonical common-directory
   bytes (first 16 hex chars), then compare full identity on every reuse. Sanitize
@@ -171,11 +171,11 @@ Read `bridge/log_storage.py` and its tests for patterns; do not refactor diagnos
   Fixed bootstrap/memory/execution lock inodes are never unlinked. Acquisition
   writes the durable unclean marker before returning permission to start SDK;
   failed/uncertain cleanup retains ownership/marker. No reset, fetch or cleanup.
-- [ ] **Step 4 — Run the targeted suites green.**
+- [x] **Step 4 — Run the targeted suites green.**
   Run Step 2 plus `python -m pytest bridge/tests/test_log_storage.py -q`; expect all
   pass and unchanged diagnostic behavior. Verify both cooperating processes cannot
   bootstrap two worktrees and the losing process did not mutate the source.
-- [ ] **Step 5 — Commit only Task 1 files.**
+- [x] **Step 5 — Commit only Task 1 files.**
   `git commit -m "feat(bridge): prepare and reserve project worktrees (PLZG-289)"`.
 
 ### Task 2: Apply only the Chief Architect's exact initialization proposal
