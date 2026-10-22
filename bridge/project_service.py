@@ -24,6 +24,7 @@ from bridge.workspace import (
     _identity,
     inspect_project,
     load_workspace,
+    load_legacy_workspace,
     prepare_worktree,
     validate_workspace,
     git_without_filters,
@@ -202,22 +203,8 @@ class ProjectService:
         await owned_io(prepare)
         # Observe persisted departments without provisioning or migrating them.
         for domain_id in DOMAIN_IDS:
-
-            def observe():
-                workspace = load_workspace(
-                    project, domain_id=domain_id, runtime_root=self._runtime_root
-                )
-                if workspace is not None:
-                    self._install_workspace(workspace)
-                    reservation = observe_reservation(workspace)
-                    self._workspace_states[domain_id]["reservation"] = reservation
-                    if reservation and reservation["cleanup_failed"]:
-                        self._workspace_states[domain_id].update(
-                            stage="failed", reason="cleanup_failed"
-                        )
-
             try:
-                await owned_io(observe)
+                await owned_io(self._observe_workspace, project, domain_id)
             except Exception as error:
                 state = self.workspace_snapshot(domain_id)
                 state.update(
@@ -225,6 +212,40 @@ class ProjectService:
                 )
                 self._workspace_states[domain_id] = state
         self._snapshot.update(stage="ready", reason=None)
+
+    def _observe_workspace(self, project, domain_id):
+        legacy = (
+            load_legacy_workspace(project, runtime_root=self._runtime_root)
+            if domain_id == "core"
+            else None
+        )
+        workspace = legacy or load_workspace(
+            project, domain_id=domain_id, runtime_root=self._runtime_root
+        )
+        if workspace is None:
+            return
+        reservation = observe_reservation(workspace)
+        if legacy is not None:
+            # Eligibility is advisory only: never install readiness or ownership
+            # for an unmigrated record. Start retains the full locked validation.
+            state = self.workspace_snapshot(domain_id)
+            state.update(
+                workspace_id=workspace.workspace_id,
+                worktree_path=str(workspace.worktree_path),
+                branch=workspace.branch,
+                stage="migration_pending",
+                reason=None,
+            )
+            self._workspace_states[domain_id] = state
+        else:
+            self._install_workspace(workspace)
+        state = self._workspace_states[domain_id]
+        state["reservation"] = reservation
+        if reservation:
+            if reservation["cleanup_failed"]:
+                state.update(stage="failed", reason="cleanup_failed")
+            elif legacy is not None:
+                state.update(stage="failed", reason="workspace_busy")
 
     def _install_workspace(self, workspace):
         domain_id = workspace.domain_id
@@ -512,6 +533,20 @@ class ProjectService:
             return self.snapshot()
         workspace = self._workspaces.get(domain_id)
         if workspace is None:
+            if self._project is not None:
+                try:
+                    await owned_io(
+                        lambda: self._observe_workspace(
+                            self._validated_project(), domain_id
+                        )
+                    )
+                except Exception as error:
+                    state = self.workspace_snapshot(domain_id)
+                    state.update(
+                        stage="failed",
+                        reason=getattr(error, "code", "workspace_invalid"),
+                    )
+                    self._workspace_states[domain_id] = state
             return self.workspace_snapshot(domain_id)
 
         def observe():

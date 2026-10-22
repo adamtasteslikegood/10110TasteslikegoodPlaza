@@ -559,6 +559,38 @@ def _check_migration(common):
         raise _invalid("Conflicting Core migration records")
 
 
+def load_legacy_workspace(
+    project: ProjectInspection, *, runtime_root: Path
+) -> ExecutionWorkspace | None:
+    """Validate a pending Core adoption without writing or taking ownership.
+
+    Reservation observation is separate; explicit Start must revalidate and hold
+    the bootstrap/execution locks before it can migrate this record.
+    """
+    try:
+        if inspect_project(project.root) != project:
+            raise _invalid()
+        common = project.common_git_dir
+        if common is None or not os.path.lexists(_record_path(common, None)):
+            return None
+        value = _decode(files.read_regular(_record_path(common, None), max_bytes=16384))
+        if value.get("state") == "migrated":
+            return None
+        if os.path.lexists(_record_path(common, "core")):
+            raise _invalid("Incomplete legacy Core migration requires inspection")
+        workspace = _from_record(
+            _read_record(common, None), project.root, project.root_identity
+        )
+        if workspace.domain_id != "core":
+            raise _invalid("Legacy ownership must belong to Core")
+        _validate_tree(workspace, runtime_root=runtime_root)
+        return workspace
+    except WorkspaceError:
+        raise
+    except (OSError, ValueError, RuntimeError, subprocess.SubprocessError):
+        raise _invalid() from None
+
+
 def load_workspace(
     project: ProjectInspection, *, domain_id: str = "core", runtime_root: Path
 ) -> ExecutionWorkspace | None:

@@ -471,3 +471,152 @@ async def test_lazy_start_rejects_substituted_repository_identity(tmp_path, subs
         target.rename(copy)
         backup.rename(target)
         await service.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("obstacle", [None, "malformed", "live", "unclean", "partial"])
+async def test_legacy_character_status_allows_only_safe_explicit_adoption(
+    tmp_path, monkeypatch, obstacle
+):
+    import json
+    from bridge import project_files as files
+    from bridge.server import BridgeServer
+    from bridge.tests.domain_fakes import FakeOwner
+
+    project, old, value = legacy_workspace(tmp_path)
+    legacy = project.common_git_dir / "plaza/workspace.json"
+    record = project.common_git_dir / "plaza/workspaces/core.json"
+    lock = None
+    if obstacle == "malformed":
+        legacy.write_text("{}")
+    elif obstacle == "live":
+        lock = files.FileLock.acquire(old.git_dir / "plaza-execution.lock")
+    elif obstacle == "unclean":
+        (old.git_dir / "plaza-unclean.json").write_text("{}")
+    elif obstacle == "partial":
+        record.write_text(
+            json.dumps({**value, "schema_version": 2, "domain_id": "core"})
+        )
+    (old.worktree_path / "dirty.txt").write_text("retain")
+    config = replace(default_config(), workspace_root_dir=project.root)
+    service = ProjectService(
+        config, runtime_root=tmp_path / "runtime", owner_run_id="legacy-status"
+    )
+    monkeypatch.setattr("bridge.domain_session.DomainSDKOwner", FakeOwner)
+    server = BridgeServer(config=config, project_service=service)
+    try:
+        await service.start()
+        await service._bootstrap_task
+        before = {
+            p: p.read_bytes() for p in project.common_git_dir.rglob("*") if p.is_file()
+        }
+        packet = (
+            await server.dispatch(
+                dict(
+                    type="agent_status",
+                    agent_id="systems-architect",
+                    request_id="observe",
+                )
+            )
+        )[0]
+        await assert_legacy_status_controls(tmp_path, packet, obstacle is None)
+        assert packet["capabilities"]["can_start"] is (obstacle is None)
+        assert not packet["capabilities"]["can_run"]
+        assert {
+            p: p.read_bytes() for p in project.common_git_dir.rglob("*") if p.is_file()
+        } == before
+        assert not service._workspaces and not server.domains._sessions
+        if obstacle is None:
+            assert packet["workspace"]["stage"] == "migration_pending"
+            assert packet["workspace"]["workspace_id"] == old.workspace_id
+            response = await server.dispatch(
+                dict(type="activate_domain", domain_id="core", request_id="start")
+            )
+            assert response[-1]["state"] == "active"
+            adopted = service.require_workspace("core")
+            assert adopted.workspace_id == old.workspace_id
+            assert adopted.worktree_path == old.worktree_path
+            assert adopted.branch == value["branch"]
+            assert json.loads(legacy.read_text())["state"] == "migrated"
+        else:
+            assert packet["workspace"]["stage"] == "failed"
+        assert (old.worktree_path / "dirty.txt").read_text() == "retain"
+    finally:
+        await server.domains.shutdown()
+        await service.close()
+        if lock:
+            lock.close()
+
+
+async def assert_legacy_status_controls(tmp_path, packet, can_start):
+    """Pass actual server output to both production Godot controls when available."""
+    import asyncio
+    import json
+    import os
+    from pathlib import Path
+    import shutil
+
+    binary = shutil.which(os.environ.get("GODOT_BIN", "godot"))
+    if not binary:
+        if os.environ.get("PLAZA_REQUIRE_GODOT"):
+            pytest.fail("Godot is required for the status-to-controls regression")
+        return
+    fixture = tmp_path / "legacy-status.json"
+    fixture.write_text(json.dumps(dict(packet=packet, can_start=can_start)))
+    process = await asyncio.create_subprocess_exec(
+        binary,
+        "--headless",
+        "--path",
+        str(Path(__file__).resolve().parents[2]),
+        "tests/legacy_character_status_test.tscn",
+        "--quit-after",
+        "30",
+        env={**os.environ, "PLAZA_LEGACY_STATUS_FIXTURE": str(fixture)},
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.STDOUT,
+    )
+    try:
+        output, _ = await asyncio.wait_for(process.communicate(), 20)
+        text = output.decode()
+        assert process.returncode == 0, text
+        assert "legacy_character_status_test: OK" in text, text
+        assert "SCRIPT ERROR" not in text and "ERROR:" not in text, text
+    finally:
+        if process.returncode is None:
+            process.kill()
+            await process.wait()
+
+
+@pytest.mark.asyncio
+async def test_legacy_status_revalidates_and_start_rejects_new_live_owner(tmp_path):
+    from bridge import project_files as files
+    from bridge.server import BridgeServer
+
+    project, old, _ = legacy_workspace(tmp_path)
+    config = replace(default_config(), workspace_root_dir=project.root)
+    service = ProjectService(
+        config, runtime_root=tmp_path / "runtime", owner_run_id="legacy-race"
+    )
+    server = BridgeServer(config=config, project_service=service)
+    lock = None
+    try:
+        await service.start()
+        await service._bootstrap_task
+        command = dict(
+            type="agent_status", agent_id="systems-architect", request_id="observe"
+        )
+        assert (await server.dispatch(command))[0]["capabilities"]["can_start"]
+        lock = files.FileLock.acquire(old.git_dir / "plaza-execution.lock")
+        # Advisory eligibility must never bypass explicit Start's locked recheck.
+        with pytest.raises(WorkspaceError) as error:
+            await service.prepare_domain("core")
+        assert error.value.code == "workspace_busy"
+        assert not (project.common_git_dir / "plaza/workspaces/core.json").exists()
+        assert not (await server.dispatch(command))[0]["capabilities"]["can_start"]
+        lock.close()
+        lock = None
+        assert (await server.dispatch(command))[0]["capabilities"]["can_start"]
+    finally:
+        if lock:
+            lock.close()
+        await service.close()
