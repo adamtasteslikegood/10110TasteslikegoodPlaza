@@ -36,6 +36,95 @@
         "controller_checked_actual_baseline_before_corrections": true
       },
       "failure": "Final wire validation required text for legitimate extra agent_status domain_id:null replies at initial.wire.emitted indices 1, 2 and 32. Private closure observations confirmed execution_kind:extra; the published sanitizer omitted that discriminator. Completed lifetimes do not override failed acceptance."
+    },
+    {
+      "attempt": 2,
+      "artifact": "specs/evidence/m12-character-live-dontAsk-2026-10-22-final.json",
+      "sha256": "17141b6928ec18d422791ce6f83ff275916f013a8696f7745953e9d334ed46de",
+      "tested_commit": "a582f114faadf2cb2b9b767fc10a695171446aca",
+      "run_id": "31f32567e47f4817afbf863185de475c",
+      "permission_mode": "dontAsk",
+      "auth_mode": "api_key",
+      "exit_code": 0,
+      "completed": true,
+      "accepted": true,
+      "errors": [],
+      "started_utc": "2026-10-22T12:39:39.640712+00:00",
+      "ended_utc": "2026-10-22T12:40:26.223535+00:00",
+      "observed_lifetimes": 3,
+      "versions": {
+        "sdk": "0.2.136",
+        "anyio": "4.14.2",
+        "cli": "2.1.228 (Claude Code)",
+        "godot": "4.7.1.stable.official.a13da4feb",
+        "python": "3.12.14",
+        "platform": "linux",
+        "cli_sha256": "d535985e6941a3eb00179ccd7f52ceb0c6623a0305a518ebc4e6514f84a94c99"
+      },
+      "binding_verification": {
+        "clean_tested_head": true,
+        "before_after_baselines_equal": true,
+        "before_after_baselines_match_actual_before_recording": true,
+        "executed_source_inventory_and_hashes_match": true,
+        "executed_source_count": 44,
+        "controller_checked_actual_baseline_before_any_tracked_mutation": true,
+        "recording_worker_independently_rechecked_clean_head_baseline_and_git_blobs_before_copy": true
+      },
+      "phase_checks": {
+        "initial": {
+          "referral_no_review": true,
+          "real_chief_approved": true,
+          "main_seed": true,
+          "three_notes": true,
+          "separate_paths": true,
+          "source_unchanged": true,
+          "runtime_unchanged": true,
+          "absent_before": true,
+          "background_corroborated": true,
+          "npc_corroborated": true,
+          "sdk_only_result": true,
+          "tool_cwd": true,
+          "same_plain_output": true,
+          "one_rendered_result": true,
+          "memory_saved": true,
+          "stop_inactive": true,
+          "lease_released": true
+        },
+        "restart": {
+          "fresh_owner": true,
+          "same_workspace": true,
+          "same_memory": true,
+          "no_automatic_query": true,
+          "notes_in_query": true,
+          "nonce_not_in_task": true,
+          "notes_readback": true,
+          "result_unchanged": true,
+          "stop_inactive": true
+        },
+        "isolation": {
+          "different_identity": true,
+          "own_three_notes": true,
+          "no_a_notes": true,
+          "no_a_nonce_in_query": true,
+          "isolated_readback": true,
+          "a_unchanged": true,
+          "no_automatic_query": true,
+          "stop_inactive": true
+        }
+      },
+      "domain_terminal_estimates_usd": {
+        "initial": [
+          0.2681655
+        ],
+        "restart": [
+          0.10136150000000001
+        ],
+        "isolation": [
+          0.07188675
+        ]
+      },
+      "cost_limits": "Three retained domain terminal observations only; separate tools-disabled Chief/NPC calls and unobserved costs are excluded. Not a billing total.",
+      "outcome": "Accepted Linux API-key dontAsk Godot/plain-client flow: native NPC Start/Send/Stop, typed main/Chief setup, background work with independent extra conversation and replay, clean three-lifetime teardown, persisted-note restart/readback and separate-project isolation. No native OAuth, owner laptop or desktop acceptance claim."
     }
   ],
   "corrections": [
@@ -91,11 +180,40 @@
     "envelope_sha256": "8aa36d6227c3ec7ed5c33a5e712e5be0ffe8a3187ae0d00a50c44b5f5031cae2",
     "current_status": "Historical six-source records remain byte-identical and are rejected in both modes by the current ten-source contract."
   },
-  "next_step": "After final review/CI, the existing owner build instruction and approved plan authorize fresh bounded controller-owned verification: deliberately run and inspect full guard matrices in both modes, then one selected-mode live attempt. Strictly validate actual runtime before publishing unchanged accepted guard records, commit evidence and require clean HEAD before live. Retain every outcome; no automatic paid retries. The earlier extra human-approval gate was a controller inference, not an explicit user or skill requirement.",
+  "next_step": "Final-source cloud guard/live acceptance is recorded: both ten-source guard modes passed 29 cases at ba5599b, then the selected dontAsk/API-key Godot/plain-client live flow passed at clean a582f11. Complete final evidence/docs review and repository delivery under the approved plan; owner laptop/native OAuth/desktop acceptance remains open. Preserve all prior outcomes; no automatic paid retries and no merge or milestone-completion claim.",
   "limits": [
-    "Failed raw report remains accepted:false; no altered observation is activated.",
-    "Current-source guard and live acceptance are pending. The existing acceptance artifact intentionally fails closed.",
-    "Reported historical guard terminal costs exclude nonterminal cancellation queries and are not billing totals.",
-    "This evidence does not claim merge, milestone completion, native OAuth, another laptop binary or desktop acceptance."
-  ]
+    "Attempt 1 and its raw report remain accepted:false with the original wire domain_id failure; historical proof was not altered or activated.",
+    "Current-source Linux API-key cloud acceptance passed: both guard modes, selected dontAsk live only. Two guard modes do not imply live UI acceptance in both modes.",
+    "Terminal cost estimates exclude nonterminal cancellation queries, separate Chief/NPC calls where unreported, and other unobserved costs; they are not billing totals.",
+    "This evidence does not claim merge, milestone completion, native OAuth, another laptop binary or owner desktop/UI feel acceptance."
+  ],
+  "status_history": [
+    {
+      "recorded_at_commit": "a582f114faadf2cb2b9b767fc10a695171446aca",
+      "next_step": "After final review/CI, the existing owner build instruction and approved plan authorize fresh bounded controller-owned verification: deliberately run and inspect full guard matrices in both modes, then one selected-mode live attempt. Strictly validate actual runtime before publishing unchanged accepted guard records, commit evidence and require clean HEAD before live. Retain every outcome; no automatic paid retries. The earlier extra human-approval gate was a controller inference, not an explicit user or skill requirement.",
+      "limits": [
+        "Failed raw report remains accepted:false; no altered observation is activated.",
+        "Current-source guard and live acceptance are pending. The existing acceptance artifact intentionally fails closed.",
+        "Reported historical guard terminal costs exclude nonterminal cancellation queries and are not billing totals.",
+        "This evidence does not claim merge, milestone completion, native OAuth, another laptop binary or desktop acceptance."
+      ]
+    }
+  ],
+  "current_cloud_acceptance": {
+    "accepted": true,
+    "guard_modes": {
+      "dontAsk": 29,
+      "bypassPermissions": 29
+    },
+    "guard_tested_commit": "ba5599b1ad157aa5322febf685135e7ddc85c582",
+    "guard_source_count": 10,
+    "guard_evidence_commit": "a582f114faadf2cb2b9b767fc10a695171446aca",
+    "guard_envelope_sha256": "24cd3b4a7d13192721fb081f58b4ce19a60af5607cd244158bc02c45cd7d85fa",
+    "live_tested_commit": "a582f114faadf2cb2b9b767fc10a695171446aca",
+    "live_permission_mode": "dontAsk",
+    "live_auth_mode": "api_key",
+    "live_source_count": 44,
+    "live_accepted": true,
+    "desktop_accepted": false
+  }
 }

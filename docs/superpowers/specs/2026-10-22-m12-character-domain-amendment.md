@@ -11,7 +11,7 @@ derives_from: [STORYBOARD-W1, AGENT-DIRECTORY, DESIGN-25D, PLATFORM-DECISIONS, M
 supersedes: []
 enforcement: intended
 gates: [Validate Specs:live]
-weakest_claim: The amendment is implemented with offline coverage; fresh final-source guard/live and owner desktop acceptance remain pending.
+weakest_claim: The amendment is implemented with offline and Linux API-key cloud guard/live evidence; owner laptop/native OAuth/desktop acceptance remains open, and amendment merge is not claimed.
 ---
 
 # M12 amendment — Working characters, shared context and permission control
@@ -59,8 +59,12 @@ Chief Architect bootstrap, dedicated worktrees and memory checks remain.
 at `eadb0b4` with “ok, build it”. This ratifies the detailed design and authorizes
 implementation; it does not establish runtime completion or acceptance.
 
-The amendment is implemented with offline coverage; fresh final-source guard/live and owner desktop acceptance remain pending.
-The implementation plan is registered and authorized for execution. Tracking remains
+The amendment is implemented with offline and Linux API-key cloud guard/live evidence; owner laptop/native OAuth/desktop acceptance remains open, and amendment merge is not claimed.
+Recorded cloud evidence shows fresh ten-source guards passing 29/29 in both modes at `ba5599b` and the
+selected `dontAsk` Linux API-key Godot/plain-client flow passing at clean
+`a582f11`; see the [guard and live records](../../../QUICKSTART.md#m12-live-evidence-and-desktop-checks).
+This observational status does not change the design or the historical approval
+fact above. The implementation plan is registered and authorized for execution. Tracking remains
 [PLZG-289](https://tasteslikegood.atlassian.net/browse/PLZG-289).
 
 ## 2. Verified baseline and evidence limits

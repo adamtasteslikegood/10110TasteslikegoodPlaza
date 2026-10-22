@@ -120,14 +120,13 @@ info — questions will show a "Bridge not connected" error until you start
 
 ## Project work and domain controls (M12)
 
-The character/domain amendment is implemented on the PLZG-289 branch with
-offline verification. Both guard modes passed at `e67c926`, but later concurrency
-corrections and expanded source fingerprints require fresh acceptance; tools fail
-closed against the retained older evidence. The first amendment live attempt at
-`5f20d9c` failed final evidence validation. Fresh bounded controller-owned
-verification follows review/CI under the approved plan, with no automatic paid
-retry. Owner laptop/OAuth/desktop checks remain open;
-see [M12 evidence and desktop checks](#m12-live-evidence-and-desktop-checks).
+The character/domain amendment has recorded Linux API-key cloud acceptance:
+both ten-source guard modes passed 29/29 at `ba5599b`, and the real Godot/plain-client
+flow passed in selected `dontAsk` mode at clean `a582f11`. Native character
+controls, Chief setup, background work, independent extra conversation, replay,
+restart/readback and project isolation passed. Earlier failed and historical
+observations remain retained. Owner laptop/native OAuth/desktop checks remain
+open; see [M12 evidence and desktop checks](#m12-live-evidence-and-desktop-checks).
 Catalog characters require a prepared project for work. Explicit extras retain
 tools-disabled conversation when `WORKSPACE_ROOT_DIR` is JSON `null` (the default).
 Select one existing project directory before starting the bridge:
@@ -535,32 +534,44 @@ Nothing else in the repo needs them.
 
 ## M12 live evidence and desktop checks
 
-**Current-source amendment acceptance is pending.** The [corrective validation record](specs/evidence/m12-character-live-attempts-2026-10-22.json)
-records **1,849 Python tests and 118 subtests passing with zero skips** at
-`6917d73`, including actual offline orchestration in both modes with pinned Godot
-required. All eight headless gates passed: smoke 132 agents; conversation store
-578, transport client 154, dialogue panel 220, domain store 136, domain transport
-69, domain panel 111 and character domain 52 checks. The earlier [offline record](specs/evidence/m12-character-offline-2026-10-22.json)
-retains its original 1,810-test baseline and source hashes. Offline tests do not
-activate tools.
+**Current-source Linux API-key cloud acceptance passed.** The [live attempt ledger](specs/evidence/m12-character-live-attempts-2026-10-22.json)
+and [unchanged accepted report](specs/evidence/m12-character-live-dontAsk-2026-10-22-final.json)
+record the selected `dontAsk` Godot/plain-client flow at clean `a582f11`.
+All three bridge lifetimes closed cleanly. Native NPC controls, typed Chief setup
+on main, background work with independent extra conversation and replay, persisted
+notes after restart/readback and separate-project isolation passed. The controller
+verified the clean executed HEAD, equal before/after/actual runtime baselines and
+all **44 executed-source hashes** before recording evidence. Runtime: SDK 0.2.136,
+AnyIO 4.14.2, bundled CLI 2.1.228 and Godot 4.7.1 on Linux, API-key authentication.
+This proves live behavior in `dontAsk` only; owner laptop/native OAuth/desktop
+acceptance remains open.
 
-The [guard attempt ledger](specs/evidence/m12-character-guard-attempts-2026-10-22.json)
-retains the pre-SDK setup failure and **58 passing cases** across dontAsk and
-bypassPermissions at `e67c926`. The [first amendment live attempt](specs/evidence/m12-character-live-dontAsk-2026-10-22-attempt1.json)
-at `5f20d9c` completed its three lifetimes but failed final validation with
-`wire domain_id`: valid extra-status null department IDs were rejected. Its raw
-report remains failed and unchanged. The validator is corrected; later offline
-checks also exposed short-lock contention between status observation and
-Start/memory admission, corrected at `6917d73`.
+The [guard ledger](specs/evidence/m12-character-guard-attempts-2026-10-22.json)
+records fresh **29/29 passing cases in each permission mode** at `ba5599b`, with
+ten source fingerprints and actual runtime/binary validation before publication.
+Those unchanged reports were committed with the current two-mode envelope at
+`a582f11` before live. The earlier 58 passes at `e67c926`, pre-SDK setup failure,
+and old six-source activation remain historical; no old hashes were refreshed.
+The [first live report](specs/evidence/m12-character-live-dontAsk-2026-10-22-attempt1.json)
+at `5f20d9c` remains failed with `wire domain_id`. Its typed extra-status validator
+and subsequent short-lock contention corrections were reviewed before fresh proof.
+Every attempt is retained; no automatic paid retries ran.
 
-Four transitive guard-state files now join the source fingerprint inventory.
-The retained six-source envelope is historical and fails current validation in
-both modes. After review/CI, the controller deliberately runs and inspects fresh
-full guard matrices in both modes and one selected-mode live attempt under the
-existing build authorization and approved plan. Publish only unchanged
-accepted records matching the actual runtime, commit that evidence, and require
-a clean HEAD before live. Keep every outcome; never retry automatically or
-refresh old hashes. Two guard modes do not imply live UI acceptance in both modes.
+The recorded corrective offline checks at `6917d73` passed **1,849 Python tests
+and 118 subtests in 161.85s with zero skips**, including both-mode offline
+orchestration with required pinned Godot. All eight headless gates passed: smoke
+132 agents; conversation store 578, transport client 154, dialogue panel 220,
+domain store 136, domain transport 69, domain panel 111 and character domain 52
+checks. The earlier [offline record](specs/evidence/m12-character-offline-2026-10-22.json)
+retains its original 1,810-test baseline and source hashes.
+
+Fresh guard terminal estimates are USD 0.77665125 (`dontAsk`) and USD 0.71560025
+(`bypassPermissions`), from 24 retained terminal observations per mode. Accepted
+live domain terminal estimates are USD 0.2681655, 0.10136150000000001 and 0.07188675.
+Guard nonterminal cancellation queries and separate live Chief/NPC calls are not
+fully represented; these observations are not billing totals. Two guard modes do
+not imply live UI acceptance in both modes. No merge or owner desktop completion
+is claimed by these cloud results.
 
 Historically, on 2026-10-21 the [29-case guard matrix](specs/evidence/m12-guard-2026-10-21.json)
 and [real headless M12 flow](specs/evidence/m12-live-2026-10-21.json) passed on

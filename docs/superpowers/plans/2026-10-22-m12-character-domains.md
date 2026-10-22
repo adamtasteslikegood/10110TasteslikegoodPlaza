@@ -157,31 +157,27 @@ PR/CI review first, including any review changes to bound sources. The controlle
 then runs the deliberate paid probes and returns artifacts for final evidence/docs.
 `READY_FOR_LIVE` means offline readiness only; do not merge with acceptance pending.
 
-Recorded outcomes: both 29-case guard modes passed at `e67c926`; the
-[guard ledger](../../../specs/evidence/m12-character-guard-attempts-2026-10-22.json)
-also retains the pre-SDK setup failure. The first selected-mode live attempt at
-`5f20d9c` completed its scenarios but failed final wire validation; the
-[unchanged failed report and ledger](../../../specs/evidence/m12-character-live-attempts-2026-10-22.json)
-record that outcome. The typed extra-status validator fix (`810854d`) and bounded
-observation/admission lock correction (`6917d73`) have covering offline proof:
-1,849 tests plus 118 subtests pass with required pinned Godot and zero skips;
-all eight headless gates pass. No source changed during the final full run.
-The ten-source guard inventory now includes four transitive state/locking files,
-so the prior six-source acceptance is historical and current activation fails
-closed. After final review/CI, the existing owner build instruction and approved
-plan authorize deliberate bounded controller-owned verification: fresh both-mode
-guards and one selected-mode live attempt, each inspected separately. The earlier
-extra human-approval gate was a controller inference, not an explicit user or
-skill requirement. No automatic paid retry is authorized; retain every outcome.
-Owner laptop/OAuth/desktop checks remain open.
+Recorded outcomes: corrective offline checks at `6917d73` passed 1,849 tests
+plus 118 subtests in 161.85s, with required pinned Godot and zero skips; all eight
+headless gates passed. Fresh ten-source guard matrices passed **29/29 in both
+modes at `ba5599b`**, after review/CI. The controller validated actual runtime
+against both reports before publication and committed unchanged evidence at
+`a582f11`. The selected **`dontAsk` Linux API-key Godot/plain-client flow passed
+at clean `a582f11`**, with three clean lifetimes, all phase checks true and all
+44 executed-source hashes verified. The [guard ledger](../../../specs/evidence/m12-character-guard-attempts-2026-10-22.json)
+and [live ledger](../../../specs/evidence/m12-character-live-attempts-2026-10-22.json)
+preserve every attempt, including the earlier failed live proof, historical 58
+guard passes and old activation object. Neither prior proof nor source hashes
+were restamped. Owner laptop/native OAuth/desktop checks remain open.
 
-- [ ] Run one deliberate bounded real guard probe for each permission mode against final source, recording all outcomes. No automatic paid retries. Publish acceptance only from passing mode-bound observations; if blocked, preserve fail-closed behavior and report the precise blocker.
-- [ ] Run bounded real Godot/plain-client acceptance against final code if guard evidence passes; retain source/runtime/auth limits and failures. Do not claim local laptop/OAuth/UI feel acceptance from cloud runs.
-- [x] Update the owner checklist and offline completion claims; record remaining laptop checks and the offline handoff.
-- [ ] After final review and controller probes, record actual live outcomes and commit/push the final evidence/docs. No push or paid provider invocation occurs in the offline worker.
+- [x] Run one deliberate bounded real guard probe for each permission mode against final source, recording all outcomes. No automatic paid retries. Publish acceptance only from passing mode-bound observations; if blocked, preserve fail-closed behavior and report the precise blocker.
+- [x] Run bounded real Godot/plain-client acceptance against final code if guard evidence passes; retain source/runtime/auth limits and failures. Do not claim local laptop/OAuth/UI feel acceptance from cloud runs.
+- [x] Update the owner checklist and completion claims to recorded cloud scope; retain unchecked laptop/native OAuth/desktop items.
+- [x] After final review and controller probes, record actual outcomes and commit final evidence/docs. No paid provider invocation occurs in the recording worker.
+- [ ] Controller pushes the final evidence/docs after fresh review and completes repository delivery. No push or merge is claimed by the local evidence commit.
 
 ## Review and delivery
 
 Each task receives a fresh specification/code-quality reviewer before dependent implementation. Keep task briefs, reports, diff packages and a progress ledger in ignored `.superpowers/sdd/m12-character-domains/`. Use existing pinned `/workspace/10110TasteslikegoodPlaza/.venv/bin/python` in this execution environment; commands in product docs stay environment-neutral.
 
-After tasks, review the whole branch, fix material findings, verify covering gates and open a PR into `dev` linked to PLZG-289. Follow the repository review policy; do not merge unresolved failures or claim M12 laptop acceptance. Apply the normal D-031 dev PR checks, review and agent merge policy; the D-037 owner exception covered the historical 2026-10-18 runtime-path correction. Outstanding acceptance still blocks completion.
+After tasks, review the whole branch, fix material findings, verify covering gates and open a PR into `dev` linked to PLZG-289. Follow the repository review policy; do not merge unresolved failures or claim M12 laptop acceptance. Apply the normal D-031 dev PR checks, review and agent merge policy; the D-037 owner exception covered the historical 2026-10-18 runtime-path correction. Owner laptop/native OAuth/desktop acceptance remains open; recorded cloud acceptance does not close those checks or claim merge/milestone completion.

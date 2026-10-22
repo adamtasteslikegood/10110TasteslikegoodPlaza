@@ -26,12 +26,11 @@ spec-set versions, and no application release existed before `v0.1.22`.
 - Update live orchestration and strict evidence checks for explicit Core Start,
   working dialogue, independent extras, selected mode and context revisions.
   Offline tests include the runner's real Godot/Git flow with test-only SDK methods.
-  Retain 58 historical guard passes at `e67c926` and the unchanged failed live
-  attempt at `5f20d9c`. Correct nullable extra-status validation and bounded
-  observation/admission lock contention. The ten-source guard contract rejects
-  the retained older envelope; fresh bounded controller-owned guard/live
-  verification follows review/CI under the approved plan, with no automatic paid
-  retry. Laptop/OAuth/desktop acceptance remains open.
+  Correct nullable extra-status validation and bounded observation/admission lock
+  contention. Record fresh ten-source guard acceptance (29/29 in each mode at
+  `ba5599b`) and selected `dontAsk` Linux API-key Godot/plain-client acceptance at
+  clean `a582f11`. Preserve the earlier failed live report, historical guards and
+  activation history. Laptop/native OAuth/desktop acceptance remains open.
 
 ### Documentation — M12 working-character amendment (PLZG-289)
 

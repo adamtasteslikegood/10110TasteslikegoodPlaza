@@ -566,10 +566,12 @@ extras retain synchronous conversation. M12 now includes one safely owned
 worktree per project/department (with in-place legacy Core preservation), shared
 project memory, pre-ready Chief setup, fresh bounded game/work context and a
 guarded owner permission setting. The [implementation plan](../docs/superpowers/plans/2026-10-22-m12-character-domains.md)
-is authorized; correction implementation/acceptance remains pending. Existing
-Linux evidence certifies its tested baseline only. M12 was merged in PR #357;
-references above to its outstanding merge describe the earlier delivery snapshot.
-Desktop/OAuth acceptance remains separate from cloud API-key evidence.
+is authorized and the correction is implemented. Fresh ten-source guards passed
+29/29 in both modes at `ba5599b`; the selected `dontAsk` Linux API-key
+Godot/plain-client flow passed at clean `a582f11`. Earlier Linux reports retain
+their original tested baselines and outcomes. Baseline M12 was merged in PR #357;
+this amendment does not yet claim merge. Owner laptop/native OAuth/desktop
+acceptance remains separate and open.
 
 The M6 second-department unlock additionally requires Engineering execution in
 its own worktree plus earned progression. Preserve SB-08's access/introduction
