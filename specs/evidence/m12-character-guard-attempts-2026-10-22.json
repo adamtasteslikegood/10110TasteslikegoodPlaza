@@ -45,18 +45,45 @@
       "errors": [],
       "reported_terminal_cost_usd": 0.6647689999999999,
       "terminal_cost_observations": 24
+    },
+    {
+      "attempt": 4,
+      "permission_mode": "dontAsk",
+      "tested_commit": "ba5599b1ad157aa5322febf685135e7ddc85c582",
+      "artifact": "specs/evidence/m12-character-guard-dontAsk-2026-10-22-final.json",
+      "sha256": "6462dd51b83401a67570b80086c9be827fb73173b39137f6b544d27e1cd098ca",
+      "exit_code": 0,
+      "accepted": true,
+      "observed_cases": 29,
+      "errors": [],
+      "reported_terminal_cost_usd": 0.77665125,
+      "terminal_cost_observations": 24
+    },
+    {
+      "attempt": 5,
+      "permission_mode": "bypassPermissions",
+      "tested_commit": "ba5599b1ad157aa5322febf685135e7ddc85c582",
+      "artifact": "specs/evidence/m12-character-guard-bypassPermissions-2026-10-22-final.json",
+      "sha256": "715011b151daeeb6c718800db7005fec73c0aee88071c3ca661816e1797564de",
+      "exit_code": 0,
+      "accepted": true,
+      "observed_cases": 29,
+      "errors": [],
+      "reported_terminal_cost_usd": 0.71560025,
+      "terminal_cost_observations": 24
     }
   ],
   "decision": "Attempt 1 remains failed and unchanged. Harness correction e67c926 binds the lease and TurnIntent to the actual workspace department and workspace identity without changing production guards. After independent review and all eight CI checks passed, the controller deliberately invoked a fresh full dontAsk matrix, inspected its accepted outcome, then separately invoked bypassPermissions. No automatic retry loop, skipped case, acceptance relaxation or source-hash refresh.",
   "activation": {
     "path": "bridge/tool_guard_acceptance.json",
     "schema_version": 1,
-    "sha256": "8aa36d6227c3ec7ed5c33a5e712e5be0ffe8a3187ae0d00a50c44b5f5031cae2",
+    "sha256": "24cd3b4a7d13192721fb081f58b4ce19a60af5607cd244158bc02c45cd7d85fa",
+    "tested_commit": "ba5599b1ad157aa5322febf685135e7ddc85c582",
     "records": {
-      "dontAsk": "specs/evidence/m12-character-guard-dontAsk-2026-10-22.json",
-      "bypassPermissions": "specs/evidence/m12-character-guard-bypassPermissions-2026-10-22.json"
+      "dontAsk": "specs/evidence/m12-character-guard-dontAsk-2026-10-22-final.json",
+      "bypassPermissions": "specs/evidence/m12-character-guard-bypassPermissions-2026-10-22-final.json"
     },
-    "validation": "Controller strictly decoded and validated both raw reports and current six source hashes, compared actual installed SDK/AnyIO/CLI versions and actual bundled binary SHA against both records before atomic replacement, then verified both runtime modes. Worker independently rechecked retained raw hashes, commit/source bindings, accepted-record equality and both local runtime verifications."
+    "validation": "Controller strictly decoded and validated both complete unchanged raw reports against all ten current source hashes and required cases, compared actual installed SDK/AnyIO/CLI versions and actual bundled binary SHA against BOTH before atomic replacement, then verified both runtime modes. Recording worker independently checked strict raw JSON, exact source/copy SHA equality, all historical and new report source hashes against their tested commit blobs, envelope-record equality, actual installed runtime/binary and both provider-free runtime verifications."
   },
   "versions": {
     "sdk": "0.2.136",
@@ -68,5 +95,19 @@
     "Reported terminal costs cover 24 retained terminal observations per accepted mode; they exclude nonterminal cancellation queries and are not a billing total.",
     "Guard acceptance only. Godot/plain-client live acceptance remains pending at this evidence commit.",
     "Linux API-key observations do not close owner laptop, native OAuth or desktop acceptance."
-  ]
+  ],
+  "activation_history": [
+    {
+      "path": "bridge/tool_guard_acceptance.json",
+      "schema_version": 1,
+      "sha256": "8aa36d6227c3ec7ed5c33a5e712e5be0ffe8a3187ae0d00a50c44b5f5031cae2",
+      "records": {
+        "dontAsk": "specs/evidence/m12-character-guard-dontAsk-2026-10-22.json",
+        "bypassPermissions": "specs/evidence/m12-character-guard-bypassPermissions-2026-10-22.json"
+      },
+      "validation": "Controller strictly decoded and validated both raw reports and current six source hashes, compared actual installed SDK/AnyIO/CLI versions and actual bundled binary SHA against both records before atomic replacement, then verified both runtime modes. Worker independently rechecked retained raw hashes, commit/source bindings, accepted-record equality and both local runtime verifications."
+    }
+  ],
+  "final_source_decision": "Attempts 1\u20133 and their original activation remain historical and unchanged. After diagnosed validator/concurrency corrections, expanded ten-source fingerprints, fresh independent review, all eight CI jobs and repository review passed at ba5599b, the controller deliberately ran and inspected a new full dontAsk matrix, then separately ran and inspected bypassPermissions. Attempts 4 and 5 independently passed 29 cases each at the frozen ba5599b sources. No automatic retry loop, skipped case, acceptance relaxation or source-hash refresh. The failed first live proof remains unchanged; final-source Godot/plain-client live acceptance is pending at this guard evidence commit.",
+  "final_source_cost_limits": "Attempts 4 and 5 retain 24 terminal cost observations per mode (dontAsk USD 0.77665125; bypassPermissions USD 0.71560025). Nonterminal cancellation queries and unobserved costs are excluded; these estimates are not billing totals. Historical costs and limits remain attached to their original attempts."
 }
