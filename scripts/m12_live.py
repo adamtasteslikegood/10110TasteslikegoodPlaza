@@ -60,6 +60,7 @@ LIVE_SOURCES = tuple(
             "bridge/agent_bindings.py",
             "bridge/agent_bindings.json",
             "bridge/extras.json",
+            "bridge/bridge.py",
             "bridge/server.py",
             "bridge/project_service.py",
             "bridge/project_memory.py",

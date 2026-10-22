@@ -785,7 +785,7 @@ class BridgeServer:
                 self.close(clean=clean)
 
 
-async def serve():
+async def serve(*, stop_event: asyncio.Event | None = None):
     """Process composition root: load once, then construct network clients."""
     try:
         config = load_config()
@@ -801,7 +801,7 @@ async def serve():
     clean = False
     try:
         server = BridgeServer(config=config, recorder=recorder)
-        await server.serve()
+        await server.serve(stop_event=stop_event)
         clean = True
     finally:
         if server is None:
