@@ -137,9 +137,17 @@ class DomainSession:
         return self._state
 
     @property
+    def owner_healthy(self):
+        return bool(
+            self._owner is not None and self._owner.healthy and not self._broken
+        )
+
+    @property
     def can_run(self):
-        return self._state in (SessionState.ACTIVE, SessionState.BACKGROUND) and not (
-            self._stopping or self._broken or self._inflight is not None
+        return (
+            self._state in (SessionState.ACTIVE, SessionState.BACKGROUND)
+            and self.owner_healthy
+            and not (self._stopping or self._inflight is not None)
         )
 
     @property

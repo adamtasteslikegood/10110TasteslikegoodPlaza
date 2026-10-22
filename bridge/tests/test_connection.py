@@ -237,3 +237,46 @@ async def test_stop_and_discovery_preempt_blocked_start_and_npc(tmp_path, monkey
             assert owners[0].stopped.is_set() and not owners[0].lease.held
         await server._shutdown_domains()
     service.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("kind", ["agent_status", "project_setup"])
+@pytest.mark.parametrize(
+    "request_id, valid",
+    [("valid/雪", True), ("é" * 64, True), ("é" * 65, False), ("bad\ud800", False)],
+)
+async def test_busy_service_preserves_only_valid_correlation(kind, request_id, valid):
+    import json
+    from bridge.connection import ConnectionState
+
+    release = asyncio.Event()
+    sent = asyncio.Event()
+    packets = []
+
+    async def dispatch(*args, **kwargs):
+        await release.wait()
+
+    async def send(raw):
+        packets.append(json.loads(raw))
+        sent.set()
+
+    socket = AsyncMock()
+    socket.send.side_effect = send
+    state = ConnectionState(socket, dispatch)
+    owner = state.submit("first", dict(type=kind, request_id="first"))
+    try:
+        state.submit(
+            "second",
+            dict(type=kind, agent_id="systems-architect", request_id=request_id),
+        )
+        await asyncio.wait_for(sent.wait(), 1)
+        packet = packets[0]
+        assert packet["type"] == kind and packet["error_type"] == "service_busy"
+        if valid:
+            assert packet["request_id"] == request_id
+        else:
+            assert "request_id" not in packet
+    finally:
+        release.set()
+        await owner
+        await state.close()

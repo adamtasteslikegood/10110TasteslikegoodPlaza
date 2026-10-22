@@ -119,6 +119,7 @@ class ConnectionState:
                 )
             if (
                 not domain
+                and not interaction
                 and isinstance(data.get("request_id"), str)
                 and data["request_id"].strip()
             ):

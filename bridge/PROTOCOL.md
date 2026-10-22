@@ -120,7 +120,9 @@ an existing active/background owner is idle, healthy and locally ready. These
 are observations, not guarantees: Start/Run revalidate readiness and the SDK's
 source/runtime-bound live tool-guard acceptance. Status does not run acceptance
 probes. `tools` is `["Read","Edit","Bash"]` only when Run is locally available,
-otherwise `[]`. Capacity is `{limit:1, available, domain_id, domain_session_id}`;
+otherwise `[]`. Locally failed/disconnected/stopped owners report `sdk_error`;
+Stop and explicitly Start a fresh generation to recover. Observing failure leaves
+the existing generation, lease and capacity intact until Stop. Capacity is `{limit:1, available, domain_id, domain_session_id}`;
 the IDs identify the process-local capacity owner, or null when free. No queue
 or concurrent domain execution is implied. Extras can converse while a domain runs.
 

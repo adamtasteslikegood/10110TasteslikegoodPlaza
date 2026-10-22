@@ -30,6 +30,10 @@ class DomainManager:
         self._sessions: dict[str, list[DomainSession]] = {}
         self._closing = False
 
+    def owner_healthy(self, domain):
+        generations = self._sessions.get(domain, [])
+        return bool(generations and generations[-1].owner_healthy)
+
     def can_run(self, domain):
         generations = self._sessions.get(domain, [])
         return bool(generations and generations[-1].can_run)

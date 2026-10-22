@@ -339,7 +339,12 @@ class BridgeServer:
                     else (
                         "workspace_busy"
                         if workspace and workspace.get("reservation") and not active
-                        else "domain_busy" if active and not can_run else None
+                        else (
+                            "sdk_error"
+                            if active
+                            and not self.domains.owner_healthy(binding.domain_id)
+                            else "domain_busy" if active and not can_run else None
+                        )
                     )
                 )
             )

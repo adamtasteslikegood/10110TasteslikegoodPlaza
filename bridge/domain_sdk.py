@@ -174,6 +174,19 @@ class DomainSDKOwner:
         self.transport = None
         self._hook_tasks = HookTasks(self._signal_stop)
 
+    @property
+    def healthy(self):
+        """Observe local owner/transport state without starting or probing it."""
+        return bool(
+            self._connected
+            and not self._stop_requested
+            and self._worker is not None
+            and not self._worker.done()
+            and self.transport is not None
+            and not self.transport.broken
+            and not self.transport.closed
+        )
+
     def _signal_stop(self):
         self._stop_requested = True
         if self._scope is not None:

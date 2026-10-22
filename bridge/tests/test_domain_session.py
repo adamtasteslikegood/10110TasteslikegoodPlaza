@@ -795,3 +795,47 @@ async def test_persistent_domain_context_refresh_and_symlink_replacement(
     assert packets[-1]["error_type"] == "context_unavailable"
     assert len(owners[0].calls) == 2
     assert "pending" not in service.memory.load().todo
+
+
+@pytest.mark.asyncio
+async def test_status_observes_dead_idle_owner_without_mutating_ownership(
+    real_owner_session,
+):
+    from bridge.server import BridgeServer
+
+    session, service, owner, clients, writer = real_owner_session
+    server = BridgeServer(config=session._config, project_service=service)
+    server.domains._sessions[session.domain_id] = [session]
+    command = dict(
+        type="agent_status", agent_id="backend-architect", request_id="status"
+    )
+    healthy = (await server.dispatch(command))[0]
+    assert healthy["capabilities"]["can_run"]
+    before = service.memory.load()
+    await fail_idle_owner(owner)
+    calls = list(clients[0].calls)
+    snapshot = session.snapshot()
+    capacity = service.capacity_snapshot()
+    packet = (await server.dispatch(command))[0]
+    assert not packet["capabilities"]["can_run"]
+    assert packet["capabilities"]["tools"] == []
+    assert packet["capabilities"]["reason"] == "sdk_error"
+    assert packet["domain_state"]["domain_session_id"] == session.domain_session_id
+    assert session.snapshot() == snapshot
+    assert service.capacity_snapshot() == capacity
+    assert service.reservation.held and not session._broken
+    assert service.memory.load() == before
+    assert clients[0].calls == calls and len(clients) == 1
+    assert not [record for kind, record, _ in writer.records if kind == "transcript"]
+    stopped = (
+        await server.dispatch(
+            dict(
+                type="deactivate_domain",
+                domain_id=session.domain_id,
+                domain_session_id=session.domain_session_id,
+                request_id="stop",
+            )
+        )
+    )[-1]
+    assert stopped["state"] == "inactive"
+    assert service.reservation is None and service.capacity is None

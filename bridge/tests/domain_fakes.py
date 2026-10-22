@@ -122,6 +122,10 @@ class FakeOwner:
         self.outcome = SDKOutcome("done", "success", "completed", "provider", None)
         self.clean = True
 
+    @property
+    def healthy(self):
+        return self.started.is_set() and not self.stopped.is_set()
+
     async def start(self):
         self.started.set()
         if self.connect_gate:
