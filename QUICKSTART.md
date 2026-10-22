@@ -58,8 +58,7 @@ and ensure `godot` is on your `PATH`.
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
-pip install -r requirements.txt   # pinned bridge runtime, tests and lint tools
-pip install pyyaml                 # only for regenerating agents.json
+pip install -r requirements.txt   # pinned runtime, tests, lint and catalog tools
 ```
 
 **Claude Code authentication** — normal model execution, including every NPC

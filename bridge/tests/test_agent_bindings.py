@@ -100,18 +100,50 @@ def test_malformed_metadata_never_defaults_to_working():
             module.BindingRegistry(metadata=broken)
 
 
-def test_sync_check_detects_definition_and_binding_drift(tmp_path):
+def test_sync_check_detects_definition_and_binding_drift(tmp_path, monkeypatch):
     from bridge.sync import synchronize
+    from scripts import generate_agents_json as generator
 
-    catalog = json.loads((ROOT / "data/agents.json").read_text())
+    # The generator's canonical-submodule check covers catalog selection. Here
+    # exercise synchronization against real files without requiring that checkout.
+    source_root = tmp_path / "sources"
+    source_root.mkdir()
+    catalog = {
+        "fixture-architect": {"dept": "core", "source": "architect.md"},
+        "fixture-support": {"dept": "operations", "source": "selected.md"},
+    }
+    (source_root / "architect.md").write_text("Architect definition.")
+    (source_root / "selected.md").write_text("Selected support definition.")
+    (source_root / "unselected.md").write_text("Wrong collision winner.")
+    monkeypatch.setattr(generator, "REPO_ROOT", source_root)
     store, metadata = tmp_path / "agents", tmp_path / "bindings.json"
     assert synchronize(catalog, dest=store, metadata=metadata)
+    for agent, entry in catalog.items():
+        assert (store / f"{agent}.md").read_text() == (
+            source_root / entry["source"]
+        ).read_text()
+    assert json.loads(metadata.read_text()) == {
+        agent: {"execution_kind": "working", "domain_id": entry["dept"]}
+        for agent, entry in catalog.items()
+    }
     assert synchronize(catalog, dest=store, metadata=metadata, check=True)
-    (store / "support-ticket-handler.md").write_text("wrong collision winner")
+    definition = store / "fixture-support.md"
+    definition.write_text("Wrong collision winner.")
     assert not synchronize(catalog, dest=store, metadata=metadata, check=True)
+    assert definition.read_text() == "Wrong collision winner."
     assert synchronize(catalog, dest=store, metadata=metadata)
+    assert definition.read_text() == "Selected support definition."
     metadata.write_text("{}")
     assert not synchronize(catalog, dest=store, metadata=metadata, check=True)
+    assert metadata.read_text() == "{}"
+    assert synchronize(catalog, dest=store, metadata=metadata)
+    stale = store / "removed-agent.md"
+    stale.write_text("Stale definition.")
+    assert not synchronize(catalog, dest=store, metadata=metadata, check=True)
+    assert stale.is_file()
+    assert synchronize(catalog, dest=store, metadata=metadata)
+    assert not stale.exists()
+    assert synchronize(catalog, dest=store, metadata=metadata, check=True)
 
 
 def test_runtime_with_submodule_absent(tmp_path):
