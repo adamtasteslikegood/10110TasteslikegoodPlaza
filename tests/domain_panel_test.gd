@@ -38,6 +38,11 @@ func service() -> void:
 	while peer.get_available_packet_count() > 0:
 		var p: Dictionary = JSON.parse_string(peer.get_packet().get_string_from_utf8())
 		if p.get("type") == "describe_workspace": peer.send_text(JSON.stringify(workspace(p.request_id)))
+		elif p.get("type") == "agent_status":
+			var observation := state("", lifecycle if count("activate_domain") > 0 else "inactive")
+			observation.erase("request_id")
+			if count("activate_domain") == 0: observation.domain_session_id = null
+			peer.send_text(JSON.stringify({"type": "agent_status", "request_id": p.request_id, "agent_id": p.agent_id, "execution_kind": "extra" if p.agent_id.begins_with("fixture-extra") else "working", "domain_id": null if p.agent_id.begins_with("fixture-extra") else "core", "project": workspace(""), "workspace": {"stage": "unprepared"}, "domain_state": observation, "capabilities": {"can_start": true, "can_run": true, "can_prepare_project": true}}))
 		elif p.get("type") == "domain_status":
 			status_attempts += 1
 			var response := state(p.request_id, lifecycle)
@@ -101,12 +106,17 @@ func walk(delta: Vector2) -> void:
 		player.move_and_collide(delta / 12.0)
 		await get_tree().physics_frame
 	await frames()
+	if delta.y < 0 and count("activate_domain") > 0 and hud.nearby_agent_id == "systems-architect" and hud.selected_domain_id == "core":
+		hud.get_node("Global/Toolbar/NearbyDomainButton").pressed.emit()
+		await frames()
 
 func _ready() -> void:
 	get_tree().create_timer(22).timeout.connect(func():
 		check(false, "watchdog completed flow")
 		finish())
+	preload("res://tests/character_fixture.gd").extras()
 	main = load("res://scenes/main.tscn").instantiate()
+	main.get_node("Office/SecurityAuditor").agent_id = "fixture-extra-a"
 	add_child(main)
 	if not check(main.has_node("DomainHUD"), "production Main mounts separate DomainHUD"):
 		finish()
@@ -199,8 +209,8 @@ func _ready() -> void:
 	other_input.grab_focus()
 	await key(KEY_ENTER)
 	var other := latest("")
-	check(other.get("agent_id") == "security-auditor", "other NPC native question uses ordinary NPC protocol")
-	await deliver({"agent_id": "security-auditor", "request_id": other.request_id, "status": "ok", "output": "Ask the Chief Architect to review the configured project."})
+	check(other.get("agent_id") == "fixture-extra-a", "other NPC native question uses ordinary NPC protocol")
+	await deliver({"agent_id": "fixture-extra-a", "request_id": other.request_id, "status": "ok", "output": "Ask the Chief Architect to review the configured project."})
 	var referral_span: Dictionary = main.get_node("HUD").current_assistant_span()
 	check(npc_body.text.substr(referral_span.start, referral_span.length) == "Ask the Chief Architect to review the configured project.", "current NPC assistant span renders ordinary referral")
 	await key(KEY_ESCAPE)
@@ -249,18 +259,13 @@ func _ready() -> void:
 	check(panel.visible and count("background_domain") == 2, "remote detaches proximity anchor")
 	check(input.text == "next draft", "draft survives background and return")
 	await layout_checks()
-	# The ordinary Chief composer still owns submitted questions.
+	# Setup now has a typed independent service; the work composer stays shared.
 	await walk(Vector2(0, -90))
-	var npc_input: LineEdit = main.get_node("HUD/Panel/Margin/Rows/InputRow/QuestionInput")
-	npc_input.text = "review configured project"
-	npc_input.text_changed.emit(npc_input.text)
-	npc_input.grab_focus()
-	await key(KEY_ENTER)
-	check(count("domain_query") == 1 and latest("").get("agent_id") == "systems-architect", "Chief native question retains normal NPC protocol")
-	var chief := latest("")
-	await deliver({"agent_id": "systems-architect", "request_id": chief.request_id, "status": "ok", "output": "Chief explicit review decision"})
-	var span: Dictionary = main.get_node("HUD").current_assistant_span()
-	check(npc_body.text.substr(span.start, span.length) == "Chief explicit review decision", "Chief review renders via exact current assistant span")
+	var chief_request := BridgeClient.project_setup("systems-architect", "review configured project")
+	await frames()
+	check(count("domain_query") == 1 and latest("project_setup").get("request_id") == chief_request, "Chief setup uses typed service without a Run")
+	await deliver({"type": "project_setup", "agent_id": "systems-architect", "request_id": chief_request, "status": "ok", "output": "Chief explicit review decision", "project": workspace(""), "architect_decision": null})
+	check(BridgeClient.character_snapshot("systems-architect").setup_output == "Chief explicit review decision", "typed Chief review remains separate from work history")
 	await recovery_checks()
 	# Explicit NPC-domain action reattaches even after remote recovery.
 	hud.get_node("Global/Toolbar/NearbyDomainButton").pressed.emit()

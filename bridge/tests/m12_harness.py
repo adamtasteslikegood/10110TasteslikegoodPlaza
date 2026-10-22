@@ -127,13 +127,14 @@ class Provider:
 
 
 class Socket:
-    def __init__(self, socket):
+    def __init__(self, socket, domain_id="engineering"):
         self.socket, self.packets = socket, []
+        self.domain_id = domain_id
 
     async def send(self, kind, request_id, generation=None, **extra):
         command = dict(type=kind, request_id=request_id)
         if kind != "describe_workspace":
-            command["domain_id"] = "engineering"
+            command["domain_id"] = self.domain_id
         if generation is not None:
             command["domain_session_id"] = generation
         command.update(extra)
@@ -168,7 +169,9 @@ class Socket:
             "domain_query",
             request_id,
             generation,
-            agent_id="backend-architect",
+            agent_id=(
+                "systems-architect" if self.domain_id == "core" else "backend-architect"
+            ),
             task=task,
         )
         return await self.reply(request_id, type="domain_accepted")
@@ -183,7 +186,17 @@ class Socket:
 class Lifetime:
     """Delegating listener instrumentation leaves serve's actual drainage intact."""
 
-    def __init__(self, tmp_path, root, monkeypatch, provider, *, reviewer=None):
+    def __init__(
+        self,
+        tmp_path,
+        root,
+        monkeypatch,
+        provider,
+        *,
+        reviewer=None,
+        domain_id="engineering",
+    ):
+        self.domain_id = domain_id
         self.root = root
         self.runtime = tmp_path / "runtime"
         self.runtime.mkdir()
@@ -253,7 +266,7 @@ class Lifetime:
     async def socket(self):
         socket = await websockets.connect(self.url)
         self.sockets.append(socket)
-        return Socket(socket)
+        return Socket(socket, self.domain_id)
 
     @property
     def marker(self):
@@ -265,9 +278,9 @@ class Lifetime:
         )
 
     def assert_released(self):
-        workspace = self.service.require_workspace("engineering")
+        workspace = self.service.require_workspace(self.domain_id)
         assert observe_reservation(workspace) is None
-        assert self.service.workspace_snapshot("engineering")["reservation"] is None
+        assert self.service.workspace_snapshot(self.domain_id)["reservation"] is None
         assert not (workspace.git_dir / "plaza-unclean.json").exists()
         for owner in self.provider.owners:
             assert owner._worker.done() and owner.transport.closed
@@ -308,8 +321,10 @@ async def restart_and_isolation(
     restart_dir.mkdir()
     readback = Provider()
     readback.release.set()
-    async with Lifetime(restart_dir, root, monkeypatch, readback) as restart:
-        reused = restart.service.require_workspace("engineering")
+    async with Lifetime(
+        restart_dir, root, monkeypatch, readback, domain_id=work.domain_id
+    ) as restart:
+        reused = restart.service.require_workspace(work.domain_id)
         assert reused == work
         assert restart.service.require_memory().load() == memory_before
         assert not readback.clients and not readback.queries
@@ -333,10 +348,12 @@ async def restart_and_isolation(
     other = repository(other_dir, "project-b")
     isolated = Provider()
     isolated.release.set()
-    async with Lifetime(other_dir, other, monkeypatch, isolated) as second:
+    async with Lifetime(
+        other_dir, other, monkeypatch, isolated, domain_id=work.domain_id
+    ) as second:
         socket = await second.socket()
         gen = await socket.start()
-        b_work = second.service.require_workspace("engineering")
+        b_work = second.service.require_workspace(work.domain_id)
         assert b_work.project_id != work.project_id
         assert b_work.workspace_id != work.workspace_id
         assert b_work.common_git_dir != work.common_git_dir

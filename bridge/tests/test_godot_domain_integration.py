@@ -52,7 +52,9 @@ async def test_empty_project_physical_background_npc_and_rendered_replay(
     conversation.reply.return_value = "unrelated core NPC reply gull"
     provider = Provider()
     process = output_task = None
-    async with Lifetime(tmp_path, root, monkeypatch, provider, reviewer=review) as life:
+    async with Lifetime(
+        tmp_path, root, monkeypatch, provider, reviewer=review, domain_id="core"
+    ) as life:
         validator = StageValidator(life.run_id, "godot")
         assert life.service.snapshot()["stage"] == "needs_architect"
         scene = ROOT / "tests/godot_domain_integration.tscn"
@@ -95,29 +97,23 @@ async def test_empty_project_physical_background_npc_and_rendered_replay(
                 assert wire
                 if stage == "referral_rendered":
                     assert command["agent_id"] == "security-auditor"
+                    assert command["type"] == "project_setup"
                     assert wire[-1]["output"] == payload["assistant"]
                     assert not reviews and not (root / ".git").exists()
                     assert "Chief Architect" in payload["assistant"]
                 elif stage == "chief_ready":
                     assert command["agent_id"] == "systems-architect"
+                    assert command["type"] == "project_setup"
                     assert wire[-1]["output"] == payload["assistant"]
                     assert len(reviews) == 1
                     snapshot = life.service.snapshot()
                     assert snapshot["stage"] == "ready"
                     assert snapshot["architect_decision"]["approved"]
                     assert snapshot["project_id"] == payload["project_id"]
-                    assert snapshot["workspace_id"] == payload["workspace_id"]
+                    assert snapshot["workspace_id"] is None
+                    assert not provider.queries
                     assert git(root, "branch", "--show-current") == "main"
-                    work = life.service.require_workspace()
-                    assert work.worktree_path != root and work.branch.startswith(
-                        "plaza/workspace-"
-                    )
-                    assert git(root, "rev-parse", "HEAD") == work.initial_commit
-                    assert (
-                        git(work.worktree_path, "branch", "--show-current")
-                        == work.branch
-                    )
-                    notes = work.common_git_dir / "plaza/session-memory"
+                    notes = Path(snapshot["memory"]["path"])
                     assert len(list(notes.glob("*.md"))) == 3
                     assert (
                         "Approved deterministic seed"
@@ -128,6 +124,17 @@ async def test_empty_project_physical_background_npc_and_rendered_replay(
                     runtime_before = (life.runtime / "sentinel").read_bytes()
                     assert life.marker.exists()
                 elif stage == "domain_running":
+                    snapshot = life.service.workspace_snapshot("core")
+                    assert snapshot["workspace_id"] == payload["workspace_id"]
+                    work = life.service.require_workspace("core")
+                    assert work.worktree_path != root and work.branch.startswith(
+                        "plaza/workspace-"
+                    )
+                    assert git(root, "rev-parse", "HEAD") == work.initial_commit
+                    assert (
+                        git(work.worktree_path, "branch", "--show-current")
+                        == work.branch
+                    )
                     assert command["type"] == "domain_query"
                     assert any(p["type"] == "domain_accepted" for p in wire)
                     await until(
@@ -141,14 +148,14 @@ async def test_empty_project_physical_background_npc_and_rendered_replay(
                     assert wire[-1]["type"] == "domain_state"
                     assert wire[-1]["domain_session_id"] == payload["domain_session_id"]
                     assert not provider.writes
-                    session = life.server.domains._sessions["engineering"][0]
+                    session = life.server.domains._sessions["core"][0]
                     assert session.snapshot()["state"] == "background"
                     assert session.snapshot()["execution_state"] == "running"
                     background_time = receipt["received_monotonic"]
                 elif stage == "npc_rendered":
                     assert wire[-1]["output"] == payload["assistant"]
                     assert validator.may_release and not provider.writes
-                    assert payload["agent_id"] == "security-auditor"
+                    assert payload["agent_id"] == "fixture-extra-a"
                     assert payload["assistant"] == "unrelated core NPC reply gull"
                     assert conversation.reply.call_args.kwargs["messages"] == [
                         {
@@ -220,7 +227,7 @@ async def test_empty_project_physical_background_npc_and_rendered_replay(
             ), output
             assert "SCRIPT ERROR" not in output and "ERROR:" not in output, output
             if live_mode:
-                assert output.count("godot_domain_live_visible_npc: OK") == 3, output
+                assert output.count("godot_domain_live_visible_npc: OK") == 1, output
             print(output)
         except BaseException:
             if process.returncode is None:

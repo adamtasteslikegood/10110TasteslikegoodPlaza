@@ -1,8 +1,8 @@
 extends Node
 
 ## Driven by test_godot_conversation_integration.py; no synthetic response packets.
-const A := "systems-architect"
-const B := "security-auditor"
+const A := "fixture-extra-a"
+const B := "fixture-extra-b"
 var failures: Array[String] = []
 var checks := 0
 var hud: Node
@@ -12,6 +12,7 @@ var replies: Array[Dictionary] = []
 var errors: Array[Dictionary] = []
 
 func _ready() -> void:
+	preload("res://tests/character_fixture.gd").extras()
 	get_tree().create_timer(20.0).timeout.connect(func():
 		check(false, "integration watchdog expired")
 		finish()

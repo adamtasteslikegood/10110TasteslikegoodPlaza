@@ -40,3 +40,6 @@ signal conversation_changed(agent_id: String, reason: String, request_id: String
 ## domain_error, resume_complete, status_stale. Local: input, draft, read, connection.
 signal workspace_changed(reason: String, request_id: String)
 signal domain_changed(domain_id: String, reason: String, request_id: String)
+
+signal character_changed(agent_id: String, reason: String, request_id: String)
+signal domain_surface_changed

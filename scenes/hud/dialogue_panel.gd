@@ -18,6 +18,9 @@ var _message_spans: Array[Dictionary] = []
 # Only known registry agents enter this session-only, bounded view index.
 var _view_anchors: Dictionary = {}
 var _waiting := false
+var _domain_id := ""
+var _kind := ""
+var _setup_draft := ""
 var _assistant_span: Dictionary = {"start": 0, "length": 0, "request_id": ""}
 var _follow := true
 var _scroll_guard := false
@@ -42,6 +45,15 @@ func _ready() -> void:
 	GameEvents.npc_left.connect(_on_npc_left)
 	GameEvents.conversation_changed.connect(_on_conversation_changed)
 	GameEvents.agent_query_failed.connect(_on_query_failed)
+	GameEvents.character_changed.connect(_character_changed)
+	GameEvents.domain_changed.connect(_domain_changed)
+	GameEvents.workspace_changed.connect(_workspace_changed)
+	GameEvents.domain_surface_changed.connect(_surface_changed)
+	_action("Prepare").pressed.connect(func(): BridgeClient.project_setup(_current_agent_id, _question_input.text if not _question_input.text.strip_edges().is_empty() else "Prepare the configured project"))
+	_action("Start").pressed.connect(func(): BridgeClient.activate_domain(_domain_id))
+	_action("Send").pressed.connect(func(): _on_question_submitted(_question_input.text))
+	_action("Stop").pressed.connect(func(): BridgeClient.deactivate_domain(_domain_id))
+	_action("Status").pressed.connect(func(): BridgeClient.agent_status(_current_agent_id))
 	_question_input.text_submitted.connect(_on_question_submitted)
 	_question_input.text_changed.connect(_on_draft_changed)
 	_body_label.get_v_scroll_bar().value_changed.connect(_on_scroll_changed)
@@ -69,6 +81,7 @@ func _input(event: InputEvent) -> void:
 		return
 	if event.is_action_pressed("chat_release_focus", false, true):
 		owner.release_focus()
+		if _kind == "working": BridgeClient.surface.close("dialogue")
 	elif event.is_action_pressed("chat_page_up", true, true):
 		_page(-1)
 	elif event.is_action_pressed("chat_page_down", true, true):
@@ -78,11 +91,12 @@ func _input(event: InputEvent) -> void:
 	elif owner == _body_label and event.is_action_pressed("chat_newest", false, true):
 		_manual_scroll(_bottom())
 	elif event.is_action_pressed("chat_focus_next", false, true) or event.is_action_pressed("chat_focus_previous", false, true):
-		# Two enabled controls; this explicit cycle also skips a pending composer.
-		if owner == _body_label and _question_input.editable and _input_row.visible:
-			_question_input.grab_focus()
-		else:
-			_body_label.grab_focus()
+		var controls: Array[Control] = [_body_label, _question_input]
+		for name in ["Prepare", "Start", "Send", "Stop", "Status"]: controls.append(_action(name))
+		var enabled: Array[Control] = []
+		for control in controls:
+			if control.is_visible_in_tree() and control.focus_mode == Control.FOCUS_ALL: enabled.append(control)
+		if not enabled.is_empty(): enabled[posmod(enabled.find(owner) + (-1 if event.shift_pressed else 1), enabled.size())].grab_focus()
 	else:
 		# Enter stays on LineEdit.text_submitted: exactly one submission path.
 		return
@@ -104,27 +118,32 @@ func _on_npc_approached(agent_id: String, agent_data: Dictionary) -> void:
 	_role_label.text = _subtitle(agent_data) if not agent_data.is_empty() else "not in the registry"
 	_portrait.color = _tint(agent_data.get("color", ""))
 	_panel.show()
-	var snapshot := BridgeClient.conversation_snapshot(agent_id)
-	_follow = snapshot.get("follow", true)
-	_render(snapshot, "", float(snapshot.get("scroll", 0)), false, _view_anchors.get(agent_id, {}))
+	_domain_id = ""
+	_kind = ""
+	_setup_draft = ""
+	_character_changed(agent_id, "cached", "")
+	BridgeClient.agent_status(agent_id)
+
 
 func _on_npc_left(agent_id: String) -> void:
 	if agent_id != _current_agent_id:
 		return
 	_save_view()
+	BridgeClient.surface.close("dialogue")
 	_release_focus()
 	_current_agent_id = ""
 	_drag_edges = 0
 	_panel.hide()
 
 func _on_conversation_changed(agent_id: String, reason: String, request_id: String) -> void:
-	if agent_id != _current_agent_id or reason == "view":
+	if agent_id != _current_agent_id or reason == "view" or _kind != "extra":
 		return
 	var snapshot := BridgeClient.conversation_snapshot(agent_id)
 	if reason == "draft" and snapshot.messages == _rendered_messages and snapshot.omitted == _rendered_omitted:
 		return
 	var reveal_id := request_id if reason == "reply" and _panel.visible else ""
 	_render(snapshot, reveal_id, _body_label.get_v_scroll_bar().value, reason == "draft", _reading_anchor())
+	_update_actions()
 
 func _render(snapshot: Dictionary, reveal_id: String, scroll: float, preserve_reveal: bool = false, anchor: Dictionary = {}) -> void:
 	var previous_span := _assistant_span
@@ -142,7 +161,7 @@ func _render(snapshot: Dictionary, reveal_id: String, scroll: float, preserve_re
 	if _question_input.text != snapshot.get("draft", ""):
 		_question_input.text = snapshot.get("draft", "")
 	var composer_had_focus := _question_input.has_focus()
-	_question_input.editable = not _waiting and snapshot.get("connected", false)
+	_question_input.editable = (not _waiting or _kind == "working") and snapshot.get("connected", false)
 	_question_input.focus_mode = Control.FOCUS_ALL if _question_input.editable else Control.FOCUS_NONE
 	if not _question_input.editable and composer_had_focus:
 		_body_label.grab_focus()
@@ -150,21 +169,21 @@ func _render(snapshot: Dictionary, reveal_id: String, scroll: float, preserve_re
 	_status_label.visible = not _status_label.text.is_empty()
 	if snapshot.get("omitted", 0) > 0:
 		_full_text += "[Older messages omitted]\n\n"
-	var last_generation := -1
+	var last_generation := ""
 	for message in snapshot.get("messages", []):
 		var message_start := _full_text.length()
-		if message.generation != last_generation:
-			last_generation = message.generation
-			var archived: bool = not snapshot.connected or last_generation != snapshot.generation
-			var boundary := "Archived context" if archived else ("New context restarted" if last_generation > 1 else "Context")
-			_full_text += "[%s %d]\n" % [boundary, last_generation]
+		if str(message.generation) != last_generation:
+			last_generation = str(message.generation)
+			var archived: bool = not snapshot.connected or last_generation != str(snapshot.generation)
+			var boundary := "Archived context" if archived else ("New context restarted" if (_kind == "extra" and int(last_generation) > 1) else "Context")
+			_full_text += "[%s %s]\n" % [boundary, last_generation]
 		var role: String = {"user": "You", "assistant": "Assistant", "error": "Error", "draft": "Archived draft"}.get(message.role, message.role)
-		_full_text += "%s (%s):\n" % [role, message.status]
+		_full_text += "%s%s (%s):\n" % [role, " · " + str(message.agent_id) if message.has("agent_id") else "", message.status]
 		if message.role == "assistant":
 			_assistant_span = {"start": _full_text.length(), "length": message.content.length(), "request_id": message.request_id}
 		_full_text += message.content + "\n\n"
 		_message_spans.append({"request_id": message.request_id, "generation": message.generation, "role": message.role, "start": message_start, "length": _full_text.length() - message_start})
-	if snapshot.get("connected", false) and snapshot.get("generation", 0) > 1 and last_generation != snapshot.generation:
+	if snapshot.get("connected", false) and snapshot.get("generation", 0) is int and snapshot.get("generation", 0) > 1 and last_generation != str(snapshot.generation):
 		_full_text += "[New context restarted — prior history is display only]\n"
 	if _full_text.is_empty():
 		_full_text = _agent_data.get("description", "")
@@ -185,13 +204,20 @@ func _render(snapshot: Dictionary, reveal_id: String, scroll: float, preserve_re
 func _on_draft_changed(text: String) -> void:
 	if _current_agent_id.is_empty():
 		return
+	if _kind == "working":
+		if not _domain_id.is_empty(): BridgeClient.set_domain_draft(_domain_id, text)
+		else: _setup_draft = text
+		return
+	if _kind != "extra": return
 	if not BridgeClient.set_draft(_current_agent_id, text):
 		_question_input.text = BridgeClient.conversation_snapshot(_current_agent_id).get("draft", "")
 
 func _on_question_submitted(text: String) -> void:
 	if text.strip_edges().is_empty() or _current_agent_id.is_empty() or _waiting:
 		return
-	BridgeClient.send_query(_current_agent_id, text)
+	if _action("Send").disabled: return
+	if _kind == "working": BridgeClient.send_domain_query(_domain_id, _current_agent_id, text)
+	elif _kind == "extra": BridgeClient.send_query(_current_agent_id, text)
 	# Notifications already render admitted/synchronously failed requests.
 	# Never infer pending from the returned ID: only the store owns that state.
 
@@ -207,6 +233,9 @@ func _save_view() -> void:
 	# A render/layout has not settled yet: its temporary pixel range must not
 	# overwrite the saved view when switching agents in consecutive frames.
 	if _scroll_guard or not AgentRegistry.has_agent(_current_agent_id):
+		return
+	if _kind == "working" and not _domain_id.is_empty():
+		BridgeClient.domains.save_view(_domain_id, _body_label.get_v_scroll_bar().value, _follow, _reading_anchor())
 		return
 	_view_anchors[_current_agent_id] = _reading_anchor()
 	BridgeClient.save_conversation_view(_current_agent_id, _body_label.get_v_scroll_bar().value, _follow)
@@ -378,3 +407,102 @@ func _tint(hex: String) -> Color:
 	if hex.is_empty() or not Color.html_is_valid(hex):
 		return Color.WHITE
 	return Color.html(hex)
+
+
+func _action(name: String) -> Button:
+	return get_node("Panel/Margin/Rows/Actions/" + name)
+
+func _enable(button: Button, enabled: bool) -> void:
+	button.disabled = not enabled
+	button.focus_mode = Control.FOCUS_ALL if enabled else Control.FOCUS_NONE
+	if not enabled and button.has_focus(): button.release_focus()
+
+func _character_changed(agent: String, _reason: String, _request: String) -> void:
+	if agent != _current_agent_id: return
+	var data := BridgeClient.character_snapshot(agent)
+	var previous_kind := _kind
+	_kind = data.get("execution_kind", "")
+	var domain: String = data.get("domain_id", "") if data.get("domain_id") != null else ""
+	var newly_bound := domain != _domain_id
+	_domain_id = domain
+	if newly_bound and _panel.visible and not domain.is_empty(): BridgeClient.surface.open("dialogue", domain, agent)
+	if _kind == "extra":
+		if previous_kind == "extra" and _reason != "cached":
+			_update_actions()
+			return
+		BridgeClient.surface.close("dialogue")
+		var snapshot := BridgeClient.conversation_snapshot(agent)
+		_follow = snapshot.get("follow", true)
+		_render(snapshot, "", float(snapshot.get("scroll", 0)), false, _view_anchors.get(agent, {}))
+	elif _kind == "working":
+		_render_domain("", newly_bound)
+	else:
+		_body_label.text = data.get("error", "Checking character status…")
+		_question_input.editable = false
+		_question_input.focus_mode = Control.FOCUS_NONE
+	_update_actions()
+
+func _update_actions() -> void:
+	var data := BridgeClient.character_snapshot(_current_agent_id)
+	var capabilities: Dictionary = data.get("capabilities", {})
+	var snapshot := BridgeClient.domain_snapshot(_domain_id) if not _domain_id.is_empty() else {}
+	var connected := BridgeClient.is_bridge_connected()
+	var pending: Dictionary = snapshot.get("pending_control", {})
+	var state: String = snapshot.get("state", "inactive")
+	var working := _kind == "working"
+	$Panel/Margin/Rows/Actions.visible = _kind != "extra"
+	for name in ["Prepare", "Start", "Stop"]: _action(name).visible = working
+	_action("Prepare").text = "Prepare this project" if capabilities.get("can_prepare_project", false) else "Project help"
+	_enable(_action("Prepare"), connected and working and data.get("pending", "").is_empty() and (capabilities.get("can_prepare_project", false) or BridgeClient.workspace_snapshot().get("stage") in ["unconfigured", "needs_architect", "failed"]))
+	_enable(_action("Start"), connected and working and pending.is_empty() and state == "inactive" and capabilities.get("can_start", false))
+	var run: bool = connected and pending.is_empty() and state in ["active", "background"] and snapshot.get("execution_state") == "idle" and snapshot.get("pending_query", {}).is_empty() and not snapshot.get("uncertain", false)
+	_enable(_action("Send"), run if working else (connected and _kind == "extra" and not _waiting))
+	_enable(_action("Stop"), connected and working and not snapshot.get("domain_session_id", "").is_empty() and (pending.is_empty() or pending.get("type") == "activate_domain") and (state != "inactive" or snapshot.get("uncertain", false)))
+	_enable(_action("Status"), connected and data.get("pending", "").is_empty())
+
+func _render_domain(reveal_id: String = "", restore: bool = false) -> void:
+	if _domain_id.is_empty(): return
+	var snapshot := BridgeClient.domain_snapshot(_domain_id)
+	var view: Dictionary = snapshot.get("view", {})
+	if restore: _follow = view.get("follow", true)
+	var messages := []
+	for result in snapshot.get("results", []):
+		messages.append({"role": "user", "content": result.task, "status": "submitted", "generation": result.domain_session_id, "request_id": result.request_id, "agent_id": result.agent_id})
+		messages.append({"role": "assistant", "content": result.output, "status": "%s · memory %s" % [result.status, "saved" if result.get("memory", {}).get("saved", false) else "unsaved"], "generation": result.domain_session_id, "request_id": result.request_id, "agent_id": result.agent_id})
+	var pending: Dictionary = snapshot.get("pending_query", {})
+	if not pending.is_empty(): messages.append({"role": "user", "content": pending.task, "status": "pending", "generation": snapshot.domain_session_id, "request_id": pending.request_id, "agent_id": pending.agent_id})
+	var error: Dictionary = snapshot.get("error", {})
+	if not error.is_empty(): messages.append({"role": "error", "content": JSON.stringify(error), "status": "notice", "generation": snapshot.domain_session_id, "request_id": "notice"})
+	var data := BridgeClient.character_snapshot(_current_agent_id)
+	for key in ["setup_output", "error"]:
+		if not data.get(key, "").is_empty(): messages.append({"role": "setup" if key == "setup_output" else "error", "content": data[key], "status": "notice", "generation": snapshot.domain_session_id, "request_id": key})
+	var presentation := {"messages": messages, "omitted": snapshot.get("omitted_count", 0), "pending": pending, "draft": snapshot.draft, "connected": BridgeClient.is_bridge_connected(), "generation": snapshot.domain_session_id}
+	_render(presentation, reveal_id, view.get("scroll", 0.0) if restore else _body_label.get_v_scroll_bar().value, true, view.get("anchor", {}) if restore else _reading_anchor())
+	_status_label.text = "%s · %s / %s · Project %s%s" % [_domain_id, snapshot.state, snapshot.execution_state, BridgeClient.workspace_snapshot().get("stage", "unknown"), " · Stop to release workspace" if not snapshot.domain_session_id.is_empty() and snapshot.state != "inactive" else ""]
+	if snapshot.get("uncertain", false): _status_label.text += " · Unknown outcome — Refresh status"
+	if not BridgeClient.is_bridge_connected(): _status_label.text += " · Disconnected"
+	_status_label.show()
+	_update_actions()
+	if _panel.visible and BridgeClient.surface.owner == "dialogue":
+		for result in snapshot.results:
+			if result.domain_session_id == snapshot.domain_session_id and BridgeClient.DomainState.compare(result.output_id, snapshot.received_cursor) <= 0 and BridgeClient.DomainState.compare(result.output_id, snapshot.consumed_cursor) > 0:
+				BridgeClient.mark_domain_read(_domain_id, result.output_id)
+
+func _domain_changed(domain: String, reason: String, request: String) -> void:
+	if domain == _domain_id and _kind == "working":
+		_render_domain(request if reason == "domain_result" and _panel.visible else "")
+
+func _workspace_changed(_reason: String, _request: String) -> void:
+	if _current_agent_id.is_empty(): return
+	if BridgeClient.character_snapshot(_current_agent_id).is_empty():
+		_domain_id = ""
+		_kind = ""
+		BridgeClient.agent_status(_current_agent_id)
+	_update_actions()
+
+func _surface_changed() -> void:
+	if _kind != "working": return
+	if BridgeClient.surface.owner != "dialogue":
+		_save_view()
+		_release_focus()
+		_panel.hide()

@@ -6,13 +6,12 @@ var anchor_agent_id := ""
 var selected_domain_id := ""
 var remote := false
 var _return_to_anchor := false
-var _refocus_request := ""
-var _refocus_domain := ""
-var _refocus_after_background: Dictionary = {}
-var _background_after_control: Dictionary = {}
 var _agents: Dictionary = {}
 var _domains: Array[String] = []
 var _project_id := ""
+var _view_guard := false
+var _view_revision := 0
+var _result_spans: Array[Dictionary] = []
 
 @onready var _panel: PanelContainer = $Panel
 @onready var _task_input: LineEdit = $Panel/Scroll/Rows/TaskInput
@@ -29,11 +28,13 @@ func _ready() -> void:
 	GameEvents.npc_left.connect(_left)
 	GameEvents.domain_changed.connect(_domain_changed)
 	GameEvents.workspace_changed.connect(_workspace_changed)
+	GameEvents.character_changed.connect(_character_changed)
+	GameEvents.domain_surface_changed.connect(_surface_changed)
 	_opener.pressed.connect(_open_nearby)
 	_global_refocus.pressed.connect(_open_remote)
+	$Global/Toolbar/StopButton.pressed.connect(func(): BridgeClient.deactivate_domain(selected_domain_id))
 	_select.item_selected.connect(func(index):
 		if _panel.visible: _background()
-		_refocus_after_background = {}
 		selected_domain_id = _domains[index]
 		anchor_agent_id = ""
 		remote = true
@@ -47,6 +48,7 @@ func _ready() -> void:
 	_action("Status").pressed.connect(_recover)
 	_task_input.text_submitted.connect(_submit)
 	_task_input.text_changed.connect(_draft)
+	_results.get_v_scroll_bar().value_changed.connect(_save_result_view)
 	get_viewport().size_changed.connect(_layout)
 	_panel.hide()
 	_layout()
@@ -77,11 +79,10 @@ func _left(agent_id: String) -> void:
 	_refresh()
 
 func _open_nearby() -> void:
-	var agent := AgentRegistry.get_agent(nearby_agent_id)
-	var domain_id: String = agent.get("dept", "")
+	var agent := BridgeClient.character_snapshot(nearby_agent_id)
+	var domain_id: String = agent.get("domain_id", "") if agent.get("domain_id") != null else ""
 	if domain_id.is_empty(): return
 	if _panel.visible and selected_domain_id != domain_id: _background()
-	_refocus_after_background = {}
 	selected_domain_id = domain_id
 	_remember(domain_id)
 	_agents[domain_id] = nearby_agent_id
@@ -89,51 +90,29 @@ func _open_nearby() -> void:
 	remote = false
 	_return_to_anchor = false
 	_panel.show()
-	var snapshot := BridgeClient.domain_snapshot(domain_id)
-	if not snapshot.get("domain_session_id", "").is_empty(): _refocus()
+	BridgeClient.surface.open("pane", domain_id, nearby_agent_id)
 	_refresh()
+	_restore_result_view()
 
 func _open_remote() -> void:
 	if selected_domain_id.is_empty(): return
-	_refocus_after_background = {}
 	anchor_agent_id = ""
 	remote = true
 	_return_to_anchor = false
 	_panel.show()
-	_refocus()
+	BridgeClient.surface.open("pane", selected_domain_id, _agents.get(selected_domain_id, ""))
 	_refresh()
+	_restore_result_view()
 
 func _refocus() -> void:
-	# Store admission emits synchronously, but the matching wire ack arrives later.
-	_refocus_after_background = {}
-	if _background_after_control.get("domain_id") == selected_domain_id: _background_after_control = {}
-	var request := BridgeClient.refocus_domain(selected_domain_id)
-	if not request.is_empty():
-		_refocus_domain = selected_domain_id
-		_refocus_request = request
-	else:
-		var snapshot := BridgeClient.domain_snapshot(selected_domain_id)
-		var pending: Dictionary = snapshot.get("pending_control", {})
-		if pending.get("type") == "refocus_domain":
-			_refocus_domain = selected_domain_id
-			_refocus_request = pending.request_id
-		elif pending.get("type") == "background_domain" and BridgeClient.is_bridge_connected():
-			_refocus_after_background = {"domain_id": selected_domain_id, "request_id": pending.request_id, "generation": snapshot.get("domain_session_id", ""), "remote": remote, "anchor_agent_id": anchor_agent_id}
+	if BridgeClient.surface.owner == "pane": BridgeClient.surface.refocus()
+	else: BridgeClient.surface.open("pane", selected_domain_id, _agents.get(selected_domain_id, ""))
 	_refresh()
 
 func _background() -> void:
-	_refocus_after_background = {}
-	_refocus_request = ""
-	_refocus_domain = ""
 	_return_to_anchor = not remote and not anchor_agent_id.is_empty()
-	var snapshot := BridgeClient.domain_snapshot(selected_domain_id)
-	var pending: Dictionary = snapshot.get("pending_control", {})
-	var request := BridgeClient.background_domain(selected_domain_id)
-	# A user can leave while Refocus/replay/activation awaits acknowledgment.
-	# Remember only that exact in-flight control; its matching settled ack may
-	# background once. Disconnect/error abandons it. No execution is queued.
-	if request.is_empty() and BridgeClient.is_bridge_connected() and pending.get("type") in ["refocus_domain", "resume", "activate_domain"]:
-		_background_after_control = {"domain_id": selected_domain_id, "request_id": pending.request_id, "generation": snapshot.get("domain_session_id", "")}
+	_save_result_view(_results.get_v_scroll_bar().value)
+	BridgeClient.surface.close("pane")
 	_release_focus()
 	_panel.hide()
 	_refresh()
@@ -153,35 +132,23 @@ func _draft(text: String) -> void:
 	if not BridgeClient.set_domain_draft(selected_domain_id, text):
 		_task_input.text = BridgeClient.domain_snapshot(selected_domain_id).get("draft", "")
 
-func _domain_changed(domain_id: String, reason: String, request_id: String) -> void:
+func _domain_changed(domain_id: String, _reason: String, _request_id: String) -> void:
 	_remember(domain_id)
-	if _refocus_after_background.get("domain_id") == domain_id:
-		var snapshot := BridgeClient.domain_snapshot(domain_id)
-		var intent := _refocus_after_background
-		if reason in ["domain_error", "connection"] or snapshot.get("domain_session_id") != intent.generation or selected_domain_id != domain_id or not _panel.visible or remote != intent.remote or anchor_agent_id != intent.anchor_agent_id:
-			_refocus_after_background = {}
-		elif reason == "domain_state" and request_id == intent.request_id and snapshot.get("pending_control", {}).is_empty():
-			# Continue only this visible view's exact acknowledged Background.
-			# Refocus gets its own correlation; Resume still waits for that ack.
-			_refocus_after_background = {}
-			_refocus()
-	if _background_after_control.get("domain_id") == domain_id:
-		if reason in ["domain_error", "connection"]:
-			_background_after_control = {}
-		elif request_id == _background_after_control.get("request_id") and reason in ["domain_state", "resume_complete"]:
-			var snapshot := BridgeClient.domain_snapshot(domain_id)
-			if snapshot.get("pending_control", {}).is_empty():
-				var expected: String = _background_after_control.generation
-				_background_after_control = {}
-				if expected.is_empty() or expected == snapshot.get("domain_session_id"):
-					BridgeClient.background_domain(domain_id)
-	if reason == "domain_state" and not _refocus_request.is_empty() and request_id == _refocus_request and domain_id == _refocus_domain:
-		_refocus_request = ""
-		_refocus_domain = ""
-		BridgeClient.resume_domain(domain_id)
-	elif domain_id == _refocus_domain and reason in ["domain_error", "connection"]:
-		_refocus_request = ""
-		_refocus_domain = ""
+	_refresh()
+
+func _character_changed(agent_id: String, _reason: String, _request_id: String) -> void:
+	var data := BridgeClient.character_snapshot(agent_id)
+	if data.get("execution_kind") == "working" and BridgeClient.workspace_snapshot().get("project_id") != null:
+		_remember(data.domain_id)
+		_agents[data.domain_id] = agent_id
+	_refresh()
+
+func _surface_changed() -> void:
+	if BridgeClient.surface.owner != "pane":
+		_save_result_view(_results.get_v_scroll_bar().value)
+		_release_focus()
+		_panel.hide()
+		_return_to_anchor = false
 	_refresh()
 
 func _workspace_changed(_reason: String, _request_id: String) -> void:
@@ -195,10 +162,6 @@ func _workspace_changed(_reason: String, _request_id: String) -> void:
 		selected_domain_id = ""
 		anchor_agent_id = ""
 		_return_to_anchor = false
-		_refocus_request = ""
-		_refocus_domain = ""
-		_refocus_after_background = {}
-		_background_after_control = {}
 		_domains.clear()
 		_agents.clear()
 		_select.clear()
@@ -214,9 +177,11 @@ func _set_enabled(control: Button, enabled: bool) -> void:
 func _refresh() -> void:
 	if not is_node_ready(): return
 	var workspace := BridgeClient.workspace_snapshot()
+	var character := BridgeClient.character_snapshot(_agents.get(selected_domain_id, ""))
+	var department: Dictionary = character.get("workspace", {})
 	var memory: Dictionary = workspace.get("memory", {})
-	_workspace.text = "Project: %s\nWorkspace: %s\nBranch: %s\nSetup: %s · Memory: %s" % [workspace.get("project_path", "unconfigured"), workspace.get("worktree_path", "unavailable"), workspace.get("branch", "unavailable"), workspace.get("stage", "unknown"), memory.get("status", "unavailable")]
-	_opener.visible = not nearby_agent_id.is_empty()
+	_workspace.text = "Project: %s\nWorkspace: %s\nBranch: %s\nSetup: %s · Memory: %s" % [workspace.get("project_path", "unconfigured"), department.get("worktree_path", "unprepared"), department.get("branch", "unprepared"), workspace.get("stage", "unknown"), memory.get("status", "unavailable")]
+	_opener.visible = BridgeClient.character_snapshot(nearby_agent_id).get("execution_kind") == "working"
 	_opener.text = "Domain work · " + str(AgentRegistry.get_agent(nearby_agent_id).get("name", nearby_agent_id))
 	_select.visible = not _domains.is_empty()
 	if selected_domain_id in _domains: _select.select(_domains.find(selected_domain_id))
@@ -236,9 +201,10 @@ func _refresh() -> void:
 	var uncertain: bool = snapshot.get("uncertain", false)
 	var settled := pending.is_empty()
 	var ready := connected and not snapshot.is_empty()
-	_set_enabled(_action("Start"), ready and settled and state == "inactive" and execution == "idle")
+	_set_enabled(_action("Start"), ready and settled and state == "inactive" and execution == "idle" and character.get("capabilities", {}).get("can_start", false))
 	_set_enabled(_action("Run"), ready and settled and not uncertain and state in ["active", "background"] and execution == "idle" and snapshot.get("pending_query", {}).is_empty() and _agents.has(selected_domain_id))
 	_set_enabled(_action("Stop"), ready and not generation.is_empty() and (settled or pending.get("type") == "activate_domain") and (state != "inactive" or uncertain))
+	_set_enabled($Global/Toolbar/StopButton, not _action("Stop").disabled)
 	_set_enabled(_action("Refocus"), ready and settled and not generation.is_empty())
 	_set_enabled(_global_refocus, ready and settled and not generation.is_empty())
 	_set_enabled(_action("Status"), ready)
@@ -252,10 +218,14 @@ func _refresh() -> void:
 	if not generation.is_empty() and state != "inactive": _status.text += "\nStop to release workspace"
 	if not connected: _status.text += "\nDisconnected — work outcome may be unknown"
 	var lines: Array[String] = []
+	var spans: Array[Dictionary] = []
+	var character_offset := 0
 	for result in snapshot.get("results", []):
 		var archived: bool = result.domain_session_id != generation
 		var turn_memory: Dictionary = result.get("memory", {})
-		lines.append("[%s%s · output %s · %s · memory %s]\n%s\n%s" % ["Archived " if archived else "", result.domain_session_id, result.output_id, result.status, "saved" if turn_memory.get("saved", false) else "unsaved", result.get("task", ""), result.get("output", result.get("message", ""))])
+		lines.append("[%s%s · %s · output %s · %s · memory %s]\n%s\n%s" % ["Archived " if archived else "", result.domain_session_id, result.agent_id, result.output_id, result.status, "saved" if turn_memory.get("saved", false) else "unsaved", result.get("task", ""), result.get("output", result.get("message", ""))])
+		spans.append({"request_id": result.request_id, "generation": result.domain_session_id, "role": "assistant", "start": character_offset, "length": lines.back().length() + 2})
+		character_offset += lines.back().length() + 2
 	var error: Dictionary = snapshot.get("error", {})
 	if not error.is_empty():
 		lines.append("Notice: %s — %s" % [error.get("error_type", "unknown"), error.get("message", "")])
@@ -264,7 +234,13 @@ func _refresh() -> void:
 			lines.append("Command notice: %s — %s" % [command_error.get("error_type", "unknown"), command_error.get("message", "")])
 		for query in error.get("unresolved_queries", []):
 			lines.append("[Unknown outcome · generation %s · request %s]\n%s" % [query.get("domain_session_id", ""), query.get("request_id", ""), query.get("task", "")])
-	_results.text = "\n\n".join(lines)
+	var rendered := "\n\n".join(lines)
+	if _results.text != rendered:
+		_save_result_view(_results.get_v_scroll_bar().value)
+		_view_guard = true
+		_results.text = rendered
+		_result_spans = spans
+		_restore_result_view()
 	# Only current-generation displayed receipts may advance current read state.
 	if _panel.visible and snapshot.get("received_cursor", "0") != snapshot.get("consumed_cursor", "0"):
 		var read_id: String = snapshot.get("consumed_cursor", "0")
@@ -325,3 +301,38 @@ func _layout() -> void:
 	_panel.position = Vector2(12, 92)
 	_panel.size = Vector2(maxf(1, size.x - 24), maxf(1, minf(240, size.y - 420)))
 	if _panel.position.y + _panel.size.y > size.y: _panel.position.y = maxf(0, size.y - _panel.size.y)
+
+
+func _save_result_view(value: float) -> void:
+	if _view_guard or not _panel.visible or selected_domain_id.is_empty(): return
+	var bar := _results.get_v_scroll_bar()
+	var follow := value >= maxf(0, bar.max_value - bar.page) - 2
+	var anchor := {}
+	if not follow:
+		for span in _result_spans:
+			var line := _results.get_character_line(span.start + span.length - 1)
+			if _results.get_line_offset(line) >= value:
+				anchor = {"request_id": span.request_id, "generation": span.generation, "role": span.role, "relative": 0, "character": span.start, "offset": value - _results.get_line_offset(_results.get_character_line(span.start))}
+				break
+	BridgeClient.domains.save_view(selected_domain_id, value, follow, anchor)
+
+func _restore_result_view() -> void:
+	_view_guard = true
+	_view_revision += 1
+	var revision := _view_revision
+	var domain := selected_domain_id
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if revision != _view_revision or domain != selected_domain_id: return
+	var view: Dictionary = BridgeClient.domain_snapshot(domain).get("view", {})
+	var bar := _results.get_v_scroll_bar()
+	var value: float = view.get("scroll", 0.0)
+	var anchor: Dictionary = view.get("anchor", {})
+	if not anchor.is_empty():
+		value = 0
+		for span in _result_spans:
+			if span.request_id == anchor.get("request_id") and str(span.generation) == str(anchor.get("generation")):
+				value = _results.get_line_offset(_results.get_character_line(span.start)) + anchor.get("offset", 0.0)
+				break
+	bar.value = maxf(0, bar.max_value - bar.page) if view.get("follow", true) else value
+	_view_guard = false

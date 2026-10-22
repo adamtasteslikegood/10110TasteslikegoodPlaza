@@ -239,7 +239,7 @@ jobs:
         run: python3 scripts/run_headless.py conversation_store transport_client dialogue_panel
 
       - name: M12 store, transport and panel acceptance
-        run: python3 scripts/run_headless.py domain_store domain_transport domain_panel
+        run: python3 scripts/run_headless.py domain_store domain_transport domain_panel character_domain
 
       - name: Set up Python 3.11 for bridge integration
         uses: actions/setup-python@v5

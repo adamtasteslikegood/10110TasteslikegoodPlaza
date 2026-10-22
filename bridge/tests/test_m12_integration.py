@@ -26,7 +26,7 @@ def stage_records():
                 assistant="Chief Architect",
             ),
         ),
-        ("chief_ready", dict(bound, request_id="chief", assistant="approved")),
+        ("chief_ready", dict(project_id="P", request_id="chief", assistant="approved")),
         (
             "domain_running",
             dict(domain, request_id="run", agent_id="backend-architect"),

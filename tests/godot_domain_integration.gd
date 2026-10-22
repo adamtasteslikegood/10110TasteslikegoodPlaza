@@ -23,6 +23,7 @@ var live_mode := false
 var wait_msec := 12000
 
 func _ready() -> void:
+	preload("res://tests/character_fixture.gd").extras()
 	live_mode = OS.get_environment("PLAZA_M12_LIVE") == "1"
 	if live_mode: wait_msec = 100000
 	get_tree().create_timer(400 if live_mode else 60).timeout.connect(func():
@@ -45,13 +46,6 @@ func _ready() -> void:
 	composer = npc_hud.get_node("Panel/Margin/Rows/InputRow/QuestionInput")
 	results = hud.get_node("Panel/Scroll/Rows/ResultsLabel")
 	GameEvents.domain_changed.connect(observe_domain)
-	# A real registered engineering role, added only to this fixture scene.
-	var engineer: CharacterBody2D = load("res://scenes/npc/agent_npc.tscn").instantiate()
-	engineer.agent_id = "backend-architect"
-	engineer.position = Vector2(1100, 180)
-	main.get_node("Office").add_child(engineer)
-	check(AgentRegistry.get_agent("backend-architect").get("dept") == "engineering", "fixture uses real registered distinct engineering domain")
-	check(AgentRegistry.get_agent("systems-architect").get("dept") == "core" and AgentRegistry.get_agent("security-auditor").get("dept") == "core", "production taxonomy preserved")
 	BridgeClient.set_process(true)
 	BridgeClient._attempt_connect()
 	if not await until(func(): return BridgeClient.is_bridge_connected() and BridgeClient.workspace_snapshot().get("stage") == "needs_architect"):
@@ -64,7 +58,7 @@ func _ready() -> void:
 	await physics()
 	await walk(Vector2(0, -92))
 	check(security.get_node("Proximity").overlaps_body(player), "physical ordinary NPC approach")
-	var referral := await npc_submit("help prepare configured project", "security-auditor")
+	var referral := await setup_submit("help prepare configured project", "security-auditor")
 	check(referral.assistant.contains("Chief Architect"), "current rendered referral")
 	await stage("referral_rendered", referral)
 	await key(KEY_ESCAPE)
@@ -72,29 +66,24 @@ func _ready() -> void:
 	await walk(Vector2(0, -90))
 	check(main.get_node("Office/SystemsArchitect/Proximity").overlaps_body(player), "actual player reaches Chief")
 	check(BridgeClient.workspace_snapshot().get("stage") == "needs_architect", "Chief proximity alone never reviews")
-	var chief := await npc_submit("review configured project", "systems-architect")
+	var chief := await setup_submit("review configured project", "systems-architect")
 	check(chief.assistant.contains("approved"), "rendered Chief approval")
 	BridgeClient.describe_workspace()
 	if not await until(func(): return BridgeClient.workspace_snapshot().get("stage") == "ready"):
 		await finish()
 		return
-	var ready := project_identity()
+	var ready := {"project_id": BridgeClient.workspace_snapshot().project_id}
 	ready.merge({"request_id": chief.request_id, "assistant": chief.assistant})
 	await stage("chief_ready", ready)
-	await key(KEY_ESCAPE)
-	await walk(Vector2(0, 90))
-	await walk(Vector2(200, 0))
-	await walk(Vector2(0, -90))
-	var area: Area2D = engineer.get_node("Proximity")
-	check(area.overlaps_body(player), "actual engineering anchor entry")
-	await click(hud.get_node("Global/Toolbar/NearbyDomainButton"))
-	check(panel.visible and hud.selected_domain_id == "engineering", "native engineering opener")
-	await click(action("Start"))
-	if not await until(func(): return BridgeClient.domain_snapshot("engineering").get("state") == "active"):
+	var area: Area2D = main.get_node("Office/SystemsArchitect/Proximity")
+	await until(func(): return not npc_hud.get_node("Panel/Margin/Rows/Actions/Start").disabled)
+	await click(npc_hud.get_node("Panel/Margin/Rows/Actions/Start"))
+	if not await until(func(): return BridgeClient.domain_snapshot("core").get("state") == "active"):
 		await finish()
 		return
-	generation = BridgeClient.domain_snapshot("engineering").domain_session_id
-	var task_input: LineEdit = hud.get_node("Panel/Scroll/Rows/TaskInput")
+	check(count("domain_query") == 0, "explicit Start establishes ownership without any model task")
+	generation = BridgeClient.domain_snapshot("core").domain_session_id
+	var task_input: LineEdit = composer
 	task_input.text = FileAccess.get_file_as_string(control.path_join("task.txt")) if live_mode else "execute integration sentinel"
 	if live_mode: check(not task_input.text.is_empty(), "execution task supplied")
 	task_input.text_changed.emit(task_input.text)
@@ -106,25 +95,41 @@ func _ready() -> void:
 	run_request = latest("domain_query").request_id
 	check(count("activate_domain") == 1 and count("domain_query") == 1, "native Start and Enter submit exactly once")
 	var running := domain_identity()
-	running.merge({"request_id": run_request, "agent_id": "backend-architect"})
+	running.merge({"request_id": run_request, "agent_id": "systems-architect"})
 	await stage("domain_running", running)
+	await click(hud.get_node("Global/Toolbar/NearbyDomainButton"))
+	check(panel.visible and not npc_hud.get_node("Panel").visible, "primary Run hands off to one secondary composer")
+	check(hud.get_node("Panel/Scroll/Rows/TaskInput").text == task_input.text and count("domain_query") == 1, "handoff shares pending task and draft")
 	await key(KEY_ESCAPE)
 	await walk(Vector2(0, 90))
 	if not await until(func(): return has_ack("domain_state", latest("background_domain").get("request_id", ""))):
 		await finish()
 		return
 	var radius: float = area.get_node("ProximityShape").shape.radius
-	var distance := player.global_position.distance_to(engineer.global_position)
+	var distance := player.global_position.distance_to(main.get_node("Office/SystemsArchitect").global_position)
 	check(not area.overlaps_body(player) and distance > radius and not panel.visible, "physical departure beyond actual radius closes panel")
 	var background := domain_identity()
-	background.merge({"request_id": latest("background_domain").request_id, "state": "background", "execution_state": BridgeClient.domain_snapshot("engineering").execution_state, "radius": radius, "distance": distance, "panel_hidden": not panel.visible})
+	background.merge({"request_id": latest("background_domain").request_id, "state": "background", "execution_state": BridgeClient.domain_snapshot("core").execution_state, "radius": radius, "distance": distance, "panel_hidden": not panel.visible})
 	await stage("background_ack", background)
-	await walk(Vector2(-75, 25))
+	await walk(Vector2(125, 25))
+	await until(func(): return npc_hud._current_agent_id == "security-auditor" and npc_hud._domain_id == "core")
+	check(BridgeClient.domain_snapshot("core").domain_session_id == generation and BridgeClient.domain_snapshot("core").pending_query.agent_id == "systems-architect", "Auditor shares Core generation while Architect remains Run representative")
+	check(npc_hud.get_node("Panel/Margin/Rows/BodyLabel").text.contains("systems-architect"), "physical Auditor dialogue attributes pending Architect work")
+	check(count("domain_query") == 1, "switching Core representatives never submits again")
+	await walk(Vector2(0, 90))
+	security.queue_free()
+	await frames(2)
+	var extra: CharacterBody2D = load("res://scenes/npc/agent_npc.tscn").instantiate()
+	extra.agent_id = "fixture-extra-a"
+	extra.position = Vector2(1025, 280)
+	main.get_node("Office").add_child(extra)
+	security = extra
+	await walk(Vector2(0, -90))
 	check(security.get_node("Proximity").overlaps_body(player), "actual unrelated core NPC entry while engineering runs")
-	var unrelated := await npc_submit("In one short sentence, acknowledge this unrelated core conversation." if live_mode else "unrelated core conversation", "security-auditor")
+	var unrelated := await npc_submit("In one short sentence, acknowledge this unrelated core conversation." if live_mode else "unrelated core conversation", "fixture-extra-a")
 	var npc_payload := domain_identity()
 	npc_payload.merge(unrelated)
-	npc_payload.execution_state = BridgeClient.domain_snapshot("engineering").execution_state
+	npc_payload.execution_state = BridgeClient.domain_snapshot("core").execution_state
 	if live_mode:
 		check(not unrelated.assistant.is_empty(), "live separate current NPC assistant span")
 	else:
@@ -135,8 +140,9 @@ func _ready() -> void:
 		await finish()
 		return
 	check(not panel.visible and current_assistant() == unrelated.assistant, "hidden domain completion preserves NPC output and focus")
-	await walk(Vector2(75, -25))
+	await walk(Vector2(-125, -25))
 	await walk(Vector2(0, -90))
+	await click(hud.get_node("Global/Toolbar/NearbyDomainButton"))
 	if not await until(func(): return has_ack("resume_complete", latest("resume").get("request_id", ""))):
 		await finish()
 		return
@@ -144,21 +150,21 @@ func _ready() -> void:
 	var resume := latest("resume")
 	check(has_ack("domain_state", refocus.request_id), "exact Refocus ack precedes matching Resume completion")
 	check(area.overlaps_body(player) and panel.visible, "physical return opens anchored domain results")
-	var snapshot := BridgeClient.domain_snapshot("engineering")
+	var snapshot := BridgeClient.domain_snapshot("core")
 	check(snapshot.results.size() == 1, "live push and replay deduplicate result identity")
 	var terminal: Dictionary = snapshot.results[0]
 	check(results.text.contains(terminal.output) and results.text.contains(generation) and results.text.contains(terminal.output_id), "actual result label renders full terminal identity and output")
 	check(not results.text.contains(unrelated.assistant), "domain rendering excludes NPC history")
-	var rendered_count := results.text.count("[%s · output %s ·" % [generation, terminal.output_id])
+	var rendered_count := results.text.count("[%s · %s · output %s ·" % [generation, terminal.agent_id, terminal.output_id])
 	check(rendered_count == 1, "actual rendered result appears exactly once")
-	var npc_messages: Array = BridgeClient.conversation_snapshot("security-auditor").messages
+	var npc_messages: Array = BridgeClient.conversation_snapshot("fixture-extra-a").messages
 	check(not JSON.stringify(npc_messages).contains("ibis") and not JSON.stringify(npc_messages).contains("execute integration sentinel"), "ordinary NPC history stays independent of engineering history")
 	check(count("domain_query") == 1, "return replay never reexecutes")
 	var rendered := domain_identity()
 	rendered.merge({"request_id": resume.request_id, "refocus_request_id": refocus.request_id, "output_id": terminal.output_id, "output": terminal.output, "status": terminal.status, "rendered_text": results.text, "rendered_unique_results": rendered_count})
 	await stage("domain_rendered", rendered)
 	await click(action("Stop"))
-	if not await until(func(): return has_ack("domain_state", latest("deactivate_domain").get("request_id", "")) and BridgeClient.domain_snapshot("engineering").get("state") == "inactive"):
+	if not await until(func(): return has_ack("domain_state", latest("deactivate_domain").get("request_id", "")) and BridgeClient.domain_snapshot("core").get("state") == "inactive"):
 		await finish()
 		return
 	var stopped := domain_identity()
@@ -167,16 +173,16 @@ func _ready() -> void:
 	await finish()
 
 func project_identity() -> Dictionary:
-	var w := BridgeClient.workspace_snapshot()
+	var w := BridgeClient.domain_snapshot("core")
 	return {"project_id": w.project_id, "workspace_id": w.workspace_id}
 
 func domain_identity() -> Dictionary:
 	var out := project_identity()
-	out.merge({"domain_id": "engineering", "domain_session_id": generation})
+	out.merge({"domain_id": "core", "domain_session_id": generation})
 	return out
 
 func observe_domain(domain: String, reason: String, request: String) -> void:
-	if domain != "engineering": return
+	if domain != "core": return
 	var snapshot := BridgeClient.domain_snapshot(domain)
 	if reason == "input":
 		for pending in [snapshot.get("pending_control", {}), snapshot.get("pending_query", {})]:
@@ -207,6 +213,7 @@ func current_assistant() -> String:
 	return npc_hud.get_node("Panel/Margin/Rows/BodyLabel").text.substr(span.start, span.length)
 
 func npc_submit(text: String, agent: String) -> Dictionary:
+	await until(func(): return BridgeClient.character_snapshot(agent).get("execution_kind") == "extra")
 	composer.text = text
 	composer.text_changed.emit(text)
 	composer.grab_focus()
@@ -301,3 +308,20 @@ func finish() -> void:
 	if failures.is_empty(): print("godot_domain_integration: OK — %d checks passed." % checks)
 	else: printerr("godot_domain_integration: %d failures / %d checks." % [failures.size(), checks])
 	get_tree().quit(0 if failures.is_empty() else 1)
+
+
+func setup_submit(text: String, agent: String) -> Dictionary:
+	await until(func(): return BridgeClient.character_snapshot(agent).get("execution_kind") == "working" and BridgeClient.character_snapshot(agent).get("pending", "").is_empty())
+	composer.text = text
+	composer.text_changed.emit(text)
+	var ids: Array[String] = []
+	var listener := func(id: String, reason: String, request: String):
+		if id == agent and reason == "project_setup": ids.append(request)
+	GameEvents.character_changed.connect(listener)
+	await click(npc_hud.get_node("Panel/Margin/Rows/Actions/Prepare"))
+	await until(func(): return not ids.is_empty())
+	GameEvents.character_changed.disconnect(listener)
+	var output: String = BridgeClient.character_snapshot(agent).get("setup_output", "")
+	var body: RichTextLabel = npc_hud.get_node("Panel/Margin/Rows/BodyLabel")
+	check(body.text.contains(output) and not output.is_empty(), "typed setup output rendered")
+	return {"request_id": ids[0], "agent_id": agent, "assistant": output}
