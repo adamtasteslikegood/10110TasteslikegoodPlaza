@@ -1,0 +1,14 @@
+graph TD
+    P[PROVISIONING] --> R[RUNNING]
+    R --> Q[QUIESCING]
+    Q --> S[STOPPED]
+    R --> F[FAILED]
+    F --> RC[RECOVERING]
+    RC --> R
+    Q -->|Drain or interrupt; flush state| V[Persist workspace and SDK state]
+    V --> S
+    RC -->|Fence stale runtime and credentials| L[Acquire new lease and generation]
+    L --> M[Attach durable volume; restore SDK session]
+    M --> R
+    S -->|Resume request| M
+    V --> B[(Backups and durable volume)]

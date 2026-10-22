@@ -1,0 +1,12 @@
+graph LR
+    UI[Agent client] <--> B[Python bridge]
+    B <-->|Commands and replayable events| C[Runtime control plane]
+    C --> DB[(Sessions leases event log)]
+    C --> V[MicroVM per worktree]
+    V --> S[Runtime supervisor]
+    S <--> A[Python Claude Agent SDK worker]
+    A --> W[Persistent workspace]
+    A --> T[SDK session state and transcript]
+    W --> P[(Durable volume and backups)]
+    T --> P
+    C --> L[Lease and runtime generation]
