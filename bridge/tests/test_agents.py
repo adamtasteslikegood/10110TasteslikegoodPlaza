@@ -75,3 +75,18 @@ class TestListAgents(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_explicit_extra_definition_is_loadable():
+    from bridge.agent_bindings import BindingRegistry
+
+    registry = BindingRegistry(
+        extras={
+            "test-guide": {
+                "execution_kind": "extra",
+                "domain_id": None,
+                "definition": "Fixture only.",
+            }
+        }
+    )
+    assert agents.load_agent("test-guide", registry=registry) == "Fixture only."

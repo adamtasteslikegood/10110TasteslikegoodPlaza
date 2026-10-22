@@ -16,7 +16,7 @@ STORE_DIR = os.path.join(os.path.dirname(__file__), "agents")
 _VALID_AGENT_ID = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_-]*$")
 
 
-def load_agent(agent_id):
+def load_agent(agent_id, *, registry=None):
     """Return the .md definition for agent_id, or None if not found.
 
     The agent_id is validated against a slug pattern and the resolved
@@ -25,13 +25,24 @@ def load_agent(agent_id):
     if not isinstance(agent_id, str) or not _VALID_AGENT_ID.match(agent_id):
         return None
 
+    if registry is not None:
+        extra = registry.load_extra(agent_id)
+        if extra is not None:
+            return extra
+
     agent_path = os.path.join(STORE_DIR, f"{agent_id}.md")
     resolved = os.path.realpath(agent_path)
-    if not resolved.startswith(os.path.realpath(STORE_DIR)):
+    if os.path.commonpath([resolved, os.path.realpath(STORE_DIR)]) != os.path.realpath(
+        STORE_DIR
+    ):
         return None
 
     if not os.path.isfile(resolved):
-        return None
+        if registry is None:
+            from bridge.agent_bindings import BindingRegistry
+
+            registry = BindingRegistry()
+        return registry.load_extra(agent_id)
 
     with open(resolved, encoding="utf-8") as f:
         return f.read()
