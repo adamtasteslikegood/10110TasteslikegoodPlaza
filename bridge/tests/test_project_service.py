@@ -108,6 +108,53 @@ async def test_existing_project_bootstraps_and_memory_revision_survives_failed_s
 
 
 @pytest.mark.asyncio
+async def test_chief_cleanup_failure_survives_retired_setup_into_server_shutdown(
+    tmp_path, runtime_config, runtime_archive, monkeypatch
+):
+    import websockets
+    from bridge.project_service import ProjectService
+    from bridge.server import BridgeServer
+    from bridge.tests.test_conversation_backends import install_sdk
+
+    root = tmp_path / "new-project"
+    root.mkdir()
+    (root / "README.md").write_text("synthetic seed")
+    config = replace(runtime_config, workspace_root_dir=root)
+
+    async def disconnect():
+        raise OSError("private-chief-cleanup-sentinel")
+
+    install_sdk(monkeypatch, disconnect=disconnect)
+    service = ProjectService(
+        config, runtime_root=tmp_path / "runtime", owner_run_id="chief"
+    )
+    recorder, writer = runtime_archive
+    server = BridgeServer(config=config, project_service=service, recorder=recorder)
+    await settled(service)
+    response = await server.dispatch(
+        dict(
+            type="project_setup",
+            agent_id="systems-architect",
+            request_id="chief",
+            intent="prepare",
+        )
+    )
+    assert response[0]["status"] == "error" and service._setup_task.done()
+    assert "private-" not in str(response)
+    assert not (root / ".git").exists()
+    actual = websockets.serve
+    monkeypatch.setattr(
+        "bridge.server.websockets.serve",
+        lambda handler, *_args, **kwargs: actual(handler, "127.0.0.1", 0, **kwargs),
+    )
+    stopped = asyncio.Event()
+    stopped.set()
+    with pytest.raises(RuntimeError, match="SDK cleanup"):
+        await server.serve(stop_event=stopped)
+    assert writer.closed == [False]
+
+
+@pytest.mark.asyncio
 async def test_setup_save_failure_preserves_repository_and_never_reinitializes(
     tmp_path, monkeypatch
 ):

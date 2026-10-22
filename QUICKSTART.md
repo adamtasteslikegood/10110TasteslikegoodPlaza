@@ -120,13 +120,14 @@ info — questions will show a "Bridge not connected" error until you start
 
 ## Project work and domain controls (M12)
 
-The character/domain amendment has recorded Linux API-key cloud acceptance:
-both ten-source guard modes passed 29/29 at `ba5599b`, and the real Godot/plain-client
-flow passed in selected `dontAsk` mode at clean `a582f11`. Native character
-controls, Chief setup, background work, independent extra conversation, replay,
-restart/readback and project isolation passed. Earlier failed and historical
-observations remain retained. Owner laptop/native OAuth/desktop checks remain
-open; see [M12 evidence and desktop checks](#m12-live-evidence-and-desktop-checks).
+The runtime correction has recorded Linux API-key cloud acceptance: both
+twelve-source guard modes passed 29/29 at `ec5d236`, and the Godot/plain-client
+flow passed in selected `dontAsk` mode at clean `eaba12a`, bound to 48 relevant
+source files. Chief setup, background work, independent extra conversation,
+replay, restart/readback, project isolation and all three clean bridge closures
+passed. The owner has confirmed laptop tools, worktree/memory behavior and the
+latest OAuth run. This correction's laptop and remaining desktop checks are
+separate; see [M12 evidence and desktop checks](#m12-live-evidence-and-desktop-checks).
 Catalog characters require a prepared project for work. Explicit extras retain
 tools-disabled conversation when `WORKSPACE_ROOT_DIR` is JSON `null` (the default).
 Select one existing project directory before starting the bridge:
@@ -534,22 +535,69 @@ Nothing else in the repo needs them.
 
 ## M12 live evidence and desktop checks
 
-**Current-source Linux API-key cloud acceptance passed.** The [live attempt ledger](specs/evidence/m12-character-live-attempts-2026-10-22.json)
+**Runtime-correction Linux API-key cloud acceptance passed.** The new
+[live ledger](specs/evidence/m12-runtime-live-attempts-2026-10-22.json) and
+[unchanged report](specs/evidence/m12-runtime-live-dontAsk-2026-10-22.json)
+record one selected `dontAsk` attempt at clean `eaba12a`. Chief setup on `main`,
+explicit working-character controls, background work with an independent extra,
+one rendered/replayed result, saved notes, restart/readback and separate-project
+isolation passed. All three actual recording manifests have `status: closed` and
+`ended_at`; owned SDK workers/transports finished, observed CLI children exited
+0, run/lease markers detached and no forced teardown occurred. Before/after and
+actual runtime baselines matched. The report binds **48 relevant source files**;
+this is a conservative source inventory, not trace coverage of every file.
+The runner composes `BridgeServer` directly; actual CLI SIGINT/SIGTERM and failed
+SDK-cleanup behavior have separate provider-free Linux process tests.
+
+The new [guard ledger](specs/evidence/m12-runtime-guard-attempts-2026-10-22.json)
+records **29/29 cases in each permission mode** at `ec5d236`, with twelve source
+fingerprints. The controller inspected each separately invoked matrix, verified
+the actual installed SDK/AnyIO/CLI and bundled binary hash against both, then
+atomically published the envelope and verified both runtime modes. Activation
+and unchanged raw reports were committed at `eaba12a` before live. No paid retry
+ran and no earlier evidence was overwritten. The
+[offline record](specs/evidence/m12-runtime-offline-2026-10-22.json) records
+**1,990 Python tests, 118 subtests and zero skips** plus all eight Godot gates,
+formatting, fatal lint and spec/delivery validation at `ec5d236`.
+
+The correction decodes supported final answer/memory envelopes while preserving
+ordinary prose; memory proposals still pass the real store's strict grammar.
+Both panes show fixed, readable failure causes alongside retained partial output.
+Enabled transcript archives preserve that partial text; operational diagnostics
+contain only bounded categories and hashed tool correlation. Work guidance
+explains the managed branch and root working directory without relaxing checks.
+Requested CLI shutdown drains owned work; uncertain SDK cleanup retains an open
+manifest and ownership evidence instead of reporting a clean close.
+
+Runtime remains SDK 0.2.136, AnyIO 4.14.2, bundled CLI 2.1.228 and Godot 4.7.1 on
+Linux with API-key authentication. Guard terminal estimates are USD 0.7837115 and
+0.734316 (24 observations per mode); the three live domain terminal estimates are
+USD 0.276198, 0.104048 and 0.074404. Cancellation queries and separate Chief/NPC
+calls are not fully represented; these are estimates, not billing totals. Two
+guard modes do not establish live UI acceptance in both modes. The owner has
+already confirmed laptop tools/worktree/memory behavior and latest OAuth;
+new correction-specific laptop observations and remaining desktop checks are
+still open. Git worktrees and permission controls are not host/network/process
+containment; stronger isolation remains separate M13/M14 planning. Copy/Select
+All and context menus are separate PLZG-293 work. No M12 completion is claimed.
+
+**Historical character/domain amendment evidence follows unchanged.** Its
+[live attempt ledger](specs/evidence/m12-character-live-attempts-2026-10-22.json)
 and [unchanged accepted report](specs/evidence/m12-character-live-dontAsk-2026-10-22-final.json)
 record the selected `dontAsk` Godot/plain-client flow at clean `a582f11`.
 All three bridge lifetimes closed cleanly. Native NPC controls, typed Chief setup
 on main, background work with independent extra conversation and replay, persisted
 notes after restart/readback and separate-project isolation passed. The controller
 verified the clean executed HEAD, equal before/after/actual runtime baselines and
-all **44 executed-source hashes** before recording evidence. Runtime: SDK 0.2.136,
+all **44 recorded source hashes** before recording evidence. Runtime: SDK 0.2.136,
 AnyIO 4.14.2, bundled CLI 2.1.228 and Godot 4.7.1 on Linux, API-key authentication.
-This proves live behavior in `dontAsk` only; owner laptop/native OAuth/desktop
-acceptance remains open.
+This historical run proves live behavior in `dontAsk` only and did not establish
+another laptop binary or native OAuth/desktop acceptance.
 
 The [guard ledger](specs/evidence/m12-character-guard-attempts-2026-10-22.json)
 records fresh **29/29 passing cases in each permission mode** at `ba5599b`, with
 ten source fingerprints and actual runtime/binary validation before publication.
-Those unchanged reports were committed with the current two-mode envelope at
+Those unchanged reports were committed with the then-current two-mode envelope at
 `a582f11` before live. The earlier 58 passes at `e67c926`, pre-SDK setup failure,
 and old six-source activation remain historical; no old hashes were refreshed.
 The [first live report](specs/evidence/m12-character-live-dontAsk-2026-10-22-attempt1.json)
@@ -565,7 +613,7 @@ domain store 136, domain transport 69, domain panel 111 and character domain 52
 checks. The earlier [offline record](specs/evidence/m12-character-offline-2026-10-22.json)
 retains its original 1,810-test baseline and source hashes.
 
-Fresh guard terminal estimates are USD 0.77665125 (`dontAsk`) and USD 0.71560025
+Historical guard terminal estimates are USD 0.77665125 (`dontAsk`) and USD 0.71560025
 (`bypassPermissions`), from 24 retained terminal observations per mode. Accepted
 live domain terminal estimates are USD 0.2681655, 0.10136150000000001 and 0.07188675.
 Guard nonterminal cancellation queries and separate live Chief/NPC calls are not
@@ -636,7 +684,7 @@ exact source hashes, versions and the actual local bundled binary hash.
 Fresh probes are **not automatically activated**. Product activation reads fixed
 `bridge/tool_guard_acceptance.json`, an envelope with `schema_version:1` and
 `records` keyed by `dontAsk` and `bypassPermissions`. Both complete records must
-match all ten guarded source hashes. Each selected mode also verifies the pinned
+match all twelve guarded source hashes. Each selected mode also verifies the pinned
 SDK/AnyIO/CLI version and actual bundled binary SHA; there is no evidence override.
 
 For publication, build `acceptance_envelope(records)` from the two unchanged
@@ -672,12 +720,34 @@ hangs but fails clean acceptance. Private artifacts can contain disposable notes
 and output; do not publish credentials, environment, full options or raw SDK dumps.
 
 M12 acceptance status is recorded separately from historical NPC SDK evidence.
+The owner has confirmed laptop tools/worktree/memory behavior and latest OAuth;
+these are owner reports, not itemized results for the new correction below.
 Cloud Linux API-key runs do not prove laptop subscription billing, a different
-binary, or desktop behavior. M12 remains open until implementation merges and
-all deterministic, live and desktop gates pass. Record date, OS/Godot/CLI binary,
-tested commit, auth category and observed result for each desktop item:
+binary, or desktop behavior. M12 remains open for delivery and remaining
+acceptance. Record date, OS/Godot/CLI binary, tested commit, auth category and
+observed result; baseline connectivity does not need another confirmation.
 
-- [ ] Run and inspect both local guard modes against the intended laptop sources, binary and auth; record the selected live mode.
+Correction-specific laptop checklist, using disposable projects for deliberate
+failure checks:
+
+- [ ] Run and inspect both local guard modes against the intended new sources,
+  laptop binary and auth; record the selected live mode.
+- [ ] A supported final answer/memory envelope renders as readable prose; a valid
+  proposal updates the project notes. Malformed or unsupported proposals preserve
+  useful output and do not apply rejected proposal fields; the bridge still saves
+  its labeled task/result excerpts and observed outcome.
+- [ ] A managed-branch/root-cwd readiness failure shows a useful bounded cause in
+  NPC dialogue and the domain pane. Restore the expected state and explicitly
+  refresh/refocus; no automatic checkout/reset or weaker guard is expected.
+- [ ] A failed query shows its readable cause with any partial answer, including
+  an empty answer. With transcripts enabled, that partial text is retained;
+  metadata-only logs do not acquire message bodies or arbitrary exception text.
+- [ ] Ordinary requested bridge shutdown closes the manifest after drain and
+  removes run/lease markers. If cleanup is uncertain, keep its open manifest and
+  ownership evidence for inspection; do not force an acceptance pass.
+
+Remaining desktop items, retaining earlier owner confirmations:
+
 - [ ] Approach working characters without starting work; use typed referral/Prepare with the Chief and verify main/shared notes without an eager worktree.
 - [ ] Use dialogue Let's work/Send with mouse and keyboard; Enter never starts implicitly, pending draft stays editable, shared pane switching submits once, and scroll/selection/focus preserve movement.
 - [ ] Physically leave the anchor during real work; observe background state and hidden panel.

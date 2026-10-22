@@ -6,6 +6,8 @@ from pathlib import Path
 import anyio
 from claude_agent_sdk.types import HookCallback
 
+from bridge.failure_diagnostics import readiness_category, tool_correlation
+
 from bridge.project_memory import MemorySnapshot, ProjectMemoryStore, TurnIntent
 from bridge.workspace import ExecutionWorkspace, WorkspaceError, validate_workspace
 from bridge.workspace_lease import WorkspaceLease
@@ -141,8 +143,6 @@ class ReadinessService:
         def check():
             if (
                 lease.workspace != self.workspace
-                or not isinstance(cwd, str)
-                or Path(cwd) != self.workspace.worktree_path
                 or not isinstance(tool_name, str)
                 or not tool_name
                 or not isinstance(tool_use_id, str)
@@ -151,25 +151,45 @@ class ReadinessService:
                 or len(tool_use_id.encode()) > 256
             ):
                 raise WorkspaceError(
-                    "workspace_invalid", "Tool workspace or correlation is invalid"
+                    "workspace_invalid",
+                    "Tool workspace or correlation is invalid",
+                    readiness_category="tool_correlation_invalid",
+                )
+            if not isinstance(cwd, str) or Path(cwd) != self.workspace.worktree_path:
+                raise WorkspaceError(
+                    "workspace_invalid",
+                    "Tool cwd differs from owned worktree root",
+                    readiness_category="cwd_mismatch",
                 )
             self._validate()
-            lease.validate()
+            try:
+                lease.validate()
+            except WorkspaceError as error:
+                raise WorkspaceError(
+                    error.code,
+                    "Workspace lease is invalid",
+                    readiness_category="lease_invalid",
+                ) from None
             # Every tool reads the current consistent revision. NPC checkpoints
             # legitimately advance it while this session holds the reservation.
             return self.memory.load()
 
         return await owned_io(check)
 
-    def pre_tool_hook(self, lease: WorkspaceLease) -> HookCallback:
+    def pre_tool_hook(self, lease: WorkspaceLease, *, on_denied=None) -> HookCallback:
         async def check(data, tool_use_id, context):
+            category = None
             try:
                 if (
                     not isinstance(data, dict)
                     or data.get("hook_event_name") != "PreToolUse"
                     or data.get("tool_use_id") != tool_use_id
                 ):
-                    return denial()
+                    raise WorkspaceError(
+                        "workspace_invalid",
+                        "Invalid hook correlation",
+                        readiness_category="tool_correlation_invalid",
+                    )
                 with anyio.fail_after(CHECK_TIMEOUT):
                     await self.check_tool(
                         lease,
@@ -178,10 +198,28 @@ class ReadinessService:
                         tool_use_id=tool_use_id,
                     )
                 return {}
-            except Exception:
-                return denial()
+            except Exception as error:
+                category = readiness_category(error)
             except asyncio.CancelledError:
                 # Shutdown closes the owned CLI; never convert cancellation to {}.
-                return denial()
+                category = "readiness_cancelled"
+            if on_denied is not None:
+                try:
+                    on_denied(
+                        dict(
+                            readiness_category=category,
+                            **tool_correlation(data, tool_use_id),
+                        )
+                    )
+                except Exception:
+                    pass  # Diagnostics can never turn a failed check into approval.
+            guidance = {
+                "cwd_mismatch": "Keep tool root cwd at the owned worktree; use a scoped command or subshell for subdirectories. Stop and review setup before restarting.",
+                "branch_changed": "Keep the active owned branch; do not checkout another branch. Stop and review ownership with the Chief Architect before restarting; no automatic reset or checkout repair.",
+            }.get(
+                category,
+                "Stop and review setup with the Chief Architect before restarting.",
+            )
+            return denial(f"Readiness failed ({category}). {guidance}")
 
         return check

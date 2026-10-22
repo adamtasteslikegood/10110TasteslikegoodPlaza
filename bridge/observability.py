@@ -16,6 +16,7 @@ from typing import Literal
 
 from bridge.config import BridgeConfig
 from bridge.log_storage import RunLogWriter
+from bridge.failure_diagnostics import diagnostic_fields
 
 
 @dataclass(frozen=True)
@@ -204,6 +205,10 @@ class BridgeRecorder:
         duration_ms: float | None = None,
         domain_state: str | None = None,
         context_sources: list[dict] | None = None,
+        terminal_reason: str | None = None,
+        readiness_category: str | None = None,
+        tool_name: str | None = None,
+        tool_use_id: str | None = None,
     ) -> bool:
         if getattr(self._local, "active", False):
             return False
@@ -244,6 +249,12 @@ class BridgeRecorder:
                     outcome=outcome,
                     duration_ms=duration_ms,
                     domain_state=domain_state,
+                    **diagnostic_fields(
+                        terminal_reason=terminal_reason,
+                        readiness_category=readiness_category,
+                        tool_name=tool_name,
+                        tool_use_id=tool_use_id,
+                    ),
                 )
                 record = self._log_record(level, metadata)
                 self._logger.handle(record)

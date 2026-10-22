@@ -167,6 +167,7 @@ func _ready() -> void:
 	review_regressions()
 	archive_retention_boundary()
 	final_rebinding_regression()
+	diagnostic_command_regressions()
 	finish()
 
 func dict_accepted() -> Dictionary:
@@ -384,3 +385,35 @@ func final_rebinding_regression() -> void:
 	check(not s.apply_packet(rejection).is_empty() and s.snapshot("core").pending_control.is_empty(), "final R3 unconfigured Start failure settles matching control")
 	check(s.snapshot("core").error.get("error_type") == "workspace_unconfigured", "final R3 unconfigured failure remains visible")
 	check(s.apply_packet(result("2")).is_empty(), "final R3 prior-project terminal stays fenced")
+
+
+func diagnostic_command_regressions() -> void:
+	for kind in ["activate_domain", "domain_query", "domain_status"]:
+		var s = fresh()
+		check(s.admit_command(command(kind, "diagnostic")), "diagnostic command admitted: " + kind)
+		var failure := state("diagnostic")
+		failure.merge({"type": "domain_error", "status": "error", "error_type": "workspace_invalid", "message": "The configured workspace needs inspection.", "terminal_reason": "readiness_failed", "readiness_category": "branch_changed", "tool_input": "synthetic-sensitive"}, true)
+		check(not s.apply_packet(failure).is_empty(), "diagnostic error settles actual command: " + kind)
+		var notice: Dictionary = s.snapshot("core").error
+		check(notice.get("terminal_reason") == "readiness_failed" and notice.get("readiness_category") == "branch_changed", "safe command diagnostics retained: " + kind)
+		check(not notice.has("tool_input"), "tool contents excluded from command notice")
+		check(s.admit_command(command("domain_status", "passive-refresh")), "passive status admitted after failure")
+		s.apply_packet(state("passive-refresh"))
+		check(s.snapshot("core").error == notice, "passive status does not erase actionable command notice")
+	var s = fresh()
+	replay(s, "diagnostic-replay")
+	s.apply_packet(complete("diagnostic-replay", "2"))
+	check(s.admit_command(command("domain_status", "nested")), "status admitted alongside receipt hole")
+	var failure := state("nested")
+	failure.merge({"type": "domain_error", "status": "error", "error_type": "workspace_invalid", "message": "Inspect setup.", "terminal_reason": "readiness_failed", "readiness_category": "cwd_mismatch"}, true)
+	s.apply_packet(failure)
+	var layered: Dictionary = s.snapshot("core").error
+	check(layered.get("error_type") == "replay_incomplete" and layered.get("command_error", {}).get("readiness_category") == "cwd_mismatch", "receipt and nested command diagnostics coexist")
+	for value in ["synthetic-sensitive", {"private": "synthetic-sensitive"}, 7, null]:
+		check(s.admit_command(command("domain_status", "untrusted")), "untrusted metadata fixture admitted")
+		failure.request_id = "untrusted"
+		failure.terminal_reason = value
+		failure.readiness_category = value
+		s.apply_packet(failure)
+		var untrusted: Dictionary = s.snapshot("core").error.get("command_error", {})
+		check(not untrusted.has("terminal_reason") and not untrusted.has("readiness_category"), "unknown or non-string diagnostic metadata omitted")

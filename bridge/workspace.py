@@ -21,9 +21,10 @@ from bridge.agent_bindings import DOMAIN_IDS
 class WorkspaceError(ValueError):
     """Safe code/message for clients; raw Git and filesystem errors stay private."""
 
-    def __init__(self, code: str, message: str):
+    def __init__(self, code: str, message: str, *, readiness_category=None):
         super().__init__(message)
         self.code = code
+        self.readiness_category = readiness_category
 
 
 @dataclass(frozen=True)
@@ -336,7 +337,6 @@ def _validate_tree(workspace: ExecutionWorkspace, *, runtime_root: Path) -> None
         or source.project_id != workspace.project_id
         or execution.common_git_dir != common
         or execution.project_id != workspace.project_id
-        or execution.source_branch != workspace.branch
         or source.source_branch is None
         or source.source_branch == workspace.branch
         or execution.head_commit is None
@@ -351,6 +351,12 @@ def _validate_tree(workspace: ExecutionWorkspace, *, runtime_root: Path) -> None
         )
     ):
         raise _invalid("Project or execution branch identity changed")
+    if execution.source_branch != workspace.branch:
+        raise WorkspaceError(
+            "workspace_invalid",
+            "Execution owned branch changed",
+            readiness_category="branch_changed",
+        )
     actual_git = Path(_git(path, "rev-parse", "--absolute-git-dir")).resolve(
         strict=True
     )

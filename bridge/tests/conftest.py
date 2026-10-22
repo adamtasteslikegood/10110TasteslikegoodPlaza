@@ -73,7 +73,7 @@ def offline_clients(monkeypatch, explicit_extras):
         reply=MagicMock(return_value="conversation reply"), clients=[]
     )
 
-    def conversation_factory(*, options):
+    def conversation_factory(*, options, transport=None):
         client = AsyncMock()
         client.options = options
         conversation.clients.append(client)

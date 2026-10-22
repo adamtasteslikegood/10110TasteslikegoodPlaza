@@ -21,6 +21,7 @@ var unconfigured := false
 var prepared := false
 var status_packets: Array[Dictionary] = []
 var hold_status := false
+var hold_domain_status := false
 
 func check(ok: bool, message: String) -> bool:
 	checks += 1
@@ -50,6 +51,9 @@ func service() -> void:
 			if not hold_status: peer.send_text(JSON.stringify(response))
 		elif p.get("type") == "domain_status":
 			status_attempts += 1
+			if hold_domain_status:
+				commands.append(p)
+				continue
 			var response := state(p.request_id, lifecycle)
 			if fail_next_status:
 				fail_next_status = false
@@ -176,6 +180,7 @@ func _ready() -> void:
 	var terminal := {"type": "domain_result", "request_id": run.request_id, "project_id": "P", "workspace_id": "W", "domain_id": "core", "domain_session_id": "A", "output_id": "1", "agent_id": "systems-architect", "task": run.task, "output": "Architect output ibis", "status": "success", "reason": "completed", "truncated": false, "memory": {"saved": false, "revision": 9, "error_type": "write_failed"}}
 	await deliver(terminal)
 	check(results.text.contains("Architect output ibis") and results.text.contains("systems-architect") and results.text.contains("unsaved"), "same department terminal attributed with unsaved memory")
+	failed_result_rendering_checks(terminal)
 	check(input.text == "next draft" and BridgeClient.domain_snapshot("core").consumed_cursor == "1", "one shared draft and visible read cursor")
 	input.select(0, 4)
 	GameEvents.domain_changed.emit("core", "read", "")
@@ -246,6 +251,7 @@ func _ready() -> void:
 	var failed_status := BridgeClient.character_snapshot("systems-architect")
 	check(failed_status.pending.is_empty() and failed_status.error == wrong.output and failed_status.domain_id == "core", "typed status error uses output and preserves binding")
 	check(not panel.visible and count("domain_query") == 3, "status error cannot steal foreground or execute")
+	await diagnostic_command_regressions()
 	var setup_late := BridgeClient.project_setup("systems-architect", "explicit review before disconnect")
 	await frames()
 	# Store observation fences refuse lifecycle snapshots captured before newer work.
@@ -268,6 +274,131 @@ func finish() -> void:
 	if failures.is_empty(): print("character_domain_test: OK — %d checks passed." % checks)
 	else: printerr("character_domain_test: %d failures / %d checks." % [failures.size(), checks])
 	get_tree().quit(0 if failures.is_empty() else 1)
+
+func failed_result_rendering_checks(template: Dictionary) -> void:
+	# Rendering regressions use synthetic result snapshots; lifecycle/transport
+	# admission is exercised by the surrounding native production scene flow.
+	var domain: Dictionary = BridgeClient.domains._domain("core")
+	var original_results: Array = domain.results.duplicate(true)
+	var pane := main.get_node("DomainHUD")
+	var pane_results: RichTextLabel = pane.get_node("Panel/Scroll/Rows/ResultsLabel")
+	for partial in ["", "Partial café 雪"]:
+		var failed := template.duplicate(true)
+		failed.output = partial
+		failed.status = "error"
+		failed.reason = "readiness_failed"
+		failed.readiness_category = "cwd_mismatch"
+		domain.results = [failed]
+		hud._render_domain(failed.request_id)
+		pane._refresh()
+		check(results.visible_characters == -1, "new failed result shows its cause immediately, including empty output")
+		for label in [results, pane_results]:
+			check(label.text.contains("root cwd") and label.text.contains("Stop"), "both panes show recovery for %s failed output" % ("empty" if partial.is_empty() else "partial"))
+			check(partial.is_empty() or label.text.contains(partial), "both panes retain Unicode failed partial answer")
+		if not partial.is_empty():
+			var span: Dictionary = hud.current_assistant_span()
+			check(results.text.substr(span.start, span.length) == partial, "failure cause stays alongside the exact partial assistant span")
+	var unknown := template.duplicate(true)
+	unknown.output = ""
+	unknown.status = "error"
+	unknown.reason = "synthetic-sensitive password=not-real"
+	domain.results = [unknown]
+	domain.error = {"error_type": "workspace_invalid", "message": "The configured workspace needs inspection.", "internal": "synthetic-sensitive"}
+	hud._render_domain()
+	pane._refresh()
+	for label in [results, pane_results]:
+		check(label.text.contains("could not complete") and label.text.contains("needs inspection"), "both panes show readable unknown failure and command notice")
+		check(not label.text.contains("synthetic-sensitive") and not label.text.contains("\"error_type\""), "ordinary failure display omits raw JSON and untrusted reason")
+	domain.results = original_results
+	domain.error = {}
+	hud._render_domain()
+	pane._refresh()
+
+func visible_notice(needle: String) -> bool:
+	var endpoint := results.text.find(needle) + needle.length()
+	return results.text.contains(needle) and (results.visible_characters < 0 or results.visible_characters >= endpoint)
+
+func diagnostic_command_regressions() -> void:
+	hold_status = false
+	GameEvents.npc_approached.emit("systems-architect", AgentRegistry.get_agent("systems-architect"))
+	await frames(20)
+	# Settle the earlier departure's actual Background/Refocus/replay commands
+	# before starting this independent generation; never replace store snapshots.
+	for _i in 6:
+		var returning: Dictionary = BridgeClient.domain_snapshot("core").pending_control
+		if returning.is_empty(): break
+		var returned := state(returning.request_id, "inactive")
+		if returning.get("type") == "resume":
+			returned.merge({"type": "resume_complete", "high_water_mark": "3", "earliest_output_id": "1", "history_gap": false}, true)
+		await deliver(returned)
+	generation = "diagnostics"
+	lifecycle = "active"
+	var start_id := BridgeClient.activate_domain("core")
+	check(not start_id.is_empty(), "diagnostic fixture admits explicit Start")
+	await frames()
+	await deliver(state(start_id, "activating"))
+	await deliver(state(start_id))
+	check(BridgeClient.domain_snapshot("core").state == "active" and BridgeClient.domain_snapshot("core").domain_session_id == generation, "diagnostic fixture receives active generation")
+	var success_id := BridgeClient.send_domain_query("core", "systems-architect", "successful animation before preflight failure")
+	check(not success_id.is_empty(), "diagnostic fixture admits explicit successful Run")
+	await frames()
+	var success := latest("domain_query")
+	var answer := "Successful café reply continues revealing. ".repeat(10)
+	await deliver({"type": "domain_result", "request_id": success_id, "project_id": "P", "workspace_id": "W", "domain_id": "core", "domain_session_id": generation, "output_id": "1", "agent_id": success.agent_id, "task": success.task, "output": answer, "status": "success", "reason": "completed", "truncated": false, "memory": {"saved": true, "revision": 12, "error_type": null}})
+	var span: Dictionary = hud.current_assistant_span()
+	check(results.visible_characters >= span.start and results.visible_characters < span.start + span.length, "real successful terminal starts ordinary typewriter reveal")
+	BridgeClient.set_domain_draft("core", "unrelated draft preserves successful animation")
+	await frames(2)
+	check(results.visible_characters >= span.start and results.visible_characters < span.start + span.length, "ordinary input notification preserves successful reveal without a failure")
+	var failure_id := BridgeClient.send_domain_query("core", "systems-architect", "preflight branch mismatch")
+	await frames()
+	check(BridgeClient.domain_snapshot("core").pending_query.get("request_id") == failure_id, "real pending Run exists before diagnostic preflight failure")
+	var failure := state(failure_id)
+	failure.merge({"type": "domain_error", "status": "error", "error_type": "workspace_invalid", "message": "The configured workspace needs inspection.", "terminal_reason": "readiness_failed", "readiness_category": "branch_changed"}, true)
+	var arrival_check := func(domain: String, reason: String, request: String):
+		if domain == "core" and reason == "domain_error" and request == failure_id:
+			check(results.text.contains(failure.message), "actual domain_error notification appends ordinary notice text")
+			check(visible_notice(failure.message), "actual new command notice is immediately visible before passive refresh")
+	GameEvents.domain_changed.connect(arrival_check)
+	await deliver(failure)
+	GameEvents.domain_changed.disconnect(arrival_check)
+	var notice: Dictionary = BridgeClient.domain_snapshot("core").error
+	check(notice.get("terminal_reason") == "readiness_failed" and notice.get("readiness_category") == "branch_changed", "real packet path retains diagnostic categories through automatic status refresh")
+	var pane_results: RichTextLabel = main.get_node("DomainHUD/Panel/Scroll/Rows/ResultsLabel")
+	for label in [results, pane_results]:
+		check(label.text.contains("owned branch") and label.text.contains("no automatic reset or checkout repair"), "normal notification renders branch recovery in both panes")
+	check(visible_notice("no automatic reset or checkout repair"), "new preflight notice is immediately inside visible range during prior successful reveal")
+	hud._process(float(answer.length()) / 55.0 + 1.0)
+	check(visible_notice("no automatic reset or checkout repair"), "preflight notice remains visible after prior successful animation duration")
+	# A receipt error and a separate command failure must coexist through the
+	# actual completion/error packets, without assigning snapshots or internals.
+	var replay_id := BridgeClient.resume_domain("core")
+	await frames()
+	var completion := state(replay_id)
+	completion.merge({"type": "resume_complete", "high_water_mark": "2", "earliest_output_id": "1", "history_gap": false}, true)
+	await deliver(completion)
+	hold_domain_status = true
+	var status_id := BridgeClient.domain_status("core")
+	await frames()
+	if status_id.is_empty(): status_id = latest("domain_status").get("request_id", "")
+	failure.request_id = status_id
+	failure.readiness_category = "cwd_mismatch"
+	await deliver(failure)
+	var layered: Dictionary = BridgeClient.domain_snapshot("core").error
+	check(layered.get("error_type") == "replay_incomplete" and layered.get("command_error", {}).get("readiness_category") == "cwd_mismatch", "normal packet flow retains nested command category alongside receipt error")
+	for label in [results, pane_results]:
+		check(label.text.contains("Retained output is missing") and label.text.contains("root cwd") and label.text.contains("Stop"), "both panes render nested command recovery alongside receipt failure")
+	check(visible_notice("root cwd"), "nested command notice is inside NPC visible range")
+	status_id = BridgeClient.domain_status("core")
+	await frames()
+	failure.request_id = status_id
+	failure.terminal_reason = "synthetic-sensitive"
+	failure.readiness_category = "synthetic-sensitive"
+	await deliver(failure)
+	var unknown: Dictionary = BridgeClient.domain_snapshot("core").error.get("command_error", {})
+	check(not unknown.has("terminal_reason") and not unknown.has("readiness_category"), "real command flow drops untrusted diagnostic strings")
+	check(not results.text.contains("synthetic-sensitive") and not pane_results.text.contains("synthetic-sensitive"), "untrusted provider diagnostics remain absent from both panes")
+	hold_domain_status = false
 
 func settle_return() -> void:
 	await frames()

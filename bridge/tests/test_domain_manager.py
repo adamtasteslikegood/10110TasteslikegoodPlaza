@@ -77,6 +77,38 @@ async def test_activation_exposes_generation_before_connect(setup, monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_start_failure_preserves_safe_category_and_correlated_event(
+    setup, monkeypatch, runtime_archive
+):
+    from bridge.workspace import WorkspaceError
+
+    manager, _, _ = setup
+    recorder, writer = runtime_archive
+    manager._recorder = recorder
+
+    async def reject(owner):
+        raise WorkspaceError(
+            "workspace_invalid",
+            "synthetic-sensitive",
+            readiness_category="branch_changed",
+        )
+
+    monkeypatch.setattr(FakeOwner, "start", reject)
+    packets = await command(manager, "activate_domain")
+    result = packets[-1]
+    assert result["error_type"] == "workspace_invalid"
+    assert result["readiness_category"] == "branch_changed"
+    assert "synthetic-sensitive" not in str(packets)
+    events = [
+        r
+        for kind, r, _ in writer.records
+        if kind == "event" and r["event"] == "request_failed"
+    ]
+    assert len(events) == 1 and events[0]["request_id"] == "run"
+    assert events[0]["readiness_category"] == "branch_changed"
+
+
+@pytest.mark.asyncio
 async def test_stale_generation_cannot_mutate(setup):
     manager, _, _ = setup
     first = (await command(manager, "activate_domain"))[-1]["domain_session_id"]
