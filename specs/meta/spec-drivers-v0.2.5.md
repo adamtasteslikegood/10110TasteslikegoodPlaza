@@ -521,6 +521,31 @@ observed cloud SDK recall run and its limits. The ruling itself is not execution
 proof; M11 desktop acceptance, M12 completion and closure of issue #341 are not
 claimed here.
 
+### 4.15 Working characters versus extras — written amendment pending
+
+Owner clarification, 2026-10-22 UTC: the Systems Architect is a working
+representative of Core. Its existing NPC dialogue should front a domain session,
+with contextual Start/Run actions and the feel of a classic 2D RPG conversation.
+The conversation engine remains capable and aware, reserved for gameplay extras.
+The owner also requests game/work context and an explicit config/environment
+switch for Claude's ordinary permission bypass.
+
+Current `DESIGN-25D` D-033 and the approved M12 specification describe all ordinary
+NPC dialogue as synchronous conversation, with NPC tools disabled and a separate
+domain panel. M12 also says readiness leaves ordinary permission denials in place.
+Those statements need scoped amendments to express the new owner direction.
+D-038's project/worktree/memory readiness and explicit work controls remain.
+
+The proposed reconciliation is the
+[M12 character/domain amendment](../../docs/superpowers/specs/2026-10-22-m12-character-domain-amendment.md),
+tracked under [PLZG-289](https://tasteslikegood.atlassian.net/browse/PLZG-289).
+It is DRAFT: the owner selected the interaction direction, but written-spec
+review is still pending. On approval, ratify the engine-role distinction in the
+entitled design/decision documents and amend the original M12 sections together.
+This entry records the difference; it does not originate product policy or claim
+that the runtime has changed. No new narrative beat or multi-workspace capacity
+is proposed.
+
 ## 5. Exit criteria to v1.0.0
 
 `1.0.0` is cut when **M8 is demonstrable in-engine** — a player question travels
