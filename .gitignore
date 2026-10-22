@@ -43,4 +43,5 @@ report.md
 .agent-harness/
 
 # local bridge diagnostic archives (custom roots are operator-managed)
-.local/bridge-logs/
+# ## **Commented out for Dev sharing with cloud agent environments via git** ##
+# .local/bridge-logs/
