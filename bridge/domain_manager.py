@@ -1,6 +1,7 @@
 """UI-independent routing over bounded, generation-owned domain sessions."""
 
 import asyncio
+import time
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
@@ -95,6 +96,7 @@ class DomainManager:
         self, command: dict, *, context: RequestContext, emit: DomainSink
     ) -> None:
         session = None
+        started = time.monotonic()
         try:
             command = validate_domain_command(command)
             kind = command["type"]
@@ -197,7 +199,15 @@ class DomainManager:
             packet.update(diagnostics)
             if self._recorder:
                 self._recorder.event(
-                    "request_failed", context, outcome="failure", **diagnostics
+                    (
+                        "request_rejected"
+                        if code == "invalid_request"
+                        else "request_failed"
+                    ),
+                    context,
+                    outcome="rejected" if code == "invalid_request" else "failure",
+                    duration_ms=(time.monotonic() - started) * 1000,
+                    **diagnostics,
                 )
             if code == "workspace_busy" and isinstance(error, WorkspaceError):
                 # Lease errors expose only an already-validated domain slug,

@@ -229,7 +229,24 @@ class BridgeServer:
         return []
 
     def _record_dispatch_outcome(self, data, responses, context, started):
-        error = next((r for r in responses if r.get("status") == "error"), None)
+        # DomainManager/DomainSession own rejected domain commands and actual
+        # execution terminals, including their validated diagnostics. Dispatch
+        # owns admission and successful commands; replayed execution packets do
+        # not change the outcome of the replay command or create new failures.
+        error = next(
+            (
+                r
+                for r in responses
+                if r.get("status") == "error" and r.get("type") != "domain_result"
+            ),
+            None,
+        )
+        if (
+            _is_domain_request(data)
+            and error is not None
+            and error.get("type") == "domain_error"
+        ):
+            return
         if error is not None:
             name = (
                 "request_rejected"

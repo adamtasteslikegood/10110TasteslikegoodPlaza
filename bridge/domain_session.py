@@ -265,14 +265,26 @@ class DomainSession:
         await asyncio.shield(self._startup)
         return self.snapshot()
 
-    async def _error(self, command, code, emit, context):
+    async def _error(self, command, code, emit, context, started):
+        diagnostics = exception_diagnostics(DomainCommandError(code))
+        if self._recorder:
+            self._recorder.event(
+                "request_rejected" if code == "invalid_request" else "request_failed",
+                context,
+                outcome="rejected" if code == "invalid_request" else "failure",
+                duration_ms=(time.monotonic() - started) * 1000,
+                **diagnostics,
+            )
         await deliver(
             emit,
-            error_packet(
-                command,
-                code,
-                project_id=self._identity()["project_id"],
-                workspace_id=self._identity()["workspace_id"],
+            dict(
+                error_packet(
+                    command,
+                    code,
+                    project_id=self._identity()["project_id"],
+                    workspace_id=self._identity()["workspace_id"],
+                ),
+                **diagnostics,
             ),
             self._recorder,
             context,
@@ -282,41 +294,50 @@ class DomainSession:
         self, command: dict, *, context: RequestContext, emit: DomainSink
     ) -> None:
         # No await before installing the single in-flight record.
+        started = time.monotonic()
         command = dict(command)
         try:
             require_working_binding(command.get("agent_id"), self.domain_id)
         except InvalidBinding:
-            return await self._error(command, "invalid_binding", emit, context)
+            return await self._error(command, "invalid_binding", emit, context, started)
         if command.get("domain_id") != self.domain_id:
-            return await self._error(command, "invalid_binding", emit, context)
+            return await self._error(command, "invalid_binding", emit, context, started)
         if command.get("domain_session_id") != self.domain_session_id:
-            return await self._error(command, "session_unavailable", emit, context)
+            return await self._error(
+                command, "session_unavailable", emit, context, started
+            )
         for packet in self._entries:
             if packet["request_id"] == command["request_id"]:
                 if (packet["agent_id"], packet["task"]) != (
                     command["agent_id"],
                     command["task"],
                 ):
-                    return await self._error(command, "invalid_request", emit, context)
+                    return await self._error(
+                        command, "invalid_request", emit, context, started
+                    )
                 return await deliver(emit, packet, self._recorder, context)
         if self._inflight is not None:
             run = self._inflight
             if run.command["request_id"] == command["request_id"]:
                 if run.command != command:
-                    return await self._error(command, "invalid_request", emit, context)
+                    return await self._error(
+                        command, "invalid_request", emit, context, started
+                    )
                 packet = await asyncio.shield(run.admitted)
                 return await deliver(emit, packet, self._recorder, context)
-            return await self._error(command, "domain_busy", emit, context)
+            return await self._error(command, "domain_busy", emit, context, started)
         if (
             self._state not in (SessionState.ACTIVE, SessionState.BACKGROUND)
             or self._stopping
         ):
-            return await self._error(command, "session_unavailable", emit, context)
+            return await self._error(
+                command, "session_unavailable", emit, context, started
+            )
         if self._broken:
-            return await self._error(command, "sdk_error", emit, context)
+            return await self._error(command, "sdk_error", emit, context, started)
         definition = load_agent(command["agent_id"])
         if not definition:
-            return await self._error(command, "invalid_request", emit, context)
+            return await self._error(command, "invalid_request", emit, context, started)
         origin = RequestContext(
             context.connection_id,
             command["request_id"],
@@ -448,6 +469,7 @@ class DomainSession:
                     "request_cancelled" if cancelled else "request_failed",
                     run.context,
                     outcome="cancelled" if cancelled else "failure",
+                    duration_ms=(time.monotonic() - started) * 1000,
                     **diagnostics,
                 )
             self._inflight = None
