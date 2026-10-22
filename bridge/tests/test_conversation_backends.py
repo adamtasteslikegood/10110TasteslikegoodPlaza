@@ -865,6 +865,16 @@ async def test_repeated_server_cancellation_waits_for_npc_cleanup(
             {"facts": ["ignored"]},
         ),
         ("ordinary answer", "ordinary answer", None),
+        (
+            'Literal payload below.\n\n    {"answer":"sample","memory_delta":{"summary":"Example content"}}',
+            'Literal payload below.\n\n    {"answer":"sample","memory_delta":{"summary":"Example content"}}',
+            None,
+        ),
+        (
+            '\t{"answer":"sample","memory_delta":{"summary":"Example content"}}',
+            '\t{"answer":"sample","memory_delta":{"summary":"Example content"}}',
+            None,
+        ),
     ],
 )
 async def test_notes_are_separate_from_npc_history_in_both_backends(

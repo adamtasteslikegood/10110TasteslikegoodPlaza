@@ -146,6 +146,27 @@ async def test_domain_final_envelope_preserves_progress_and_proposal(owner):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("indent", ["    ", "\t"])
+async def test_domain_indented_example_stays_visible_without_proposal(owner, indent):
+    sdk, clients = owner
+    await sdk.start()
+    literal = (
+        indent + '{"answer":"sample","memory_delta":{"summary":"Example content"}}'
+    )
+    clients[0].messages = [
+        AssistantMessage([TextBlock("The literal payload is shown below.")], "model"),
+        AssistantMessage([TextBlock(literal)], "model"),
+        terminal(),
+    ]
+    try:
+        result = await run(sdk)
+        assert result.output == "The literal payload is shown below.\n\n" + literal
+        assert result.memory_delta is None
+    finally:
+        assert (await sdk.stop()).clean
+
+
+@pytest.mark.asyncio
 async def test_stop_preempts_connect(owner):
     sdk, clients = owner
     factory = sdk.client_factory

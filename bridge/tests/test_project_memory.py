@@ -164,6 +164,28 @@ def test_extracted_reply_settles_real_memory_as_untrusted_proposal(memory, inval
         assert "Model-proposed evidence (unverified): Synthetic check" in saved.handoff
 
 
+@pytest.mark.parametrize("indent", ["    ", "\t"])
+def test_indented_example_cannot_become_a_settled_memory_proposal(memory, indent):
+    from bridge.conversation_backend import decode_project_reply
+
+    module, store = memory
+    turn = start(module, store)
+    raw = (
+        "The literal payload is shown below.\n\n"
+        + indent
+        + '{"answer":"sample","memory_delta":{"summary":"Example content","todo_updates":[{"text":"Example TODO","done":true}]}}'
+    )
+    output, proposal = decode_project_reply(raw)
+    assert output == raw and proposal is None
+    assert store.finish_turn(
+        turn.turn_id, outcome="success", output=output, delta=proposal
+    ).saved
+    saved = store.load()
+    assert "Result excerpt" in saved.progress
+    assert "Model proposal summary: Example content" not in saved.progress
+    assert "Example TODO" not in saved.todo
+
+
 def test_proposals_do_not_own_execution_or_forge_completion(memory):
     module, store = memory
     first = start(module, store)

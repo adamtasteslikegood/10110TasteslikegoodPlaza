@@ -79,3 +79,48 @@ def test_extraction_has_a_byte_bound_and_preserves_oversized_text():
 def test_extraction_has_a_candidate_bound_and_preserves_ambiguous_text():
     raw = ("Paragraph.\n\n```python\npass\n```\n\n" * 33) + '{"answer":"yes"}'
     assert decode_project_reply(raw) == (raw, None)
+
+
+@pytest.mark.parametrize("indent", ["    ", "\t", " \t"])
+@pytest.mark.parametrize(
+    "prefix", ["", "\n", " \n\n", "The literal payload is shown below.\n\n"]
+)
+@pytest.mark.parametrize("fence", [False, True])
+def test_markdown_indented_code_is_never_a_reply_envelope(indent, prefix, fence):
+    literal = '{"answer":"sample 雪","memory_delta":{"summary":"Example content"}}'
+    if fence:
+        literal = "```json\n" + literal + "\n```"
+    raw = prefix + "\n".join(indent + line for line in literal.splitlines())
+    assert decode_project_reply(raw) == (raw, None)
+
+
+@pytest.mark.parametrize("indent", [" ", "  ", "   "])
+def test_non_code_indentation_still_allows_a_terminal_envelope(indent):
+    raw = "Checked café.\n\n" + indent + '{"answer":"Ready. 雪"}'
+    assert decode_project_reply(raw) == ("Checked café.\n\nReady. 雪", None)
+
+
+@pytest.mark.parametrize("indent", ["    ", "\t"])
+@pytest.mark.parametrize("prefix", ["", "Checked café.\n\n"])
+def test_indented_fence_opener_is_not_stripped_into_control_output(indent, prefix):
+    raw = prefix + indent + '```json\n{"answer":"sample","memory_delta":{}}\n```'
+    assert decode_project_reply(raw) == (raw, None)
+
+
+@pytest.mark.parametrize("separator", ["\n \n", "\n\t\n", "\r\n\r\n", "\r\n \t\r\n"])
+def test_exact_answer_dedup_accepts_all_supported_paragraph_boundaries(separator):
+    commentary = "Checked first." + separator + "Ready. 雪"
+    raw = commentary + separator + '{"answer":"Ready. 雪","memory_delta":{}}'
+    assert decode_project_reply(raw) == (commentary, {})
+
+
+@pytest.mark.parametrize("fence", [False, True])
+def test_crlf_terminal_envelope_preserves_commentary_line_endings(fence):
+    commentary = "Checked café.\r\nStill checked.\r\n \t\r\n"
+    literal = '{"answer":"Ready. 雪","memory_delta":{"summary":"Checked café"}}'
+    if fence:
+        literal = "```json\r\n" + literal + "\r\n```"
+    assert decode_project_reply(commentary + literal) == (
+        commentary + "Ready. 雪",
+        {"summary": "Checked café"},
+    )

@@ -4,6 +4,8 @@ from dataclasses import dataclass
 import re
 from typing import Protocol
 
+_PARAGRAPH_BREAK = r"\r?\n[ \t]*\r?\n"
+
 
 @dataclass
 class ExecutionMetadata:
@@ -76,7 +78,7 @@ def decode_project_reply(output: str) -> tuple[str, dict | None]:
     # Bound candidate work as well as input bytes. Only paragraph boundaries can
     # begin a terminal envelope; each candidate must consume the entire suffix.
     starts = [0]
-    for match in re.finditer(r"\n[ \t]*\n(?=[ \t]*(?:\{|```))", output):
+    for match in re.finditer(_PARAGRAPH_BREAK + r"(?=[ \t]*(?:\{|```))", output):
         starts.append(match.end())
         if len(starts) > 33:
             return output, None
@@ -84,7 +86,14 @@ def decode_project_reply(output: str) -> tuple[str, dict | None]:
         commentary = output[:start].rstrip()
         if commentary and not _reply_commentary(commentary):
             continue
-        candidate = output[start:].strip()
+        # Blank leading lines are harmless, but indentation on the first content
+        # line is Markdown syntax. Inspect it before removing JSON whitespace,
+        # including for the whole-output candidate and whitespace-only prefixes.
+        candidate = re.sub(r"\A(?:[ \t]*\r?\n)*", "", output[start:]).rstrip()
+        indentation = re.match(r"[ \t]*", candidate)[0]
+        if len(indentation) >= 4 or "\t" in indentation:
+            continue
+        candidate = candidate.lstrip(" ")
         if candidate.startswith("```"):
             fenced = re.fullmatch(
                 r"```(?:json)?[ \t]*\r?\n(.*)\r?\n```", candidate, re.DOTALL
@@ -108,9 +117,18 @@ def decode_project_reply(output: str) -> tuple[str, dict | None]:
         if (
             commentary
             and answer
-            and ("\n\n" + answer + "\n\n" not in "\n\n" + commentary + "\n\n")
+            and not re.search(
+                r"(?:\A|"
+                + _PARAGRAPH_BREAK
+                + ")"
+                + re.escape(answer)
+                + r"(?=\Z|"
+                + _PARAGRAPH_BREAK
+                + ")",
+                commentary,
+            )
         ):
-            answer = commentary + "\n\n" + answer
+            answer = output[:start] + answer
         elif commentary:
             answer = commentary
         return answer, delta if isinstance(delta, dict) else None
