@@ -91,7 +91,7 @@
     "envelope_sha256": "8aa36d6227c3ec7ed5c33a5e712e5be0ffe8a3187ae0d00a50c44b5f5031cae2",
     "current_status": "Historical six-source records remain byte-identical and are rejected in both modes by the current ten-source contract."
   },
-  "next_step": "After final review/CI, obtain new explicit authorization for fresh full guard matrices in both modes and one selected-mode live attempt. Strictly validate actual runtime before publishing unchanged accepted guard records, commit evidence and require clean HEAD before live. No automatic paid retries or approval inferred from prior runs.",
+  "next_step": "After final review/CI, the existing owner build instruction and approved plan authorize fresh bounded controller-owned verification: deliberately run and inspect full guard matrices in both modes, then one selected-mode live attempt. Strictly validate actual runtime before publishing unchanged accepted guard records, commit evidence and require clean HEAD before live. Retain every outcome; no automatic paid retries. The earlier extra human-approval gate was a controller inference, not an explicit user or skill requirement.",
   "limits": [
     "Failed raw report remains accepted:false; no altered observation is activated.",
     "Current-source guard and live acceptance are pending. The existing acceptance artifact intentionally fails closed.",

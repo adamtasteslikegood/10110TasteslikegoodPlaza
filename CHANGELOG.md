@@ -29,8 +29,9 @@ spec-set versions, and no application release existed before `v0.1.22`.
   Retain 58 historical guard passes at `e67c926` and the unchanged failed live
   attempt at `5f20d9c`. Correct nullable extra-status validation and bounded
   observation/admission lock contention. The ten-source guard contract rejects
-  the retained older envelope; fresh guard/live proof needs explicit approval
-  after review. Laptop/OAuth/desktop acceptance remains open.
+  the retained older envelope; fresh bounded controller-owned guard/live
+  verification follows review/CI under the approved plan, with no automatic paid
+  retry. Laptop/OAuth/desktop acceptance remains open.
 
 ### Documentation — M12 working-character amendment (PLZG-289)
 

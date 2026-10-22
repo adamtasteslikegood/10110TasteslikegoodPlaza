@@ -124,8 +124,9 @@ The character/domain amendment is implemented on the PLZG-289 branch with
 offline verification. Both guard modes passed at `e67c926`, but later concurrency
 corrections and expanded source fingerprints require fresh acceptance; tools fail
 closed against the retained older evidence. The first amendment live attempt at
-`5f20d9c` failed final evidence validation. New paid attempts await explicit
-approval after review. Owner laptop/OAuth/desktop checks remain open;
+`5f20d9c` failed final evidence validation. Fresh bounded controller-owned
+verification follows review/CI under the approved plan, with no automatic paid
+retry. Owner laptop/OAuth/desktop checks remain open;
 see [M12 evidence and desktop checks](#m12-live-evidence-and-desktop-checks).
 Catalog characters require a prepared project for work. Explicit extras retain
 tools-disabled conversation when `WORKSPACE_ROOT_DIR` is JSON `null` (the default).
@@ -554,8 +555,9 @@ Start/memory admission, corrected at `6917d73`.
 
 Four transitive guard-state files now join the source fingerprint inventory.
 The retained six-source envelope is historical and fails current validation in
-both modes. After review/CI, obtain new explicit approval for fresh full guard
-matrices in both modes and one selected-mode live attempt. Publish only unchanged
+both modes. After review/CI, the controller deliberately runs and inspects fresh
+full guard matrices in both modes and one selected-mode live attempt under the
+existing build authorization and approved plan. Publish only unchanged
 accepted records matching the actual runtime, commit that evidence, and require
 a clean HEAD before live. Keep every outcome; never retry automatically or
 refresh old hashes. Two guard modes do not imply live UI acceptance in both modes.

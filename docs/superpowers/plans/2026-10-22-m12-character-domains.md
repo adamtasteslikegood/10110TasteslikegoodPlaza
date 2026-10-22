@@ -168,9 +168,12 @@ observation/admission lock correction (`6917d73`) have covering offline proof:
 all eight headless gates pass. No source changed during the final full run.
 The ten-source guard inventory now includes four transitive state/locking files,
 so the prior six-source acceptance is historical and current activation fails
-closed. Fresh both-mode guards and one selected-mode live attempt require new
-explicit approval after final review/CI. No automatic paid retry is authorized;
-owner laptop/OAuth/desktop checks remain open.
+closed. After final review/CI, the existing owner build instruction and approved
+plan authorize deliberate bounded controller-owned verification: fresh both-mode
+guards and one selected-mode live attempt, each inspected separately. The earlier
+extra human-approval gate was a controller inference, not an explicit user or
+skill requirement. No automatic paid retry is authorized; retain every outcome.
+Owner laptop/OAuth/desktop checks remain open.
 
 - [ ] Run one deliberate bounded real guard probe for each permission mode against final source, recording all outcomes. No automatic paid retries. Publish acceptance only from passing mode-bound observations; if blocked, preserve fail-closed behavior and report the precise blocker.
 - [ ] Run bounded real Godot/plain-client acceptance against final code if guard evidence passes; retain source/runtime/auth limits and failures. Do not claim local laptop/OAuth/UI feel acceptance from cloud runs.
