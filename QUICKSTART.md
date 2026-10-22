@@ -1,9 +1,9 @@
 # Quick start
 
 This repo is **a running Godot prototype with a live agent bridge**. `godot .`
-opens a walkable 2.5D office; pressing Enter near an NPC lets you ask a question
-that routes through a Python WebSocket bridge to Claude Code via the Claude
-Agent SDK and back (`D-037`).
+opens a walkable 2.5D office. Working characters expose explicit project
+preparation, Start and Send controls through a Python WebSocket bridge to
+Claude Code via the Claude Agent SDK (`D-037`).
 
 For what has shipped and what's next, see the § Repository state and § Critical path
 sections in [`CLAUDE.md`](CLAUDE.md).
@@ -58,8 +58,7 @@ and ensure `godot` is on your `PATH`.
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
-pip install -r requirements.txt   # pinned bridge runtime, tests and lint tools
-pip install pyyaml                 # only for regenerating agents.json
+pip install -r requirements.txt   # pinned runtime, tests, lint and catalog tools
 ```
 
 **Claude Code authentication** — normal model execution, including every NPC
@@ -106,13 +105,14 @@ python3 bridge/bridge.py
 godot .
 ```
 
-Walk around with **arrow keys or WASD**. Approach an NPC — a dialogue panel opens
-showing their name, role, and department. Click the text input at the bottom, type
-a question, and press **Enter**. The bridge sends the agent's `.md` definition as
-system prompt and the bounded JSON conversation transcript through Agent SDK to
-Claude Code. The full response renders with a typewriter effect. Explicitly
-selected `messages_api` uses the separate direct API adapter. Press **Escape** to
-release the input and walk to the next agent.
+Walk around with **arrow keys or WASD**. Approach a character to open its name,
+role and department view. Approach only obtains status. Prepare the configured
+project with the Chief, then select **Let's work** at a Core representative.
+Type into the dialogue composer and select **Send** or press **Enter** to Run.
+Escape backgrounds the interaction. The full response renders progressively.
+See [project work and domain controls](#project-work-and-domain-controls-m12)
+for readiness and current acceptance requirements. Explicit extras use contextual
+conversation; `messages_api` is an opt-in adapter for those conversations.
 
 Without the bridge running, the game still opens and you can walk and see agent
 info — questions will show a "Bridge not connected" error until you start
@@ -120,11 +120,15 @@ info — questions will show a "Bridge not connected" error until you start
 
 ## Project work and domain controls (M12)
 
-M12 project/worktree/memory and Godot domain controls are implemented on the
-PLZG-289 branch. Deterministic and Linux live evidence passed. Desktop acceptance
-remains open; see the separate
-[M12 evidence and desktop checks](#m12-live-evidence-and-desktop-checks).
-NPC chat still works when `WORKSPACE_ROOT_DIR` is JSON `null` (the default).
+The character/domain amendment has recorded Linux API-key cloud acceptance:
+both ten-source guard modes passed 29/29 at `ba5599b`, and the real Godot/plain-client
+flow passed in selected `dontAsk` mode at clean `a582f11`. Native character
+controls, Chief setup, background work, independent extra conversation, replay,
+restart/readback and project isolation passed. Earlier failed and historical
+observations remain retained. Owner laptop/native OAuth/desktop checks remain
+open; see [M12 evidence and desktop checks](#m12-live-evidence-and-desktop-checks).
+Catalog characters require a prepared project for work. Explicit extras retain
+tools-disabled conversation when `WORKSPACE_ROOT_DIR` is JSON `null` (the default).
 Select one existing project directory before starting the bridge:
 
 ```bash
@@ -148,32 +152,53 @@ A worktree and readiness hook provide cooperative isolation, not a host/network
 sandbox. The execution checkout, configured project and bridge runtime checkout
 must be canonically disjoint.
 
-For an empty, non-Git or unborn project, submit an ordinary NPC request to see
-its Chief Architect referral. Approaching the Chief alone does not review it:
-submit a request to **Chief Architect** (`systems-architect`). Its real review
-approves the exact `main`/seed proposal; discovery then becomes ready. The bridge
-seeds only the reviewed allowlist (an empty commit for an empty project), without
-a remote, push, blanket staging or second human approval.
+For an empty, non-Git or unborn project, other working characters offer a Chief
+Architect referral. At the Chief (`systems-architect`), select **Prepare this
+project**. Approach/status alone invokes no model. The typed `project_setup`
+request reviews the exact inspected `main`/seed proposal; the bridge initializes
+only its approved allowlist with no second human prompt. Project readiness
+establishes shared memory; it does not provision department worktrees.
 
-At the NPC whose agent should perform the work, use **Domain work**, enter the
-task, then **Start** and submit with **Run** or Enter. One domain session reserves that workspace; there is
-no hidden task queue. Walking out of the anchor backgrounds running work and
-hides its panel. Another NPC can answer while it runs. Return/refocus to retrieve
-the buffered output; replay deduplicates generation/output identity. Completion,
-hiding, backgrounding and socket loss retain the reservation. Use **Stop** and
-wait for its matching inactive reply before another domain can own the workspace.
-Default configured caps are 20 domain turns and USD 1.00 per task; the bounded
-acceptance runner deliberately uses smaller configured caps.
+At a Core character, **Let's work** explicitly prepares/reuses Core's worktree
+and reserves its session. Start may connect the SDK owner but queries zero models.
+**Send** or Enter submits the draft as one Run; Enter never starts an inactive
+domain. Systems Architect and Security Auditor share Core work, retaining the
+originating representative on each result. The secondary domain pane uses the
+same draft, generation, pending request, history and reading position.
+
+Walking away or pressing Escape backgrounds work. An explicit extra can converse
+while Core runs; another Core agent shows the shared work. Return/refocus replays
+each result once. Completion, backgrounding and disconnect retain ownership.
+**Stop work** remains available while idle or backgrounded; wait for confirmed
+release. Default caps are 20 turns/USD 1.00 per task; acceptance uses smaller caps.
+
+`DOMAIN_DANGEROUSLY_SKIP_PERMISSIONS` is a strict JSON boolean, default `false`:
+`false` selects `dontAsk`, `true` selects `bypassPermissions`. The environment
+`PLAZA_DOMAIN_DANGEROUSLY_SKIP_PERMISSIONS=true|false` overrides it. Both modes
+retain Read/Edit/Bash and mandatory readiness guards; neither enables tools before
+readiness or substitutes for matching real guard evidence.
+
+Game/work briefs refresh on each admitted Run. `INSTALL_CONTEXT_DIR` defaults to
+`../.local/plaza-context`, with optional `GAME_CONTEXT.md`/`WORK_CONTEXT.md` (8 KiB
+each, also the bound on each shipped brief). Runtime facts are bounded to 4 KiB.
+`PROJECT_GUIDANCE_FILE` defaults to optional `PLAZA_AGENTS.md` in the main
+project (32 KiB). Both support `PLAZA_` overrides. Unsafe/symlink/oversized guidance
+fails visibly as `context_unavailable`; diagnostics record source identities and
+revisions without instruction bodies. Config path settings remain startup snapshots.
 
 | Retained object | Location |
 |---|---|
-| Execution files | `<project-parent>/.plaza-worktrees/<sanitized-project-name>-<project-key>/execution` |
-| Execution branch | `plaza/workspace-<project-key>` |
-| Identity descriptor | `<git-common-dir>/plaza/workspace.json` |
+| Execution files | `<project-parent>/.plaza-worktrees/<sanitized-project-name>-<project-key>/<domain-id>/execution` |
+| Execution branch | `plaza/workspace-<project-key>-<domain-id>` |
+| Identity descriptor | `<git-common-dir>/plaza/workspaces/<domain-id>.json` |
 | Canonical project notes | `<git-common-dir>/plaza/session-memory/{TODO,HANDOFF,PROGRESS}.md` |
 | Execution reservation | Actual execution Git directory's `plaza-execution.lock` and `plaza-unclean.json` |
 | Memory ownership | `<git-common-dir>/plaza/memory.lock` and `plaza/runs/<sha256(owner_run_id)>.lock/.json` |
 | Recording | Configured `LOG_DIR/runs/<archival-run-id>/manifest.json` |
+
+Valid idle legacy Core ownership is adopted in place, preserving its old path,
+branch, commits and dirty files. Uncertain ownership blocks reuse; directory names
+alone never prove ownership. All departments share one project note set.
 
 TODO/HANDOFF are at most 16 KiB each; TODO has at most 64 items. PROGRESS is at
 most 32 KiB with 12 recent entries and a bounded recap. Limits count complete
@@ -196,17 +221,18 @@ Never apply blanket lock/marker deletion, `git reset --hard`, `git clean`, autom
 worktree removal or a claimed daemon-killed shortcut. There is no generic recovery
 CLI; establish actual cleanup and diagnose damaged state before manual repair.
 For example, an interrupted `git worktree add` may leave a `creating` ownership
-descriptor at `<git-common-dir>/plaza/workspace.json`, with incomplete Git
+descriptor at `<git-common-dir>/plaza/workspaces/<domain-id>.json`, with incomplete Git
 registration or an execution directory. Preserve the descriptor, registration,
 files and logs; compare their recorded identities and actual Git/lock/process
 state before deciding on a specific repair. A `creating` record is not permission
-to delete `workspace.json` or discard the execution tree.
+to delete an ownership record or discard the execution tree.
 
 
 ## NPC conversation history and controls (M11)
 
-Each NPC keeps an ordered display transcript, draft and reading position during
-this game session. A→B→A restores them immediately; a late A reply stays with A
+Conversation-backed extras retain the M11 history controls below. Working
+catalog characters use the shared department history described above. Each extra
+keeps an ordered display transcript, draft and reading position during this game session. A→B→A restores them immediately; a late A reply stays with A
 while B remains visible. Each agent permits one pending question, with separate
 agents allowed to queue on the bridge's serial connection. A failure remains in
 that agent's transcript and releases its composer. Newly visible replies reveal
@@ -224,7 +250,7 @@ last only for this session.
 | PgUp / PgDn | Page the transcript, including while composing. |
 | Ctrl+Home / Ctrl+End | With transcript focus, jump to oldest/newest; End resumes follow. |
 | Enter | Submit nonempty enabled composer input once. |
-| Escape | Release chat focus while preserving draft and pending request. |
+| Escape | Close/background the interaction while preserving draft and pending request. |
 | Tab / Shift+Tab | Traverse enabled chat controls in either direction. |
 | Composer Home/End, selection, edit and copy shortcuts | Retain native text editing. |
 
@@ -283,7 +309,7 @@ The shipped `../.local/bridge-logs` therefore selects `.local/bridge-logs/` in t
 checkout. That directory is Git-ignored; choosing/ignoring a custom external root
 is the operator's responsibility. The committed config remains tracked.
 
-These are all 22 keys and their built-in/shipped defaults:
+These are all 25 keys and their built-in/shipped defaults:
 
 | Key | Default | Constraint / meaning |
 |---|---|---|
@@ -300,6 +326,7 @@ These are all 22 keys and their built-in/shipped defaults:
 | `CONVERSATION_MAX_OUTPUT_TOKENS` | `4096` | Positive integer; SDK passes the cap through supported `CLAUDE_CODE_MAX_OUTPUT_TOKENS` |
 | `CONTEXT_MAX_MESSAGES` | `40` | Even integer, at least 2; connection/agent model context |
 | `DOMAIN_MAX_TURNS` | `20` | Positive integer; existing domain execution cap |
+| `DOMAIN_DANGEROUSLY_SKIP_PERMISSIONS` | `false` | Strict boolean: `dontAsk` or `bypassPermissions`; mandatory guards remain |
 | `DOMAIN_MAX_BUDGET_USD` | `1.0` | Positive finite number; existing domain budget cap |
 | `TRANSCRIPTS_ENABLED` | `true` | Boolean; `false` disables message-body archives, keeps events |
 | `LOG_DIR` | `../.local/bridge-logs` | Nonempty path, resolved as above |
@@ -309,6 +336,8 @@ These are all 22 keys and their built-in/shipped defaults:
 | `LOG_MAX_TOTAL_BYTES` | `104857600` | Integer ≥file bound; managed archives including manifest temps |
 | `LOG_MAX_AGE_DAYS` | `14` | Positive integer; prune eligible files by age first |
 | `WORKSPACE_ROOT_DIR` | `null` | Existing project directory, or unconfigured domains; relative to selected config directory |
+| `INSTALL_CONTEXT_DIR` | `../.local/plaza-context` | Optional bounded game/work guidance; relative to selected config directory |
+| `PROJECT_GUIDANCE_FILE` | `PLAZA_AGENTS.md` | Main-project relative guidance file; default file may be absent |
 
 Numeric settings reject booleans, non-finite values and fractional integer limits.
 Models have no fallback or automatic upgrade. `config.model_for("opus")` resolves
@@ -505,7 +534,46 @@ Nothing else in the repo needs them.
 
 ## M12 live evidence and desktop checks
 
-On 2026-10-21 the fresh [29-case guard matrix](specs/evidence/m12-guard-2026-10-21.json)
+**Current-source Linux API-key cloud acceptance passed.** The [live attempt ledger](specs/evidence/m12-character-live-attempts-2026-10-22.json)
+and [unchanged accepted report](specs/evidence/m12-character-live-dontAsk-2026-10-22-final.json)
+record the selected `dontAsk` Godot/plain-client flow at clean `a582f11`.
+All three bridge lifetimes closed cleanly. Native NPC controls, typed Chief setup
+on main, background work with independent extra conversation and replay, persisted
+notes after restart/readback and separate-project isolation passed. The controller
+verified the clean executed HEAD, equal before/after/actual runtime baselines and
+all **44 executed-source hashes** before recording evidence. Runtime: SDK 0.2.136,
+AnyIO 4.14.2, bundled CLI 2.1.228 and Godot 4.7.1 on Linux, API-key authentication.
+This proves live behavior in `dontAsk` only; owner laptop/native OAuth/desktop
+acceptance remains open.
+
+The [guard ledger](specs/evidence/m12-character-guard-attempts-2026-10-22.json)
+records fresh **29/29 passing cases in each permission mode** at `ba5599b`, with
+ten source fingerprints and actual runtime/binary validation before publication.
+Those unchanged reports were committed with the current two-mode envelope at
+`a582f11` before live. The earlier 58 passes at `e67c926`, pre-SDK setup failure,
+and old six-source activation remain historical; no old hashes were refreshed.
+The [first live report](specs/evidence/m12-character-live-dontAsk-2026-10-22-attempt1.json)
+at `5f20d9c` remains failed with `wire domain_id`. Its typed extra-status validator
+and subsequent short-lock contention corrections were reviewed before fresh proof.
+Every attempt is retained; no automatic paid retries ran.
+
+The recorded corrective offline checks at `6917d73` passed **1,849 Python tests
+and 118 subtests in 161.85s with zero skips**, including both-mode offline
+orchestration with required pinned Godot. All eight headless gates passed: smoke
+132 agents; conversation store 578, transport client 154, dialogue panel 220,
+domain store 136, domain transport 69, domain panel 111 and character domain 52
+checks. The earlier [offline record](specs/evidence/m12-character-offline-2026-10-22.json)
+retains its original 1,810-test baseline and source hashes.
+
+Fresh guard terminal estimates are USD 0.77665125 (`dontAsk`) and USD 0.71560025
+(`bypassPermissions`), from 24 retained terminal observations per mode. Accepted
+live domain terminal estimates are USD 0.2681655, 0.10136150000000001 and 0.07188675.
+Guard nonterminal cancellation queries and separate live Chief/NPC calls are not
+fully represented; these observations are not billing totals. Two guard modes do
+not imply live UI acceptance in both modes. No merge or owner desktop completion
+is claimed by these cloud results.
+
+Historically, on 2026-10-21 the [29-case guard matrix](specs/evidence/m12-guard-2026-10-21.json)
 and [real headless M12 flow](specs/evidence/m12-live-2026-10-21.json) passed on
 Linux with SDK 0.2.136, AnyIO 4.14.2, bundled CLI 2.1.228 and Godot 4.7.1.
 The live code is committed at `c128b543d73864099002247c7f32854e2b020c3f`;
@@ -526,8 +594,8 @@ not complete M12 or establish another laptop binary or desktop behavior.
 
 After the final review corrections at `73fcfc5`, a [fresh final guard matrix](specs/evidence/m12-guard-final-2026-10-21.json)
 passed all 29 cases against the changed probe source. The fixed activation manifest
-is byte-identical to that inspected report; runtime source/version/binary validation
-passes. Its reported cost was USD 0.72207375. The [final guard attempt ledger](specs/evidence/m12-guard-final-attempts-2026-10-21.json)
+was byte-identical to that inspected report and passed validation at that time.
+Those sources and the single-record activation format are now superseded. Its reported cost was USD 0.72207375. The [final guard attempt ledger](specs/evidence/m12-guard-final-attempts-2026-10-21.json)
 retains an earlier seven-case failure (USD 0.1846675): Edit was denied and cleanup
 completed, but repeated Reads exhausted the four-turn case limit. One further full
 attempt was deliberately authorized after inspection, with unchanged sources,
@@ -537,8 +605,11 @@ not re-date the historical live flow or establish laptop/desktop acceptance.
 The bounded runners are deliberate paid operations with **no automatic retries**:
 
 ```bash
-python3 scripts/m12_tool_guard_probe.py --output /tmp/m12-tool-guard.json
-python3 scripts/m12_live.py --output /tmp/m12-live.json
+python3 scripts/m12_tool_guard_probe.py --permission-mode dontAsk --output /tmp/m12-guard-dontAsk.json
+# Inspect the outcome before deliberately running the other mode:
+python3 scripts/m12_tool_guard_probe.py --permission-mode bypassPermissions --output /tmp/m12-guard-bypassPermissions.json
+# Only after both records have passed review and runtime activation:
+GODOT_BIN=/absolute/path/to/godot-4.7.1 python3 scripts/m12_live.py --output /tmp/m12-live.json
 ```
 
 Choose fresh output paths with existing writable parents. Both runners reserve
@@ -562,21 +633,34 @@ production tools remain Read/Edit/Bash. A callback alone never proves denial.
 A complete exit-0 report must show real denied-tool non-execution, cleanup,
 exact source hashes, versions and the actual local bundled binary hash.
 
-The fresh `/tmp` probe is **not automatically activated**. Product activation
-reads fixed `bridge/tool_guard_acceptance.json` and independently recomputes the
-five bound sources, dependency versions and actual bundled CLI hash. There is no
-evidence-path override. On another laptop OS/architecture, run the whole bounded
-probe against the exact candidate sources/binary/auth, inspect it, and place the
-reviewed fresh report at that fixed manifest through the normal evidence/change
-workflow. Preserve Linux evidence separately and disclose the local manifest
-change. Never edit hashes alone, weaken checks or substitute a fake SDK factory.
-A failed/unavailable probe leaves that platform unaccepted and tools blocked.
+Fresh probes are **not automatically activated**. Product activation reads fixed
+`bridge/tool_guard_acceptance.json`, an envelope with `schema_version:1` and
+`records` keyed by `dontAsk` and `bypassPermissions`. Both complete records must
+match all ten guarded source hashes. Each selected mode also verifies the pinned
+SDK/AnyIO/CLI version and actual bundled binary SHA; there is no evidence override.
+
+For publication, build `acceptance_envelope(records)` from the two unchanged
+reports and call `check_acceptance(envelope, None, mode)` for both modes. **Before
+replacing the fixed artifact**, verify installed SDK 0.2.136, AnyIO 4.14.2, actual
+bundled `--version` exactly `2.1.228 (Claude Code)`, and that its SHA matches both
+records. Stage exclusively, atomically replace, then call `_verify_runtime(mode)`
+for each mode as a final local check. These validation calls do not contact providers.
+Retain both raw reports and all failed attempts. Never refresh hashes alone or
+change observations to pass. A failed/unavailable mode leaves tools blocked.
+Another laptop OS/architecture needs its own exact-source/binary/auth evidence;
+keep Linux evidence historical and disclose the local manifest change.
 
 The live runner uses a disposable empty configured project, real tools-disabled
-Chief review, actual Godot controls/background/NPC rendering, one SDK-created
+Chief typed setup, explicit Core character Start/Send, shared pane handoff,
+actual physical background/return and independent explicit extra rendering, one SDK-created
 nonce result, plain-client replay, clean restart/readback and independent repo B.
 Its original SDK class/default factory and production runtime verification remain
-active; transparent method/dispatch/listener observers are disclosed in evidence.
+active; transparent method/dispatch/listener and context-metadata observers are
+disclosed. The runner declares `fixture-extra-a`/`fixture-extra-b` outside the
+catalog, uses disposable installation/project guidance, records zero queries at
+Start, and binds the actual selected permission mode in all three lifetimes.
+It honors `GODOT_BIN` for both launch and version proof and rejects configuration
+overrides that redirect the fixture or disagree with its selected mode.
 The supervisor releases the nonce only after independently corroborated Godot
 background acknowledgment and unrelated NPC completion. It never creates the
 claimed result. Initial, restart and final result checks require a bounded regular
@@ -593,11 +677,12 @@ binary, or desktop behavior. M12 remains open until implementation merges and
 all deterministic, live and desktop gates pass. Record date, OS/Godot/CLI binary,
 tested commit, auth category and observed result for each desktop item:
 
-- [ ] Run the local guard probe with the intended laptop binary and inspect its complete evidence.
-- [ ] Submit the ordinary-NPC referral and actual Chief review; verify visible ready state.
-- [ ] Use mouse and keyboard Start/Run, edit draft, focus/escape and scroll without trapping movement.
+- [ ] Run and inspect both local guard modes against the intended laptop sources, binary and auth; record the selected live mode.
+- [ ] Approach working characters without starting work; use typed referral/Prepare with the Chief and verify main/shared notes without an eager worktree.
+- [ ] Use dialogue Let's work/Send with mouse and keyboard; Enter never starts implicitly, pending draft stays editable, shared pane switching submits once, and scroll/selection/focus preserve movement.
 - [ ] Physically leave the anchor during real work; observe background state and hidden panel.
-- [ ] Reach another NPC, finish its rendered reply, then physically return/refocus and see one domain result.
-- [ ] Check foreground/background controls, request correlation, Stop and confirmed workspace release.
+- [ ] Switch Core representatives and preserve originating attribution; reach an explicit extra, finish its reply, return/refocus and see one domain result.
+- [ ] Stop idle and background sessions, confirm release, and start again; late status/reconnect packets never steal focus, switch the selected representative or submit work.
+- [ ] Change guidance between Runs and verify refresh; unsafe/oversized guidance fails visibly without silently dropping instructions.
 - [ ] Exercise a visible unsaved-memory state; confirm its revision/warning remains visible and recovery preserves edits.
 - [ ] Restart cleanly, explicitly read prior notes, and verify separate-project isolation.

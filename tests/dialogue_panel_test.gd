@@ -1,8 +1,8 @@
 extends Node
 
 ## Real scene, loopback transport and native input; no model/provider calls.
-const A := "systems-architect"
-const B := "security-auditor"
+const A := "fixture-extra-a"
+const B := "fixture-extra-b"
 var failures: Array[String] = []
 var checks := 0
 var hud: Node
@@ -14,6 +14,7 @@ var peer: WebSocketPeer
 var sent := 0
 
 func _ready() -> void:
+	preload("res://tests/character_fixture.gd").extras()
 	get_tree().create_timer(20.0).timeout.connect(func():
 		check(false, "watchdog: panel acceptance did not finish")
 		finish()

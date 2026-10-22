@@ -4,7 +4,7 @@ title: Spec Drivers v0.2.5 — what this doc-set version must produce
 tier: 0
 authority: constitution
 status: ACTIVE
-doc_set_version: 0.2.17
+doc_set_version: 0.2.18
 last_updated: 2026-10
 owner: adamtasteslikegood
 derives_from: [META-SPEC]
@@ -521,6 +521,27 @@ observed cloud SDK recall run and its limits. The ruling itself is not execution
 proof; M11 desktop acceptance, M12 completion and closure of issue #341 are not
 claimed here.
 
+### 4.15 Working characters versus extras — **RESOLVED**
+
+The earlier D-033/M12 wording put all NPC dialogue on synchronous tools-disabled
+conversation and D-038 used one project-global worktree. The owner clarified
+that catalog characters work in their canonical department domains through NPC
+dialogue; synchronous conversation serves extras outside the catalog. Department
+worktrees share one project-scoped memory set. Game/work context and a guarded
+owner-controlled permission switch complete that correction.
+
+**Owner resolution, 2026-10-22:** the revised
+[M12 character/domain amendment](../../docs/superpowers/specs/2026-10-22-m12-character-domain-amendment.md)
+at `eadb0b4` was approved with “ok, build it”. Doc set 0.2.18 ratifies it in
+DESIGN-25D D-033, PLATFORM-DECISIONS D-034/D-038 and the original M12 specification;
+D-006 stays superseded and D-039 stays project-scoped. The registered
+[plan](../../docs/superpowers/plans/2026-10-22-m12-character-domains.md) implements
+that approved scope under PLZG-289. Minimal department provisioning is M12;
+M14 retains broader parallel execution/isolation, M13 richer local persistence,
+and M15 hosted durability. M6 Engineering access additionally requires execution
+support while preserving earned unlocks and SB-08/SB-09 order. No runtime delivery,
+second playable department, concurrency or new acceptance is claimed here.
+
 ## 5. Exit criteria to v1.0.0
 
 `1.0.0` is cut when **M8 is demonstrable in-engine** — a player question travels
@@ -532,4 +553,4 @@ cut has not been made** — the set is still `0.2.16`. Making it is the owner's 
 Between here and there, each round closes with the same check: the register has no
 conflict that has been open longer than the round that discovered it.
 
-*Doc set version: 0.2.17 · Last updated: October 2026*
+*Doc set version: 0.2.18 · Last updated: October 2026*

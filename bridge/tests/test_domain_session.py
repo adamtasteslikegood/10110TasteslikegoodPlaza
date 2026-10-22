@@ -1,6 +1,7 @@
 """Generation ownership, real reservation/memory, deterministic admission/replay."""
 
 import asyncio
+import json
 import threading
 from dataclasses import replace
 
@@ -33,7 +34,7 @@ async def setup(tmp_path, monkeypatch):
     monkeypatch.setattr("bridge.domain_session.DomainSDKOwner", factory, raising=False)
     monkeypatch.setattr(
         "bridge.domain_session.load_agent",
-        lambda agent: "definition" if agent == "builder" else None,
+        lambda agent: "definition" if agent == "backend-architect" else None,
     )
     session = DomainSession(
         "engineering", "generation", config=default_config(), project_service=service
@@ -223,7 +224,7 @@ async def test_unknown_agent_rejected_before_checkpoint(setup):
         packets.append(packet)
 
     await session.admit_query(query(agent_id="unknown"), context=context(), emit=emit)
-    assert packets[-1]["error_type"] == "invalid_request"
+    assert packets[-1]["error_type"] == "invalid_binding"
     assert service.memory.load().revision == revision and not owners[0].calls
 
 
@@ -755,3 +756,93 @@ async def test_retained_duplicate_replays_after_real_idle_owner_failure(
         "disconnect",
     ]
     assert service.reservation.held
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("skip", [False, True])
+async def test_persistent_domain_context_refresh_and_symlink_replacement(
+    setup, tmp_path, skip
+):
+    session, service, owners = setup
+    root = service.workspace.project_root
+    guidance = root / "PLAZA_AGENTS.md"
+    session._config = replace(
+        session._config,
+        workspace_root_dir=root,
+        install_context_dir=tmp_path / "owner-absent",
+        domain_dangerously_skip_permissions=skip,
+    )
+    guidance.write_text("first revision")
+    await session.start()
+    packets = []
+
+    async def emit(packet):
+        packets.append(packet)
+
+    await session.admit_query(query("first"), context=context("first"), emit=emit)
+    await collect_until(session, packets)
+    first = owners[0].calls[0]["context_packet"]
+    assert "first revision" in first.render()
+    assert (
+        json.loads(first.runtime)["permission_mode"]
+        == session._config.domain_permission_mode
+    )
+    guidance.write_text("second revision")
+    packets.clear()
+    await session.admit_query(query("second"), context=context("second"), emit=emit)
+    await collect_until(session, packets)
+    second = owners[0].calls[1]["context_packet"]
+    assert "second revision" in second.render()
+    assert first.diagnostics() != second.diagnostics()
+    assert len(owners) == 1
+    guidance.unlink()
+    guidance.symlink_to(root / "README.md")
+    packets.clear()
+    await session.admit_query(query("third"), context=context("third"), emit=emit)
+    assert packets[-1]["error_type"] == "context_unavailable"
+    assert len(owners[0].calls) == 2
+    assert "pending" not in service.memory.load().todo
+
+
+@pytest.mark.asyncio
+async def test_status_observes_dead_idle_owner_without_mutating_ownership(
+    real_owner_session,
+):
+    from bridge.server import BridgeServer
+
+    session, service, owner, clients, writer = real_owner_session
+    server = BridgeServer(config=session._config, project_service=service)
+    server.domains._sessions[session.domain_id] = [session]
+    command = dict(
+        type="agent_status", agent_id="backend-architect", request_id="status"
+    )
+    healthy = (await server.dispatch(command))[0]
+    assert healthy["capabilities"]["can_run"]
+    before = service.memory.load()
+    await fail_idle_owner(owner)
+    calls = list(clients[0].calls)
+    snapshot = session.snapshot()
+    capacity = service.capacity_snapshot()
+    packet = (await server.dispatch(command))[0]
+    assert not packet["capabilities"]["can_run"]
+    assert packet["capabilities"]["tools"] == []
+    assert packet["capabilities"]["reason"] == "sdk_error"
+    assert packet["domain_state"]["domain_session_id"] == session.domain_session_id
+    assert session.snapshot() == snapshot
+    assert service.capacity_snapshot() == capacity
+    assert service.reservation.held and not session._broken
+    assert service.memory.load() == before
+    assert clients[0].calls == calls and len(clients) == 1
+    assert not [record for kind, record, _ in writer.records if kind == "transcript"]
+    stopped = (
+        await server.dispatch(
+            dict(
+                type="deactivate_domain",
+                domain_id=session.domain_id,
+                domain_session_id=session.domain_session_id,
+                request_id="stop",
+            )
+        )
+    )[-1]
+    assert stopped["state"] == "inactive"
+    assert service.reservation is None and service.capacity is None

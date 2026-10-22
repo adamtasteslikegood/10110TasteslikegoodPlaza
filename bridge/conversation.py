@@ -36,7 +36,9 @@ class ConversationEngine:
         timeout=None,
         *,
         config: BridgeConfig | None = None,
+        registry=None,
     ):
+        self._registry = registry
         self._config = config if config is not None else default_config()
         self._backend = (
             backend
@@ -70,6 +72,7 @@ class ConversationEngine:
         metadata=None,
         prior_project_notes="",
         deadline=None,
+        context_packet=None,
     ):
         """Answer one request.
 
@@ -104,9 +107,16 @@ class ConversationEngine:
                 "agent_id contains invalid characters",
             )
 
-        definition = load_agent(agent_id)
+        definition = (
+            load_agent(agent_id, registry=self._registry)
+            if self._registry is not None
+            else load_agent(agent_id)
+        )
         if definition is None:
             return make_error(agent_id, task, "not_found", f"No agent '{agent_id}'")
+
+        if context_packet is not None:
+            definition += "\n" + context_packet.render()
 
         # Copy before the first await; even oversized caller input is bounded.
         messages = [
@@ -115,6 +125,8 @@ class ConversationEngine:
         ]
         messages.append({"role": "user", "content": task})
         metadata = metadata if metadata is not None else ExecutionMetadata()
+        if context_packet is not None:
+            metadata.context_sources = context_packet.diagnostics()
         try:
             options = {}
             if prior_project_notes:

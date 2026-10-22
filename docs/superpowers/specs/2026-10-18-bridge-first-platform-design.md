@@ -4,7 +4,7 @@ title: Bridge-first platform — local observability and conversation UI
 tier: 2
 authority: implementation
 status: ACTIVE
-doc_set_version: 0.2.17
+doc_set_version: 0.2.18
 last_updated: 2026-10
 owner: adamtasteslikegood
 derives_from: [PLATFORM-DECISIONS, DESIGN-25D]
@@ -56,6 +56,17 @@ with written approval recorded 2026-10-21 (`D-038`/`D-039`). Its
 [implementation plan](../plans/2026-10-21-m12-project-execution.md) is owner-approved for
 subagent-driven execution. Richer persistence and stronger execution isolation can be
 resequenced or combined through an integrated provider; none is selected here.
+
+**Current M12 scope (owner-approved 2026-10-22):** the revised
+[character/domain amendment](2026-10-22-m12-character-domain-amendment.md) at
+`eadb0b4`, ratified in doc set 0.2.18, controls over earlier singleton-worktree
+and general NPC-conversation descriptions here. Catalog agents work through their
+canonical department domains; extras retain synchronous conversation. One worktree
+per project/department shares project notes; minimal department provisioning,
+fresh bounded game/work guidance and guarded permission control belong to M12.
+M14 retains broader parallel execution/isolation and M13 richer persistence.
+Baseline M12 merged in PR #357; correction implementation and acceptance remain
+pending. Existing evidence retains its original tested source/runtime/auth scope.
 
 ## 1. Purpose and scope
 

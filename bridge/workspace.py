@@ -11,9 +11,11 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import time
 from uuid import UUID, uuid4
 
 from bridge import project_files as files
+from bridge.agent_bindings import DOMAIN_IDS
 
 
 class WorkspaceError(ValueError):
@@ -45,6 +47,7 @@ class ExecutionWorkspace:
     branch: str
     initial_commit: str
     source_identity: tuple[int, int]
+    domain_id: str = "core"
 
 
 def _invalid(message: str = "Project workspace identity or registration is invalid"):
@@ -227,15 +230,22 @@ def _encode(value: dict) -> bytes:
     ).encode()
 
 
-def _record_path(common: Path) -> Path:
-    return common / "plaza/workspace.json"
+def _record_path(common: Path, domain_id="core") -> Path:
+    if domain_id is None:
+        return common / "plaza/workspace.json"
+    if domain_id not in DOMAIN_IDS:
+        raise _invalid("Unknown department")
+    return common / "plaza/workspaces" / f"{domain_id}.json"
 
 
-def _read_record(common: Path) -> dict:
-    value = _decode(files.read_regular(_record_path(common), max_bytes=16384))
+def _read_record(common: Path, domain_id="core") -> dict:
+    value = _decode(
+        files.read_regular(_record_path(common, domain_id), max_bytes=16384)
+    )
     if (
         type(value.get("schema_version")) is not int
-        or value["schema_version"] != 1
+        or value["schema_version"] != (1 if domain_id is None else 2)
+        or (domain_id is not None and value.get("domain_id") != domain_id)
         or value.get("state") != "ready"
         or value.get("common_git_dir") != str(common)
         or value.get("common_identity") != list(_identity(common))
@@ -264,6 +274,7 @@ def _from_record(
         value["branch"],
         value["initial_commit"],
         source_identity,
+        value.get("domain_id", "core"),
     )
 
 
@@ -296,7 +307,8 @@ def validate_workspace(workspace: ExecutionWorkspace, *, runtime_root: Path) -> 
         common = workspace.common_git_dir
         if common != common.resolve(strict=True):
             raise _invalid()
-        value = _read_record(common)
+        value = _read_record(common, workspace.domain_id)
+        _check_migration(common)
         if (
             _from_record(value, workspace.project_root, workspace.source_identity)
             != workspace
@@ -328,7 +340,15 @@ def _validate_tree(workspace: ExecutionWorkspace, *, runtime_root: Path) -> None
         or source.source_branch is None
         or source.source_branch == workspace.branch
         or execution.head_commit is None
-        or workspace.branch != f"plaza/workspace-{workspace.project_id}"
+        or workspace.branch
+        not in (
+            {f"plaza/workspace-{workspace.project_id}-{workspace.domain_id}"}
+            | (
+                {f"plaza/workspace-{workspace.project_id}"}
+                if workspace.domain_id == "core"
+                else set()
+            )
+        )
     ):
         raise _invalid("Project or execution branch identity changed")
     actual_git = Path(_git(path, "rev-parse", "--absolute-git-dir")).resolve(
@@ -365,7 +385,13 @@ def _validate_tree(workspace: ExecutionWorkspace, *, runtime_root: Path) -> None
 
 def _check_idle(workspace: ExecutionWorkspace) -> files.FileLock:
     try:
-        lock = files.FileLock.acquire(workspace.git_dir / "plaza-execution.lock")
+        lock = files.FileLock.acquire(
+            workspace.git_dir / "plaza-execution.lock",
+            deadline=time.monotonic() + files.SHORT_LOCK_SECONDS,
+            stop_waiting=lambda: os.path.lexists(
+                workspace.git_dir / "plaza-unclean.json"
+            ),
+        )
     except BlockingIOError:
         raise WorkspaceError(
             "workspace_busy", "Workspace is reserved by a domain"
@@ -383,7 +409,7 @@ def _check_idle(workspace: ExecutionWorkspace) -> files.FileLock:
 
 
 def prepare_worktree(
-    project: ProjectInspection, *, runtime_root: Path
+    project: ProjectInspection, *, domain_id: str = "core", runtime_root: Path
 ) -> ExecutionWorkspace:
     """Create one owned slot or reuse its recorded identity without repairing it."""
     bootstrap_lock = None
@@ -406,10 +432,41 @@ def prepare_worktree(
             raise WorkspaceError(
                 "workspace_busy", "Project workspace preparation is in progress"
             ) from None
-        record_path = _record_path(common)
+        record_path = _record_path(common, domain_id)
+        legacy = _record_path(common, None)
+        if os.path.lexists(legacy):
+            old = _decode(files.read_regular(legacy, max_bytes=16384))
+            if old.get("state") != "migrated":
+                if domain_id != "core" or os.path.lexists(record_path):
+                    raise _invalid(
+                        "Incomplete legacy Core migration requires inspection"
+                    )
+                old = _read_record(common, None)
+                workspace = _from_record(old, project.root, project.root_identity)
+                _validate_tree(workspace, runtime_root=runtime_root)
+                execution_lock = _check_idle(workspace)
+                with files.directory(record_path.parent, create=True):
+                    pass
+                old.update(schema_version=2, domain_id="core")
+                files.atomic_replace(record_path, _encode(old))
+                files.atomic_replace(
+                    legacy,
+                    _encode(
+                        dict(
+                            state="migrated",
+                            schema_version=1,
+                            workspace_id=workspace.workspace_id,
+                        )
+                    ),
+                )
+                validate_workspace(workspace, runtime_root=runtime_root)
+                return workspace
+            _check_migration(common)
+        with files.directory(record_path.parent, create=True):
+            pass
         if os.path.lexists(record_path):
             workspace = _from_record(
-                _read_record(common), project.root, project.root_identity
+                _read_record(common, domain_id), project.root, project.root_identity
             )
             validate_workspace(workspace, runtime_root=runtime_root)
             execution_lock = _check_idle(workspace)
@@ -422,9 +479,10 @@ def prepare_worktree(
             project.root.parent
             / ".plaza-worktrees"
             / f"{name}-{project.project_id}"
+            / domain_id
             / "execution"
         )
-        branch = f"plaza/workspace-{project.project_id}"
+        branch = f"plaza/workspace-{project.project_id}-{domain_id}"
         _disjoint(path, project.root, runtime_root)
         # Validate each parent before Git sees it; occupied slots are never adopted.
         with files.directory(path.parent, create=True):
@@ -445,7 +503,8 @@ def prepare_worktree(
         else:
             raise _invalid("Execution branch already exists without ownership")
         value = dict(
-            schema_version=1,
+            schema_version=2,
+            domain_id=domain_id,
             state="creating",
             project_id=project.project_id,
             workspace_id=str(uuid4()),
@@ -495,8 +554,52 @@ def prepare_worktree(
             bootstrap_lock.close()
 
 
-def load_workspace(
+def _check_migration(common):
+    legacy = _record_path(common, None)
+    if not os.path.lexists(legacy):
+        return
+    value = _decode(files.read_regular(legacy, max_bytes=16384))
+    if value.get("state") != "migrated":
+        raise _invalid("Legacy Core workspace requires explicit Start migration")
+    core = _read_record(common, "core")
+    if core["workspace_id"] != value.get("workspace_id"):
+        raise _invalid("Conflicting Core migration records")
+
+
+def load_legacy_workspace(
     project: ProjectInspection, *, runtime_root: Path
+) -> ExecutionWorkspace | None:
+    """Validate a pending Core adoption without writing or taking ownership.
+
+    Reservation observation is separate; explicit Start must revalidate and hold
+    the bootstrap/execution locks before it can migrate this record.
+    """
+    try:
+        if inspect_project(project.root) != project:
+            raise _invalid()
+        common = project.common_git_dir
+        if common is None or not os.path.lexists(_record_path(common, None)):
+            return None
+        value = _decode(files.read_regular(_record_path(common, None), max_bytes=16384))
+        if value.get("state") == "migrated":
+            return None
+        if os.path.lexists(_record_path(common, "core")):
+            raise _invalid("Incomplete legacy Core migration requires inspection")
+        workspace = _from_record(
+            _read_record(common, None), project.root, project.root_identity
+        )
+        if workspace.domain_id != "core":
+            raise _invalid("Legacy ownership must belong to Core")
+        _validate_tree(workspace, runtime_root=runtime_root)
+        return workspace
+    except WorkspaceError:
+        raise
+    except (OSError, ValueError, RuntimeError, subprocess.SubprocessError):
+        raise _invalid() from None
+
+
+def load_workspace(
+    project: ProjectInspection, *, domain_id: str = "core", runtime_root: Path
 ) -> ExecutionWorkspace | None:
     """Observe existing ownership without bootstrapping or taking idle exclusion."""
     try:
@@ -504,10 +607,13 @@ def load_workspace(
             raise _invalid()
         if project.common_git_dir is None:
             return None
-        if not os.path.lexists(_record_path(project.common_git_dir)):
+        _check_migration(project.common_git_dir)
+        if not os.path.lexists(_record_path(project.common_git_dir, domain_id)):
             return None
         workspace = _from_record(
-            _read_record(project.common_git_dir), project.root, project.root_identity
+            _read_record(project.common_git_dir, domain_id),
+            project.root,
+            project.root_identity,
         )
         validate_workspace(workspace, runtime_root=runtime_root)
         return workspace

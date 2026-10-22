@@ -20,7 +20,7 @@ def ready(tmp_path):
     memory.initialize()
     memory.attach_run("test-run")
     lease = WorkspaceLease.acquire(
-        workspace, domain_id="domain", domain_session_id="generation"
+        workspace, domain_id="core", domain_session_id="generation"
     )
     yield module.ReadinessService(workspace, runtime, memory), lease, root
     lease.release(cleanup_confirmed=True)
@@ -30,7 +30,7 @@ def ready(tmp_path):
 
 def intent():
     return TurnIntent(
-        str(uuid4()), "request", "test-run", "builder", None, None, "work"
+        str(uuid4()), "request", "test-run", "builder", "core", "generation", "work"
     )
 
 

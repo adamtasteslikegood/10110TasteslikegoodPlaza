@@ -2,11 +2,13 @@
 
 import asyncio
 from copy import deepcopy
-from dataclasses import asdict
+from dataclasses import asdict, replace
 import json
 from pathlib import Path
 
+from bridge.context import compose_context
 from bridge.agents import load_agent
+from bridge.agent_bindings import DOMAIN_IDS
 from bridge.conversation import ConversationEngine
 from bridge.conversation_backend import ExecutionMetadata
 from bridge.project_memory import MemorySnapshot, ProjectMemoryStore
@@ -19,8 +21,10 @@ from bridge.repository_setup import (
 from bridge.workspace import (
     WorkspaceError,
     _decode,
+    _identity,
     inspect_project,
     load_workspace,
+    load_legacy_workspace,
     prepare_worktree,
     validate_workspace,
     git_without_filters,
@@ -30,7 +34,7 @@ from bridge.workspace_lease import observe_reservation
 REFERRAL = "Talk to the Chief Architect to prepare this project, then come back and we can work on it."
 
 
-async def review_repository(config, proposal, *, deadline=None):
+async def review_repository(config, proposal, *, deadline=None, intent=""):
     """Fresh configured tools-disabled adapter; no history or memory preflight."""
     engine = ConversationEngine(config=config)
     definition = load_agent("systems-architect")
@@ -40,6 +44,7 @@ async def review_repository(config, proposal, *, deadline=None):
         )
     payload = asdict(proposal)
     payload["root"] = str(proposal.root)
+    payload["player_intent"] = intent
     inspected_state = (
         "existing local Git repository with no HEAD commit"
         if proposal.unborn
@@ -68,13 +73,28 @@ async def review_repository(config, proposal, *, deadline=None):
     )
     if remaining <= 0:
         raise TimeoutError()
+    context_packet = await owned_io(
+        compose_context,
+        replace(config, workspace_root_dir=proposal.root),
+        agent_id="systems-architect",
+        execution_kind="chief_review",
+        domain_id="core",
+        project=dict(
+            stage="needs_architect", project_id=getattr(proposal, "project_id", None)
+        ),
+        workspace=None,
+        tools=[],
+        permission_mode="dontAsk",
+        interaction="explicit_repository_setup",
+    )
+    metadata = ExecutionMetadata(context_sources=context_packet.diagnostics())
     raw = await engine._backend.complete(
-        definition=definition + instructions,
+        definition=definition + "\n" + context_packet.render() + instructions,
         messages=[dict(role="user", content=json.dumps(payload, ensure_ascii=True))],
         model=engine.model,
         timeout=remaining,
         max_output_tokens=config.conversation_max_output_tokens,
-        metadata=ExecutionMetadata(),
+        metadata=metadata,
     )
     try:
         return _decode(raw.encode("utf-8"))
@@ -92,7 +112,14 @@ class ProjectService:
             owner_run_id,
         )
         self._reviewer = reviewer
-        self._workspace = self._memory = self._readiness = self._lease = None
+        self._project = None
+        self._project_common_identity = None
+        self._workspaces = {}
+        self._readiness_by_domain = {}
+        self._workspace_states = {}
+        self._domain_tasks = {}
+        self._capacity_owner = None
+        self._memory = None
         self._bootstrap_task = self._setup_task = None
         self._attached = self._closing = False
         self._initialized = False
@@ -155,49 +182,177 @@ class ProjectService:
 
     async def _prepare(self, project, setup=None):
         def prepare():
-            workspace = load_workspace(project, runtime_root=self._runtime_root)
-            if workspace is None:
-                workspace = prepare_worktree(project, runtime_root=self._runtime_root)
-            reservation = observe_reservation(workspace)
-            if reservation and reservation["cleanup_failed"]:
-                raise WorkspaceError(
-                    "cleanup_failed", "Workspace requires operator inspection"
-                )
-            self._workspace = workspace
-            self._snapshot.update(
-                project_id=workspace.project_id,
-                workspace_id=workspace.workspace_id,
-                worktree_path=str(workspace.worktree_path),
-                branch=workspace.branch,
-                reservation=reservation,
-            )
-            self._memory = ProjectMemoryStore(workspace)
+            self._project = project
+            self._project_common_identity = _identity(project.common_git_dir)
+            self._memory = ProjectMemoryStore(project)
+            self._snapshot["project_id"] = project.project_id
             self._snapshot["memory"]["path"] = str(
-                workspace.common_git_dir / "plaza/session-memory"
+                project.common_git_dir / "plaza/session-memory"
             )
             self.publish_memory(self._memory.initialize())
             self._memory.attach_run(self.owner_run_id)
             self._attached = True
             if setup:
-                result = self._memory.checkpoint_setup(*setup, workspace.initial_commit)
+                result = self._memory.checkpoint_setup(*setup, project.head_commit)
                 self.publish_memory(result)
                 if not result.saved:
                     raise WorkspaceError(
                         "memory_unavailable", "Setup checkpoint was not saved"
                     )
-            self._readiness = ReadinessService(
-                workspace, self._runtime_root, self._memory
-            )
 
         await owned_io(prepare)
+        # Observe persisted departments without provisioning or migrating them.
+        for domain_id in DOMAIN_IDS:
+            try:
+                await owned_io(self._observe_workspace, project, domain_id)
+            except Exception as error:
+                state = self.workspace_snapshot(domain_id)
+                state.update(
+                    stage="failed", reason=getattr(error, "code", "workspace_invalid")
+                )
+                self._workspace_states[domain_id] = state
         self._snapshot.update(stage="ready", reason=None)
-        snapshot = await self.refresh_snapshot()
-        if snapshot["stage"] != "ready":
-            raise WorkspaceError(
-                snapshot["reason"], "Final workspace observation failed"
-            )
 
-    async def interact_setup(self, agent_id, request_id, *, deadline=None):
+    def _observe_workspace(self, project, domain_id):
+        legacy = (
+            load_legacy_workspace(project, runtime_root=self._runtime_root)
+            if domain_id == "core"
+            else None
+        )
+        workspace = legacy or load_workspace(
+            project, domain_id=domain_id, runtime_root=self._runtime_root
+        )
+        if workspace is None:
+            return
+        reservation = observe_reservation(workspace)
+        if legacy is not None:
+            # Eligibility is advisory only: never install readiness or ownership
+            # for an unmigrated record. Start retains the full locked validation.
+            state = self.workspace_snapshot(domain_id)
+            state.update(
+                workspace_id=workspace.workspace_id,
+                worktree_path=str(workspace.worktree_path),
+                branch=workspace.branch,
+                stage="migration_pending",
+                reason=None,
+            )
+            self._workspace_states[domain_id] = state
+        else:
+            self._install_workspace(workspace)
+        state = self._workspace_states[domain_id]
+        state["reservation"] = reservation
+        if reservation:
+            if reservation["cleanup_failed"]:
+                state.update(stage="failed", reason="cleanup_failed")
+            elif legacy is not None:
+                state.update(stage="failed", reason="workspace_busy")
+
+    def _install_workspace(self, workspace):
+        domain_id = workspace.domain_id
+        self._workspaces[domain_id] = workspace
+        self._readiness_by_domain[domain_id] = ReadinessService(
+            workspace, self._runtime_root, self._memory
+        )
+        self._workspace_states[domain_id] = dict(
+            domain_id=domain_id,
+            project_id=workspace.project_id,
+            workspace_id=workspace.workspace_id,
+            stage="ready",
+            reason=None,
+            worktree_path=str(workspace.worktree_path),
+            branch=workspace.branch,
+            reservation=None,
+            changed_files=None,
+        )
+
+    def workspace_snapshot(self, domain_id="core"):
+        if domain_id not in DOMAIN_IDS:
+            raise WorkspaceError("workspace_invalid", "Unknown department")
+        state = self._workspace_states.get(domain_id)
+        return (
+            deepcopy(state)
+            if state
+            else dict(
+                domain_id=domain_id,
+                project_id=self._snapshot["project_id"],
+                workspace_id=None,
+                stage="unprepared",
+                reason=None,
+                worktree_path=None,
+                branch=None,
+                reservation=None,
+                changed_files=None,
+            )
+        )
+
+    @property
+    def initialized(self):
+        return self._initialized
+
+    def capacity_snapshot(self, domain_id=None):
+        owner = self._capacity_owner
+        return dict(
+            limit=1,
+            available=owner is None,
+            domain_id=owner.domain_id if owner else None,
+            domain_session_id=owner.domain_session_id if owner else None,
+        )
+
+    def reserve_capacity(self, owner):
+        if self._capacity_owner is not None and self._capacity_owner is not owner:
+            raise WorkspaceError(
+                "capacity_limit", "Execution capacity is reserved by another session"
+            )
+        self._capacity_owner = owner
+
+    def release_capacity(self, owner):
+        if self._capacity_owner is owner:
+            self._capacity_owner = None
+
+    async def prepare_domain(self, domain_id):
+        self.require_memory()
+        self.workspace_snapshot(domain_id)
+        if self._closing:
+            raise WorkspaceError("workspace_not_ready", "Project is closing")
+
+        async def prepare():
+            def provision():
+                # Configuration freezes the repository binding, not its HEAD.
+                # Refresh within this owned worker so normal source commits do
+                # not invalidate later Starts; retain the helper's short-window
+                # inspection comparison and all persisted ownership checks.
+                project = self._validated_project()
+                workspace = prepare_worktree(
+                    project, domain_id=domain_id, runtime_root=self._runtime_root
+                )
+                self._install_workspace(workspace)
+                return workspace
+
+            try:
+                return await owned_io(provision)
+            except Exception as error:
+                state = self.workspace_snapshot(domain_id)
+                state.update(
+                    stage="failed", reason=getattr(error, "code", "workspace_invalid")
+                )
+                self._workspace_states[domain_id] = state
+                raise
+
+        task = self._domain_tasks.get(domain_id)
+        if task is None or task.done():
+            task = asyncio.create_task(prepare())
+            self._domain_tasks[domain_id] = task
+        # Retain the task through cancellation; close drains it as well.
+        try:
+            return await asyncio.shield(task)
+        except asyncio.CancelledError:
+            try:
+                await _join(task)
+            except Exception:
+                pass
+            raise
+
+    async def interact_setup(self, agent_id, request_id, *, deadline=None, intent=""):
         stage = self._snapshot["stage"]
         if stage in ("ready", "unconfigured"):
             return None
@@ -214,7 +369,7 @@ class ProjectService:
             )
         self._snapshot.update(stage="reviewing", reason=None, architect_decision=None)
         self._setup_task = asyncio.create_task(
-            self._setup(deadline), name="chief-project-setup"
+            self._setup(deadline, intent), name="chief-project-setup"
         )
         # A caller's response budget never cancels approved initialization. The
         # service retains that task through completion and shutdown drainage.
@@ -241,7 +396,7 @@ class ProjectService:
             )
         return "Chief Architect review deadline expired; no initialization was approved. Review cleanup may still be in progress."
 
-    async def _setup(self, deadline):
+    async def _setup(self, deadline, intent=""):
         try:
             async with asyncio.timeout_at(deadline):
                 proposal = await owned_io(
@@ -251,7 +406,7 @@ class ProjectService:
                     await self._reviewer(proposal)
                     if self._reviewer is not None
                     else await review_repository(
-                        self._config, proposal, deadline=deadline
+                        self._config, proposal, deadline=deadline, intent=intent
                     )
                 )
                 approval = parse_init_approval(proposal, payload)
@@ -280,42 +435,89 @@ class ProjectService:
                 + ". Existing files were preserved."
             )
 
-    def require_workspace(self):
-        if self._snapshot["stage"] != "ready" or self._workspace is None:
+    def _validated_project(self):
+        project = inspect_project(self._project.root)
+        if (
+            any(
+                getattr(project, key) != getattr(self._project, key)
+                for key in ("root", "root_identity", "common_git_dir", "project_id")
+            )
+            or _identity(project.common_git_dir) != self._project_common_identity
+        ):
+            raise WorkspaceError(
+                "workspace_invalid", "Configured project identity changed"
+            )
+        return project
+
+    async def prepare_memory_turn(self, turn):
+        """Project-only extras admission; never provisions a department worktree."""
+        memory = self.require_memory()
+
+        def prepare():
+            project = self._validated_project()
+            if any(
+                getattr(memory.workspace, key) != value
+                for key, value in (
+                    ("project_id", project.project_id),
+                    ("common_git_dir", project.common_git_dir),
+                    ("project_root", project.root),
+                    ("source_identity", project.root_identity),
+                )
+            ):
+                raise WorkspaceError(
+                    "workspace_invalid", "Project memory binding changed"
+                )
+            if turn.domain_id is not None or turn.workspace_id is not None:
+                raise WorkspaceError(
+                    "workspace_invalid", "Extra turn has a workspace binding"
+                )
+            return memory.begin_turn(turn)
+
+        return await owned_io(prepare)
+
+    def require_workspace(self, domain_id="core"):
+        self.require_memory()
+        workspace = self._workspaces.get(domain_id)
+        if workspace is None:
+            raise WorkspaceError(
+                "workspace_not_ready", "Explicit Start must prepare this department"
+            )
+        return workspace
+
+    def require_memory(self):
+        if self._snapshot["stage"] != "ready" or self._memory is None:
             code = (
                 "workspace_unconfigured"
                 if self._config.workspace_root_dir is None
                 else "workspace_not_ready"
             )
             raise WorkspaceError(code, REFERRAL)
-        return self._workspace
-
-    def require_memory(self):
-        self.require_workspace()
-        if self._memory is None:
-            raise WorkspaceError("memory_unavailable", "Project memory is unavailable")
         return self._memory
 
-    def require_readiness(self):
-        self.require_memory()
-        return self._readiness
+    def require_readiness(self, domain_id="core"):
+        self.require_workspace(domain_id)
+        return self._readiness_by_domain[domain_id]
 
     def publish_reservation(self, lease):
-        self._lease = lease
-        self._snapshot["reservation"] = dict(
+        state = self._workspace_states[lease.domain_id]
+        state["reservation"] = dict(
             domain_id=lease.domain_id,
             domain_session_id=lease.domain_session_id,
             cleanup_failed=False,
         )
 
     def publish_cleanup(self, lease, *, clean):
-        if lease is not self._lease:
+        state = self._workspace_states[lease.domain_id]
+        reservation = state["reservation"]
+        if (
+            reservation is None
+            or reservation["domain_session_id"] != lease.domain_session_id
+        ):
             return
         if clean and not lease.held:
-            self._lease = None
-            self._snapshot["reservation"] = None
+            state["reservation"] = None
         elif not clean:
-            self._snapshot["reservation"]["cleanup_failed"] = True
+            reservation["cleanup_failed"] = True
 
     def publish_memory(self, result):
         value = self._snapshot["memory"]
@@ -326,10 +528,26 @@ class ProjectService:
         else:
             value.update(status="unsaved", error_type=result.error_type)
 
-    async def refresh_snapshot(self):
-        workspace = self._workspace
-        if workspace is None:
+    async def refresh_snapshot(self, domain_id=None):
+        if domain_id is None:
             return self.snapshot()
+        workspace = self._workspaces.get(domain_id)
+        if workspace is None:
+            if self._project is not None:
+                try:
+                    await owned_io(
+                        lambda: self._observe_workspace(
+                            self._validated_project(), domain_id
+                        )
+                    )
+                except Exception as error:
+                    state = self.workspace_snapshot(domain_id)
+                    state.update(
+                        stage="failed",
+                        reason=getattr(error, "code", "workspace_invalid"),
+                    )
+                    self._workspace_states[domain_id] = state
+            return self.workspace_snapshot(domain_id)
 
         def observe():
             validate_workspace(workspace, runtime_root=self._runtime_root)
@@ -361,18 +579,29 @@ class ProjectService:
 
         try:
             reservation, changed = await owned_io(observe)
-            if self._lease is None:
-                self._snapshot["reservation"] = reservation
-            self._snapshot["changed_files"] = changed
+            self._workspace_states[domain_id]["reservation"] = reservation
+            self._workspace_states[domain_id]["changed_files"] = changed
+            uncertain = reservation is not None and reservation["cleanup_failed"]
+            self._workspace_states[domain_id].update(
+                stage="failed" if uncertain else "ready",
+                reason="cleanup_failed" if uncertain else None,
+            )
         except Exception as error:
-            self._failure(error)
-        return self.snapshot()
+            self._workspace_states[domain_id].update(
+                stage="failed", reason=getattr(error, "code", "workspace_invalid")
+            )
+        return self.workspace_snapshot(domain_id)
 
     async def close(self):
         self._closing = True
         for task in (self._bootstrap_task, self._setup_task):
             if task is not None:
                 await _join(task)
+        for task in self._domain_tasks.values():
+            try:
+                await _join(task)
+            except Exception:
+                pass
         if self._attached:
             await owned_io(self._memory.detach_run, self.owner_run_id)
             self._attached = False

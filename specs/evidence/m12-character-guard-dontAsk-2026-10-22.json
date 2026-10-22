@@ -1,0 +1,1632 @@
+{
+  "permission_mode": "dontAsk",
+  "versions": {
+    "sdk": "0.2.136",
+    "anyio": "4.14.2",
+    "cli": "2.1.228 (Claude Code)"
+  },
+  "model": "claude-haiku-5-5",
+  "production_tools": [
+    "Read",
+    "Edit",
+    "Bash"
+  ],
+  "cli_sha256": "d535985e6941a3eb00179ccd7f52ceb0c6623a0305a518ebc4e6514f84a94c99",
+  "case_deadline_seconds": 45,
+  "case_budget_usd": 0.2,
+  "max_queries": 27,
+  "watchdog_seconds": 7,
+  "checker_seconds": 5,
+  "matcher_seconds": 10,
+  "cases": [
+    {
+      "name": "read_ready",
+      "attempted": true,
+      "hook_seen": true,
+      "reaped": true,
+      "cleanup_clean": true,
+      "sentinel_executed": true,
+      "successful_tool_result": true,
+      "post_seen": true,
+      "decision": "unchanged",
+      "terminal_seen": true,
+      "child_attributed": false,
+      "mcp_invocations": 0,
+      "assistant_errors": [],
+      "inventory": [
+        "Read"
+      ],
+      "attempts": [
+        {
+          "name": "Read",
+          "id": "toolu_01GWPers5kyLuUyYApH5chki",
+          "parent": null
+        }
+      ],
+      "hook_decisions": {
+        "toolu_01GWPers5kyLuUyYApH5chki": "unchanged"
+      },
+      "successful_tool_ids": [
+        "toolu_01GWPers5kyLuUyYApH5chki"
+      ],
+      "post_tool_ids": [
+        "toolu_01GWPers5kyLuUyYApH5chki"
+      ],
+      "lifecycle": [
+        "connect",
+        "query",
+        "receive",
+        "disconnect"
+      ],
+      "terminal": {
+        "subtype": "success",
+        "is_error": false,
+        "reason": "completed",
+        "cost_usd": 0.02223625,
+        "permission_denials": 0
+      },
+      "hook_tasks_remaining": 0,
+      "normalized_denials": 0,
+      "timeout_denials": 0,
+      "returncode": 0,
+      "owner_task_count": 1,
+      "outcome": {
+        "status": "success",
+        "reason": "completed"
+      },
+      "seconds": 6.091,
+      "errors": []
+    },
+    {
+      "name": "read_deny",
+      "attempted": true,
+      "hook_seen": true,
+      "reaped": true,
+      "cleanup_clean": true,
+      "sentinel_executed": false,
+      "successful_tool_result": false,
+      "post_seen": false,
+      "decision": "deny",
+      "terminal_seen": true,
+      "child_attributed": false,
+      "mcp_invocations": 0,
+      "assistant_errors": [],
+      "inventory": [
+        "Read"
+      ],
+      "attempts": [
+        {
+          "name": "Read",
+          "id": "toolu_014bChDd35Hp9E39YWSgGboZ",
+          "parent": null
+        }
+      ],
+      "hook_decisions": {
+        "toolu_014bChDd35Hp9E39YWSgGboZ": "deny"
+      },
+      "successful_tool_ids": [],
+      "post_tool_ids": [],
+      "lifecycle": [
+        "connect",
+        "query",
+        "receive",
+        "disconnect"
+      ],
+      "terminal": {
+        "subtype": "success",
+        "is_error": false,
+        "reason": "completed",
+        "cost_usd": 0.0179675,
+        "permission_denials": 1
+      },
+      "hook_tasks_remaining": 0,
+      "normalized_denials": 0,
+      "timeout_denials": 0,
+      "returncode": 0,
+      "owner_task_count": 1,
+      "outcome": {
+        "status": "error",
+        "reason": "completed"
+      },
+      "seconds": 5.322,
+      "errors": []
+    },
+    {
+      "name": "read_exception",
+      "attempted": true,
+      "hook_seen": true,
+      "reaped": true,
+      "cleanup_clean": true,
+      "sentinel_executed": false,
+      "successful_tool_result": false,
+      "post_seen": false,
+      "decision": "deny",
+      "terminal_seen": true,
+      "child_attributed": false,
+      "mcp_invocations": 0,
+      "assistant_errors": [],
+      "inventory": [
+        "Read"
+      ],
+      "attempts": [
+        {
+          "name": "Read",
+          "id": "toolu_012oFZTYv5eSkLQV9VFCqBAa",
+          "parent": null
+        }
+      ],
+      "hook_decisions": {
+        "toolu_012oFZTYv5eSkLQV9VFCqBAa": "deny"
+      },
+      "successful_tool_ids": [],
+      "post_tool_ids": [],
+      "lifecycle": [
+        "connect",
+        "query",
+        "receive",
+        "disconnect"
+      ],
+      "terminal": {
+        "subtype": "success",
+        "is_error": false,
+        "reason": "completed",
+        "cost_usd": 0.01851175,
+        "permission_denials": 1
+      },
+      "hook_tasks_remaining": 0,
+      "normalized_denials": 0,
+      "timeout_denials": 0,
+      "returncode": 0,
+      "owner_task_count": 1,
+      "outcome": {
+        "status": "error",
+        "reason": "completed"
+      },
+      "seconds": 5.422,
+      "errors": []
+    },
+    {
+      "name": "read_timeout",
+      "attempted": true,
+      "hook_seen": true,
+      "reaped": true,
+      "cleanup_clean": true,
+      "sentinel_executed": false,
+      "successful_tool_result": false,
+      "post_seen": false,
+      "decision": "deny",
+      "terminal_seen": true,
+      "child_attributed": false,
+      "mcp_invocations": 0,
+      "assistant_errors": [],
+      "inventory": [
+        "Read"
+      ],
+      "attempts": [
+        {
+          "name": "Read",
+          "id": "toolu_011jVBvGdjWjQCLkWgUWBuU8",
+          "parent": null
+        },
+        {
+          "name": "Read",
+          "id": "toolu_01NEGf9pQcG4JrqwUkKWotmT",
+          "parent": null
+        }
+      ],
+      "hook_decisions": {
+        "toolu_011jVBvGdjWjQCLkWgUWBuU8": "deny"
+      },
+      "successful_tool_ids": [],
+      "post_tool_ids": [],
+      "lifecycle": [
+        "connect",
+        "query",
+        "receive",
+        "disconnect"
+      ],
+      "terminal": {
+        "subtype": "success",
+        "is_error": false,
+        "reason": "completed",
+        "cost_usd": 0.025078749999999997,
+        "permission_denials": 1
+      },
+      "hook_tasks_remaining": 0,
+      "normalized_denials": 0,
+      "timeout_denials": 0,
+      "returncode": 0,
+      "owner_task_count": 1,
+      "outcome": {
+        "status": "error",
+        "reason": "completed"
+      },
+      "seconds": 10.752,
+      "errors": []
+    },
+    {
+      "name": "edit_ready",
+      "attempted": true,
+      "hook_seen": true,
+      "reaped": true,
+      "cleanup_clean": true,
+      "sentinel_executed": true,
+      "successful_tool_result": true,
+      "post_seen": true,
+      "decision": "unchanged",
+      "terminal_seen": true,
+      "child_attributed": false,
+      "mcp_invocations": 0,
+      "assistant_errors": [],
+      "inventory": [
+        "Edit",
+        "Read"
+      ],
+      "attempts": [
+        {
+          "name": "Read",
+          "id": "toolu_01SkUydgc5XLkdugMDkSwNGt",
+          "parent": null
+        },
+        {
+          "name": "Edit",
+          "id": "toolu_011n2FJ2pt1qnArmPwYfVNHm",
+          "parent": null
+        }
+      ],
+      "hook_decisions": {
+        "toolu_011n2FJ2pt1qnArmPwYfVNHm": "unchanged"
+      },
+      "successful_tool_ids": [
+        "toolu_011n2FJ2pt1qnArmPwYfVNHm"
+      ],
+      "post_tool_ids": [
+        "toolu_011n2FJ2pt1qnArmPwYfVNHm"
+      ],
+      "lifecycle": [
+        "connect",
+        "query",
+        "receive",
+        "disconnect"
+      ],
+      "terminal": {
+        "subtype": "success",
+        "is_error": false,
+        "reason": "completed",
+        "cost_usd": 0.031192499999999998,
+        "permission_denials": 0
+      },
+      "hook_tasks_remaining": 0,
+      "normalized_denials": 0,
+      "timeout_denials": 0,
+      "returncode": 0,
+      "owner_task_count": 1,
+      "outcome": {
+        "status": "success",
+        "reason": "completed"
+      },
+      "seconds": 5.566,
+      "errors": []
+    },
+    {
+      "name": "edit_deny",
+      "attempted": true,
+      "hook_seen": true,
+      "reaped": true,
+      "cleanup_clean": true,
+      "sentinel_executed": false,
+      "successful_tool_result": false,
+      "post_seen": false,
+      "decision": "deny",
+      "terminal_seen": true,
+      "child_attributed": false,
+      "mcp_invocations": 0,
+      "assistant_errors": [],
+      "inventory": [
+        "Edit",
+        "Read"
+      ],
+      "attempts": [
+        {
+          "name": "Read",
+          "id": "toolu_01FhgHaR2PWqET3kt2AMYGi9",
+          "parent": null
+        },
+        {
+          "name": "Edit",
+          "id": "toolu_013VQC7EWzv8mStPz4Brh1ne",
+          "parent": null
+        }
+      ],
+      "hook_decisions": {
+        "toolu_013VQC7EWzv8mStPz4Brh1ne": "deny"
+      },
+      "successful_tool_ids": [],
+      "post_tool_ids": [],
+      "lifecycle": [
+        "connect",
+        "query",
+        "receive",
+        "disconnect"
+      ],
+      "terminal": {
+        "subtype": "success",
+        "is_error": false,
+        "reason": "completed",
+        "cost_usd": 0.023652,
+        "permission_denials": 1
+      },
+      "hook_tasks_remaining": 0,
+      "normalized_denials": 0,
+      "timeout_denials": 0,
+      "returncode": 0,
+      "owner_task_count": 1,
+      "outcome": {
+        "status": "error",
+        "reason": "completed"
+      },
+      "seconds": 5.765,
+      "errors": []
+    },
+    {
+      "name": "edit_exception",
+      "attempted": true,
+      "hook_seen": true,
+      "reaped": true,
+      "cleanup_clean": true,
+      "sentinel_executed": false,
+      "successful_tool_result": false,
+      "post_seen": false,
+      "decision": "deny",
+      "terminal_seen": true,
+      "child_attributed": false,
+      "mcp_invocations": 0,
+      "assistant_errors": [],
+      "inventory": [
+        "Edit",
+        "Read"
+      ],
+      "attempts": [
+        {
+          "name": "Read",
+          "id": "toolu_01H1MaECdYZxfBG4EXziYER8",
+          "parent": null
+        },
+        {
+          "name": "Edit",
+          "id": "toolu_014iQwc35pGCnosnUMi4U37Z",
+          "parent": null
+        },
+        {
+          "name": "Read",
+          "id": "toolu_01UgyJpEy7527j3ZaCTU5iPy",
+          "parent": null
+        }
+      ],
+      "hook_decisions": {
+        "toolu_014iQwc35pGCnosnUMi4U37Z": "deny"
+      },
+      "successful_tool_ids": [],
+      "post_tool_ids": [],
+      "lifecycle": [
+        "connect",
+        "query",
+        "receive",
+        "disconnect"
+      ],
+      "terminal": {
+        "subtype": "success",
+        "is_error": false,
+        "reason": "completed",
+        "cost_usd": 0.03041275,
+        "permission_denials": 1
+      },
+      "hook_tasks_remaining": 0,
+      "normalized_denials": 0,
+      "timeout_denials": 0,
+      "returncode": 0,
+      "owner_task_count": 1,
+      "outcome": {
+        "status": "error",
+        "reason": "completed"
+      },
+      "seconds": 9.292,
+      "errors": []
+    },
+    {
+      "name": "edit_timeout",
+      "attempted": true,
+      "hook_seen": true,
+      "reaped": true,
+      "cleanup_clean": true,
+      "sentinel_executed": false,
+      "successful_tool_result": false,
+      "post_seen": false,
+      "decision": "deny",
+      "terminal_seen": true,
+      "child_attributed": false,
+      "mcp_invocations": 0,
+      "assistant_errors": [],
+      "inventory": [
+        "Edit",
+        "Read"
+      ],
+      "attempts": [
+        {
+          "name": "Read",
+          "id": "toolu_019qineoig6Smqub3inY3o1T",
+          "parent": null
+        },
+        {
+          "name": "Edit",
+          "id": "toolu_01FVM7mb3vjAMNnMAESBhRRQ",
+          "parent": null
+        }
+      ],
+      "hook_decisions": {
+        "toolu_01FVM7mb3vjAMNnMAESBhRRQ": "deny"
+      },
+      "successful_tool_ids": [],
+      "post_tool_ids": [],
+      "lifecycle": [
+        "connect",
+        "query",
+        "receive",
+        "disconnect"
+      ],
+      "terminal": {
+        "subtype": "success",
+        "is_error": false,
+        "reason": "completed",
+        "cost_usd": 0.02671275,
+        "permission_denials": 1
+      },
+      "hook_tasks_remaining": 0,
+      "normalized_denials": 0,
+      "timeout_denials": 0,
+      "returncode": 0,
+      "owner_task_count": 1,
+      "outcome": {
+        "status": "error",
+        "reason": "completed"
+      },
+      "seconds": 12.764,
+      "errors": []
+    },
+    {
+      "name": "bash_ready",
+      "attempted": true,
+      "hook_seen": true,
+      "reaped": true,
+      "cleanup_clean": true,
+      "sentinel_executed": true,
+      "successful_tool_result": true,
+      "post_seen": true,
+      "decision": "unchanged",
+      "terminal_seen": true,
+      "child_attributed": false,
+      "mcp_invocations": 0,
+      "assistant_errors": [],
+      "inventory": [
+        "Bash"
+      ],
+      "attempts": [
+        {
+          "name": "Bash",
+          "id": "toolu_0188tEtXGoom6GkTvYn9HJ1X",
+          "parent": null
+        }
+      ],
+      "hook_decisions": {
+        "toolu_0188tEtXGoom6GkTvYn9HJ1X": "unchanged"
+      },
+      "successful_tool_ids": [
+        "toolu_0188tEtXGoom6GkTvYn9HJ1X"
+      ],
+      "post_tool_ids": [
+        "toolu_0188tEtXGoom6GkTvYn9HJ1X"
+      ],
+      "lifecycle": [
+        "connect",
+        "query",
+        "receive",
+        "disconnect"
+      ],
+      "terminal": {
+        "subtype": "success",
+        "is_error": false,
+        "reason": "completed",
+        "cost_usd": 0.043875,
+        "permission_denials": 0
+      },
+      "hook_tasks_remaining": 0,
+      "normalized_denials": 0,
+      "timeout_denials": 0,
+      "returncode": 0,
+      "owner_task_count": 1,
+      "outcome": {
+        "status": "success",
+        "reason": "completed"
+      },
+      "seconds": 5.337,
+      "errors": []
+    },
+    {
+      "name": "bash_deny",
+      "attempted": true,
+      "hook_seen": true,
+      "reaped": true,
+      "cleanup_clean": true,
+      "sentinel_executed": false,
+      "successful_tool_result": false,
+      "post_seen": false,
+      "decision": "deny",
+      "terminal_seen": true,
+      "child_attributed": false,
+      "mcp_invocations": 0,
+      "assistant_errors": [],
+      "inventory": [
+        "Bash"
+      ],
+      "attempts": [
+        {
+          "name": "Bash",
+          "id": "toolu_01G7w5PosvxYdstJg9AAWRUv",
+          "parent": null
+        }
+      ],
+      "hook_decisions": {
+        "toolu_01G7w5PosvxYdstJg9AAWRUv": "deny"
+      },
+      "successful_tool_ids": [],
+      "post_tool_ids": [],
+      "lifecycle": [
+        "connect",
+        "query",
+        "receive",
+        "disconnect"
+      ],
+      "terminal": {
+        "subtype": "success",
+        "is_error": false,
+        "reason": "completed",
+        "cost_usd": 0.02447075,
+        "permission_denials": 1
+      },
+      "hook_tasks_remaining": 0,
+      "normalized_denials": 0,
+      "timeout_denials": 0,
+      "returncode": 0,
+      "owner_task_count": 1,
+      "outcome": {
+        "status": "error",
+        "reason": "completed"
+      },
+      "seconds": 5.229,
+      "errors": []
+    },
+    {
+      "name": "bash_exception",
+      "attempted": true,
+      "hook_seen": true,
+      "reaped": true,
+      "cleanup_clean": true,
+      "sentinel_executed": false,
+      "successful_tool_result": false,
+      "post_seen": false,
+      "decision": "deny",
+      "terminal_seen": true,
+      "child_attributed": false,
+      "mcp_invocations": 0,
+      "assistant_errors": [],
+      "inventory": [
+        "Bash"
+      ],
+      "attempts": [
+        {
+          "name": "Bash",
+          "id": "toolu_017X1Lt2WNQrcCZc94BtZa8Y",
+          "parent": null
+        }
+      ],
+      "hook_decisions": {
+        "toolu_017X1Lt2WNQrcCZc94BtZa8Y": "deny"
+      },
+      "successful_tool_ids": [],
+      "post_tool_ids": [],
+      "lifecycle": [
+        "connect",
+        "query",
+        "receive",
+        "disconnect"
+      ],
+      "terminal": {
+        "subtype": "success",
+        "is_error": false,
+        "reason": "completed",
+        "cost_usd": 0.023418249999999995,
+        "permission_denials": 1
+      },
+      "hook_tasks_remaining": 0,
+      "normalized_denials": 0,
+      "timeout_denials": 0,
+      "returncode": 0,
+      "owner_task_count": 1,
+      "outcome": {
+        "status": "error",
+        "reason": "completed"
+      },
+      "seconds": 6.727,
+      "errors": []
+    },
+    {
+      "name": "bash_timeout",
+      "attempted": true,
+      "hook_seen": true,
+      "reaped": true,
+      "cleanup_clean": true,
+      "sentinel_executed": false,
+      "successful_tool_result": false,
+      "post_seen": false,
+      "decision": "deny",
+      "terminal_seen": true,
+      "child_attributed": false,
+      "mcp_invocations": 0,
+      "assistant_errors": [],
+      "inventory": [
+        "Bash"
+      ],
+      "attempts": [
+        {
+          "name": "Bash",
+          "id": "toolu_01MHPT1hi5dVkMF8qQgMJkjr",
+          "parent": null
+        }
+      ],
+      "hook_decisions": {
+        "toolu_01MHPT1hi5dVkMF8qQgMJkjr": "deny"
+      },
+      "successful_tool_ids": [],
+      "post_tool_ids": [],
+      "lifecycle": [
+        "connect",
+        "query",
+        "receive",
+        "disconnect"
+      ],
+      "terminal": {
+        "subtype": "success",
+        "is_error": false,
+        "reason": "completed",
+        "cost_usd": 0.02710725,
+        "permission_denials": 1
+      },
+      "hook_tasks_remaining": 0,
+      "normalized_denials": 0,
+      "timeout_denials": 0,
+      "returncode": 0,
+      "owner_task_count": 1,
+      "outcome": {
+        "status": "error",
+        "reason": "completed"
+      },
+      "seconds": 10.624,
+      "errors": []
+    },
+    {
+      "name": "mcp_ready",
+      "attempted": true,
+      "hook_seen": true,
+      "reaped": true,
+      "cleanup_clean": true,
+      "sentinel_executed": true,
+      "successful_tool_result": true,
+      "post_seen": true,
+      "decision": "unchanged",
+      "terminal_seen": true,
+      "child_attributed": false,
+      "mcp_invocations": 1,
+      "assistant_errors": [],
+      "inventory": [
+        "mcp__m12_fixture__sentinel"
+      ],
+      "attempts": [
+        {
+          "name": "mcp__m12_fixture__sentinel",
+          "id": "toolu_01TwurPgcxN6wqWDwBppYLbL",
+          "parent": null
+        }
+      ],
+      "hook_decisions": {
+        "toolu_01TwurPgcxN6wqWDwBppYLbL": "unchanged"
+      },
+      "successful_tool_ids": [
+        "toolu_01TwurPgcxN6wqWDwBppYLbL"
+      ],
+      "post_tool_ids": [
+        "toolu_01TwurPgcxN6wqWDwBppYLbL"
+      ],
+      "lifecycle": [
+        "connect",
+        "query",
+        "receive",
+        "disconnect"
+      ],
+      "terminal": {
+        "subtype": "success",
+        "is_error": false,
+        "reason": "completed",
+        "cost_usd": 0.00904475,
+        "permission_denials": 0
+      },
+      "hook_tasks_remaining": 0,
+      "normalized_denials": 0,
+      "timeout_denials": 0,
+      "returncode": 0,
+      "owner_task_count": 1,
+      "outcome": {
+        "status": "success",
+        "reason": "completed"
+      },
+      "seconds": 3.562,
+      "errors": []
+    },
+    {
+      "name": "mcp_deny",
+      "attempted": true,
+      "hook_seen": true,
+      "reaped": true,
+      "cleanup_clean": true,
+      "sentinel_executed": false,
+      "successful_tool_result": false,
+      "post_seen": false,
+      "decision": "deny",
+      "terminal_seen": true,
+      "child_attributed": false,
+      "mcp_invocations": 0,
+      "assistant_errors": [],
+      "inventory": [
+        "mcp__m12_fixture__sentinel"
+      ],
+      "attempts": [
+        {
+          "name": "mcp__m12_fixture__sentinel",
+          "id": "toolu_0122aLVXmPk7nirRbcbEhU5f",
+          "parent": null
+        },
+        {
+          "name": "mcp__m12_fixture__sentinel",
+          "id": "toolu_019mtsRRmejWwyaANFArRiEY",
+          "parent": null
+        }
+      ],
+      "hook_decisions": {
+        "toolu_0122aLVXmPk7nirRbcbEhU5f": "deny",
+        "toolu_019mtsRRmejWwyaANFArRiEY": "deny"
+      },
+      "successful_tool_ids": [],
+      "post_tool_ids": [],
+      "lifecycle": [
+        "connect",
+        "query",
+        "receive",
+        "disconnect"
+      ],
+      "terminal": {
+        "subtype": "success",
+        "is_error": false,
+        "reason": "completed",
+        "cost_usd": 0.01830175,
+        "permission_denials": 2
+      },
+      "hook_tasks_remaining": 0,
+      "normalized_denials": 0,
+      "timeout_denials": 0,
+      "returncode": 0,
+      "owner_task_count": 1,
+      "outcome": {
+        "status": "error",
+        "reason": "completed"
+      },
+      "seconds": 7.292,
+      "errors": []
+    },
+    {
+      "name": "mcp_exception",
+      "attempted": true,
+      "hook_seen": true,
+      "reaped": true,
+      "cleanup_clean": true,
+      "sentinel_executed": false,
+      "successful_tool_result": false,
+      "post_seen": false,
+      "decision": "deny",
+      "terminal_seen": true,
+      "child_attributed": false,
+      "mcp_invocations": 0,
+      "assistant_errors": [],
+      "inventory": [
+        "mcp__m12_fixture__sentinel"
+      ],
+      "attempts": [
+        {
+          "name": "mcp__m12_fixture__sentinel",
+          "id": "toolu_01GfTr3FzoAGkPxLStBUgQHM",
+          "parent": null
+        }
+      ],
+      "hook_decisions": {
+        "toolu_01GfTr3FzoAGkPxLStBUgQHM": "deny"
+      },
+      "successful_tool_ids": [],
+      "post_tool_ids": [],
+      "lifecycle": [
+        "connect",
+        "query",
+        "receive",
+        "disconnect"
+      ],
+      "terminal": {
+        "subtype": "success",
+        "is_error": false,
+        "reason": "completed",
+        "cost_usd": 0.012006999999999999,
+        "permission_denials": 1
+      },
+      "hook_tasks_remaining": 0,
+      "normalized_denials": 0,
+      "timeout_denials": 0,
+      "returncode": 0,
+      "owner_task_count": 1,
+      "outcome": {
+        "status": "error",
+        "reason": "completed"
+      },
+      "seconds": 4.596,
+      "errors": []
+    },
+    {
+      "name": "mcp_timeout",
+      "attempted": true,
+      "hook_seen": true,
+      "reaped": true,
+      "cleanup_clean": true,
+      "sentinel_executed": false,
+      "successful_tool_result": false,
+      "post_seen": false,
+      "decision": "deny",
+      "terminal_seen": true,
+      "child_attributed": false,
+      "mcp_invocations": 0,
+      "assistant_errors": [],
+      "inventory": [
+        "mcp__m12_fixture__sentinel"
+      ],
+      "attempts": [
+        {
+          "name": "mcp__m12_fixture__sentinel",
+          "id": "toolu_0162PBER58GEKCwWrLD1mCqS",
+          "parent": null
+        }
+      ],
+      "hook_decisions": {
+        "toolu_0162PBER58GEKCwWrLD1mCqS": "deny"
+      },
+      "successful_tool_ids": [],
+      "post_tool_ids": [],
+      "lifecycle": [
+        "connect",
+        "query",
+        "receive",
+        "disconnect"
+      ],
+      "terminal": {
+        "subtype": "success",
+        "is_error": false,
+        "reason": "completed",
+        "cost_usd": 0.011023,
+        "permission_denials": 1
+      },
+      "hook_tasks_remaining": 0,
+      "normalized_denials": 0,
+      "timeout_denials": 0,
+      "returncode": 0,
+      "owner_task_count": 1,
+      "outcome": {
+        "status": "error",
+        "reason": "completed"
+      },
+      "seconds": 10.392,
+      "errors": []
+    },
+    {
+      "name": "delegated_ready",
+      "attempted": true,
+      "hook_seen": true,
+      "reaped": true,
+      "cleanup_clean": true,
+      "sentinel_executed": true,
+      "successful_tool_result": true,
+      "post_seen": true,
+      "decision": "unchanged",
+      "terminal_seen": true,
+      "child_attributed": true,
+      "mcp_invocations": 0,
+      "assistant_errors": [],
+      "inventory": [
+        "Task",
+        "Bash"
+      ],
+      "attempts": [
+        {
+          "name": "Agent",
+          "id": "toolu_01HhGNKJgwb7Fv3GJzWJdNGL",
+          "parent": null
+        },
+        {
+          "name": "Bash",
+          "id": "toolu_01GVQzcsZ8AabNRYGTwX5VLP",
+          "parent": "toolu_01HhGNKJgwb7Fv3GJzWJdNGL"
+        }
+      ],
+      "hook_decisions": {
+        "toolu_01GVQzcsZ8AabNRYGTwX5VLP": "unchanged"
+      },
+      "successful_tool_ids": [
+        "toolu_01GVQzcsZ8AabNRYGTwX5VLP"
+      ],
+      "post_tool_ids": [
+        "toolu_01GVQzcsZ8AabNRYGTwX5VLP"
+      ],
+      "lifecycle": [
+        "connect",
+        "query",
+        "receive",
+        "disconnect"
+      ],
+      "terminal": {
+        "subtype": "success",
+        "is_error": false,
+        "reason": "completed",
+        "cost_usd": 0.0978525,
+        "permission_denials": 0
+      },
+      "hook_tasks_remaining": 0,
+      "normalized_denials": 0,
+      "timeout_denials": 0,
+      "returncode": 0,
+      "owner_task_count": 1,
+      "outcome": {
+        "status": "success",
+        "reason": "completed"
+      },
+      "seconds": 9.918,
+      "errors": []
+    },
+    {
+      "name": "delegated_deny",
+      "attempted": true,
+      "hook_seen": true,
+      "reaped": true,
+      "cleanup_clean": true,
+      "sentinel_executed": false,
+      "successful_tool_result": false,
+      "post_seen": false,
+      "decision": "deny",
+      "terminal_seen": true,
+      "child_attributed": true,
+      "mcp_invocations": 0,
+      "assistant_errors": [],
+      "inventory": [
+        "Task",
+        "Bash"
+      ],
+      "attempts": [
+        {
+          "name": "Agent",
+          "id": "toolu_01ASesGw3qVskdEeboJnGd1N",
+          "parent": null
+        },
+        {
+          "name": "Bash",
+          "id": "toolu_01LTuVpLm8K7KgQQvQY9H6gV",
+          "parent": "toolu_01ASesGw3qVskdEeboJnGd1N"
+        }
+      ],
+      "hook_decisions": {
+        "toolu_01LTuVpLm8K7KgQQvQY9H6gV": "deny"
+      },
+      "successful_tool_ids": [],
+      "post_tool_ids": [],
+      "lifecycle": [
+        "connect",
+        "query",
+        "receive",
+        "disconnect"
+      ],
+      "terminal": {
+        "subtype": "success",
+        "is_error": false,
+        "reason": "completed",
+        "cost_usd": 0.053455749999999996,
+        "permission_denials": 1
+      },
+      "hook_tasks_remaining": 0,
+      "normalized_denials": 0,
+      "timeout_denials": 0,
+      "returncode": 0,
+      "owner_task_count": 1,
+      "outcome": {
+        "status": "error",
+        "reason": "completed"
+      },
+      "seconds": 9.372,
+      "errors": []
+    },
+    {
+      "name": "delegated_exception",
+      "attempted": true,
+      "hook_seen": true,
+      "reaped": true,
+      "cleanup_clean": true,
+      "sentinel_executed": false,
+      "successful_tool_result": false,
+      "post_seen": false,
+      "decision": "deny",
+      "terminal_seen": true,
+      "child_attributed": true,
+      "mcp_invocations": 0,
+      "assistant_errors": [],
+      "inventory": [
+        "Task",
+        "Bash"
+      ],
+      "attempts": [
+        {
+          "name": "Agent",
+          "id": "toolu_01RNywCzsD2PaSM8QcZgUjHb",
+          "parent": null
+        },
+        {
+          "name": "Bash",
+          "id": "toolu_01FNpi5ooPZCpgdsTN54s2Sf",
+          "parent": "toolu_01RNywCzsD2PaSM8QcZgUjHb"
+        },
+        {
+          "name": "Bash",
+          "id": "toolu_01X3yZnNDwNSm4G42N9ybAeu",
+          "parent": null
+        }
+      ],
+      "hook_decisions": {
+        "toolu_01FNpi5ooPZCpgdsTN54s2Sf": "deny",
+        "toolu_01X3yZnNDwNSm4G42N9ybAeu": "deny"
+      },
+      "successful_tool_ids": [],
+      "post_tool_ids": [],
+      "lifecycle": [
+        "connect",
+        "query",
+        "receive",
+        "disconnect"
+      ],
+      "terminal": {
+        "subtype": "success",
+        "is_error": false,
+        "reason": "completed",
+        "cost_usd": 0.07276925000000001,
+        "permission_denials": 2
+      },
+      "hook_tasks_remaining": 0,
+      "normalized_denials": 0,
+      "timeout_denials": 0,
+      "returncode": 0,
+      "owner_task_count": 1,
+      "outcome": {
+        "status": "error",
+        "reason": "completed"
+      },
+      "seconds": 10.839,
+      "errors": []
+    },
+    {
+      "name": "delegated_timeout",
+      "attempted": true,
+      "hook_seen": true,
+      "reaped": true,
+      "cleanup_clean": true,
+      "sentinel_executed": false,
+      "successful_tool_result": false,
+      "post_seen": false,
+      "decision": "deny",
+      "terminal_seen": true,
+      "child_attributed": true,
+      "mcp_invocations": 0,
+      "assistant_errors": [],
+      "inventory": [
+        "Task",
+        "Bash"
+      ],
+      "attempts": [
+        {
+          "name": "Agent",
+          "id": "toolu_01MQ3fGuvvcLVoZFNbKz3m6q",
+          "parent": null
+        },
+        {
+          "name": "Bash",
+          "id": "toolu_01Dtw4nULdVAfZMLJgkygpVk",
+          "parent": "toolu_01MQ3fGuvvcLVoZFNbKz3m6q"
+        },
+        {
+          "name": "Bash",
+          "id": "toolu_01UyTW3HJqiVYvzhgxLbnScW",
+          "parent": null
+        },
+        {
+          "name": "Bash",
+          "id": "toolu_016qVx5TDpzf62vLyUWgJLPy",
+          "parent": null
+        }
+      ],
+      "hook_decisions": {
+        "toolu_01Dtw4nULdVAfZMLJgkygpVk": "deny",
+        "toolu_01UyTW3HJqiVYvzhgxLbnScW": "deny",
+        "toolu_016qVx5TDpzf62vLyUWgJLPy": "deny"
+      },
+      "successful_tool_ids": [],
+      "post_tool_ids": [],
+      "lifecycle": [
+        "connect",
+        "query",
+        "receive",
+        "disconnect"
+      ],
+      "terminal": {
+        "subtype": "success",
+        "is_error": false,
+        "reason": "completed",
+        "cost_usd": 0.08170974999999998,
+        "permission_denials": 3
+      },
+      "hook_tasks_remaining": 0,
+      "normalized_denials": 0,
+      "timeout_denials": 0,
+      "returncode": 0,
+      "owner_task_count": 1,
+      "outcome": {
+        "status": "error",
+        "reason": "completed"
+      },
+      "seconds": 17.125,
+      "errors": []
+    },
+    {
+      "name": "bash_raw_error",
+      "attempted": true,
+      "hook_seen": true,
+      "reaped": true,
+      "cleanup_clean": true,
+      "sentinel_executed": false,
+      "successful_tool_result": false,
+      "post_seen": false,
+      "decision": "deny",
+      "terminal_seen": true,
+      "child_attributed": false,
+      "mcp_invocations": 0,
+      "assistant_errors": [],
+      "inventory": [
+        "Bash"
+      ],
+      "attempts": [
+        {
+          "name": "Bash",
+          "id": "toolu_015zVsqCWAodjeW8xBd9zTyJ",
+          "parent": null
+        },
+        {
+          "name": "Bash",
+          "id": "toolu_015XHgHauh1uJbTbD9ViGerW",
+          "parent": null
+        }
+      ],
+      "hook_decisions": {},
+      "successful_tool_ids": [],
+      "post_tool_ids": [],
+      "lifecycle": [
+        "connect",
+        "query",
+        "receive",
+        "disconnect"
+      ],
+      "terminal": {
+        "subtype": "success",
+        "is_error": false,
+        "reason": "completed",
+        "cost_usd": 0.032765749999999996,
+        "permission_denials": 2
+      },
+      "hook_tasks_remaining": 0,
+      "normalized_denials": 2,
+      "timeout_denials": 0,
+      "returncode": 0,
+      "owner_task_count": 1,
+      "outcome": {
+        "status": "error",
+        "reason": "completed"
+      },
+      "seconds": 7.413,
+      "errors": []
+    },
+    {
+      "name": "bash_malformed",
+      "attempted": true,
+      "hook_seen": true,
+      "reaped": true,
+      "cleanup_clean": true,
+      "sentinel_executed": false,
+      "successful_tool_result": false,
+      "post_seen": false,
+      "decision": "deny",
+      "terminal_seen": true,
+      "child_attributed": false,
+      "mcp_invocations": 0,
+      "assistant_errors": [],
+      "inventory": [
+        "Bash"
+      ],
+      "attempts": [
+        {
+          "name": "Bash",
+          "id": "toolu_01SMCKaBYfG9beumTt3kJGyx",
+          "parent": null
+        }
+      ],
+      "hook_decisions": {},
+      "successful_tool_ids": [],
+      "post_tool_ids": [],
+      "lifecycle": [
+        "connect",
+        "query",
+        "receive",
+        "disconnect"
+      ],
+      "terminal": {
+        "subtype": "success",
+        "is_error": false,
+        "reason": "completed",
+        "cost_usd": 0.023001,
+        "permission_denials": 1
+      },
+      "hook_tasks_remaining": 0,
+      "normalized_denials": 1,
+      "timeout_denials": 0,
+      "returncode": 0,
+      "owner_task_count": 1,
+      "outcome": {
+        "status": "error",
+        "reason": "completed"
+      },
+      "seconds": 5.331,
+      "errors": []
+    },
+    {
+      "name": "bash_missing_callback",
+      "attempted": true,
+      "hook_seen": true,
+      "reaped": true,
+      "cleanup_clean": true,
+      "sentinel_executed": false,
+      "successful_tool_result": false,
+      "post_seen": false,
+      "decision": "deny",
+      "terminal_seen": true,
+      "child_attributed": false,
+      "mcp_invocations": 0,
+      "assistant_errors": [],
+      "inventory": [
+        "Bash"
+      ],
+      "attempts": [
+        {
+          "name": "Bash",
+          "id": "toolu_01KbYH3maNHjLJpJ9oM32gfq",
+          "parent": null
+        }
+      ],
+      "hook_decisions": {},
+      "successful_tool_ids": [],
+      "post_tool_ids": [],
+      "lifecycle": [
+        "connect",
+        "query",
+        "receive",
+        "disconnect"
+      ],
+      "terminal": {
+        "subtype": "success",
+        "is_error": false,
+        "reason": "completed",
+        "cost_usd": 0.0215395,
+        "permission_denials": 1
+      },
+      "hook_tasks_remaining": 0,
+      "normalized_denials": 1,
+      "timeout_denials": 0,
+      "returncode": 0,
+      "owner_task_count": 1,
+      "outcome": {
+        "status": "error",
+        "reason": "completed"
+      },
+      "seconds": 5.415,
+      "errors": []
+    },
+    {
+      "name": "bash_hung_callback",
+      "attempted": true,
+      "hook_seen": true,
+      "reaped": true,
+      "cleanup_clean": true,
+      "sentinel_executed": false,
+      "successful_tool_result": false,
+      "post_seen": false,
+      "decision": "deny",
+      "terminal_seen": true,
+      "child_attributed": false,
+      "mcp_invocations": 0,
+      "assistant_errors": [],
+      "inventory": [
+        "Bash"
+      ],
+      "attempts": [
+        {
+          "name": "Bash",
+          "id": "toolu_01JUhpNZSD2KeEBAjDnGmY2n",
+          "parent": null
+        }
+      ],
+      "hook_decisions": {},
+      "successful_tool_ids": [],
+      "post_tool_ids": [],
+      "lifecycle": [
+        "connect",
+        "query",
+        "receive",
+        "disconnect"
+      ],
+      "terminal": {
+        "subtype": "success",
+        "is_error": false,
+        "reason": "completed",
+        "cost_usd": 0.019189499999999998,
+        "permission_denials": 1
+      },
+      "hook_tasks_remaining": 0,
+      "normalized_denials": 0,
+      "timeout_denials": 1,
+      "returncode": 0,
+      "owner_task_count": 1,
+      "outcome": {
+        "status": "error",
+        "reason": "completed"
+      },
+      "seconds": 12.063,
+      "errors": []
+    },
+    {
+      "name": "bash_disconnect",
+      "attempted": true,
+      "hook_seen": true,
+      "reaped": true,
+      "cleanup_clean": true,
+      "sentinel_executed": false,
+      "successful_tool_result": false,
+      "post_seen": false,
+      "decision": "deny",
+      "terminal_seen": false,
+      "child_attributed": false,
+      "mcp_invocations": 0,
+      "assistant_errors": [],
+      "inventory": [
+        "Bash"
+      ],
+      "attempts": [
+        {
+          "name": "Bash",
+          "id": "toolu_01ASCFt6vNnnPrRirHZ1ACKY",
+          "parent": null
+        }
+      ],
+      "hook_decisions": {},
+      "successful_tool_ids": [],
+      "post_tool_ids": [],
+      "lifecycle": [
+        "connect",
+        "query",
+        "receive",
+        "disconnect"
+      ],
+      "channel_dropped": true,
+      "hook_tasks_remaining": 0,
+      "normalized_denials": 1,
+      "timeout_denials": 0,
+      "returncode": 0,
+      "owner_task_count": 1,
+      "outcome": {
+        "status": "error",
+        "reason": "transport_error"
+      },
+      "seconds": 7.458,
+      "errors": []
+    },
+    {
+      "name": "stop_connect",
+      "attempted": false,
+      "hook_seen": false,
+      "reaped": true,
+      "cleanup_clean": true,
+      "sentinel_executed": false,
+      "successful_tool_result": false,
+      "post_seen": false,
+      "decision": null,
+      "terminal_seen": false,
+      "child_attributed": false,
+      "mcp_invocations": 0,
+      "assistant_errors": [],
+      "inventory": [],
+      "attempts": [],
+      "hook_decisions": {},
+      "successful_tool_ids": [],
+      "post_tool_ids": [],
+      "lifecycle": [
+        "connect",
+        "disconnect"
+      ],
+      "hook_tasks_remaining": 0,
+      "normalized_denials": 0,
+      "timeout_denials": 0,
+      "returncode": 0,
+      "owner_task_count": 1,
+      "seconds": 1.51,
+      "errors": []
+    },
+    {
+      "name": "stop_idle",
+      "attempted": false,
+      "hook_seen": false,
+      "reaped": true,
+      "cleanup_clean": true,
+      "sentinel_executed": false,
+      "successful_tool_result": false,
+      "post_seen": false,
+      "decision": null,
+      "terminal_seen": false,
+      "child_attributed": false,
+      "mcp_invocations": 0,
+      "assistant_errors": [],
+      "inventory": [],
+      "attempts": [],
+      "hook_decisions": {},
+      "successful_tool_ids": [],
+      "post_tool_ids": [],
+      "lifecycle": [
+        "connect",
+        "disconnect"
+      ],
+      "hook_tasks_remaining": 0,
+      "normalized_denials": 0,
+      "timeout_denials": 0,
+      "returncode": 0,
+      "owner_task_count": 1,
+      "seconds": 1.419,
+      "errors": []
+    },
+    {
+      "name": "stop_query",
+      "attempted": true,
+      "hook_seen": true,
+      "reaped": true,
+      "cleanup_clean": true,
+      "sentinel_executed": false,
+      "successful_tool_result": false,
+      "post_seen": false,
+      "decision": "deny",
+      "terminal_seen": false,
+      "child_attributed": false,
+      "mcp_invocations": 0,
+      "assistant_errors": [],
+      "inventory": [
+        "Bash"
+      ],
+      "attempts": [
+        {
+          "name": "Bash",
+          "id": "toolu_018jUTJ7iBPSDJMJeS2qBdjX",
+          "parent": null
+        }
+      ],
+      "hook_decisions": {
+        "toolu_018jUTJ7iBPSDJMJeS2qBdjX": "deny"
+      },
+      "successful_tool_ids": [],
+      "post_tool_ids": [],
+      "lifecycle": [
+        "connect",
+        "query",
+        "receive",
+        "disconnect"
+      ],
+      "stop_waited_for_hook_worker": true,
+      "hook_tasks_remaining": 0,
+      "hook_worker_entered": true,
+      "hook_worker_finished": true,
+      "normalized_denials": 0,
+      "timeout_denials": 0,
+      "returncode": 0,
+      "owner_task_count": 1,
+      "outcome": {
+        "status": "cancelled",
+        "reason": "stopped"
+      },
+      "seconds": 6.987,
+      "errors": []
+    },
+    {
+      "name": "repeated_cancel",
+      "attempted": true,
+      "hook_seen": true,
+      "reaped": true,
+      "cleanup_clean": true,
+      "sentinel_executed": false,
+      "successful_tool_result": false,
+      "post_seen": false,
+      "decision": "deny",
+      "terminal_seen": false,
+      "child_attributed": false,
+      "mcp_invocations": 0,
+      "assistant_errors": [],
+      "inventory": [
+        "Bash"
+      ],
+      "attempts": [
+        {
+          "name": "Bash",
+          "id": "toolu_01A46XkRtWxbggHXRzzKSZzd",
+          "parent": null
+        }
+      ],
+      "hook_decisions": {
+        "toolu_01A46XkRtWxbggHXRzzKSZzd": "deny"
+      },
+      "successful_tool_ids": [],
+      "post_tool_ids": [],
+      "lifecycle": [
+        "connect",
+        "query",
+        "receive",
+        "disconnect"
+      ],
+      "stop_waited_for_hook_worker": true,
+      "hook_tasks_remaining": 0,
+      "hook_worker_entered": true,
+      "hook_worker_finished": true,
+      "normalized_denials": 0,
+      "timeout_denials": 0,
+      "returncode": 0,
+      "owner_task_count": 1,
+      "seconds": 8.01,
+      "errors": []
+    }
+  ],
+  "source_sha256": {
+    "bridge/config.py": "5a5e00ac875ed8ef2a8fa224d74073f1786bdd58c95d058bacf7f3d25bfb0d0d",
+    "bridge/readiness.py": "f95766bf7752e7b69a310089dcfbe9d7a9cc52ded59047398d7977c202af1160",
+    "bridge/guarded_transport.py": "e5d6b4a1af15be7ce031b08d30a9bf232fd963bb143339cb201035d355211c68",
+    "bridge/domain_sdk.py": "eb9fceb935c6819e32113696ff520aa9156ec37628e6870f7dcb2c640f82271c",
+    "bridge/tool_guard_evidence.py": "cc86a4e146a19316b45142485a95a8479ff1ae6aab60e60c165b41a446ca3f3b",
+    "scripts/m12_tool_guard_probe.py": "157a5d6008359a97143c7a6153126f8eb0e3c06a688cac8f7735c404c5b7f584"
+  },
+  "errors": [],
+  "accepted": true
+}

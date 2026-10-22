@@ -1,6 +1,6 @@
 {
   "$comment": "The index of the 10110 TastesLike Plaza doc set. This file answers 'which document wins' in machine-readable form. Governed by specs/meta/META-SPEC.md; enforced by scripts/validate_specs.py. Every markdown file under docs/, specs/, Docs/, and the root README.md must appear in exactly one of `documents` or `exempt`.",
-  "doc_set_version": "0.2.17",
+  "doc_set_version": "0.2.18",
   "documents": [
     {
       "doc_id": "META-SPEC",
@@ -65,7 +65,7 @@
       "tier": 2,
       "authority": "implementation",
       "status": "ACTIVE",
-      "note": "Authoritative for platform and repository decisions that outlive the current frontend: engine, bridge transport, agent data layer, licence, submodule and merge policy, and since v0.2.14 who merges a PR and who moves the board (D-031, D-032; D-030 superseded). Created in v0.2.7 to give the eight decisions PROJECT-OVERVIEW was wrongly named as originating an entitled home (issue #11, conflict 4.8). Doc set 0.2.15 ratifies asynchronous buffered domain execution, centralized non-secret configuration and bounded local JSONL archives/diagnostics (D-034\u2013D-036), owner-approved 2026-10-18. Doc set 0.2.16 ratifies the owner runtime-path correction D-037: default Claude Code/Agent SDK with explicitly selected API-key-only Messages API conversation compatibility and no automatic fallback; the runtime correction is implemented with separate cloud API-key-through-SDK recall evidence, without proving subscription use or desktop acceptance. Doc set 0.2.17 ratifies owner-approved M12 policies D-038/D-039; runtime implementation/acceptance remains pending."
+      "note": "Authoritative for platform and repository decisions that outlive the current frontend: engine, bridge transport, agent data layer, licence, submodule and merge policy, and since v0.2.14 who merges a PR and who moves the board (D-031, D-032; D-030 superseded). Created in v0.2.7 to give the eight decisions PROJECT-OVERVIEW was wrongly named as originating an entitled home (issue #11, conflict 4.8). Doc set 0.2.15 ratifies asynchronous buffered domain execution, centralized non-secret configuration and bounded local JSONL archives/diagnostics (D-034–D-036), owner-approved 2026-10-18. Doc set 0.2.16 ratifies the owner runtime-path correction D-037: default Claude Code/Agent SDK with explicitly selected API-key-only Messages API conversation compatibility and no automatic fallback; the runtime correction is implemented with separate cloud API-key-through-SDK recall evidence, without proving subscription use or desktop acceptance. Doc set 0.2.17 ratifies owner-approved M12 policies D-038/D-039; baseline implementation has deterministic/Linux evidence; desktop acceptance remains open. Current scope amended by owner-approved M12-CHARACTER-DOMAIN-AMENDMENT at eadb0b4, ratified in 0.2.18; correction implementation and acceptance remain pending."
     },
     {
       "doc_id": "PROJECT-OVERVIEW",
@@ -97,7 +97,7 @@
       "tier": 2,
       "authority": "implementation",
       "status": "ACTIVE",
-      "note": "Owner-approved bridge-first design (2026-10-18); M9 complete. M10/M11 implemented with deterministic coverage and accepted on the owner laptop on 2026-10-21 using Claude subscription and API-token authentication. D-033\u2013D-037 preserve scoped NPC/domain execution, central settings, bounded archives and default SDK runtime. Owner moved minimum worktree separation, configured project bootstrap and native three-file project memory into M12; detailed M12 written design approved 2026-10-21; implementation plan approved for subagent-driven execution, and broader persistence/isolation/hosted providers remain future work. Prior cloud SDK recall does not prove M12 execution or graceful shutdown."
+      "note": "Owner-approved bridge-first design (2026-10-18); M9 complete. M10/M11 implemented with deterministic coverage and accepted on the owner laptop on 2026-10-21 using Claude subscription and API-token authentication. D-033–D-037 preserve scoped NPC/domain execution, central settings, bounded archives and default SDK runtime. Owner moved minimum worktree separation, configured project bootstrap and native three-file project memory into M12; detailed M12 written design approved 2026-10-21; implementation plan approved for subagent-driven execution, and broader persistence/isolation/hosted providers remain future work. Prior cloud SDK recall does not prove M12 execution or graceful shutdown. Current scope amended by owner-approved M12-CHARACTER-DOMAIN-AMENDMENT at eadb0b4, ratified in 0.2.18; correction implementation and acceptance remain pending."
     },
     {
       "doc_id": "M12-DOMAIN-EXECUTION-DESIGN",
@@ -105,7 +105,15 @@
       "tier": 2,
       "authority": "implementation",
       "status": "ACTIVE",
-      "note": "M12 written specification at 57b631f approved by owner 2026-10-21; implementation plan approved for subagent-driven execution. D-038/D-039 ratify project bootstrap, readiness and native memory in doc set 0.2.17. Owner requires explicit Start/Run, walking-away backgrounding, WORKSPACE_ROOT_DIR with env override, automatic dedicated worktree and native three-file repository-scoped memory. Other NPCs refer the player to the Chief Architect; its confirmation authorizes empty/non-Git project initialization on main without a second human prompt. All agent tools require Git/worktree/memory readiness. Specifies workspace reservation, SDK ownership, replay and Godot/plain-client acceptance; no runtime implementation is claimed."
+      "note": "M12 written specification at 57b631f approved by owner 2026-10-21; implementation plan approved for subagent-driven execution. D-038/D-039 ratify project bootstrap, readiness and native memory in doc set 0.2.17. Owner requires explicit Start/Run, walking-away backgrounding, WORKSPACE_ROOT_DIR with env override, automatic dedicated worktree and native three-file repository-scoped memory. Other NPCs refer the player to the Chief Architect; its confirmation authorizes empty/non-Git project initialization on main without a second human prompt. All agent tools require Git/worktree/memory readiness. Specifies workspace reservation, SDK ownership, replay and Godot/plain-client acceptance; baseline implementation has deterministic/Linux evidence; desktop acceptance remains open. Current scope amended by owner-approved M12-CHARACTER-DOMAIN-AMENDMENT at eadb0b4, ratified in 0.2.18; correction implementation and acceptance remain pending."
+    },
+    {
+      "doc_id": "M12-CHARACTER-DOMAIN-AMENDMENT",
+      "path": "docs/superpowers/specs/2026-10-22-m12-character-domain-amendment.md",
+      "tier": 2,
+      "authority": "implementation",
+      "status": "ACTIVE",
+      "note": "Owner approved revised specification at eadb0b4 on 2026-10-22 with “ok, build it”; ratified in doc set 0.2.18. Catalog agents front canonical department domains; extras use conversation. One worktree per project/department preserves legacy Core, with shared project notes, fresh bounded game/work guidance and guarded permission control. Implementation authorized; completion and acceptance remain pending."
     },
     {
       "doc_id": "ROADMAP",
@@ -113,7 +121,7 @@
       "tier": 3,
       "authority": "derived",
       "status": "ACTIVE",
-      "note": "Preserves M1\u2013M8 prototype history and approved M9\u2013M15 direction. M9 complete; M10/M11 locally accepted by owner 2026-10-21. M12 written design approved and implementation plan approved for subagent-driven execution, now including configured project bootstrap, minimum dedicated execution worktree and native three-file project memory. M13/M14 persistence and independent workspace sequencing can change or combine; M15 provider remains unselected. M5/M6 remain deferred frontend milestones."
+      "note": "Preserves M1–M8 prototype history and approved M9–M15 direction. M9 complete; M10/M11 locally accepted by owner 2026-10-21. M12 written design approved and implementation plan approved for subagent-driven execution, now including configured project bootstrap, minimum dedicated execution worktree and native three-file project memory. M13/M14 persistence and independent workspace sequencing can change or combine; M15 provider remains unselected. M5/M6 remain deferred frontend milestones. Current scope amended by owner-approved M12-CHARACTER-DOMAIN-AMENDMENT at eadb0b4, ratified in 0.2.18; correction implementation and acceptance remain pending."
     },
     {
       "doc_id": "TASK-TRACKER",
@@ -161,7 +169,7 @@
       "tier": 3,
       "authority": "delivery",
       "status": "HISTORICAL",
-      "note": "Executable context for Sprint 5. Board reconciliation (triage the 114 non-Done items on the board at the start of 2026-10-05, clear 7 stale In Progress) and doc consolidation (28 governed docs to \u226419, the nine tier-4 documents). Housekeeping sprint \u2014 no code milestones. Acceptance checks live in scripts/sprint_5_gate.py; sprint and board ids are recorded in DELIVERY-COORDINATES (D-026). Closed 2026-10-06 PDT (Jira completeDate 2026-10-06T20:50Z) with both gates green; HISTORICAL since PLZG-255."
+      "note": "Executable context for Sprint 5. Board reconciliation (triage the 114 non-Done items on the board at the start of 2026-10-05, clear 7 stale In Progress) and doc consolidation (28 governed docs to ≤19, the nine tier-4 documents). Housekeeping sprint — no code milestones. Acceptance checks live in scripts/sprint_5_gate.py; sprint and board ids are recorded in DELIVERY-COORDINATES (D-026). Closed 2026-10-06 PDT (Jira completeDate 2026-10-06T20:50Z) with both gates green; HISTORICAL since PLZG-255."
     },
     {
       "doc_id": "SPRINT-6-CHARTER",
@@ -272,6 +280,10 @@
     {
       "path": "docs/superpowers/plans/2026-10-21-m12-project-execution.md",
       "reason": "Non-authoritative M12 implementation plan derived from the owner-approved M12-DOMAIN-EXECUTION-DESIGN and D-038/D-039. Owner approved the written plan and selected subagent-driven execution on 2026-10-21; no runtime completion claimed."
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-22-m12-character-domains.md",
+      "reason": "Owner-authorized implementation plan derived from the revised M12-CHARACTER-DOMAIN-AMENDMENT at eadb0b4, approved 2026-10-22 with “ok, build it”. Execution artifact; no new product authority or runtime acceptance."
     }
   ]
 }

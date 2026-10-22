@@ -2,6 +2,8 @@
 
 import asyncio
 import pytest
+
+from bridge.agent_bindings import DOMAIN_IDS
 import pytest_asyncio
 from bridge.config import default_config
 from bridge.domain_manager import DomainManager
@@ -88,7 +90,9 @@ async def test_stale_generation_cannot_mutate(setup):
         "domain_query",
     ):
         extra = (
-            dict(agent_id="builder", task="task") if action == "domain_query" else {}
+            dict(agent_id="backend-architect", task="task")
+            if action == "domain_query"
+            else {}
         )
         reply = await command(manager, action, domain_session_id=first, **extra)
         assert reply[-1]["error_type"] == "session_unavailable"
@@ -147,14 +151,18 @@ async def test_ten_domain_ids_and_idle_reservation(setup):
             packets.append(packet)
 
         await manager.handle(
-            dict(type="activate_domain", request_id=str(i), domain_id=f"d{i}"),
+            dict(
+                type="activate_domain",
+                request_id=str(i),
+                domain_id=(sorted(DOMAIN_IDS) + ["engineering"])[i],
+            ),
             context=context(),
             emit=emit,
         )
         if i == 0:
             assert packets[-1]["state"] == "active"
         else:
-            assert packets[-1]["error_type"] == "workspace_busy"
+            assert packets[-1]["error_type"] == "capacity_limit"
     assert service.reservation.held
     # Failed clean generations can be evicted; a held generation never is.
     assert len(manager._sessions) <= 10
@@ -252,7 +260,11 @@ async def test_eleventh_live_identity_is_rejected_without_evicting_startup(
             replies[index].append(packet)
 
         await manager.handle(
-            dict(type="activate_domain", request_id=str(index), domain_id=f"d{index}"),
+            dict(
+                type="activate_domain",
+                request_id=str(index),
+                domain_id=(sorted(DOMAIN_IDS) + ["extra-limit-test"])[index],
+            ),
             context=context(str(index)),
             emit=emit,
         )
@@ -266,13 +278,13 @@ async def test_eleventh_live_identity_is_rejected_without_evicting_startup(
     await asyncio.gather(*tasks)
     assert all(
         reply[-1].get("state") == "active"
-        or reply[-1].get("error_type") == "workspace_busy"
+        or reply[-1].get("error_type") == "capacity_limit"
         for reply in replies[:10]
     )
 
 
 @pytest.mark.asyncio
-async def test_workspace_busy_identifies_existing_domain(setup):
+async def test_capacity_refusal_does_not_claim_another_department_workspace(setup):
     manager, _, _ = setup
     await command(manager, "activate_domain")
     packets = []
@@ -281,12 +293,12 @@ async def test_workspace_busy_identifies_existing_domain(setup):
         packets.append(packet)
 
     await manager.handle(
-        dict(type="activate_domain", request_id="second", domain_id="other"),
+        dict(type="activate_domain", request_id="second", domain_id="core"),
         context=context("second"),
         emit=emit,
     )
-    assert packets[-1]["error_type"] == "workspace_busy"
-    assert "engineering" in packets[-1]["message"]
+    assert packets[-1]["error_type"] == "capacity_limit"
+    assert "capacity" in packets[-1]["message"].lower()
 
 
 @pytest.mark.asyncio

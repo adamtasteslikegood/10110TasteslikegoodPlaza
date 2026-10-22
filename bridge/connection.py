@@ -6,14 +6,19 @@ from uuid import uuid4
 
 from bridge.domain_protocol import COMMANDS, error_packet
 from bridge.protocol import make_error
+from bridge.interaction_protocol import COMMANDS as INTERACTIONS, interaction_error
+from bridge.workspace import WorkspaceError
 
 
 class ConnectionState:
-    def __init__(self, websocket, dispatch, *, project_snapshot=None):
+    def __init__(
+        self, websocket, dispatch, *, project_snapshot=None, workspace_snapshot=None
+    ):
         self.connection_id = str(uuid4())
         self.histories = {}
         self._websocket, self._dispatch = websocket, dispatch
         self._project_snapshot = project_snapshot or (lambda: {})
+        self._workspace_snapshot = workspace_snapshot or (lambda domain_id: {})
         self._queue = asyncio.Queue(maxsize=32)
         self._sender = None
         self._slots = {}
@@ -65,20 +70,34 @@ class ConnectionState:
         data = data if isinstance(data, dict) else {}
         kind = data.get("type")
         domain = isinstance(kind, str) and kind in COMMANDS
+        interaction = isinstance(kind, str) and kind in INTERACTIONS
         slot = (
             "stop"
             if kind == "deactivate_domain"
             else (
                 "discovery"
-                if kind in ("describe_workspace", "domain_status")
-                else "control" if domain else "npc"
+                if kind in ("describe_workspace", "domain_status", "agent_status")
+                else (
+                    "setup"
+                    if kind == "project_setup"
+                    else "control" if domain else "npc"
+                )
             )
         )
         if self.closed and slot == "npc":
             return None
         active = self._slots.get(slot)
         if active is not None and not active.done():
-            snapshot = self._project_snapshot() if domain else {}
+            snapshot = dict(self._project_snapshot()) if domain else {}
+            # Project identity is shared; execution identity belongs only to the
+            # requested department, including commands refused before dispatch.
+            snapshot.pop("workspace_id", None)
+            if domain and isinstance(data.get("domain_id"), str):
+                try:
+                    workspace = self._workspace_snapshot(data["domain_id"])
+                    snapshot["workspace_id"] = workspace.get("workspace_id")
+                except WorkspaceError:
+                    pass
             packet = (
                 error_packet(
                     data,
@@ -94,8 +113,13 @@ class ConnectionState:
                     "An NPC conversation is already in progress",
                 )
             )
+            if interaction:
+                packet = interaction_error(
+                    data, "service_busy", dict(self._project_snapshot())
+                )
             if (
                 not domain
+                and not interaction
                 and isinstance(data.get("request_id"), str)
                 and data["request_id"].strip()
             ):

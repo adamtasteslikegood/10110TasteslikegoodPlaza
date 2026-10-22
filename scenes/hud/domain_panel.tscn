@@ -28,6 +28,10 @@ size_flags_horizontal = 0
 text = "Refocus domain remotely"
 size_flags_horizontal = 0
 
+[node name="StopButton" type="Button" parent="Global/Toolbar"]
+text = "Stop domain"
+size_flags_horizontal = 0
+
 [node name="Panel" type="PanelContainer" parent="."]
 offset_right = 800.0
 offset_bottom = 240.0

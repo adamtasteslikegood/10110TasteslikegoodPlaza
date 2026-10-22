@@ -3,6 +3,7 @@
 import dataclasses
 import json
 import math
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -26,6 +27,7 @@ DEFAULTS = {
     "CONVERSATION_MAX_OUTPUT_TOKENS": 4096,
     "CONTEXT_MAX_MESSAGES": 40,
     "DOMAIN_MAX_TURNS": 20,
+    "DOMAIN_DANGEROUSLY_SKIP_PERMISSIONS": False,
     "DOMAIN_MAX_BUDGET_USD": 1.0,
     "TRANSCRIPTS_ENABLED": True,
     "LOG_DIR": "../.local/bridge-logs",
@@ -35,6 +37,8 @@ DEFAULTS = {
     "LOG_MAX_TOTAL_BYTES": 104857600,
     "LOG_MAX_AGE_DAYS": 14,
     "WORKSPACE_ROOT_DIR": None,
+    "INSTALL_CONTEXT_DIR": "../.local/plaza-context",
+    "PROJECT_GUIDANCE_FILE": "PLAZA_AGENTS.md",
 }
 DEFAULT_PATH = Path(__file__).resolve().parents[1] / "config.json"
 INTEGER_KEYS = [
@@ -72,14 +76,18 @@ def test_complete_defaults_and_committed_file_agree():
     settings = default_config()
     assert isinstance(settings, BridgeConfig)
     expected = dict(
-        DEFAULTS, LOG_DIR=str((DEFAULT_PATH.parent / DEFAULTS["LOG_DIR"]).resolve())
+        DEFAULTS,
+        LOG_DIR=str((DEFAULT_PATH.parent / DEFAULTS["LOG_DIR"]).resolve()),
+        INSTALL_CONTEXT_DIR=str(
+            (DEFAULT_PATH.parent / DEFAULTS["INSTALL_CONTEXT_DIR"]).resolve()
+        ),
     )
     assert settings.effective_settings() == expected
     assert load_config(environ={}) == settings
     assert settings.source_path == DEFAULT_PATH
     for key, value in expected.items():
         assert getattr(settings, key.lower()) == (
-            Path(value) if key == "LOG_DIR" else value
+            Path(value) if key in ("LOG_DIR", "INSTALL_CONTEXT_DIR") else value
         )
 
 
@@ -99,6 +107,10 @@ def test_partial_file_overlay_and_path_environment_precedence(tmp_path, monkeypa
     assert load_config(selected, environ=env).haiku_model == "env-model"
     env["BRIDGE_CONFIG_PATH"] = str(selected)
     assert load_config(environ=env).source_path == selected
+    # Exercise only the declared process overrides, independently of harness flags.
+    for name in tuple(os.environ):
+        if name.startswith("PLAZA_"):
+            monkeypatch.delenv(name)
     monkeypatch.setenv("BRIDGE_CONFIG_PATH", str(selected))
     monkeypatch.setenv("PLAZA_HAIKU_MODEL", "process-model")
     assert load_config().haiku_model == "process-model"

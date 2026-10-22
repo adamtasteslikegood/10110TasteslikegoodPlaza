@@ -6,6 +6,8 @@ from unittest.mock import AsyncMock
 
 import pytest
 
+pytestmark = pytest.mark.usefixtures("explicit_extras")
+
 from bridge.config import default_config
 from bridge.tests.test_workspace import repository
 
@@ -78,7 +80,8 @@ async def test_chief_submission_confirms_once_without_human_prompt(tmp_path):
     assert service.snapshot()["stage"] == "ready"
     notes = service.require_memory().load()
     assert "Approved seed" in notes.progress
-    assert service.require_workspace().initial_commit in notes.progress
+    assert service._project.head_commit in notes.progress
+    assert service.workspace_snapshot("core")["workspace_id"] is None
     await service.close()
 
 
@@ -146,7 +149,7 @@ async def test_setup_save_failure_preserves_repository_and_never_reinitializes(
 
 
 @pytest.mark.asyncio
-async def test_final_setup_observation_failure_reports_failure_without_retry(
+async def test_setup_does_not_observe_or_provision_execution_checkout(
     tmp_path, monkeypatch
 ):
     import subprocess
@@ -184,24 +187,21 @@ async def test_final_setup_observation_failure_reports_failure_without_retry(
     try:
         reply = await service.interact_setup("systems-architect", "first")
         snapshot = service.snapshot()
-        assert snapshot["stage"] == "failed"
-        assert snapshot["reason"] == "workspace_invalid"
-        assert "Project setup failed: workspace_invalid" in reply
-        assert "are ready" not in reply
+        assert snapshot["stage"] == "ready"
+        assert "are ready" in reply
         assert snapshot["architect_decision"] == decisions[0]
         assert snapshot["memory"]["status"] == "saved"
         commit = git(root, "rev-parse", "HEAD")
         checkpoint = service._memory.load()
         assert decisions[0]["reason"] in checkpoint.progress
         assert commit in checkpoint.progress
-        with pytest.raises(WorkspaceError, match="Chief Architect") as error:
+        with pytest.raises(WorkspaceError) as error:
             service.require_workspace()
         assert error.value.code == "workspace_not_ready"
-        retry = await service.interact_setup("systems-architect", "second")
-        assert "operator inspection" in retry
-        assert git(root, "rev-parse", "HEAD") == commit
-        assert service._memory.load().progress == checkpoint.progress
-        assert len(decisions) == initialize.call_count == status.call_count == 1
+        assert await service.interact_setup("systems-architect", "second") is None
+        assert len(decisions) == initialize.call_count == 1
+        assert status.call_count == 0
+        assert not (root / ".git/plaza/workspaces").exists()
     finally:
         await service.close()
 
@@ -258,7 +258,7 @@ async def test_foreign_live_reservation_allows_bootstrap_memory_but_start_is_bus
         inspect_project(root), runtime_root=tmp_path / "runtime"
     )
     lease = WorkspaceLease.acquire(
-        workspace, domain_id="foreign", domain_session_id="foreign-generation"
+        workspace, domain_id="core", domain_session_id="foreign-generation"
     )
     service = ProjectService(
         replace(default_config(), workspace_root_dir=root),
@@ -269,11 +269,11 @@ async def test_foreign_live_reservation_allows_bootstrap_memory_but_start_is_bus
     try:
         await settled(service)
         assert service.snapshot()["stage"] == "ready"
-        assert service.snapshot()["reservation"]["domain_id"] == "foreign"
+        assert service.workspace_snapshot("core")["reservation"]["domain_id"] == "core"
         assert service.require_memory().load().revision >= 1
         server = BridgeServer(config=service._config, project_service=service)
         result = await server.dispatch(
-            dict(type="activate_domain", domain_id="local", request_id="start")
+            dict(type="activate_domain", domain_id="core", request_id="start")
         )
         assert result[-1]["error_type"] == "workspace_busy"
         await server._shutdown_domains()
@@ -305,7 +305,7 @@ async def test_late_preflight_never_calls_provider_and_settles_owned_intent(
     )
     await settled(service)
     server = BridgeServer(config=config, project_service=service)
-    monkeypatch.setattr("bridge.server.load_agent", lambda _: "definition")
+    monkeypatch.setattr("bridge.server.load_agent", lambda _, **kw: "definition")
     server.conversation.handle_request = AsyncMock()
     memory = service.require_memory()
     begin = memory.begin_turn
@@ -357,9 +357,9 @@ async def test_preflight_memory_failure_prevents_provider_call(tmp_path, monkeyp
     )
     await settled(service)
     server = BridgeServer(config=config, project_service=service)
-    monkeypatch.setattr("bridge.server.load_agent", lambda _: "definition")
+    monkeypatch.setattr("bridge.server.load_agent", lambda _, **kw: "definition")
     server.conversation.handle_request = AsyncMock()
-    service.require_readiness().prepare_turn = AsyncMock(
+    service.prepare_memory_turn = AsyncMock(
         side_effect=MemoryError("memory_unavailable", "unavailable")
     )
     result = await server.dispatch(
@@ -385,8 +385,8 @@ async def test_memory_save_failure_keeps_successful_history_and_unclean_run_evid
     )
     await settled(service)
     server = BridgeServer(config=config, project_service=service)
-    monkeypatch.setattr("bridge.server.load_agent", lambda _: "definition")
-    monkeypatch.setattr("bridge.conversation.load_agent", lambda _: "definition")
+    monkeypatch.setattr("bridge.server.load_agent", lambda _, **kw: "definition")
+    monkeypatch.setattr("bridge.conversation.load_agent", lambda _, **kw: "definition")
     backend = AsyncMock()
     backend.complete.return_value = "completed task"
     server.conversation = ConversationEngine(config=config, backend=backend)
@@ -434,8 +434,9 @@ def test_memory_publications_never_regress_last_confirmed_revision(tmp_path):
     "project_state", ["empty_non_git", "populated_non_git", "existing_unborn"]
 )
 @pytest.mark.parametrize("approved", [True, False])
+@pytest.mark.parametrize("skip", [False, True])
 async def test_actual_chief_reviewer_is_fresh_tools_disabled_exact_json(
-    tmp_path, monkeypatch, backend, project_state, approved
+    tmp_path, monkeypatch, backend, project_state, approved, skip
 ):
     import json
     from types import SimpleNamespace
@@ -452,6 +453,7 @@ async def test_actual_chief_reviewer_is_fresh_tools_disabled_exact_json(
         from bridge.tests.test_workspace import git
 
         git(root, "init", "-b", "main")
+    (root / "PLAZA_AGENTS.md").write_text("Chief pre-Git guidance")
     proposal = build_init_proposal(root)
     decision = dict(
         proposal_id=proposal.proposal_id,
@@ -472,13 +474,24 @@ async def test_actual_chief_reviewer_is_fresh_tools_disabled_exact_json(
     manager.__aenter__.return_value = api
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
     monkeypatch.setattr(conversation_api, "AsyncAnthropic", lambda **kwargs: manager)
-    config = replace(default_config(), conversation_backend=backend)
-    assert await review_repository(config, proposal) == decision
+    config = replace(
+        default_config(),
+        conversation_backend=backend,
+        domain_dangerously_skip_permissions=skip,
+    )
+    assert (
+        await review_repository(
+            config, proposal, intent="Prepare only the approved files"
+        )
+        == decision
+    )
     assert (root / ".git").exists() is (project_state == "existing_unborn")
     if backend == "claude_code":
         options = clients[0].options
         instructions = options.system_prompt
         assert options.tools == [] and options.allowed_tools == []
+        assert options.permission_mode == "dontAsk"
+        assert '"permission_mode": "dontAsk"' in instructions
         assert options.model == config.model_for(config.conversation_tier)
         assert options.setting_sources == [] and options.skills == []
         sent = json.loads(clients[0].query.call_args.args[0].split("\n", 1)[1])[
@@ -492,12 +505,17 @@ async def test_actual_chief_reviewer_is_fresh_tools_disabled_exact_json(
         sent = request["messages"]
     assert len(sent) == 1 and sent[0]["role"] == "user"
     reviewed = json.loads(sent[0]["content"])
+    assert reviewed["player_intent"] == "Prepare only the approved files"
     assert reviewed["root"] == str(root)
     assert reviewed["root_identity"] == list(proposal.root_identity)
     assert reviewed["unborn"] is (project_state == "existing_unborn")
     assert [entry["sha256"] for entry in reviewed["seed_files"]] == [
         entry.sha256 for entry in proposal.seed_files
     ]
+    assert "Chief pre-Git guidance" in instructions
+    assert "STORYBOARD-W1" in instructions
+    assert '"tools": []' in instructions
+    assert "explicit_repository_setup" in instructions
     assert "All eligible proposals have no committed history" in instructions
     assert "unborn=false means a non-Git directory" in instructions
     assert (
@@ -528,7 +546,7 @@ async def test_lone_surrogate_envelope_fallback_finishes_real_memory_turn(
     )
     await settled(service)
     server = BridgeServer(config=config, project_service=service)
-    monkeypatch.setattr("bridge.server.load_agent", lambda _: "definition")
+    monkeypatch.setattr("bridge.server.load_agent", lambda _, **kw: "definition")
     raw = '{"answer":"\\ud800"}'
     offline_clients[0].reply.return_value = raw
     history = {}
@@ -550,18 +568,19 @@ def test_cleanup_publication_clears_only_matching_released_lease(tmp_path):
     service = ProjectService(
         default_config(), runtime_root=tmp_path, owner_run_id="run"
     )
-    first = SimpleNamespace(domain_id="first", domain_session_id="old", held=False)
-    second = SimpleNamespace(domain_id="second", domain_session_id="new", held=True)
+    first = SimpleNamespace(domain_id="core", domain_session_id="old", held=False)
+    second = SimpleNamespace(domain_id="core", domain_session_id="new", held=True)
+    service._workspace_states["core"] = service.workspace_snapshot("core")
     service.publish_reservation(second)
     service.publish_cleanup(first, clean=True)
-    assert service.snapshot()["reservation"]["domain_id"] == "second"
+    assert service.workspace_snapshot("core")["reservation"]["domain_id"] == "core"
     service.publish_cleanup(second, clean=True)
-    assert service.snapshot()["reservation"]["domain_id"] == "second"
+    assert service.workspace_snapshot("core")["reservation"]["domain_id"] == "core"
     service.publish_cleanup(second, clean=False)
-    assert service.snapshot()["reservation"]["cleanup_failed"]
+    assert service.workspace_snapshot("core")["reservation"]["cleanup_failed"]
     second.held = False
     service.publish_cleanup(second, clean=True)
-    assert service.snapshot()["reservation"] is None
+    assert service.workspace_snapshot("core")["reservation"] is None
 
 
 @pytest.mark.asyncio
@@ -693,3 +712,64 @@ async def test_late_synchronous_review_decision_never_authorizes_git(
     assert service.snapshot()["architect_decision"] is None
     assert not (root / ".git").exists()
     await service.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("substitute", ["root", "common"])
+async def test_extra_memory_admission_rejects_replaced_project(tmp_path, substitute):
+    from bridge.project_service import ProjectService
+    from bridge.project_memory import TurnIntent
+    from bridge.workspace import WorkspaceError
+
+    root = repository(tmp_path)
+    service = ProjectService(
+        replace(default_config(), workspace_root_dir=root),
+        runtime_root=tmp_path / "runtime",
+        owner_run_id="run",
+    )
+    await settled(service)
+    target = root if substitute == "root" else root / ".git"
+    moved = tmp_path / "preserved"
+    import shutil
+
+    target.rename(moved)
+    shutil.copytree(moved, target)
+    try:
+        with pytest.raises(WorkspaceError, match="identity changed"):
+            await service.prepare_memory_turn(
+                TurnIntent("turn", "request", "run", "extra", None, None, "hello")
+            )
+        assert not service._workspaces
+    finally:
+        shutil.rmtree(target)
+        moved.rename(target)
+        await service.close()
+
+
+@pytest.mark.asyncio
+async def test_extra_memory_admission_accepts_new_source_commit_without_worktree(
+    tmp_path,
+):
+    from bridge.project_service import ProjectService
+    from bridge.project_memory import TurnIntent
+    from bridge.tests.test_workspace import git
+
+    root = repository(tmp_path)
+    service = ProjectService(
+        replace(default_config(), workspace_root_dir=root),
+        runtime_root=tmp_path / "runtime",
+        owner_run_id="run",
+    )
+    await settled(service)
+    git(root, "commit", "--allow-empty", "-m", "next source commit")
+    try:
+        snapshot = await service.prepare_memory_turn(
+            TurnIntent("turn", "request", "run", "extra", None, None, "hello")
+        )
+        assert "pending" in snapshot.todo
+        assert not service._workspaces
+    finally:
+        service.require_memory().finish_turn(
+            "turn", outcome="success", output="done", delta=None
+        )
+        await service.close()

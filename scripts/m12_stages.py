@@ -23,7 +23,7 @@ IDENTITY = {"project_id", "workspace_id"}
 DOMAIN = IDENTITY | {"domain_id", "domain_session_id"}
 FIELDS = {
     "referral_rendered": {"request_id", "agent_id", "assistant"},
-    "chief_ready": IDENTITY | {"request_id", "assistant"},
+    "chief_ready": {"project_id", "request_id", "assistant"},
     "domain_running": DOMAIN | {"request_id", "agent_id"},
     "background_ack": DOMAIN
     | {"request_id", "state", "execution_state", "radius", "distance", "panel_hidden"},

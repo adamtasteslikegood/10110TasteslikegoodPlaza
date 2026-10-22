@@ -317,6 +317,11 @@ def main() -> int:
 
     agents = build_registry()
     rendered = render(agents)
+    # Share the canonical rename/exclusion registry with the committed bridge store.
+    sys.path.insert(0, str(REPO_ROOT))
+    from bridge.sync import synchronize
+
+    bridge_ok = synchronize(agents, check=args.check)
 
     by_dept: dict = {}
     for entry in agents.values():
@@ -336,6 +341,9 @@ def main() -> int:
                 "Regenerate and commit:\n\n"
                 "    python3 scripts/generate_agents_json.py\n"
             )
+            return 1
+        if not bridge_ok:
+            print("Agent data FAILED -- bridge bindings/definitions drift; regenerate.")
             return 1
         print(f"Agent data OK: {len(agents)} agents ({summary}).")
         return 0

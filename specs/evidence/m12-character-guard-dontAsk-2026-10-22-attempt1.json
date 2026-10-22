@@ -1,0 +1,35 @@
+{
+  "permission_mode": "dontAsk",
+  "versions": {
+    "sdk": "0.2.136",
+    "anyio": "4.14.2",
+    "cli": "2.1.228 (Claude Code)"
+  },
+  "model": "claude-haiku-5-5",
+  "production_tools": [
+    "Read",
+    "Edit",
+    "Bash"
+  ],
+  "cli_sha256": "d535985e6941a3eb00179ccd7f52ceb0c6623a0305a518ebc4e6514f84a94c99",
+  "case_deadline_seconds": 45,
+  "case_budget_usd": 0.2,
+  "max_queries": 27,
+  "watchdog_seconds": 7,
+  "checker_seconds": 5,
+  "matcher_seconds": 10,
+  "cases": [],
+  "source_sha256": {
+    "bridge/config.py": "5a5e00ac875ed8ef2a8fa224d74073f1786bdd58c95d058bacf7f3d25bfb0d0d",
+    "bridge/readiness.py": "f95766bf7752e7b69a310089dcfbe9d7a9cc52ded59047398d7977c202af1160",
+    "bridge/guarded_transport.py": "e5d6b4a1af15be7ce031b08d30a9bf232fd963bb143339cb201035d355211c68",
+    "bridge/domain_sdk.py": "eb9fceb935c6819e32113696ff520aa9156ec37628e6870f7dcb2c640f82271c",
+    "bridge/tool_guard_evidence.py": "cc86a4e146a19316b45142485a95a8479ff1ae6aab60e60c165b41a446ca3f3b",
+    "scripts/m12_tool_guard_probe.py": "7ae6006c171b6c0907cfcd58c5641533df62f69f68d309cc7cb49625c5dd16f3"
+  },
+  "errors": [
+    "Required matrix is incomplete or duplicated",
+    "probe interrupted: WorkspaceError"
+  ],
+  "accepted": false
+}

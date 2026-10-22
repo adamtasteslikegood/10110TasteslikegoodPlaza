@@ -26,7 +26,7 @@ def stage_records():
                 assistant="Chief Architect",
             ),
         ),
-        ("chief_ready", dict(bound, request_id="chief", assistant="approved")),
+        ("chief_ready", dict(project_id="P", request_id="chief", assistant="approved")),
         (
             "domain_running",
             dict(domain, request_id="run", agent_id="backend-architect"),
@@ -215,10 +215,10 @@ async def test_closed_origin_replay_and_stale_generation(
     async with Lifetime(tmp_path, root, monkeypatch, provider) as life:
         source_before = baseline(root)
         runtime_before = (life.runtime / "sentinel").read_bytes()
-        work = life.service.require_workspace()
         assert life.marker.exists()
         a, b = await life.socket(), await life.socket()
         generation = await a.start()
+        work = life.service.require_workspace("engineering")
         await a.run(generation)
         await until(lambda: provider.clients[0].receiving.is_set())
         await b.send("domain_status", "observer")
@@ -286,12 +286,12 @@ async def test_stop_during_real_owner_connect(tmp_path, monkeypatch, offline_cli
         await a.send("activate_domain", "start")
         generation = (await a.reply("start", state="activating"))["domain_session_id"]
         await until(lambda: provider.clients and provider.clients[0].entered.is_set())
-        trusted = life.service.snapshot()
+        trusted = life.service.workspace_snapshot("engineering")
         await a.send("activate_domain", "cross-domain", domain_id="design")
         busy = await a.reply("cross-domain")
         assert busy["error_type"] == "domain_busy" and busy["domain_id"] == "design"
         assert busy["project_id"] == trusted["project_id"]
-        assert busy["workspace_id"] == trusted["workspace_id"]
+        assert "workspace_id" not in busy  # Design never borrows Engineering identity.
         await a.send("background_domain", "busy-generation", generation)
         busy = await a.reply("busy-generation")
         assert busy["error_type"] == "domain_busy"
@@ -320,7 +320,7 @@ async def test_crashed_lease_refuses_service_and_never_constructs_sdk(
     provider = Provider()
     root = repository(tmp_path)
     async with Lifetime(tmp_path, root, monkeypatch, provider) as first:
-        work = first.service.require_workspace()
+        work = await first.service.prepare_domain("engineering")
     first.assert_closed()
     child = await asyncio.create_subprocess_exec(
         sys.executable,
@@ -341,8 +341,12 @@ async def test_crashed_lease_refuses_service_and_never_constructs_sdk(
     failed_dir = tmp_path / "failed"
     failed_dir.mkdir()
     async with Lifetime(failed_dir, root, monkeypatch, provider) as failed:
-        assert failed.service.snapshot()["stage"] == "failed"
-        assert failed.service.snapshot()["reason"] == "cleanup_failed"
+        assert failed.service.snapshot()["stage"] == "ready"
+        assert failed.service.workspace_snapshot("engineering")["stage"] == "failed"
+        assert (
+            failed.service.workspace_snapshot("engineering")["reason"]
+            == "cleanup_failed"
+        )
         socket = await failed.socket()
         await socket.send("activate_domain", "refused")
         assert (await socket.reply("refused"))["type"] == "domain_error"
@@ -369,7 +373,8 @@ async def test_terminal_memory_storage_failure_preserves_result_and_unclean_run(
         confirmed = life.service.snapshot()["memory"]["revision"]
         original = project_files.atomic_replace
         documents = (
-            life.service.require_workspace().common_git_dir / "plaza/session-memory"
+            life.service.require_workspace("engineering").common_git_dir
+            / "plaza/session-memory"
         )
         fault_count = []
 

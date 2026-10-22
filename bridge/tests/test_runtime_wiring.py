@@ -9,6 +9,8 @@ from unittest.mock import AsyncMock, MagicMock
 import uuid
 
 import pytest
+
+pytestmark = pytest.mark.usefixtures("explicit_extras")
 import pytest_asyncio
 
 from bridge.domain_sdk import SDKOutcome, domain_options
@@ -686,7 +688,7 @@ async def test_shutdown_attempts_all_domains_and_records_before_close_after_disc
     extra_root.mkdir()
     extra = FakeProjectService(extra_root)
     second_session = DomainSession(
-        "second",
+        "core",
         "second-generation",
         config=server._config,
         project_service=extra,
@@ -694,7 +696,7 @@ async def test_shutdown_attempts_all_domains_and_records_before_close_after_disc
     )
     await second_session.start()
     second = second_session._owner
-    server.domains._sessions["second"] = [second_session]
+    server.domains._sessions["core"] = [second_session]
     first.execute_gate = second.execute_gate = asyncio.Event()
     first.clean = False
     packets = []
@@ -705,7 +707,14 @@ async def test_shutdown_attempts_all_domains_and_records_before_close_after_disc
     for session in (first_session, second_session):
         await session.admit_query(
             query(
-                "origin-request", session.domain_session_id, domain_id=session.domain_id
+                "origin-request",
+                session.domain_session_id,
+                domain_id=session.domain_id,
+                agent_id=(
+                    "systems-architect"
+                    if session.domain_id == "core"
+                    else "backend-architect"
+                ),
             ),
             context=origin(session),
             emit=sink,
@@ -729,9 +738,9 @@ async def test_shutdown_attempts_all_domains_and_records_before_close_after_disc
         assert sorted((r["domain_id"], r["outcome"]) for r in close_snapshot) == sorted(
             [
                 ("engineering", "input"),
-                ("second", "input"),
+                ("core", "input"),
                 ("engineering", "cancelled"),
-                ("second", "cancelled"),
+                ("core", "cancelled"),
             ]
         )
         assert writer.closed == [False]

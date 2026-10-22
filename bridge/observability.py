@@ -203,6 +203,7 @@ class BridgeRecorder:
         outcome: str | None = None,
         duration_ms: float | None = None,
         domain_state: str | None = None,
+        context_sources: list[dict] | None = None,
     ) -> bool:
         if getattr(self._local, "active", False):
             return False
@@ -225,8 +226,20 @@ class BridgeRecorder:
                     or duration_ms < 0
                 ):
                     raise ValueError("duration must be finite and nonnegative")
+                if context_sources is not None:
+                    context_sources = [
+                        {
+                            key: (
+                                self._redact(value) if isinstance(value, str) else value
+                            )
+                            for key, value in source.items()
+                            if key in ("identity", "scope", "revision")
+                        }
+                        for source in context_sources
+                    ]
                 metadata = self._record(
                     context,
+                    context_sources=context_sources,
                     event=name,
                     outcome=outcome,
                     duration_ms=duration_ms,

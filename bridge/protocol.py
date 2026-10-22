@@ -12,6 +12,7 @@ from typing import Optional
 
 
 class RequestType(Enum):
+    INVALID = "invalid"
     DOMAIN_QUERY = "domain_query"
     CONVERSATION = "conversation"
     RESUME = "resume"
@@ -34,8 +35,8 @@ def classify_request(raw: dict) -> RequestType:
     type_str = raw.get("type", "conversation")
     try:
         return RequestType(type_str)
-    except ValueError:
-        return RequestType.CONVERSATION
+    except (ValueError, TypeError):
+        return RequestType.INVALID
 
 
 def parse_request(raw: dict) -> BridgeRequest:
@@ -50,6 +51,8 @@ def parse_request(raw: dict) -> BridgeRequest:
 
 
 def validate_request(request: BridgeRequest) -> Optional[str]:
+    if request.type == RequestType.INVALID:
+        return "Unknown typed operation"
     if request.type == RequestType.DOMAIN_QUERY:
         if not request.domain_id:
             return "domain_id is required for domain_query"
@@ -70,7 +73,7 @@ def validate_request(request: BridgeRequest) -> Optional[str]:
 
 def validate_agent_id(agent_id: str) -> bool:
     return bool(
-        agent_id and isinstance(agent_id, str) and _VALID_AGENT_ID.match(agent_id)
+        agent_id and isinstance(agent_id, str) and _VALID_AGENT_ID.fullmatch(agent_id)
     )
 
 

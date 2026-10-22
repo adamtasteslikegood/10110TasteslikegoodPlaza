@@ -74,10 +74,11 @@ func _ready() -> void:
 	_check_autoloads()
 	_check_registry()
 	_check_core_agents()
+	var catalog_count := AgentRegistry.count()
 	await _check_scene_tree()
 
 	if _failures.is_empty():
-		print("smoke_test: OK — %d agents, all checks passed." % AgentRegistry.count())
+		print("smoke_test: OK — %d agents, all checks passed." % catalog_count)
 		get_tree().quit(0)
 		return
 
@@ -248,7 +249,7 @@ func _check_npc_ready(instance: Node) -> void:
 	if tag == null:
 		_fail("AgentNPC has no NameTag node — agent_npc.gd's @onready path is broken")
 	elif tag.text != "Systems Architect":
-		_fail("NameTag reads %s, expected 'Systems Architect'" % [tag.text])
+		_fail("NameTag reads %s, expected fixture name" % [tag.text])
 
 
 func _check_office_built(instance: Node) -> void:
@@ -292,8 +293,9 @@ func _check_hud_ready(instance: Node) -> void:
 	# anywhere else still passed — confirmed by renaming BodyLabel and watching an
 	# earlier version of this test go green. Emitting the signal forces every path
 	# to resolve and asserts the text actually arrived.
-	var agent := AgentRegistry.get_agent("systems-architect")
-	GameEvents.npc_approached.emit("systems-architect", agent)
+	preload("res://tests/character_fixture.gd").extras()
+	var agent := AgentRegistry.get_agent("fixture-extra-a")
+	GameEvents.npc_approached.emit("fixture-extra-a", agent)
 
 	if not panel.visible:
 		_fail("panel did not open on GameEvents.npc_approached")
@@ -301,8 +303,8 @@ func _check_hud_ready(instance: Node) -> void:
 	var name_label: Label = hud.get_node_or_null("Panel/Margin/Rows/Header/Titles/NameLabel")
 	if name_label == null:
 		_fail("dialogue panel: NameLabel path does not resolve")
-	elif name_label.text != "Systems Architect":
-		_fail("dialogue panel shows %s, expected 'Systems Architect'" % [name_label.text])
+	elif name_label.text != agent.name:
+		_fail("dialogue panel shows %s, expected fixture name" % [name_label.text])
 
 	var body_label: RichTextLabel = hud.get_node_or_null("Panel/Margin/Rows/BodyLabel")
 	if body_label == null:
@@ -334,11 +336,11 @@ func _check_hud_ready(instance: Node) -> void:
 	BridgeClient.conversations.begin_connection()
 	BridgeClient._connected = true
 	var request_id := "smoke-matched-request"
-	if not BridgeClient.conversations.start_request("systems-architect", request_id, "Smoke question"):
+	if not BridgeClient.conversations.start_request("fixture-extra-a", request_id, "Smoke question"):
 		_fail("smoke request was not admitted")
-	BridgeClient._pending_requests[request_id] = {"agent_id": "systems-architect", "generation": BridgeClient.conversations.generation}
-	GameEvents.conversation_changed.emit("systems-architect", "input", request_id)
-	BridgeClient._on_message(JSON.stringify({"agent_id": "systems-architect", "request_id": request_id, "status": "ok", "output": "Hello from the bridge."}))
+	BridgeClient._pending_requests[request_id] = {"agent_id": "fixture-extra-a", "generation": BridgeClient.conversations.generation}
+	GameEvents.conversation_changed.emit("fixture-extra-a", "input", request_id)
+	BridgeClient._on_message(JSON.stringify({"agent_id": "fixture-extra-a", "request_id": request_id, "status": "ok", "output": "Hello from the bridge."}))
 	var span: Dictionary = hud.current_assistant_span()
 	if body_label.text.substr(span.start, span.length) != "Hello from the bridge.":
 		_fail("matched bridge response was not rendered in BodyLabel assistant span")
@@ -347,7 +349,7 @@ func _check_hud_ready(instance: Node) -> void:
 	elif body_label.visible_characters != span.start:
 		_fail("typewriter did not start at new assistant span")
 
-	GameEvents.npc_left.emit("systems-architect")
+	GameEvents.npc_left.emit("fixture-extra-a")
 	if panel.visible:
 		_fail("panel did not close on GameEvents.npc_left")
 

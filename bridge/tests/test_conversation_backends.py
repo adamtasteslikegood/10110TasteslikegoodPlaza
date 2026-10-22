@@ -17,6 +17,8 @@ from claude_agent_sdk import (
 import httpx
 import pytest
 
+pytestmark = pytest.mark.usefixtures("explicit_extras")
+
 from bridge.config import ConfigError, default_config, load_config
 from bridge.conversation import ConversationEngine
 
@@ -60,7 +62,9 @@ def install_sdk(monkeypatch, stream=None, *, connect=None, disconnect=None):
         return client
 
     monkeypatch.setattr(conversation_sdk, "ClaudeSDKClient", factory)
-    monkeypatch.setattr("bridge.conversation.load_agent", lambda _: "agent definition")
+    monkeypatch.setattr(
+        "bridge.conversation.load_agent", lambda _, **kw: "agent definition"
+    )
     return clients
 
 
@@ -311,7 +315,7 @@ async def test_explicit_api_rejects_missing_or_oauth_keys_before_http(monkeypatc
         monkeypatch.setenv("ANTHROPIC_API_KEY", key)
     monkeypatch.setenv("ANTHROPIC_AUTH_TOKEN", "must-not-use")
     monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "must-not-use")
-    monkeypatch.setattr("bridge.conversation.load_agent", lambda _: "definition")
+    monkeypatch.setattr("bridge.conversation.load_agent", lambda _, **kw: "definition")
     factory = MagicMock(
         side_effect=AssertionError("HTTP client must not be constructed")
     )
@@ -349,7 +353,7 @@ async def test_explicit_api_real_http_headers_ignore_inherited_bearer(monkeypatc
 
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-api03-synthetic")
     monkeypatch.setenv("ANTHROPIC_AUTH_TOKEN", "inherited-bearer")
-    monkeypatch.setattr("bridge.conversation.load_agent", lambda _: "definition")
+    monkeypatch.setattr("bridge.conversation.load_agent", lambda _, **kw: "definition")
     monkeypatch.setattr(
         conversation_api,
         "AsyncAnthropic",
@@ -553,7 +557,7 @@ async def test_explicit_api_deadline_bounds_total_execution(monkeypatch):
 
     http_client = httpx.AsyncClient(transport=httpx.MockTransport(stalled))
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-api03-synthetic")
-    monkeypatch.setattr("bridge.conversation.load_agent", lambda _: "definition")
+    monkeypatch.setattr("bridge.conversation.load_agent", lambda _, **kw: "definition")
     monkeypatch.setattr(
         conversation_api,
         "AsyncAnthropic",
@@ -613,7 +617,7 @@ async def test_installed_transport_reaps_local_child_on_cancel(monkeypatch):
             cleaned.set()
 
     monkeypatch.setattr(conversation_sdk, "ClaudeSDKClient", LocalClient)
-    monkeypatch.setattr("bridge.conversation.load_agent", lambda _: "definition")
+    monkeypatch.setattr("bridge.conversation.load_agent", lambda _, **kw: "definition")
     history = []
     task = asyncio.create_task(
         ConversationEngine().handle_request(
@@ -752,7 +756,7 @@ async def test_api_provider_auth_failure_preserves_error_fields_without_sdk_fall
         )
 
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-api03-synthetic")
-    monkeypatch.setattr("bridge.conversation.load_agent", lambda _: "definition")
+    monkeypatch.setattr("bridge.conversation.load_agent", lambda _, **kw: "definition")
     monkeypatch.setattr(
         conversation_api,
         "AsyncAnthropic",

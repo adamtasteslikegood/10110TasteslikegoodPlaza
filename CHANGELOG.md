@@ -11,11 +11,37 @@ section at release time. PR references in parentheses.
 **Two version axes, deliberately separate.** This file and the tags track the
 **application**: the 3D era was `0.0.x`, and the 2.5D line is `0.1.y`. The
 `doc_set_version:` in every governed document's frontmatter is the **document
-set's** number and is unrelated — it reached `0.2.17` on its own axis. Prose that
+set's** number and is unrelated — it reached `0.2.18` on its own axis. Prose that
 cites `v0.2.7` or `v0.2.8` as software releases is conflating the two; those were
 spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
+
+### Changed — M12 character work and acceptance runners (PLZG-289)
+
+- Implement catalog-agent department routing, lazy per-department worktrees,
+  project-shared memory, typed Chief preparation and shared dialogue/domain-pane
+  controls. Refresh bounded guidance per Run and select strict boolean permission
+  mode while retaining mandatory guards.
+- Update live orchestration and strict evidence checks for explicit Core Start,
+  working dialogue, independent extras, selected mode and context revisions.
+  Offline tests include the runner's real Godot/Git flow with test-only SDK methods.
+  Correct nullable extra-status validation and bounded observation/admission lock
+  contention. Record fresh ten-source guard acceptance (29/29 in each mode at
+  `ba5599b`) and selected `dontAsk` Linux API-key Godot/plain-client acceptance at
+  clean `a582f11`. Preserve the earlier failed live report, historical guards and
+  activation history. Laptop/native OAuth/desktop acceptance remains open.
+
+### Documentation — M12 working-character amendment (PLZG-289)
+
+- Ratify the owner-approved revised specification at `eadb0b4` (2026-10-22,
+  “ok, build it”) in doc set 0.2.18. Scope synchronous conversation to extras and
+  working catalog characters to department domains; adopt one worktree per
+  project/department while retaining shared project notes. Approve contextual
+  Start/Run, fresh bounded game/work guidance and guarded permission control.
+- Reconcile D-033/D-034/D-038, original M12 and roadmap dependencies, resolve
+  conflict §4.15, and register the authorized implementation plan. Preserve D-006
+  as superseded and D-039 as project-scoped. No runtime or new acceptance claimed.
 
 ### Added — M12 bounded acceptance and operations (PLZG-289)
 

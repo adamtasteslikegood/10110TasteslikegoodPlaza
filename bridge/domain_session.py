@@ -15,7 +15,9 @@ import time
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
+from bridge.context import compose_context
 from bridge.agents import load_agent
+from bridge.agent_bindings import require_working_binding, InvalidBinding
 from bridge.config import BridgeConfig
 from bridge.domain_protocol import DomainCommandError, error_packet
 from bridge.domain_sdk import DomainSDKOwner, SDKOutcome
@@ -135,6 +137,20 @@ class DomainSession:
         return self._state
 
     @property
+    def owner_healthy(self):
+        return bool(
+            self._owner is not None and self._owner.healthy and not self._broken
+        )
+
+    @property
+    def can_run(self):
+        return (
+            self._state in (SessionState.ACTIVE, SessionState.BACKGROUND)
+            and self.owner_healthy
+            and not (self._stopping or self._inflight is not None)
+        )
+
+    @property
     def clean_inactive(self):
         return (
             self._state is SessionState.INACTIVE
@@ -191,9 +207,10 @@ class DomainSession:
         return task
 
     async def _reserve(self):
-        self._workspace = self._service.require_workspace()
+        self._service.reserve_capacity(self)
+        self._workspace = await self._service.prepare_domain(self.domain_id)
         self._memory = self._service.require_memory()
-        self._readiness = self._service.require_readiness()
+        self._readiness = self._service.require_readiness(self.domain_id)
 
         def acquire():
             self._lease = WorkspaceLease.acquire(
@@ -261,6 +278,12 @@ class DomainSession:
     ) -> None:
         # No await before installing the single in-flight record.
         command = dict(command)
+        try:
+            require_working_binding(command.get("agent_id"), self.domain_id)
+        except InvalidBinding:
+            return await self._error(command, "invalid_binding", emit, context)
+        if command.get("domain_id") != self.domain_id:
+            return await self._error(command, "invalid_binding", emit, context)
         if command.get("domain_session_id") != self.domain_session_id:
             return await self._error(command, "session_unavailable", emit, context)
         for packet in self._entries:
@@ -309,6 +332,7 @@ class DomainSession:
                 self.domain_id,
                 self.domain_session_id,
                 command["task"],
+                workspace_id=self._workspace.workspace_id,
             ),
             asyncio.get_running_loop().create_future(),
         )
@@ -367,6 +391,18 @@ class DomainSession:
                 snapshot = await self._readiness.prepare_turn(run.intent)
                 self._memory_revision = snapshot.revision
                 self._service.publish_memory(snapshot)
+            context_packet = await owned_io(
+                compose_context,
+                self._config,
+                agent_id=run.command["agent_id"],
+                execution_kind="domain",
+                domain_id=self.domain_id,
+                project=self._service.snapshot(),
+                workspace=self._service.workspace_snapshot(self.domain_id),
+                tools=["Read", "Edit", "Bash"],
+                permission_mode=self._config.domain_permission_mode,
+                interaction="explicit_run",
+            )
             run.preparing = False
             # The owner may have failed while checkpoint IO was awaiting.
             await self._require_owner_ready()
@@ -411,7 +447,11 @@ class DomainSession:
         run.admitted.set_result(packet)
         if self._recorder:
             self._recorder.message(run.context, "user", run.command["task"], "input")
-            self._recorder.event("execution_started", run.context)
+            self._recorder.event(
+                "execution_started",
+                run.context,
+                context_sources=context_packet.diagnostics(),
+            )
         try:
             if self._stopping:
                 outcome = SDKOutcome("", "cancelled", "stopped", None, None)
@@ -421,6 +461,7 @@ class DomainSession:
                     definition=definition,
                     task=run.command["task"],
                     prior_project_notes=snapshot.as_context(),
+                    context_packet=context_packet,
                 )
         except Exception:
             self._broken = True
@@ -550,6 +591,8 @@ class DomainSession:
             clean = False
         if self._lease:
             self._service.publish_cleanup(self._lease, clean=clean)
+        if clean:
+            self._service.release_capacity(self)
         self._transition(
             SessionState.INACTIVE if clean else SessionState.CLEANUP_FAILED
         )
