@@ -12,6 +12,70 @@ def module():
     return importlib.import_module("scripts.m12_tool_guard_probe")
 
 
+@pytest.mark.asyncio
+async def test_real_probe_fixture_prepares_bound_turn_and_cleans_up(
+    tmp_path, monkeypatch
+):
+    from dataclasses import replace
+    from bridge.readiness import ReadinessService
+    from bridge.workspace import WorkspaceError
+    from bridge.workspace_lease import WorkspaceLease, observe_reservation
+
+    probe = module()
+
+    def unexpected_provider(*args, **kwargs):
+        raise AssertionError("Fixture setup must not construct an SDK owner/client")
+
+    monkeypatch.setattr(probe, "DomainSDKOwner", unexpected_provider)
+    monkeypatch.setattr(probe, "ClaudeSDKClient", unexpected_provider)
+    workspace, memory, lease, runtime, token = probe.fixture(tmp_path)
+    turn = None
+    prepared = False
+    try:
+        assert workspace.domain_id == lease.domain_id == "core"
+        lease.validate()
+        assert (workspace.worktree_path / "read.txt").read_text() == token
+        assert (workspace.worktree_path / "edit.txt").read_text() == "BEFORE\n"
+        turn = probe.probe_turn("read_ready", workspace, lease)
+        assert turn.domain_id == workspace.domain_id
+        assert turn.workspace_id == workspace.workspace_id
+        assert turn.domain_session_id == lease.domain_session_id
+        service = ReadinessService(workspace, runtime, memory)
+        previous = memory.load()
+        snapshot = await service.prepare_turn(turn)
+        prepared = True
+        assert snapshot.revision > previous.revision
+        assert (
+            await service.check_tool(
+                lease,
+                cwd=str(workspace.worktree_path),
+                tool_name="Read",
+                tool_use_id="local",
+            )
+            == snapshot
+        )
+        with pytest.raises(WorkspaceError, match="Turn workspace binding changed"):
+            await service.prepare_turn(replace(turn, domain_id="probe"))
+        with pytest.raises(WorkspaceError, match="Invalid domain reservation"):
+            WorkspaceLease.acquire(
+                workspace, domain_id="probe", domain_session_id="wrong-domain"
+            )
+    finally:
+        if prepared:
+            saved = memory.finish_turn(
+                turn.turn_id,
+                outcome="cancelled",
+                output="Offline fixture check",
+                delta=None,
+            )
+        memory.detach_run("probe-run")
+        lease.release(cleanup_confirmed=True)
+    assert not lease.held
+    assert saved.saved
+    assert observe_reservation(workspace) is None
+    assert not (workspace.git_dir / "plaza-unclean.json").exists()
+
+
 def complete_case(name="bash_deny"):
     lifecycle = name in {"stop_connect", "stop_idle", "stop_query", "repeated_cancel"}
     ready = name.endswith("_ready")

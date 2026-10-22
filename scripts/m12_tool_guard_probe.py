@@ -101,9 +101,22 @@ def fixture(directory):
     memory.initialize()
     memory.attach_run("probe-run")
     lease = WorkspaceLease.acquire(
-        workspace, domain_id="probe", domain_session_id=uuid4().hex
+        workspace, domain_id=workspace.domain_id, domain_session_id=uuid4().hex
     )
     return workspace, memory, lease, runtime, token
+
+
+def probe_turn(name, workspace, lease):
+    return TurnIntent(
+        uuid4().hex,
+        name,
+        "probe-run",
+        "probe",
+        workspace.domain_id,
+        lease.domain_session_id,
+        "Disposable tool guard probe",
+        workspace_id=workspace.workspace_id,
+    )
 
 
 async def run_case(name, cli, permission_mode):
@@ -400,15 +413,7 @@ async def run_case(name, cli, permission_mode):
             service,
             client_factory=ObservedClient,
         )
-        turn = TurnIntent(
-            uuid4().hex,
-            name,
-            "probe-run",
-            "probe",
-            "probe",
-            lease.domain_session_id,
-            "Disposable tool guard probe",
-        )
+        turn = probe_turn(name, workspace, lease)
         prompts = {
             "read": f'Invoke Read exactly once on {workspace.worktree_path / "read.txt"}.',
             "edit": f'Invoke Read on {workspace.worktree_path / "edit.txt"}, then invoke Edit exactly once on that file replacing BEFORE with AFTER.',
