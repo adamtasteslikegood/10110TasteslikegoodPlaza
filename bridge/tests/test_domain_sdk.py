@@ -88,7 +88,7 @@ def owner(tmp_path):
         return client
 
     instance = module.DomainSDKOwner(
-        load_config(), workspace, object(), Ready(), client_factory=factory
+        load_config(environ={}), workspace, object(), Ready(), client_factory=factory
     )
     return instance, clients
 
@@ -514,7 +514,7 @@ async def test_installed_query_close_drains_hook_io_through_repeated_cancel(
 
     workspace = SimpleNamespace(worktree_path=tmp_path)
     sdk = DomainSDKOwner(
-        load_config(),
+        load_config(environ={}),
         workspace,
         object(),
         Ready(workspace, tmp_path, None),

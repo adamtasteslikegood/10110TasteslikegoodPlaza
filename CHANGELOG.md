@@ -17,6 +17,18 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
 
+### Changed — M12 character work and acceptance runners (PLZG-289)
+
+- Implement catalog-agent department routing, lazy per-department worktrees,
+  project-shared memory, typed Chief preparation and shared dialogue/domain-pane
+  controls. Refresh bounded guidance per Run and select strict boolean permission
+  mode while retaining mandatory guards.
+- Update live orchestration and strict evidence checks for explicit Core Start,
+  working dialogue, independent extras, selected mode and context revisions.
+  Offline tests include the runner's real Godot/Git flow with test-only SDK methods.
+  Historical reports and production acceptance stay unchanged. Fresh two-mode
+  guard/live proof is pending after final review; laptop/OAuth/desktop remains open.
+
 ### Documentation — M12 working-character amendment (PLZG-289)
 
 - Ratify the owner-approved revised specification at `eadb0b4` (2026-10-22,

@@ -257,4 +257,4 @@ jobs:
       - name: M12 real Godot client, project and domain integration
         env:
           PLAZA_REQUIRE_GODOT: "1"
-        run: python3 -m pytest bridge/tests/test_godot_domain_integration.py bridge/tests/test_m12_integration.py -q -s
+        run: python3 -m pytest bridge/tests/test_godot_domain_integration.py bridge/tests/test_m12_integration.py bridge/tests/test_m12_live_orchestration.py -q -s

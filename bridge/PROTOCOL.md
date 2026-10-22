@@ -209,10 +209,12 @@ stale generations fail with `session_unavailable`. No client identity is an
 authentication or ownership principal.
 
 ```json
-{"type":"activate_domain","domain_id":"engineering","request_id":"start-1"}
-{"type":"domain_status","domain_id":"engineering","request_id":"status-1"}
+{"type":"activate_domain","domain_id":"core","request_id":"start-1"}
+{"type":"domain_status","domain_id":"core","request_id":"status-1"}
 ```
 
+Start lazily prepares/reuses the selected department worktree and may connect an
+SDK owner, but makes zero model queries. Send is an explicit `domain_query`.
 Start emits correlated `domain_state` with `state:"activating"` before connecting,
 then `state:"active"` or `domain_error`. Both packets carry `project_id`,
 `workspace_id`, `domain_id`, `domain_session_id`, and `execution_state`.
@@ -223,10 +225,10 @@ background and completed work. **Stop releases the workspace after confirmed
 cleanup.** Disconnect never releases a domain or cancels admitted work.
 
 ```json
-{"type":"domain_query","domain_id":"engineering","domain_session_id":"generation-uuid","agent_id":"backend-architect","task":"Review the auth middleware","request_id":"run-1"}
-{"type":"background_domain","domain_id":"engineering","domain_session_id":"generation-uuid","request_id":"background-1"}
-{"type":"refocus_domain","domain_id":"engineering","domain_session_id":"generation-uuid","request_id":"focus-1"}
-{"type":"deactivate_domain","domain_id":"engineering","domain_session_id":"generation-uuid","request_id":"stop-1"}
+{"type":"domain_query","domain_id":"core","domain_session_id":"generation-uuid","agent_id":"systems-architect","task":"Review the auth middleware","request_id":"run-1"}
+{"type":"background_domain","domain_id":"core","domain_session_id":"generation-uuid","request_id":"background-1"}
+{"type":"refocus_domain","domain_id":"core","domain_session_id":"generation-uuid","request_id":"focus-1"}
+{"type":"deactivate_domain","domain_id":"core","domain_session_id":"generation-uuid","request_id":"stop-1"}
 ```
 
 A Run is acknowledged by `domain_accepted` only after successful preflight and
@@ -240,8 +242,8 @@ is no hidden query queue. Lifecycle states are `inactive`, `activating`, `active
 ```json
 {
   "type":"domain_result", "project_id":"repository-key", "workspace_id":"workspace-uuid",
-  "domain_id":"engineering", "domain_session_id":"generation-uuid",
-  "request_id":"run-1", "output_id":"1", "agent_id":"backend-architect",
+  "domain_id":"core", "domain_session_id":"generation-uuid",
+  "request_id":"run-1", "output_id":"1", "agent_id":"systems-architect",
   "task":"Review the auth middleware", "output":"Review complete.",
   "status":"success", "reason":"completed",
   "memory":{"saved":true,"revision":6,"error_type":null},
@@ -259,7 +261,7 @@ No internal diagnostic UUID is fabricated into a malformed domain command.
 ### Replay and connection admission
 
 ```json
-{"type":"resume","domain_id":"engineering","domain_session_id":"generation-uuid","cursor":"0","request_id":"replay-1"}
+{"type":"resume","domain_id":"core","domain_session_id":"generation-uuid","cursor":"0","request_id":"replay-1"}
 ```
 
 Replay returns results above the ASCII decimal-string cursor (at most 128 UTF-8 bytes) through a captured
@@ -348,8 +350,9 @@ coverage; owner desktop acceptance was recorded for M11; M12 desktop acceptance
 remains outstanding. See the
 [operating guide](../QUICKSTART.md#npc-conversation-history-and-controls-m11).
 The bridge has no UI awareness, and legacy conversation clients may omit request IDs.
-M12 Godot controls and physical background/refocus have deterministic and
-recorded Linux live coverage. Laptop binary and M12 desktop acceptance remain
+The character/domain amendment has deterministic physical Godot coverage. Its
+fresh source/runtime/mode-bound real acceptance remains pending; recorded
+2026-10-21 Linux live evidence is historical. Laptop binary and M12 desktop acceptance remain
 open. Worktree notes survive clean restart, while
 result replay is process-local. See [M12 operations and platform limits](../QUICKSTART.md#project-work-and-domain-controls-m12)
 and [bounded live evidence](../QUICKSTART.md#m12-live-evidence-and-desktop-checks).

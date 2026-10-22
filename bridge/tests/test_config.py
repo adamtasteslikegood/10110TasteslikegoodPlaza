@@ -3,6 +3,7 @@
 import dataclasses
 import json
 import math
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -106,6 +107,10 @@ def test_partial_file_overlay_and_path_environment_precedence(tmp_path, monkeypa
     assert load_config(selected, environ=env).haiku_model == "env-model"
     env["BRIDGE_CONFIG_PATH"] = str(selected)
     assert load_config(environ=env).source_path == selected
+    # Exercise only the declared process overrides, independently of harness flags.
+    for name in tuple(os.environ):
+        if name.startswith("PLAZA_"):
+            monkeypatch.delenv(name)
     monkeypatch.setenv("BRIDGE_CONFIG_PATH", str(selected))
     monkeypatch.setenv("PLAZA_HAIKU_MODEL", "process-model")
     assert load_config().haiku_model == "process-model"

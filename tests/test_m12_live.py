@@ -21,15 +21,15 @@ def fake_stages_and_wire():
     from scripts.m12_stages import StageValidator, STAGES
 
     identity = dict(project_id="project", workspace_id="workspace")
-    domain = dict(**identity, domain_id="engineering", domain_session_id="generation")
+    domain = dict(**identity, domain_id="core", domain_session_id="generation")
     payloads = [
         dict(
             request_id="r1",
             agent_id="security-auditor",
             assistant="Chief Architect referral",
         ),
-        dict(**identity, request_id="r2", assistant="approved"),
-        dict(**domain, request_id="r3", agent_id="backend-architect"),
+        dict(project_id="project", request_id="r2", assistant="approved"),
+        dict(**domain, request_id="r3", agent_id="systems-architect"),
         dict(
             **domain,
             request_id="r4",
@@ -42,7 +42,7 @@ def fake_stages_and_wire():
         dict(
             **domain,
             request_id="r5",
-            agent_id="security-auditor",
+            agent_id="fixture-extra-a",
             assistant="unrelated",
             execution_state="running"
         ),
@@ -59,8 +59,8 @@ def fake_stages_and_wire():
         dict(**domain, request_id="r7", state="inactive"),
     ]
     kinds = [
-        "query",
-        "query",
+        "project_setup",
+        "project_setup",
         "domain_query",
         "background_domain",
         "query",
@@ -83,12 +83,19 @@ def fake_stages_and_wire():
         )
         wire["commands"].append(dict(type=kind, request_id=payload["request_id"]))
         packet = dict(**domain, request_id=payload["request_id"], status="success")
-        if kind == "query":
-            packet.update(type="response", status="ok", output=payload["assistant"])
+        if kind in ("query", "project_setup"):
+            packet.update(
+                type=kind if kind == "project_setup" else "response",
+                status="ok",
+                output=payload["assistant"],
+            )
             wire["commands"][-1]["agent_id"] = (
                 "systems-architect" if stage == "chief_ready" else payload["agent_id"]
             )
         elif kind == "domain_query":
+            wire["commands"][-1].update(
+                agent_id=payload["agent_id"], domain_id=payload["domain_id"]
+            )
             packet.update(type="domain_accepted")
         elif kind == "resume":
             packet.update(type="resume_complete")
@@ -113,12 +120,10 @@ def fake_stages_and_wire():
 
 
 def evidence():
-    """Complete immutable observed proof, copied for no-provider mutations."""
-    return json.loads(
-        (
-            Path(__file__).parents[1] / "specs/evidence/m12-live-2026-10-21.json"
-        ).read_text()
-    )
+    """Synthetic test-only proof; retained historical reports remain immutable."""
+    from m12_live_fixture import synthetic_proof
+
+    return synthetic_proof()
 
 
 def test_runner_exists_and_complete_observed_proof_passes():
@@ -284,6 +289,7 @@ async def test_same_class_observer_forwards_unchanged_once_and_restores(tmp_path
     options = SimpleNamespace(
         cwd="/execution",
         model="model",
+        permission_mode="dontAsk",
         max_turns=3,
         max_budget_usd=0.2,
         tools=["Read", "Edit", "Bash"],
@@ -398,7 +404,8 @@ async def test_controlled_child_real_serve_closes_actual_manifest_without_provid
         assert state["snapshot"]["stage"] == "ready"
         assert state["memory_marker_exists"]
         assert not state["clients"]
-        assert state["workspace"]["project_root"] == str(project)
+        assert state["workspace"] is None
+        assert state["project"]["project_root"] == str(project)
         life.marker_before = True
     finally:
         result = await life.stop()
@@ -458,7 +465,12 @@ async def test_observer_retains_actual_npc_process_exit_after_sdk_clears_transpo
             self._transport = None
 
     options = SimpleNamespace(
-        cwd=None, model="model", max_turns=1, max_budget_usd=None, tools=[]
+        cwd=None,
+        model="model",
+        permission_mode="dontAsk",
+        max_turns=1,
+        max_budget_usd=None,
+        tools=[],
     )
     observer = mod.SDKObserver(client_class=SDK)
     with observer:
@@ -488,14 +500,15 @@ def test_nested_unknown_fields_are_allowlisted_before_publication():
     assert "secret-value" not in json.dumps(module().sanitize_evidence(record))
 
 
-def test_legacy_npc_request_without_type_is_independently_corroborated():
+def test_legacy_setup_cannot_satisfy_typed_chief_proof():
     mod = module()
     stages, wire = fake_stages_and_wire()
     command = wire["commands"][0]
     command.pop("type")
     command.update(agent_id="security-auditor", task="prepare project")
     wire["emitted"][0]["status"] = "ok"
-    assert mod.corroborate(wire, stages[0])[0] is command
+    with pytest.raises(mod.AcceptanceError):
+        mod.corroborate(wire, stages[0])
 
 
 @pytest.mark.asyncio
@@ -599,7 +612,7 @@ def test_actual_canonical_memory_change_after_baseline_fails_isolation(tmp_path)
     result_sha = mod.sha(b"fixture-result")
     assert mod.assert_a_unchanged(work, expected, result_sha)
     assert store.checkpoint_lifecycle(
-        domain_id="engineering",
+        domain_id="core",
         domain_session_id="generation",
         event="unexpected after-A change",
     ).saved
@@ -1116,3 +1129,251 @@ def test_result_reader_rejects_symlink_substitution_at_open(tmp_path, monkeypatc
         mod.read_result(tmp_path)
     assert substituted == [True] and result.is_symlink()
     assert external.read_bytes() == b"m12-nonce"
+
+
+@pytest.mark.asyncio
+async def test_live_plain_start_uses_core_without_implicit_query():
+    from unittest.mock import AsyncMock
+
+    socket = SimpleNamespace(send=AsyncMock())
+    await module().Plain(socket).send("activate_domain", "start")
+    assert json.loads(socket.send.call_args.args[0]) == dict(
+        type="activate_domain", request_id="start", domain_id="core"
+    )
+
+
+@pytest.mark.asyncio
+async def test_live_inspection_does_not_provision_ready_project(tmp_path):
+    from dataclasses import replace
+    from bridge.config import default_config
+    from bridge.project_service import ProjectService
+    from bridge.tests.test_workspace import repository
+
+    root = repository(tmp_path)
+    service = ProjectService(
+        replace(default_config(), workspace_root_dir=root),
+        runtime_root=tmp_path / "runtime",
+        owner_run_id="observer",
+    )
+    await service.start()
+    await service._bootstrap_task
+    try:
+        state = module().inspect_service(service, [], SimpleNamespace(records=[]))
+        assert state["workspace"] is None
+        assert state["project"]["project_root"] == str(root)
+        assert state["notes"]["revision"] >= 0
+        assert state["memory_marker_exists"]
+        assert service.workspace_snapshot("core")["stage"] == "unprepared"
+    finally:
+        await service.close()
+
+
+def test_live_mode_and_disposable_context_are_written_to_every_lifetime(tmp_path):
+    life = module().LiveLifetime(
+        tmp_path / "life",
+        tmp_path / "project",
+        "test",
+        permission_mode="bypassPermissions",
+    )
+    config = json.loads(life.config.read_text())
+    assert config["DOMAIN_DANGEROUSLY_SKIP_PERMISSIONS"] is True
+    assert Path(config["INSTALL_CONTEXT_DIR"]).is_relative_to(tmp_path)
+
+
+def test_live_resolves_requested_godot(tmp_path, monkeypatch):
+    binary = tmp_path / "godot"
+    binary.write_text("#!/bin/sh\nexit 0\n")
+    binary.chmod(0o700)
+    monkeypatch.setenv("GODOT_BIN", str(binary))
+    assert module().godot_binary() == str(binary)
+
+
+def test_live_corroborates_typed_chief_setup():
+    stage = dict(
+        stage="chief_ready",
+        payload=dict(project_id="p", request_id="r", assistant="approved"),
+    )
+    wire = dict(
+        commands=[
+            dict(type="project_setup", agent_id="systems-architect", request_id="r")
+        ],
+        emitted=[
+            dict(type="project_setup", request_id="r", status="ok", output="approved")
+        ],
+    )
+    assert module().corroborate(wire, stage)[0] == wire["commands"][0]
+
+
+def test_historical_live_evidence_is_not_current_amendment_proof():
+    historical = json.loads(
+        (
+            Path(__file__).parents[1] / "specs/evidence/m12-live-2026-10-21.json"
+        ).read_text()
+    )
+    assert module().validate_evidence(historical)
+
+
+@pytest.mark.parametrize(
+    "damage",
+    [
+        "missing_start",
+        "start_query",
+        "start_identity",
+        "missing_context",
+        "context_mode",
+        "context_agent",
+        "context_revision",
+        "context_scope",
+        "context_workspace",
+        "extra_is_catalog",
+        "wrong_run_agent",
+    ],
+)
+def test_amendment_proof_requires_start_context_and_character_contract(damage):
+    record = evidence()
+    assert module().validate_evidence(record) == []
+    initial = record["initial"]
+    if damage == "missing_start":
+        del initial["start"]
+    elif damage == "start_query":
+        initial["start"]["query_count"] = 1
+    elif damage == "start_identity":
+        initial["start"]["workspace_id"] = "other"
+    elif damage == "missing_context":
+        del initial["context"]
+    elif damage == "context_mode":
+        initial["context"]["facts"]["permission_mode"] = "bypassPermissions"
+    elif damage == "context_agent":
+        initial["context"]["facts"]["agent_id"] = "security-auditor"
+    elif damage == "context_revision":
+        initial["context"]["sources"][0]["revision"] = None
+    elif damage == "context_scope":
+        initial["context"]["sources"][0]["scope"] = "project"
+    elif damage == "context_workspace":
+        initial["context"]["workspace_id"] = "other"
+    elif damage == "extra_is_catalog":
+        stage = initial["stages"][4]
+        stage["payload"]["agent_id"] = "security-auditor"
+        for collection in initial["wire"].values():
+            for packet in collection:
+                if packet.get("request_id") == stage["payload"]["request_id"]:
+                    packet["agent_id"] = "security-auditor"
+    else:
+        initial["stages"][2]["payload"]["agent_id"] = "security-auditor"
+    assert module().validate_evidence(record)
+
+
+def test_live_fingerprints_exist_and_cover_actual_context_and_ui():
+    mod = module()
+    assert all((mod.ROOT / name).is_file() for name in mod.LIVE_SOURCES)
+    assert {
+        "bridge/context.py",
+        "bridge/project_service.py",
+        "scenes/bridge/domain_surface.gd",
+        "tests/character_fixture.gd",
+    } <= set(mod.LIVE_SOURCES)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("mode", ["dontAsk", "bypassPermissions"])
+async def test_live_checks_actual_selected_mode_before_start(
+    tmp_path, monkeypatch, mode
+):
+    from dataclasses import replace
+    from bridge.config import default_config
+    import bridge.domain_sdk as sdk
+
+    config = replace(
+        default_config(),
+        domain_dangerously_skip_permissions=mode == "bypassPermissions",
+    )
+    monkeypatch.setattr("bridge.config.load_config", lambda: config)
+    seen = []
+
+    def verify(selected):
+        seen.append(selected)
+        raise module().AcceptanceError("offline preflight sentinel")
+
+    monkeypatch.setattr(sdk, "_verify_runtime", verify)
+    output = tmp_path / "out.json"
+    assert await module().main(output) == 1
+    assert seen == [mode]
+    report = json.loads(output.read_text())
+    assert report["permission_mode"] == mode and not report["accepted"]
+    assert report["lifetimes"] == []
+
+
+def test_live_context_observation_refreshes_without_instruction_bodies(tmp_path):
+    from dataclasses import replace
+    from bridge.config import default_config
+    from bridge.context import compose_context, ContextError
+
+    install = tmp_path / "install"
+    install.mkdir()
+    project = tmp_path / "project"
+    project.mkdir()
+    guide = project / "PLAZA_AGENTS.md"
+    guide.write_text("private first instructions")
+    config = replace(
+        default_config(), workspace_root_dir=project, install_context_dir=install
+    )
+
+    def observe():
+        return module().context_observation(
+            compose_context(
+                config,
+                agent_id="systems-architect",
+                execution_kind="domain",
+                domain_id="core",
+                project=dict(project_id="p", stage="ready"),
+                workspace=dict(workspace_id="w"),
+                tools=["Read", "Edit", "Bash"],
+                permission_mode="dontAsk",
+                interaction="explicit_run",
+            )
+        )
+
+    first = observe()
+    guide.write_text("private revised instructions")
+    second = observe()
+    assert first["sources"][4]["revision"] != second["sources"][4]["revision"]
+    assert "private" not in json.dumps(second)
+    guide.unlink()
+    guide.symlink_to(install)
+    with pytest.raises(ContextError):
+        observe()
+
+
+@pytest.mark.asyncio
+async def test_live_poll_waits_for_project_memory_writer_without_retrying_work(
+    tmp_path,
+):
+    from dataclasses import replace
+    from bridge.config import default_config
+    from bridge.project_service import ProjectService
+    from bridge.tests.test_workspace import repository
+    from bridge import project_files
+
+    root = repository(tmp_path)
+    service = ProjectService(
+        replace(default_config(), workspace_root_dir=root),
+        runtime_root=tmp_path / "runtime",
+        owner_run_id="poll",
+    )
+    await service.start()
+    await service._bootstrap_task
+    lock = project_files.FileLock.acquire(root / ".git/plaza/memory.lock")
+
+    async def release():
+        await asyncio.sleep(0.05)
+        lock.close()
+
+    releasing = asyncio.create_task(release())
+    try:
+        state = await module().inspect_observation(
+            service, [], SimpleNamespace(records=[])
+        )
+        assert state["workspace"] is None and state["notes"]["revision"] >= 0
+    finally:
+        await releasing
+        await service.close()

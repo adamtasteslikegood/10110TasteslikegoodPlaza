@@ -11,7 +11,7 @@ derives_from: [STORYBOARD-W1, AGENT-DIRECTORY, DESIGN-25D, PLATFORM-DECISIONS, M
 supersedes: []
 enforcement: intended
 gates: [Validate Specs:live]
-weakest_claim: This amendment has no runtime implementation or completed acceptance evidence.
+weakest_claim: The amendment is implemented with offline coverage; fresh final-source guard/live and owner desktop acceptance remain pending.
 ---
 
 # M12 amendment — Working characters, shared context and permission control
@@ -59,7 +59,7 @@ Chief Architect bootstrap, dedicated worktrees and memory checks remain.
 at `eadb0b4` with “ok, build it”. This ratifies the detailed design and authorizes
 implementation; it does not establish runtime completion or acceptance.
 
-This amendment has no runtime implementation or completed acceptance evidence.
+The amendment is implemented with offline coverage; fresh final-source guard/live and owner desktop acceptance remain pending.
 The implementation plan is registered and authorized for execution. Tracking remains
 [PLZG-289](https://tasteslikegood.atlassian.net/browse/PLZG-289).
 
@@ -118,7 +118,7 @@ M13 still owns richer local application persistence. M14 owns verified parallel
 execution capacity and stronger isolation beyond Git worktrees; M15 owns hosted
 durability/ownership, with no provider selected. Minimal per-department worktree
 provisioning is part of this M12 correction. Their sequencing may be coordinated
-with the next department unlock; this draft does not announce a released second
+with the next department unlock; this amendment does not announce a released second
 department, queue, sandbox or concurrent-agent capability.
 
 ## 4. Player interaction

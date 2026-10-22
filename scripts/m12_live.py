@@ -39,8 +39,57 @@ INSTRUMENTATION = (
     "same SDK class: forward init/connect/query/receive_response/disconnect once; "
     "allowlisted options and messages only; original default factory; "
     "unchanged owner construction observed at domain_session binding; "
-    "delegating dispatch emission and loopback ephemeral listener observation"
+    "delegating dispatch emission and loopback ephemeral listener observation; "
+    "explicit fixture-extra-a/fixture-extra-b registry; owner execute context diagnostics only"
 )
+# Fingerprint the exercised production paths and physical driver; never refresh old reports.
+from bridge.domain_sdk import GUARD_SOURCES
+
+LIVE_SOURCES = tuple(
+    dict.fromkeys(
+        (
+            *GUARD_SOURCES,
+            "scripts/m12_live.py",
+            "scripts/m12_stages.py",
+            "tests/godot_domain_integration.gd",
+            "tests/godot_domain_integration.tscn",
+            "tests/character_fixture.gd",
+            "bridge/context.py",
+            "bridge/context/GAME_CONTEXT.md",
+            "bridge/context/WORK_CONTEXT.md",
+            "bridge/agent_bindings.py",
+            "bridge/agent_bindings.json",
+            "bridge/extras.json",
+            "bridge/server.py",
+            "bridge/project_service.py",
+            "bridge/project_memory.py",
+            "bridge/workspace.py",
+            "bridge/workspace_lease.py",
+            "bridge/domain_session.py",
+            "bridge/domain_manager.py",
+            "bridge/domain_protocol.py",
+            "bridge/interaction_protocol.py",
+            "bridge/conversation_backend.py",
+            "bridge/conversation_sdk.py",
+            "bridge/repository_setup.py",
+            "bridge/agents.py",
+            "bridge/agents/systems-architect.md",
+            "scenes/bridge/ws_client.gd",
+            "scenes/bridge/domain_store.gd",
+            "scenes/bridge/domain_surface.gd",
+            "scenes/hud/dialogue_panel.gd",
+            "scenes/hud/dialogue_panel.tscn",
+            "scenes/hud/domain_panel.gd",
+            "scenes/hud/domain_panel.tscn",
+            "autoload/GameEvents.gd",
+            "autoload/AgentRegistry.gd",
+            "scenes/main.tscn",
+            "project.godot",
+            "data/agents.json",
+        )
+    )
+)
+
 INITIAL_CHECKS = (
     "referral_no_review",
     "real_chief_approved",
@@ -90,6 +139,12 @@ class AcceptanceError(ValueError):
 def require(condition, message):
     if not condition:
         raise AcceptanceError(message)
+
+
+def godot_binary():
+    binary = shutil.which(os.environ.get("GODOT_BIN", "godot"))
+    require(binary is not None, "requested Godot executable unavailable")
+    return binary
 
 
 def utc():
@@ -312,6 +367,7 @@ class SDKObserver(AbstractContextManager):
                 domain=observer.domain_transport(transport),
                 cwd=options.cwd,
                 model=options.model,
+                permission_mode=options.permission_mode,
                 max_turns=options.max_turns,
                 max_budget_usd=options.max_budget_usd,
                 tools=list(options.tools or []),
@@ -477,39 +533,76 @@ def note_snapshot(service):
     )
 
 
+def context_observation(packet):
+    """Keep only revisions and execution identity; never persist guidance bodies."""
+    facts = json.loads(packet.runtime)
+    return dict(
+        sources=packet.diagnostics(),
+        facts={
+            key: facts[key]
+            for key in (
+                "source_root",
+                "agent_id",
+                "execution_kind",
+                "domain_id",
+                "tools",
+                "permission_mode",
+                "interaction",
+                "execution_capacity",
+            )
+        },
+        project_id=facts["project"]["project_id"],
+        workspace_id=facts["workspace"]["workspace_id"],
+    )
+
+
 def inspect_service(service, owners, observer):
     snapshot = service.snapshot()
     out = dict(snapshot=snapshot, clients=observer.records, owners=[])
     if snapshot["stage"] == "ready":
+        from bridge.workspace import inspect_project
         from bridge.workspace_lease import observe_reservation
 
-        work = service.require_workspace()
+        project = inspect_project(Path(snapshot["project_path"]))
         marker = (
-            work.common_git_dir
+            project.common_git_dir
             / "plaza/runs"
             / (sha(service.owner_run_id.encode()) + ".json")
         )
         out.update(
-            workspace={
-                key: str(getattr(work, key))
-                for key in (
-                    "project_id",
-                    "workspace_id",
-                    "project_root",
-                    "worktree_path",
-                    "common_git_dir",
-                    "git_dir",
-                    "branch",
-                    "initial_commit",
-                )
-            },
+            project=dict(
+                project_id=project.project_id,
+                project_root=str(project.root),
+                common_git_dir=str(project.common_git_dir),
+            ),
+            workspace=None,
             notes=note_snapshot(service),
             memory_marker=str(marker),
             memory_marker_exists=marker.exists(),
-            lease_marker_exists=(work.git_dir / "plaza-unclean.json").exists(),
-            reservation=observe_reservation(work),
-            source=baseline(work.project_root),
+            lease_marker_exists=False,
+            reservation=None,
+            source=baseline(project.root),
         )
+        if service.workspace_snapshot("core")["workspace_id"] is not None:
+            work = service.require_workspace("core")
+            out.update(
+                workspace={
+                    key: str(getattr(work, key))
+                    for key in (
+                        "project_id",
+                        "domain_id",
+                        "workspace_id",
+                        "project_root",
+                        "worktree_path",
+                        "common_git_dir",
+                        "git_dir",
+                        "branch",
+                        "initial_commit",
+                    )
+                },
+                lease_marker_exists=(work.git_dir / "plaza-unclean.json").exists(),
+                reservation=observe_reservation(work),
+            )
     for owner in owners:
         transport = owner.transport
         process = transport.process if transport else None
@@ -525,10 +618,25 @@ def inspect_service(service, owners, observer):
     return out
 
 
+async def inspect_observation(service, owners, observer):
+    """A short memory checkpoint lock is not a failed model task or a retry."""
+    from bridge.project_memory import MemoryError
+
+    async with asyncio.timeout(2):
+        while True:
+            try:
+                return inspect_service(service, owners, observer)
+            except MemoryError:
+                # Only read-only observation is repeated. Permanent damage still
+                # fails this bounded deadline; no command/provider is resubmitted.
+                await asyncio.sleep(0.025)
+
+
 async def bridge_child(config_path, control, run_id):
     """Isolated instrumentation; no factory/provider/guard replacement."""
     import websockets
     from bridge.config import load_config
+    from bridge.agent_bindings import BindingRegistry
     from bridge.domain_sdk import DomainSDKOwner
     from bridge.log_storage import RunLogWriter
     from bridge.observability import BridgeRecorder
@@ -542,6 +650,10 @@ async def bridge_child(config_path, control, run_id):
     selected = read_json(Path(config_path))
     require(
         config.workspace_root_dir == Path(selected["WORKSPACE_ROOT_DIR"])
+        and config.domain_dangerously_skip_permissions
+        == selected["DOMAIN_DANGEROUSLY_SKIP_PERMISSIONS"]
+        and config.install_context_dir == Path(selected["INSTALL_CONTEXT_DIR"])
+        and config.project_guidance_file == "PLAZA_AGENTS.md"
         and config.conversation_backend == "claude_code"
         and config.domain_tier == "haiku"
         and config.model_for("haiku") == "claude-haiku-5-5"
@@ -556,10 +668,21 @@ async def bridge_child(config_path, control, run_id):
     server = BridgeServer(
         config=config,
         project_service=service,
+        bindings=BindingRegistry(
+            extras={
+                agent: {
+                    "execution_kind": "extra",
+                    "domain_id": None,
+                    "definition": "An independent Plaza visitor. Acknowledge the player briefly. You have no tools.",
+                }
+                for agent in ("fixture-extra-a", "fixture-extra-b")
+            }
+        ),
         recorder=BridgeRecorder(config, "M12 live acceptance", writer=writer),
     )
     stop, ready = asyncio.Event(), asyncio.Event()
     owners, listeners, commands, emitted = [], [], [], []
+    starts, contexts = [], []
     actual_serve, original_binding = websockets.serve, session_module.DomainSDKOwner
 
     def listen(handler, host, port, **kwargs):
@@ -571,6 +694,13 @@ async def bridge_child(config_path, control, run_id):
         require("client_factory" not in kwargs, "live factory override forbidden")
         value = DomainSDKOwner(*args, **kwargs)
         owners.append(value)
+        original_execute = value.execute
+
+        async def execute(**kwargs):
+            contexts.append(context_observation(kwargs["context_packet"]))
+            return await original_execute(**kwargs)
+
+        value.execute = execute
         return value
 
     original_event, original_dispatch = server._event, server.dispatch
@@ -587,6 +717,24 @@ async def bridge_child(config_path, control, run_id):
 
             async def observed(packet):
                 emitted.append(dict(packet))
+                if (
+                    command.get("type") == "activate_domain"
+                    and packet.get("state") == "active"
+                ):
+                    starts.append(
+                        dict(
+                            request_id=command["request_id"],
+                            project_id=packet["project_id"],
+                            workspace_id=packet["workspace_id"],
+                            domain_id=packet["domain_id"],
+                            domain_session_id=packet["domain_session_id"],
+                            query_count=sum(
+                                c["query_count"]
+                                for c in observer.records
+                                if c["domain"]
+                            ),
+                        )
+                    )
                 await emit(packet)
 
             kwargs["emit"] = observed
@@ -610,7 +758,7 @@ async def bridge_child(config_path, control, run_id):
                     url=f"ws://127.0.0.1:{port}",
                     archive_run_id=writer.run_id,
                     owner_run_id=run_id,
-                    state=inspect_service(service, owners, observer),
+                    state=await inspect_observation(service, owners, observer),
                 ),
             )
             sequence = 0
@@ -620,14 +768,19 @@ async def bridge_child(config_path, control, run_id):
                     stop.set()
                     break
                 sequence += 1
-                state = inspect_service(service, owners, observer)
+                state = await inspect_observation(service, owners, observer)
                 state.update(
-                    run_id=run_id, seq=sequence, commands=commands, emitted=emitted
+                    run_id=run_id,
+                    seq=sequence,
+                    commands=commands,
+                    emitted=emitted,
+                    starts=starts,
+                    contexts=contexts,
                 )
                 write_json(control / "state.json", state)
                 await asyncio.sleep(0.025)
             await serving
-            final = inspect_service(service, owners, observer)
+            final = await inspect_observation(service, owners, observer)
             final.update(
                 run_id=run_id,
                 archive_run_id=writer.run_id,
@@ -674,17 +827,30 @@ def bridge_environment():
 
 
 class LiveLifetime:
-    def __init__(self, directory, project, scenario):
+    def __init__(self, directory, project, scenario, *, permission_mode="dontAsk"):
+        require(
+            permission_mode in ("dontAsk", "bypassPermissions"),
+            "invalid permission mode",
+        )
         self.directory, self.project, self.scenario = directory, project, scenario
         self.run_id = uuid4().hex
         self.directory.mkdir()
         self.control = directory / "control"
         self.control.mkdir()
         self.config = directory / "config.json"
+        context = directory / "context"
+        context.mkdir()
+        (context / "WORK_CONTEXT.md").write_text(
+            "Disposable M12 acceptance. Follow explicit tasks only.\n"
+        )
         write_json(
             self.config,
             dict(
                 CONFIG_VERSION=1,
+                DOMAIN_DANGEROUSLY_SKIP_PERMISSIONS=permission_mode
+                == "bypassPermissions",
+                INSTALL_CONTEXT_DIR=str(context),
+                PROJECT_GUIDANCE_FILE="PLAZA_AGENTS.md",
                 WORKSPACE_ROOT_DIR=str(project),
                 LOG_DIR=str(directory / "logs"),
                 DOMAIN_TIER="haiku",
@@ -784,20 +950,32 @@ def corroborate(state, receipt):
     ]
     require(command and packets, "stage lacks independent bridge command/reply")
     expected = dict(
-        referral_rendered="query",
-        chief_ready="query",
+        referral_rendered="project_setup",
+        chief_ready="project_setup",
         domain_running="domain_query",
         background_ack="background_domain",
         npc_rendered="query",
         domain_rendered="resume",
         stop_ack="deactivate_domain",
     )
+    if stage == "npc_rendered":
+        require(
+            payload["agent_id"] == "fixture-extra-a",
+            "independent explicit extra required",
+        )
+    if stage == "domain_running":
+        require(
+            payload["agent_id"] == command.get("agent_id") == "systems-architect"
+            and payload["domain_id"] == command.get("domain_id") == "core",
+            "working Core representative mismatch",
+        )
     if stage in ("referral_rendered", "chief_ready", "npc_rendered"):
         expected_agent = (
             "systems-architect" if stage == "chief_ready" else payload["agent_id"]
         )
         require(
-            command.get("type") in (None, "query")
+            command.get("type")
+            in ((None, "query") if stage == "npc_rendered" else ("project_setup",))
             and command.get("agent_id") == expected_agent,
             "stage NPC command mismatch",
         )
@@ -806,7 +984,9 @@ def corroborate(state, receipt):
     if stage in ("referral_rendered", "chief_ready", "npc_rendered"):
         require(
             any(
-                p.get("output") == payload["assistant"] and p.get("status") == "ok"
+                p.get("output") == payload["assistant"]
+                and p.get("status") == "ok"
+                and (stage == "npc_rendered" or p.get("type") == "project_setup")
                 for p in packets
             ),
             "rendered NPC differs from bridge",
@@ -942,7 +1122,7 @@ class Plain:
         self.socket, self.packets = socket, []
 
     async def send(self, kind, request, generation=None, **extra):
-        command = dict(type=kind, request_id=request, domain_id="engineering", **extra)
+        command = dict(type=kind, request_id=request, domain_id="core", **extra)
         if generation:
             command["domain_session_id"] = generation
         await self.socket.send(json.dumps(command))
@@ -976,7 +1156,7 @@ async def initial(life, report):
     )
     godot = await Child.spawn(
         [
-            shutil.which("godot"),
+            godot_binary(),
             "--headless",
             "--path",
             ROOT,
@@ -1025,38 +1205,66 @@ async def initial(life, report):
                 )
                 checks["referral_no_review"] = True
             elif stage == "chief_ready":
-                snapshot, work = state["snapshot"], state["workspace"]
+                snapshot = state["snapshot"]
                 require(
                     snapshot["stage"] == "ready"
                     and snapshot["architect_decision"]["approved"] is True,
                     "Chief not approved",
                 )
-                checks["real_chief_approved"] = True
+                require(
+                    state["workspace"] is None
+                    and not any(c["domain"] for c in state["clients"]),
+                    "Chief eagerly prepared work",
+                )
                 from bridge.workspace import git_without_filters
 
                 require(
                     git_without_filters(life.project, "branch", "--show-current")
-                    == "main"
-                    and work["initial_commit"] == state["source"]["head"]
-                    and git_without_filters(
-                        Path(work["worktree_path"]), "branch", "--show-current"
-                    )
-                    == work["branch"],
-                    "seed/worktree mismatch",
+                    == "main",
+                    "seed branch mismatch",
                 )
-                checks["main_seed"] = True
                 require(
                     len(
                         list(
                             (
-                                Path(work["common_git_dir"]) / "plaza/session-memory"
+                                Path(state["project"]["common_git_dir"])
+                                / "plaza/session-memory"
                             ).glob("*.md")
                         )
                     )
                     == 3,
                     "missing canonical notes",
                 )
-                checks["three_notes"] = True
+                checks.update(
+                    real_chief_approved=True, main_seed=True, three_notes=True
+                )
+                source_before = state["source"]
+                result.update(
+                    source_before=source_before, bootstrap_notes=state["notes"]
+                )
+                life.marker_before = state["memory_marker_exists"]
+                require(life.marker_before, "memory ownership was not attached")
+            elif stage == "domain_running":
+                work = state["workspace"]
+                from bridge.workspace import git_without_filters
+
+                require(
+                    work["domain_id"] == "core"
+                    and work["initial_commit"] == source_before["head"]
+                    and git_without_filters(
+                        Path(work["worktree_path"]), "branch", "--show-current"
+                    )
+                    == work["branch"]
+                    and Path(
+                        git_without_filters(
+                            Path(work["worktree_path"]),
+                            "rev-parse",
+                            "--absolute-git-dir",
+                        )
+                    )
+                    == Path(work["git_dir"]),
+                    "Core worktree Git identity mismatch",
+                )
                 paths = [
                     life.project.resolve(),
                     ROOT.resolve(),
@@ -1071,33 +1279,32 @@ async def initial(life, report):
                     ),
                     "overlapping source/runtime/execution/control",
                 )
-                checks["separate_paths"] = True
-                source_before = state["source"]
-                result.update(
-                    worktree_path=work["worktree_path"],
-                    workspace=work,
-                    source_before=source_before,
-                    bootstrap_notes=state["notes"],
-                )
-                gate = NonceGate(release_path, Path(work["worktree_path"]) / RESULT)
-                gate.assert_absent()
-                checks["absent_before"] = True
-                life.marker_before = state["memory_marker_exists"]
-                require(life.marker_before, "memory ownership was not attached")
-            elif stage == "domain_running":
                 clients = [c for c in state["clients"] if c["domain"]]
                 require(
                     len(clients) == 1 and clients[0]["query_count"] == 1,
                     "expected exactly one SDK tool task",
                 )
+                require(
+                    len(state["starts"]) == 1
+                    and state["starts"][0]["query_count"] == 0,
+                    "Start submitted a model task",
+                )
+                result.update(
+                    worktree_path=work["worktree_path"],
+                    workspace=work,
+                    start=state["starts"][0],
+                )
+                checks["separate_paths"] = True
+                gate = NonceGate(release_path, Path(work["worktree_path"]) / RESULT)
                 gate.assert_absent()
+                checks["absent_before"] = True
             elif stage == "background_ack":
                 gate.assert_absent()
                 result["background_monotonic"] = receipt["received_monotonic"]
                 checks["background_corroborated"] = True
             elif stage == "npc_rendered":
                 require(
-                    validator.may_release and payload["agent_id"] == "security-auditor",
+                    validator.may_release and payload["agent_id"] == "fixture-extra-a",
                     "wrong unrelated NPC/release order",
                 )
                 gate.assert_absent()
@@ -1119,6 +1326,7 @@ async def initial(life, report):
                     query_count=client["query_count"],
                     tool_receipts=client["tool_receipts"],
                     sdk=client,
+                    context=state["contexts"][0],
                 )
                 data = read_result(gate.result_path.parent)
                 require(
@@ -1247,13 +1455,31 @@ async def readback(life, report, scenario):
     require(before["snapshot"]["stage"] == "ready", "readback project not ready")
     require(not before["clients"], "automatic SDK invocation on restart")
     life.marker_before = before["memory_marker_exists"]
-    work, a = before["workspace"], report["initial"]
+    a = report["initial"]
+    if scenario == "b_isolation":
+        require(before["workspace"] is None, "B eagerly provisioned before Start")
+    async with websockets.connect(life.ready["url"]) as socket:
+        plain = Plain(socket)
+        await plain.send("activate_domain", "readback-start")
+        active = await plain.reply("readback-start", state="active")
+    async with asyncio.timeout(5):
+        while True:
+            prepared = life.state()
+            if prepared.get("starts"):
+                break
+            await asyncio.sleep(0.025)
+    require(
+        len(prepared["starts"]) == 1 and prepared["starts"][0]["query_count"] == 0,
+        "Start submitted a model task",
+    )
+    work = prepared["workspace"]
     key = "restart" if scenario == "a_restart" else "isolation"
     record = report[key] = dict(
         checks={"no_automatic_query": True},
         query_count=0,
         tool_count=0,
         workspace=work,
+        start=prepared["starts"][0],
         notes_before=before["notes"],
     )
     checks = record["checks"]
@@ -1294,14 +1520,12 @@ async def readback(life, report, scenario):
         task = "Without tools or file changes, inspect only supplied prior project notes. If there is no completed M12 nonce, return only one JSON object without Markdown fences or surrounding prose, with answer 'isolated'. Do not invent a nonce or rerun work."
     async with websockets.connect(life.ready["url"]) as socket:
         plain = Plain(socket)
-        await plain.send("activate_domain", "readback-start")
-        active = await plain.reply("readback-start", state="active")
         generation = active["domain_session_id"]
         await plain.send(
             "domain_query",
             "readback-run",
             generation,
-            agent_id="backend-architect",
+            agent_id="systems-architect",
             task=task,
         )
         await plain.reply("readback-run", type="domain_accepted")
@@ -1313,12 +1537,21 @@ async def readback(life, report, scenario):
         )
         expected = a["nonce"] if key == "restart" else "isolated"
         assert_answer_matches(terminal["output"], expected)
-        state = life.state()
+        async with asyncio.timeout(5):
+            while True:
+                state = life.state()
+                if any(
+                    p.get("request_id") == "readback-run"
+                    and p.get("type") == "domain_result"
+                    for p in state["emitted"]
+                ):
+                    break
+                await asyncio.sleep(0.025)
         clients = [c for c in state["clients"] if c["domain"]]
         require(len(clients) == 1, "unexpected readback clients")
         client = clients[0]
-        # State file can trail the final response by one observation; query and
-        # tool observations necessarily precede terminal emission.
+        # The checkpoint above includes this exact terminal; earlier snapshots
+        # may precede even a very fast offline or cached provider query.
         require(
             client["query_count"] == 1 and not client["attempts"],
             "readback used tools or repeated query",
@@ -1343,6 +1576,7 @@ async def readback(life, report, scenario):
             query_count=client["query_count"],
             tool_count=len(client["attempts"]),
             sdk=client,
+            context=state["contexts"][0],
             output=terminal["output"],
         )
         await plain.send("deactivate_domain", "readback-stop", generation)
@@ -1477,6 +1711,7 @@ def _proof_workspace(value):
         (
             "project_id",
             "workspace_id",
+            "domain_id",
             "project_root",
             "worktree_path",
             "common_git_dir",
@@ -1502,17 +1737,19 @@ def _proof_workspace(value):
     )
     require(
         execution.name == "execution"
-        and execution.parent.parent == root.parent / ".plaza-worktrees"
-        and execution.parent.name.endswith("-" + value["project_id"]),
+        and execution.parent.name == value["domain_id"] == "core"
+        and execution.parent.parent.parent == root.parent / ".plaza-worktrees"
+        and execution.parent.parent.name.endswith("-" + value["project_id"]),
         "sibling execution location",
     )
     require(
         paths["common_git_dir"] == root / ".git"
-        and paths["git_dir"] == paths["common_git_dir"] / "worktrees/execution",
+        and paths["git_dir"].parent == paths["common_git_dir"] / "worktrees"
+        and re.fullmatch(r"execution[0-9]*", paths["git_dir"].name) is not None,
         "workspace Git locations",
     )
     require(
-        value["branch"] == "plaza/workspace-" + value["project_id"],
+        value["branch"] == "plaza/workspace-" + value["project_id"] + "-core",
         "execution branch binding",
     )
     return value
@@ -1617,6 +1854,95 @@ def _proof_cleanup(lifetimes, *, complete=False, started=None, ended=None):
         )
 
 
+def _proof_admission(section, permission_mode):
+    work = section["workspace"]
+    start = _proof_fields(
+        section.get("start"),
+        (
+            "request_id",
+            "project_id",
+            "workspace_id",
+            "domain_id",
+            "domain_session_id",
+            "query_count",
+        ),
+        "explicit Start",
+    )
+    for key in ("request_id", "domain_session_id"):
+        _proof_text(start[key], "Start " + key)
+    require(
+        type(start["query_count"]) is int and start["query_count"] == 0,
+        "Start must query zero models",
+    )
+    require(
+        all(start[k] == work[k] for k in ("project_id", "workspace_id", "domain_id")),
+        "Start workspace identity",
+    )
+    context = _proof_fields(
+        section.get("context"),
+        ("sources", "facts", "project_id", "workspace_id"),
+        "current context",
+    )
+    require(
+        all(context[k] == work[k] for k in ("project_id", "workspace_id")),
+        "context workspace identity",
+    )
+    require(
+        context["facts"]
+        == dict(
+            source_root=work["project_root"],
+            agent_id="systems-architect",
+            execution_kind="domain",
+            domain_id="core",
+            tools=["Read", "Edit", "Bash"],
+            permission_mode=permission_mode,
+            interaction="explicit_run",
+            execution_capacity=1,
+        ),
+        "context execution facts",
+    )
+    sources = context["sources"]
+    require(isinstance(sources, list) and len(sources) == 6, "context sources")
+    scopes = (
+        "shipped",
+        "installation",
+        "shipped",
+        "installation",
+        "project",
+        "runtime",
+    )
+    names = (
+        "GAME_CONTEXT.md",
+        "GAME_CONTEXT.md",
+        "WORK_CONTEXT.md",
+        "WORK_CONTEXT.md",
+        "PLAZA_AGENTS.md",
+        "bridge-runtime",
+    )
+    require(
+        len({source.get("identity") for source in sources}) == 6,
+        "distinct context identities",
+    )
+    for index, (source, scope, name) in enumerate(zip(sources, scopes, names)):
+        require(
+            isinstance(source, dict)
+            and set(source) == {"identity", "scope", "revision"},
+            "bounded context diagnostic",
+        )
+        require(source["scope"] == scope, "context source scope")
+        _proof_text(source["identity"], "context identity", 4096)
+        require(Path(source["identity"]).name == name, "context source name")
+        if index == 4:
+            require(
+                source["identity"] == work["project_root"] + "/PLAZA_AGENTS.md",
+                "project guidance source",
+            )
+        if index == 5:
+            require(source["identity"] == "bridge-runtime", "runtime source")
+        if index != 1 or source["revision"] is not None:
+            _proof_hash(source["revision"], "context revision")
+
+
 def _proof_sdk(value, workspace, *, initial, started, ended):
     _proof_fields(
         value,
@@ -1625,6 +1951,7 @@ def _proof_sdk(value, workspace, *, initial, started, ended):
             "domain",
             "cwd",
             "model",
+            "permission_mode",
             "max_turns",
             "max_budget_usd",
             "tools",
@@ -1811,11 +2138,17 @@ def _proof_plain_replay(wire, stages, identity):
     commands, packets = wire["commands"], wire["emitted"]
     status_at, status = one(commands, "plain-status", "status command")
     resume_at, resume = one(commands, "plain-resume", "resume command")
-    run_id = stages[2]["payload"]["request_id"]
+    run_id = next(s for s in stages if s["stage"] == "domain_running")["payload"][
+        "request_id"
+    ]
     run_at, _ = one(commands, run_id, "original Run command")
-    scene_resume = stages[5]["payload"]["request_id"]
+    scene_resume = next(s for s in stages if s["stage"] == "domain_rendered")[
+        "payload"
+    ]["request_id"]
     scene_at, _ = one(commands, scene_resume, "scene resume command")
-    stop_id = stages[6]["payload"]["request_id"]
+    stop_id = next(s for s in stages if s["stage"] == "stop_ack")["payload"][
+        "request_id"
+    ]
     stop_at, _ = one(commands, stop_id, "Stop command")
     require(
         run_at < scene_at < status_at < resume_at < stop_at,
@@ -1880,7 +2213,6 @@ def _proof_plain_replay(wire, stages, identity):
 
 
 def _validate_proof(record):
-    from bridge.domain_sdk import GUARD_SOURCES
     from scripts.m12_stages import StageValidator
 
     _proof_fields(
@@ -1893,6 +2225,7 @@ def _validate_proof(record):
             "started_utc",
             "ended_utc",
             "auth_mode",
+            "permission_mode",
             "desktop_accepted",
             "instrumentation",
             "versions",
@@ -1915,7 +2248,8 @@ def _validate_proof(record):
     require(record.get("accepted", True) is True, "report is not accepted")
     _proof_text(record["run_id"], "supervisor identity")
     require(
-        record["auth_mode"] in ("api_key", "native_cli")
+        record["permission_mode"] in ("dontAsk", "bypassPermissions")
+        and record["auth_mode"] in ("api_key", "native_cli")
         and record["desktop_accepted"] is False
         and record["instrumentation"] == INSTRUMENTATION,
         "auth/platform/instrumentation disclosure",
@@ -1963,12 +2297,7 @@ def _validate_proof(record):
         before == after and before["head"] == binding["commit"],
         "unchanged runtime HEAD/status/hashes",
     )
-    names = (
-        *GUARD_SOURCES,
-        "scripts/m12_live.py",
-        "scripts/m12_stages.py",
-        "tests/godot_domain_integration.gd",
-    )
+    names = LIVE_SOURCES
     _proof_hashes(binding["source_sha256"], names=names)
     require(
         all(
@@ -1997,6 +2326,7 @@ def _validate_proof(record):
             name + " query count",
         )
         work = _proof_workspace(section["workspace"])
+        _proof_admission(section, record["permission_mode"])
         sdk = _proof_sdk(
             section["sdk"],
             work,
@@ -2008,6 +2338,10 @@ def _validate_proof(record):
             sdk["client_id"] not in clients
             and not (set(sdk["provider_session_ids"]) & sessions),
             "fresh SDK invocations",
+        )
+        require(
+            sdk["permission_mode"] == record["permission_mode"],
+            "SDK permission mode binding",
         )
         clients.add(sdk["client_id"])
         sessions.update(sdk["provider_session_ids"])
@@ -2175,7 +2509,48 @@ def _validate_proof(record):
         ),
         "scene workspace identity",
     )
-    rendered = stages[5]["payload"]
+    start = initial["start"]
+    starts = [c for c in wire["commands"] if c.get("type") == "activate_domain"]
+    require(
+        len(starts) == 1
+        and starts[0]["request_id"] == start["request_id"]
+        and starts[0].get("domain_id") == "core",
+        "explicit Start command",
+    )
+    running = next(s for s in stages if s["stage"] == "domain_running")["payload"]
+    require(
+        start["domain_session_id"] == running["domain_session_id"],
+        "Start/Run generation",
+    )
+    require(
+        any(
+            p.get("request_id") == start["request_id"]
+            and p.get("type") == "domain_state"
+            and p.get("state") == "active"
+            and p.get("execution_state") == "idle"
+            and all(
+                p.get(k) == start[k]
+                for k in (
+                    "project_id",
+                    "workspace_id",
+                    "domain_id",
+                    "domain_session_id",
+                )
+            )
+            for p in wire["emitted"]
+        ),
+        "Start idle acknowledgment",
+    )
+    require(
+        wire["commands"].index(starts[0])
+        < next(
+            i
+            for i, c in enumerate(wire["commands"])
+            if c.get("request_id") == running["request_id"]
+        ),
+        "Start before Run",
+    )
+    rendered = next(s for s in stages if s["stage"] == "domain_rendered")["payload"]
     identity = _proof_fields(
         initial["terminal_identity"],
         ("project_id", "workspace_id", "domain_id", "domain_session_id", "output_id"),
@@ -2188,7 +2563,8 @@ def _validate_proof(record):
     )
     require(
         rendered["rendered_text"].count(
-            "[%s · output %s ·" % (identity["domain_session_id"], identity["output_id"])
+            "[%s · systems-architect · output %s ·"
+            % (identity["domain_session_id"], identity["output_id"])
         )
         == 1,
         "one actual rendered header",
@@ -2217,15 +2593,28 @@ def _validate_proof(record):
     for field in ("background_monotonic", "npc_monotonic"):
         _proof_number(initial[field], "causal receipt monotonic")
     require(
-        initial["background_monotonic"] == stages[3]["received_monotonic"]
-        and initial["npc_monotonic"] == stages[4]["received_monotonic"],
+        initial["background_monotonic"]
+        == next(s for s in stages if s["stage"] == "background_ack")[
+            "received_monotonic"
+        ]
+        and initial["npc_monotonic"]
+        == next(s for s in stages if s["stage"] == "npc_rendered")[
+            "received_monotonic"
+        ],
         "causal stage receipt binding",
     )
     released_mono = _proof_number(initial["released_monotonic"], "release monotonic")
     released_utc = _proof_utc(initial["released_utc"])
     require(
-        initial["npc_monotonic"] < released_mono < stages[5]["received_monotonic"]
-        and _proof_utc(stages[4]["received_utc"]) <= released_utc,
+        initial["npc_monotonic"]
+        < released_mono
+        < next(s for s in stages if s["stage"] == "domain_rendered")[
+            "received_monotonic"
+        ]
+        and _proof_utc(
+            next(s for s in stages if s["stage"] == "npc_rendered")["received_utc"]
+        )
+        <= released_utc,
         "causal release order",
     )
     require(
@@ -2249,10 +2638,14 @@ def _validate_proof(record):
     require(
         released_utc
         < _proof_utc(tool["written_utc"])
-        <= _proof_utc(stages[5]["received_utc"])
+        <= _proof_utc(
+            next(s for s in stages if s["stage"] == "domain_rendered")["received_utc"]
+        )
         and _proof_utc(initial["sdk"]["attempts"][0]["received_utc"])
         <= _proof_utc(tool["written_utc"])
-        and _proof_utc(stages[6]["received_utc"])
+        and _proof_utc(
+            next(s for s in stages if s["stage"] == "stop_ack")["received_utc"]
+        )
         < _proof_utc(record["lifetimes"][0]["ended_at"]),
         "tool attempt/write/release/Stop UTC ordering",
     )
@@ -2293,6 +2686,7 @@ def sanitize_evidence(record):
         "started_utc",
         "ended_utc",
         "auth_mode",
+        "permission_mode",
         "desktop_accepted",
         "instrumentation",
         "versions",
@@ -2327,6 +2721,8 @@ def sanitize_evidence(record):
                 "terminal_identity",
                 "godot_returncode",
                 "workspace",
+                "start",
+                "context",
                 "source_before",
                 "source_after",
             )
@@ -2396,6 +2792,7 @@ def sanitize_evidence(record):
                     "domain",
                     "cwd",
                     "model",
+                    "permission_mode",
                     "max_turns",
                     "max_budget_usd",
                     "tools",
@@ -2516,12 +2913,47 @@ def sanitize_evidence(record):
         for key in ("source_before", "source_after"):
             if key in item:
                 item[key] = baseline_fields(item[key])
+        if "start" in item:
+            item["start"] = pick(
+                item["start"],
+                (
+                    "request_id",
+                    "project_id",
+                    "workspace_id",
+                    "domain_id",
+                    "domain_session_id",
+                    "query_count",
+                ),
+            )
+        if "context" in item:
+            context = pick(
+                item["context"], ("project_id", "workspace_id", "facts", "sources")
+            )
+            context["facts"] = pick(
+                context.get("facts"),
+                (
+                    "source_root",
+                    "agent_id",
+                    "execution_kind",
+                    "domain_id",
+                    "tools",
+                    "permission_mode",
+                    "interaction",
+                    "execution_capacity",
+                ),
+            )
+            context["sources"] = [
+                pick(source, ("identity", "scope", "revision"))
+                for source in context.get("sources", [])
+            ]
+            item["context"] = context
         if "workspace" in item:
             item["workspace"] = pick(
                 item["workspace"],
                 (
                     "project_id",
                     "workspace_id",
+                    "domain_id",
                     "project_root",
                     "worktree_path",
                     "common_git_dir",
@@ -2601,7 +3033,7 @@ async def main(output):
 
 
 async def _run(output):
-    from bridge.domain_sdk import _verify_runtime, GUARD_SOURCES
+    from bridge.domain_sdk import _verify_runtime
     from bridge.workspace import git_without_filters
     import claude_agent_sdk
 
@@ -2637,18 +3069,16 @@ async def _run(output):
     )
     life = None
     try:
-        cli = _verify_runtime()
+        from bridge.config import load_config
+
+        permission_mode = load_config().domain_permission_mode
+        report["permission_mode"] = permission_mode
+        cli = _verify_runtime(permission_mode)
         runtime_before = baseline(ROOT)
         report["binding"] = dict(
             commit=git_without_filters(ROOT, "rev-parse", "HEAD"),
             source_sha256={
-                name: sha((ROOT / name).read_bytes())
-                for name in (
-                    *GUARD_SOURCES,
-                    "scripts/m12_live.py",
-                    "scripts/m12_stages.py",
-                    "tests/godot_domain_integration.gd",
-                )
+                name: sha((ROOT / name).read_bytes()) for name in LIVE_SOURCES
             },
             runtime_before=runtime_before,
         )
@@ -2663,7 +3093,7 @@ async def _run(output):
                 timeout=5,
             ).stdout.strip(),
             godot=subprocess.run(
-                [shutil.which("godot"), "--version"],
+                [godot_binary(), "--version"],
                 check=True,
                 capture_output=True,
                 text=True,
@@ -2675,7 +3105,15 @@ async def _run(output):
         )
         project = artifacts / "project-a"
         project.mkdir()
-        life = LiveLifetime(artifacts / "a-initial", project, "a_initial")
+        (project / "PLAZA_AGENTS.md").write_text(
+            "Disposable acceptance project. Execute only explicit tasks.\n"
+        )
+        life = LiveLifetime(
+            artifacts / "a-initial",
+            project,
+            "a_initial",
+            permission_mode=permission_mode,
+        )
         await life.start()
         await initial(life, report)
         report["lifetimes"].append(await life.stop())
@@ -2685,7 +3123,12 @@ async def _run(output):
             baseline(ROOT) == runtime_before
         )
         require(not validate_lifetimes(report["lifetimes"]), "initial cleanup failed")
-        life = LiveLifetime(artifacts / "a-restart", project, "a_restart")
+        life = LiveLifetime(
+            artifacts / "a-restart",
+            project,
+            "a_restart",
+            permission_mode=permission_mode,
+        )
         await life.start()
         await readback(life, report, "a_restart")
         report["lifetimes"].append(await life.stop())
@@ -2695,6 +3138,9 @@ async def _run(output):
         a_notes = report["restart"]["notes_after"]
         other = artifacts / "project-b"
         other.mkdir()
+        (other / "PLAZA_AGENTS.md").write_text(
+            "Independent acceptance project B. Execute only explicit tasks.\n"
+        )
         for args in (
             ("init", "-b", "main"),
             (
@@ -2714,7 +3160,12 @@ async def _run(output):
                 capture_output=True,
                 timeout=5,
             )
-        life = LiveLifetime(artifacts / "b-isolation", other, "b_isolation")
+        life = LiveLifetime(
+            artifacts / "b-isolation",
+            other,
+            "b_isolation",
+            permission_mode=permission_mode,
+        )
         await life.start()
         await readback(life, report, "b_isolation")
         report["lifetimes"].append(await life.stop())
