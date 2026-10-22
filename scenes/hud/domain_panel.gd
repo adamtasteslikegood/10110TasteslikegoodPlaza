@@ -29,6 +29,7 @@ func _ready() -> void:
 	GameEvents.domain_changed.connect(_domain_changed)
 	GameEvents.workspace_changed.connect(_workspace_changed)
 	GameEvents.character_changed.connect(_character_changed)
+	GameEvents.domain_surface_changing.connect(_surface_changing)
 	GameEvents.domain_surface_changed.connect(_surface_changed)
 	_opener.pressed.connect(_open_nearby)
 	_global_refocus.pressed.connect(_open_remote)
@@ -89,6 +90,7 @@ func _open_nearby() -> void:
 	anchor_agent_id = nearby_agent_id
 	remote = false
 	_return_to_anchor = false
+	_view_guard = true
 	_panel.show()
 	BridgeClient.surface.open("pane", domain_id, nearby_agent_id)
 	_refresh()
@@ -99,6 +101,7 @@ func _open_remote() -> void:
 	anchor_agent_id = ""
 	remote = true
 	_return_to_anchor = false
+	_view_guard = true
 	_panel.show()
 	BridgeClient.surface.open("pane", selected_domain_id, _agents.get(selected_domain_id, ""))
 	_refresh()
@@ -140,12 +143,14 @@ func _character_changed(agent_id: String, _reason: String, _request_id: String) 
 	var data := BridgeClient.character_snapshot(agent_id)
 	if data.get("execution_kind") == "working" and BridgeClient.workspace_snapshot().get("project_id") != null:
 		_remember(data.domain_id)
-		_agents[data.domain_id] = agent_id
+		if not _agents.has(data.domain_id): _agents[data.domain_id] = agent_id
 	_refresh()
+
+func _surface_changing() -> void:
+	if BridgeClient.surface.owner == "pane": _save_result_view(_results.get_v_scroll_bar().value)
 
 func _surface_changed() -> void:
 	if BridgeClient.surface.owner != "pane":
-		_save_result_view(_results.get_v_scroll_bar().value)
 		_release_focus()
 		_panel.hide()
 		_return_to_anchor = false
@@ -224,7 +229,7 @@ func _refresh() -> void:
 		var archived: bool = result.domain_session_id != generation
 		var turn_memory: Dictionary = result.get("memory", {})
 		lines.append("[%s%s · %s · output %s · %s · memory %s]\n%s\n%s" % ["Archived " if archived else "", result.domain_session_id, result.agent_id, result.output_id, result.status, "saved" if turn_memory.get("saved", false) else "unsaved", result.get("task", ""), result.get("output", result.get("message", ""))])
-		spans.append({"request_id": result.request_id, "generation": result.domain_session_id, "role": "assistant", "start": character_offset, "length": lines.back().length() + 2})
+		spans.append({"request_id": result.request_id, "generation": result.domain_session_id, "role": "assistant", "start": character_offset, "length": lines.back().length()})
 		character_offset += lines.back().length() + 2
 	var error: Dictionary = snapshot.get("error", {})
 	if not error.is_empty():
@@ -278,7 +283,8 @@ func _input(event: InputEvent) -> void:
 	var owner := get_viewport().gui_get_focus_owner()
 	if owner == null or not (_panel.is_ancestor_of(owner) or $Global.is_ancestor_of(owner)): return
 	if event.is_action_pressed("chat_release_focus", false, true):
-		owner.release_focus()
+		if _panel.visible: _background()
+		else: owner.release_focus()
 	elif _panel.is_ancestor_of(owner) and (event.is_action_pressed("chat_focus_next", false, true) or event.is_action_pressed("chat_focus_previous", false, true)):
 		var controls: Array[Control] = [_results, _task_input]
 		for name in ["Start", "Run", "Refocus", "Background", "Stop", "Status"]: controls.append(_action(name))
@@ -304,7 +310,7 @@ func _layout() -> void:
 
 
 func _save_result_view(value: float) -> void:
-	if _view_guard or not _panel.visible or selected_domain_id.is_empty(): return
+	if _view_guard or not _panel.visible or BridgeClient.surface.owner != "pane" or selected_domain_id.is_empty(): return
 	var bar := _results.get_v_scroll_bar()
 	var follow := value >= maxf(0, bar.max_value - bar.page) - 2
 	var anchor := {}

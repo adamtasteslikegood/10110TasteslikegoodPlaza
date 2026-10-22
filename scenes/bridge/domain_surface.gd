@@ -16,6 +16,7 @@ func _init(transport: Node) -> void:
 func open(surface: String, domain: String, agent: String) -> void:
 	var handoff := not owner.is_empty() and domain_id == domain
 	if not owner.is_empty() and domain_id != domain: close(owner)
+	GameEvents.domain_surface_changing.emit()
 	owner = surface
 	domain_id = domain
 	agent_id = agent
@@ -38,6 +39,7 @@ func refocus() -> void:
 func close(surface: String) -> void:
 	if owner != surface: return
 	var domain := domain_id
+	GameEvents.domain_surface_changing.emit()
 	owner = ""
 	revision += 1
 	_refocus = ""

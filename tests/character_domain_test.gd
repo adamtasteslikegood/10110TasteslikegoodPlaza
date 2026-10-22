@@ -203,6 +203,7 @@ func _ready() -> void:
 	await deliver(terminal)
 	await deliver(completion)
 	check(BridgeClient.domain_snapshot("core").results.size() == 1 and count("domain_query") == 1, "return replay deduplicates without execution")
+	await review_regressions()
 	check(not button("Stop").disabled, "idle owned session retains Stop")
 	button("Stop").pressed.emit()
 	await frames()
@@ -215,7 +216,7 @@ func _ready() -> void:
 	var late: Dictionary = status_packets.back()
 	GameEvents.npc_left.emit("systems-architect")
 	await deliver(late)
-	check(not panel.visible and count("activate_domain") == 1 and count("domain_query") == 1, "late status after departure never opens or executes")
+	check(not panel.visible and count("activate_domain") == 1 and count("domain_query") == 2, "late status after departure never opens or executes")
 	# Typed service errors retain the status binding and settle only exact correlation.
 	var status_request := BridgeClient.agent_status("systems-architect")
 	await frames()
@@ -231,7 +232,7 @@ func _ready() -> void:
 	await deliver(wrong)
 	var failed_status := BridgeClient.character_snapshot("systems-architect")
 	check(failed_status.pending.is_empty() and failed_status.error == wrong.output and failed_status.domain_id == "core", "typed status error uses output and preserves binding")
-	check(not panel.visible and count("domain_query") == 1, "status error cannot steal foreground or execute")
+	check(not panel.visible and count("domain_query") == 2, "status error cannot steal foreground or execute")
 	var setup_late := BridgeClient.project_setup("systems-architect", "explicit review before disconnect")
 	await frames()
 	# Store observation fences refuse lifecycle snapshots captured before newer work.
@@ -254,3 +255,72 @@ func finish() -> void:
 	if failures.is_empty(): print("character_domain_test: OK — %d checks passed." % checks)
 	else: printerr("character_domain_test: %d failures / %d checks." % [failures.size(), checks])
 	get_tree().quit(0 if failures.is_empty() else 1)
+
+func settle_return() -> void:
+	await frames()
+	lifecycle = "active"
+	await deliver(state(latest("refocus_domain").request_id))
+	var completion := state(latest("resume").request_id)
+	completion.merge({"type": "resume_complete", "high_water_mark": "2", "earliest_output_id": "1", "history_gap": false}, true)
+	await deliver(completion)
+
+func review_regressions() -> void:
+	var pane := main.get_node("DomainHUD")
+	var pane_panel: Control = pane.get_node("Panel")
+	var pane_input: LineEdit = pane.get_node("Panel/Scroll/Rows/TaskInput")
+	var pane_results: RichTextLabel = pane.get_node("Panel/Scroll/Rows/ResultsLabel")
+	pane.get_node("Global/Toolbar/NearbyDomainButton").pressed.emit()
+	await frames()
+	hold_status = true
+	BridgeClient.agent_status("security-auditor")
+	await frames()
+	await deliver(status_packets.back())
+	hold_status = false
+	pane_input.text = "intentional Architect pane Run"
+	pane_input.text_changed.emit(pane_input.text)
+	pane.get_node("Panel/Scroll/Rows/Actions/Run").pressed.emit()
+	await frames()
+	var run := latest("domain_query")
+	check(run.agent_id == "systems-architect", "R1 late other Core status cannot change intentional pane Run representative")
+	await deliver({"type": "domain_result", "request_id": run.request_id, "project_id": "P", "workspace_id": "W", "domain_id": "core", "domain_session_id": "A", "output_id": "2", "agent_id": run.agent_id, "task": run.task, "output": "Long result line\n".repeat(100), "status": "success", "reason": "completed", "truncated": false, "memory": {"saved": true, "revision": 10, "error_type": null}})
+	await frames(8)
+	var bar := pane_results.get_v_scroll_bar()
+	check(bar.max_value > bar.page + 100, "R2 fixture provides scrollable long history")
+	bar.value = 70
+	await frames()
+	var saved: Dictionary = BridgeClient.domain_snapshot("core").view.duplicate(true)
+	check(not saved.follow and not saved.anchor.is_empty(), "R2 pane establishes non-follow semantic reading anchor")
+	pane.get_node("Panel/Scroll/Rows/Actions/Background").pressed.emit()
+	await frames()
+	check(BridgeClient.domain_snapshot("core").view == saved, "R2 hidden dialogue cannot overwrite outgoing pane reading view")
+	lifecycle = "background"
+	await deliver(state(latest("background_domain").request_id, lifecycle))
+	pane.get_node("Global/Toolbar/RefocusButton").pressed.emit()
+	await settle_return()
+	check(not BridgeClient.domain_snapshot("core").view.follow and BridgeClient.domain_snapshot("core").view.anchor == saved.anchor and is_equal_approx(bar.value, saved.scroll), "R2 pane reopen restores saved scroll, follow and anchor")
+	var backgrounds := count("background_domain")
+	pane_input.grab_focus()
+	await key(KEY_ESCAPE)
+	check(not pane_panel.visible and BridgeClient.surface.owner.is_empty() and count("background_domain") == backgrounds + 1 and count("deactivate_domain") == 0, "R3 native pane Escape closes and backgrounds without Stop")
+	# Keep the red run bounded even if Escape has not yet implemented closing.
+	if pane_panel.visible: pane.get_node("Panel/Scroll/Rows/Actions/Background").pressed.emit()
+	await frames()
+	lifecycle = "background"
+	await deliver(state(latest("background_domain").request_id, lifecycle))
+	pane.get_node("Global/Toolbar/RefocusButton").pressed.emit()
+	await frames()
+	var pending := latest("refocus_domain")
+	backgrounds = count("background_domain")
+	pane_input.grab_focus()
+	await key(KEY_ESCAPE)
+	check(not pane_panel.visible and count("background_domain") == backgrounds, "R3 Escape during pending refocus closes and waits for exact control")
+	await deliver(state("unrelated-refocus"))
+	check(count("background_domain") == backgrounds, "R3 unrelated acknowledgment cannot release deferred background")
+	await deliver(state(pending.request_id))
+	check(count("background_domain") == backgrounds + 1 and count("deactivate_domain") == 0, "R3 matching pending control backgrounds once without Stop")
+	if pane_panel.visible: pane.get_node("Panel/Scroll/Rows/Actions/Background").pressed.emit()
+	await frames()
+	lifecycle = "background"
+	await deliver(state(latest("background_domain").request_id, lifecycle))
+	GameEvents.npc_approached.emit("systems-architect", AgentRegistry.get_agent("systems-architect"))
+	await settle_return()

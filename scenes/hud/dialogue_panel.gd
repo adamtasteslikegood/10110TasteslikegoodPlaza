@@ -48,6 +48,7 @@ func _ready() -> void:
 	GameEvents.character_changed.connect(_character_changed)
 	GameEvents.domain_changed.connect(_domain_changed)
 	GameEvents.workspace_changed.connect(_workspace_changed)
+	GameEvents.domain_surface_changing.connect(_surface_changing)
 	GameEvents.domain_surface_changed.connect(_surface_changed)
 	_action("Prepare").pressed.connect(func(): BridgeClient.project_setup(_current_agent_id, _question_input.text if not _question_input.text.strip_edges().is_empty() else "Prepare the configured project"))
 	_action("Start").pressed.connect(func(): BridgeClient.activate_domain(_domain_id))
@@ -235,6 +236,7 @@ func _save_view() -> void:
 	if _scroll_guard or not AgentRegistry.has_agent(_current_agent_id):
 		return
 	if _kind == "working" and not _domain_id.is_empty():
+		if not _panel.visible or BridgeClient.surface.owner != "dialogue": return
 		BridgeClient.domains.save_view(_domain_id, _body_label.get_v_scroll_bar().value, _follow, _reading_anchor())
 		return
 	_view_anchors[_current_agent_id] = _reading_anchor()
@@ -500,9 +502,11 @@ func _workspace_changed(_reason: String, _request: String) -> void:
 		BridgeClient.agent_status(_current_agent_id)
 	_update_actions()
 
+func _surface_changing() -> void:
+	if BridgeClient.surface.owner == "dialogue": _save_view()
+
 func _surface_changed() -> void:
 	if _kind != "working": return
 	if BridgeClient.surface.owner != "dialogue":
-		_save_view()
 		_release_focus()
 		_panel.hide()

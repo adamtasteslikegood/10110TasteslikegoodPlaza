@@ -181,11 +181,11 @@ func _ready() -> void:
 	var before := player.position
 	for i in 3: await get_tree().physics_frame
 	check(player.position.distance_to(before) < 1, "actual focused UI blocks movement")
-	await key(KEY_ESCAPE)
+	input.release_focus()
 	for i in 3: await get_tree().physics_frame
 	Input.action_release("ui_right")
-	check(player.position.x > before.x and not input.has_focus(), "Escape releases keyboard and actual player moves")
-	check(panel.visible and BridgeClient.domain_snapshot("core").pending_query.request_id == run.request_id, "Escape preserves running task")
+	check(player.position.x > before.x and not input.has_focus(), "releasing keyboard focus permits actual player movement")
+	check(panel.visible and BridgeClient.domain_snapshot("core").pending_query.request_id == run.request_id, "focus release preserves visible running task")
 	check(BridgeClient.domain_snapshot("core").draft == "next draft", "busy draft retained")
 	button("Stop").grab_focus()
 	await key(KEY_TAB)

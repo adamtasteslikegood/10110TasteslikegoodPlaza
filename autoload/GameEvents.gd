@@ -42,4 +42,5 @@ signal workspace_changed(reason: String, request_id: String)
 signal domain_changed(domain_id: String, reason: String, request_id: String)
 
 signal character_changed(agent_id: String, reason: String, request_id: String)
+signal domain_surface_changing
 signal domain_surface_changed
