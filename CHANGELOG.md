@@ -21,7 +21,9 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 - Add a draft for NPC dialogue backed by domain sessions, contextual RPG work
   controls, shared game/project awareness and a config/environment permission
-  bypass. Record the required reconciliation with current NPC/domain policy.
+  bypass. Department domains each own one worktree, retain shared project notes,
+  and connect future tutorial unlocks to verified execution support. Record the
+  required reconciliation with current NPC/domain/workspace policy.
   Written review, implementation planning and runtime changes remain pending.
 
 ### Added — M12 bounded acceptance and operations (PLZG-289)

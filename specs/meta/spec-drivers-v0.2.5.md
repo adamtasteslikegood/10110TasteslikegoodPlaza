@@ -526,15 +526,27 @@ claimed here.
 Owner clarification, 2026-10-22 UTC: the Systems Architect is a working
 representative of Core. Its existing NPC dialogue should front a domain session,
 with contextual Start/Run actions and the feel of a classic 2D RPG conversation.
-The conversation engine remains capable and aware, reserved for gameplay extras.
+The owner also clarified that sync/async describes execution, not NPC membership.
+Every catalog agent belongs to a canonical department/domain, represented by its
+color and room(s), with one worktree per department within the selected project.
+The conversation engine remains capable and aware, reserved for story/tutorial
+characters outside working domains. D-010's scripted navigation guide remains
+scripted. The existing three memory files remain shared across the project.
 The owner also requests game/work context and an explicit config/environment
 switch for Claude's ordinary permission bypass.
 
 Current `DESIGN-25D` D-033 and the approved M12 specification describe all ordinary
 NPC dialogue as synchronous conversation, with NPC tools disabled and a separate
-domain panel. M12 also says readiness leaves ordinary permission denials in place.
+domain panel. M12 also says readiness leaves ordinary permission denials in place,
+and D-038/the current implementation use a project-global execution worktree.
 Those statements need scoped amendments to express the new owner direction.
-D-038's project/worktree/memory readiness and explicit work controls remain.
+Retain D-038's readiness/bootstrap and explicit controls while changing worktree
+ownership to `(project_id, domain_id)`; execution capacity is a separate limit.
+Retain D-017's taxonomy, D-039's project memory and D-009's earned unlocks. Pair
+the existing SB-08 Engineering expansion with verified second-department execution
+capability. Minimal department worktree provisioning belongs in the M12 correction;
+M14 retains broader parallel execution/isolation, M13 richer local persistence,
+and M15 hosted durability. M6's unlock slice depends on working execution support.
 
 The proposed reconciliation is the
 [M12 character/domain amendment](../../docs/superpowers/specs/2026-10-22-m12-character-domain-amendment.md),
@@ -543,8 +555,8 @@ It is DRAFT: the owner selected the interaction direction, but written-spec
 review is still pending. On approval, ratify the engine-role distinction in the
 entitled design/decision documents and amend the original M12 sections together.
 This entry records the difference; it does not originate product policy or claim
-that the runtime has changed. No new narrative beat or multi-workspace capacity
-is proposed.
+that the runtime has changed. No new narrative beat or delivered concurrent
+capacity is claimed; D-006 remains superseded history.
 
 ## 5. Exit criteria to v1.0.0
 

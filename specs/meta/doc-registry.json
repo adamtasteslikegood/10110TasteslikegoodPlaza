@@ -113,7 +113,7 @@
       "tier": 2,
       "authority": "implementation",
       "status": "DRAFT",
-      "note": "Written review pending. Owner chose NPC dialogue backed by domain sessions for working characters, contextual RPG-style Start/Run controls, game/work awareness and a config/environment permission bypass. Proposes one shared domain store, pre-ready Chief setup, explicit extra routing, scoped guidance and mode-bound guard evidence. No runtime implementation or new acceptance is claimed; ratified D-033/D-034 and original M12 wording remain until written approval."
+      "note": "Written review pending. Owner clarified catalog agents belong to department domains, each owning one worktree per project; color and room/floor express the canonical taxonomy. Project notes remain shared. Proposes NPC dialogue backed by domain sessions, contextual RPG Start/Run, story extras outside working domains, capability-backed department unlocks, pre-ready Chief setup, game/work guidance and a config/environment permission bypass. No runtime implementation or new acceptance is claimed; ratified D-033/D-034/D-038 and original M12 wording remain until written approval."
     },
     {
       "doc_id": "ROADMAP",
