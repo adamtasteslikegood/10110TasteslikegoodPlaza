@@ -734,7 +734,8 @@ failure checks:
   laptop binary and auth; record the selected live mode.
 - [ ] A supported final answer/memory envelope renders as readable prose; a valid
   proposal updates the project notes. Malformed or unsupported proposals preserve
-  useful output and do not silently write notes.
+  useful output and do not apply rejected proposal fields; the bridge still saves
+  its labeled task/result excerpts and observed outcome.
 - [ ] A managed-branch/root-cwd readiness failure shows a useful bounded cause in
   NPC dialogue and the domain pane. Restore the expected state and explicitly
   refresh/refocus; no automatic checkout/reset or weaker guard is expected.
