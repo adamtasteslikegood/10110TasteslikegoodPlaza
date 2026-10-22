@@ -510,6 +510,12 @@ func _render_domain(reveal_id: String = "", restore: bool = false) -> void:
 func _domain_changed(domain: String, reason: String, request: String) -> void:
 	if domain == _domain_id and _kind == "working":
 		_render_domain(request if reason == "domain_result" and _panel.visible else "")
+		if reason == "domain_error":
+			# A new command/startup/preflight notice follows the previous answer.
+			# Settle that older reveal so its clipping limit cannot hide the cause.
+			_reveal_end = _full_text.length()
+			_revealed = _reveal_end
+			_body_label.visible_characters = -1
 
 func _workspace_changed(_reason: String, _request: String) -> void:
 	if _current_agent_id.is_empty(): return

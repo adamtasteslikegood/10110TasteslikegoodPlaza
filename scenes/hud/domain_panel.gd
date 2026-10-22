@@ -242,7 +242,7 @@ func _refresh() -> void:
 		lines.append("Notice: %s — %s" % [error.get("error_type", "unknown"), FailureDisplay.notice(error, false)])
 		var command_error: Dictionary = error.get("command_error", {})
 		if not command_error.is_empty():
-			lines.append("Command notice: %s — %s" % [command_error.get("error_type", "unknown"), command_error.get("message", "")])
+			lines.append("Command notice: %s — %s" % [command_error.get("error_type", "unknown"), FailureDisplay.notice(command_error, false)])
 		for query in error.get("unresolved_queries", []):
 			lines.append("[Unknown outcome · generation %s · request %s]\n%s" % [query.get("domain_session_id", ""), query.get("request_id", ""), query.get("task", "")])
 	var rendered := "\n\n".join(lines)
