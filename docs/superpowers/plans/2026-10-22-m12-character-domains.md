@@ -157,6 +157,21 @@ PR/CI review first, including any review changes to bound sources. The controlle
 then runs the deliberate paid probes and returns artifacts for final evidence/docs.
 `READY_FOR_LIVE` means offline readiness only; do not merge with acceptance pending.
 
+Recorded outcomes: both 29-case guard modes passed at `e67c926`; the
+[guard ledger](../../../specs/evidence/m12-character-guard-attempts-2026-10-22.json)
+also retains the pre-SDK setup failure. The first selected-mode live attempt at
+`5f20d9c` completed its scenarios but failed final wire validation; the
+[unchanged failed report and ledger](../../../specs/evidence/m12-character-live-attempts-2026-10-22.json)
+record that outcome. The typed extra-status validator fix (`810854d`) and bounded
+observation/admission lock correction (`6917d73`) have covering offline proof:
+1,849 tests plus 118 subtests pass with required pinned Godot and zero skips;
+all eight headless gates pass. No source changed during the final full run.
+The ten-source guard inventory now includes four transitive state/locking files,
+so the prior six-source acceptance is historical and current activation fails
+closed. Fresh both-mode guards and one selected-mode live attempt require new
+explicit approval after final review/CI. No automatic paid retry is authorized;
+owner laptop/OAuth/desktop checks remain open.
+
 - [ ] Run one deliberate bounded real guard probe for each permission mode against final source, recording all outcomes. No automatic paid retries. Publish acceptance only from passing mode-bound observations; if blocked, preserve fail-closed behavior and report the precise blocker.
 - [ ] Run bounded real Godot/plain-client acceptance against final code if guard evidence passes; retain source/runtime/auth limits and failures. Do not claim local laptop/OAuth/UI feel acceptance from cloud runs.
 - [x] Update the owner checklist and offline completion claims; record remaining laptop checks and the offline handoff.

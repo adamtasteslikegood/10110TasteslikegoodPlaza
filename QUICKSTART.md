@@ -121,9 +121,11 @@ info — questions will show a "Bridge not connected" error until you start
 ## Project work and domain controls (M12)
 
 The character/domain amendment is implemented on the PLZG-289 branch with
-offline verification. Fresh source-bound two-mode guard and live acceptance are
-pending; tools fail closed until those observations are published. The 2026-10-21
-Linux results are historical. Owner laptop/OAuth/desktop checks remain open;
+offline verification. Both guard modes passed at `e67c926`, but later concurrency
+corrections and expanded source fingerprints require fresh acceptance; tools fail
+closed against the retained older evidence. The first amendment live attempt at
+`5f20d9c` failed final evidence validation. New paid attempts await explicit
+approval after review. Owner laptop/OAuth/desktop checks remain open;
 see [M12 evidence and desktop checks](#m12-live-evidence-and-desktop-checks).
 Catalog characters require a prepared project for work. Explicit extras retain
 tools-disabled conversation when `WORKSPACE_ROOT_DIR` is JSON `null` (the default).
@@ -532,14 +534,31 @@ Nothing else in the repo needs them.
 
 ## M12 live evidence and desktop checks
 
-**Current amendment acceptance is pending.** The [offline verification record](specs/evidence/m12-character-offline-2026-10-22.json) covers 1,810 Python tests, 118 subtests, eight headless gates and 41 physical/integration tests. Offline tests do not activate tools.
-The fixed production artifact still represents earlier sources and fails closed
-for this amendment. Settle task, whole-branch and repository reviews before paid
-probes; review fixes can invalidate source-bound observations. Run each paid
-attempt deliberately, retain failures and never retry automatically. Publish only
-after both permission modes pass against the final sources and installed runtime.
-Then run the Godot/plain-client flow in the selected effective mode. Two guard
-modes do not imply that live UI behavior was tested in both modes.
+**Current-source amendment acceptance is pending.** The [corrective validation record](specs/evidence/m12-character-live-attempts-2026-10-22.json)
+records **1,849 Python tests and 118 subtests passing with zero skips** at
+`6917d73`, including actual offline orchestration in both modes with pinned Godot
+required. All eight headless gates passed: smoke 132 agents; conversation store
+578, transport client 154, dialogue panel 220, domain store 136, domain transport
+69, domain panel 111 and character domain 52 checks. The earlier [offline record](specs/evidence/m12-character-offline-2026-10-22.json)
+retains its original 1,810-test baseline and source hashes. Offline tests do not
+activate tools.
+
+The [guard attempt ledger](specs/evidence/m12-character-guard-attempts-2026-10-22.json)
+retains the pre-SDK setup failure and **58 passing cases** across dontAsk and
+bypassPermissions at `e67c926`. The [first amendment live attempt](specs/evidence/m12-character-live-dontAsk-2026-10-22-attempt1.json)
+at `5f20d9c` completed its three lifetimes but failed final validation with
+`wire domain_id`: valid extra-status null department IDs were rejected. Its raw
+report remains failed and unchanged. The validator is corrected; later offline
+checks also exposed short-lock contention between status observation and
+Start/memory admission, corrected at `6917d73`.
+
+Four transitive guard-state files now join the source fingerprint inventory.
+The retained six-source envelope is historical and fails current validation in
+both modes. After review/CI, obtain new explicit approval for fresh full guard
+matrices in both modes and one selected-mode live attempt. Publish only unchanged
+accepted records matching the actual runtime, commit that evidence, and require
+a clean HEAD before live. Keep every outcome; never retry automatically or
+refresh old hashes. Two guard modes do not imply live UI acceptance in both modes.
 
 Historically, on 2026-10-21 the [29-case guard matrix](specs/evidence/m12-guard-2026-10-21.json)
 and [real headless M12 flow](specs/evidence/m12-live-2026-10-21.json) passed on
@@ -604,7 +623,7 @@ exact source hashes, versions and the actual local bundled binary hash.
 Fresh probes are **not automatically activated**. Product activation reads fixed
 `bridge/tool_guard_acceptance.json`, an envelope with `schema_version:1` and
 `records` keyed by `dontAsk` and `bypassPermissions`. Both complete records must
-match all six guarded source hashes. Each selected mode also verifies the pinned
+match all ten guarded source hashes. Each selected mode also verifies the pinned
 SDK/AnyIO/CLI version and actual bundled binary SHA; there is no evidence override.
 
 For publication, build `acceptance_envelope(records)` from the two unchanged

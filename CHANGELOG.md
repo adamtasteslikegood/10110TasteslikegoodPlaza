@@ -26,8 +26,11 @@ spec-set versions, and no application release existed before `v0.1.22`.
 - Update live orchestration and strict evidence checks for explicit Core Start,
   working dialogue, independent extras, selected mode and context revisions.
   Offline tests include the runner's real Godot/Git flow with test-only SDK methods.
-  Historical reports and production acceptance stay unchanged. Fresh two-mode
-  guard/live proof is pending after final review; laptop/OAuth/desktop remains open.
+  Retain 58 historical guard passes at `e67c926` and the unchanged failed live
+  attempt at `5f20d9c`. Correct nullable extra-status validation and bounded
+  observation/admission lock contention. The ten-source guard contract rejects
+  the retained older envelope; fresh guard/live proof needs explicit approval
+  after review. Laptop/OAuth/desktop acceptance remains open.
 
 ### Documentation — M12 working-character amendment (PLZG-289)
 

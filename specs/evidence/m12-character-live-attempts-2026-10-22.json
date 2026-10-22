@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "milestone": "M12 character/domain amendment",
+  "date": "2026-10-22",
+  "attempts": [
+    {
+      "attempt": 1,
+      "artifact": "specs/evidence/m12-character-live-dontAsk-2026-10-22-attempt1.json",
+      "sha256": "45fe855d1823b13ebc827775b79d9be2f4aeacdef8dc7d97b343fcacee874e25",
+      "tested_commit": "5f20d9cb9ae6721bbae6deac803b65d99cd5fa89",
+      "run_id": "0660c2c2f6bb4450830ab09189f4d048",
+      "permission_mode": "dontAsk",
+      "auth_mode": "api_key",
+      "exit_code": 1,
+      "completed": true,
+      "accepted": false,
+      "errors": [
+        "wire domain_id"
+      ],
+      "started_utc": "2026-10-22T11:39:50.623378+00:00",
+      "ended_utc": "2026-10-22T11:40:29.353033+00:00",
+      "observed_lifetimes": 3,
+      "versions": {
+        "sdk": "0.2.136",
+        "anyio": "4.14.2",
+        "cli": "2.1.228 (Claude Code)",
+        "godot": "4.7.1.stable.official.a13da4feb",
+        "python": "3.12.14",
+        "platform": "linux",
+        "cli_sha256": "d535985e6941a3eb00179ccd7f52ceb0c6623a0305a518ebc4e6514f84a94c99"
+      },
+      "binding_verification": {
+        "clean_tested_head": true,
+        "before_after_baselines_equal": true,
+        "historical_source_inventory_and_hashes_match": true,
+        "controller_checked_actual_baseline_before_corrections": true
+      },
+      "failure": "Final wire validation required text for legitimate extra agent_status domain_id:null replies at initial.wire.emitted indices 1, 2 and 32. Private closure observations confirmed execution_kind:extra; the published sanitizer omitted that discriminator. Completed lifetimes do not override failed acceptance."
+    }
+  ],
+  "corrections": [
+    {
+      "commit": "810854d7c26e63261b10877539ab46a7fd4b8658",
+      "change": "Validate null domain only for explicit typed extra-status replies; retain execution_kind in sanitized wire proof and validate actual raw/sanitized offline wire. Failed report unchanged."
+    },
+    {
+      "commit": "6917d73cac6f931a152c067117dd4606f24f9572",
+      "change": "Serialize bounded short execution/memory lock contention while retaining durable-owner, unclean-marker, timeout, inode and cancellation guards; offload live observation through owned I/O. Add project_files, workspace, workspace_lease and project_memory to guard fingerprints."
+    }
+  ],
+  "offline_followup": {
+    "tested_commit": "6917d73cac6f931a152c067117dd4606f24f9572",
+    "provenance": "Lifecycle worker completed gates before commit with no source changes during the full run; controller supplied and worker inspected the completed report/log summaries.",
+    "python": {
+      "passed": 1849,
+      "subtests_passed": 118,
+      "skipped": 0,
+      "seconds": 161.85,
+      "command": "GODOT_BIN=\"$G\" PLAZA_REQUIRE_GODOT=1 \"$P\" -m pytest bridge/tests/ tests/ -q",
+      "log": "/tmp/m12-observer-full.log"
+    },
+    "headless": {
+      "passed_gates": 8,
+      "checks": {
+        "smoke_agents": 132,
+        "conversation_store": 578,
+        "transport_client": 154,
+        "dialogue_panel": 220,
+        "domain_store": 136,
+        "domain_transport": 69,
+        "domain_panel": 111,
+        "character_domain": 52
+      },
+      "command": "GODOT_BIN=\"$G\" \"$P\" scripts/run_headless.py smoke conversation_store transport_client dialogue_panel domain_store domain_transport domain_panel character_domain",
+      "log": "/tmp/m12-observer-headless.log"
+    },
+    "tools": {
+      "python": "/workspace/10110TasteslikegoodPlaza/.venv/bin/python",
+      "godot": "/tmp/plaza-m12-godot-4.7.1/Godot_v4.7.1-stable_linux.x86_64"
+    },
+    "lint": "All nine lifecycle-changed Python files passed Black and fatal Flake8; git diff --check passed. Offline checks do not establish paid acceptance."
+  },
+  "historical_guard_evidence": {
+    "ledger": "specs/evidence/m12-character-guard-attempts-2026-10-22.json",
+    "tested_commit": "e67c926bd6b10dc3fe3ad5cf29d4382090a69cb3",
+    "accepted_cases": {
+      "dontAsk": 29,
+      "bypassPermissions": 29
+    },
+    "envelope_path": "bridge/tool_guard_acceptance.json",
+    "envelope_sha256": "8aa36d6227c3ec7ed5c33a5e712e5be0ffe8a3187ae0d00a50c44b5f5031cae2",
+    "current_status": "Historical six-source records remain byte-identical and are rejected in both modes by the current ten-source contract."
+  },
+  "next_step": "After final review/CI, obtain new explicit authorization for fresh full guard matrices in both modes and one selected-mode live attempt. Strictly validate actual runtime before publishing unchanged accepted guard records, commit evidence and require clean HEAD before live. No automatic paid retries or approval inferred from prior runs.",
+  "limits": [
+    "Failed raw report remains accepted:false; no altered observation is activated.",
+    "Current-source guard and live acceptance are pending. The existing acceptance artifact intentionally fails closed.",
+    "Reported historical guard terminal costs exclude nonterminal cancellation queries and are not billing totals.",
+    "This evidence does not claim merge, milestone completion, native OAuth, another laptop binary or desktop acceptance."
+  ]
+}
