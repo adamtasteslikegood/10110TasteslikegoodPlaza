@@ -90,7 +90,9 @@ async def test_stale_generation_cannot_mutate(setup):
         "domain_query",
     ):
         extra = (
-            dict(agent_id="builder", task="task") if action == "domain_query" else {}
+            dict(agent_id="backend-architect", task="task")
+            if action == "domain_query"
+            else {}
         )
         reply = await command(manager, action, domain_session_id=first, **extra)
         assert reply[-1]["error_type"] == "session_unavailable"

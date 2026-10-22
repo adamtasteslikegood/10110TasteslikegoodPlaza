@@ -6,6 +6,8 @@ from unittest.mock import AsyncMock
 
 import pytest
 
+pytestmark = pytest.mark.usefixtures("explicit_extras")
+
 from bridge.config import default_config
 from bridge.tests.test_workspace import repository
 
@@ -303,7 +305,7 @@ async def test_late_preflight_never_calls_provider_and_settles_owned_intent(
     )
     await settled(service)
     server = BridgeServer(config=config, project_service=service)
-    monkeypatch.setattr("bridge.server.load_agent", lambda _: "definition")
+    monkeypatch.setattr("bridge.server.load_agent", lambda _, **kw: "definition")
     server.conversation.handle_request = AsyncMock()
     memory = service.require_memory()
     begin = memory.begin_turn
@@ -355,7 +357,7 @@ async def test_preflight_memory_failure_prevents_provider_call(tmp_path, monkeyp
     )
     await settled(service)
     server = BridgeServer(config=config, project_service=service)
-    monkeypatch.setattr("bridge.server.load_agent", lambda _: "definition")
+    monkeypatch.setattr("bridge.server.load_agent", lambda _, **kw: "definition")
     server.conversation.handle_request = AsyncMock()
     service.prepare_memory_turn = AsyncMock(
         side_effect=MemoryError("memory_unavailable", "unavailable")
@@ -383,8 +385,8 @@ async def test_memory_save_failure_keeps_successful_history_and_unclean_run_evid
     )
     await settled(service)
     server = BridgeServer(config=config, project_service=service)
-    monkeypatch.setattr("bridge.server.load_agent", lambda _: "definition")
-    monkeypatch.setattr("bridge.conversation.load_agent", lambda _: "definition")
+    monkeypatch.setattr("bridge.server.load_agent", lambda _, **kw: "definition")
+    monkeypatch.setattr("bridge.conversation.load_agent", lambda _, **kw: "definition")
     backend = AsyncMock()
     backend.complete.return_value = "completed task"
     server.conversation = ConversationEngine(config=config, backend=backend)
@@ -472,7 +474,12 @@ async def test_actual_chief_reviewer_is_fresh_tools_disabled_exact_json(
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
     monkeypatch.setattr(conversation_api, "AsyncAnthropic", lambda **kwargs: manager)
     config = replace(default_config(), conversation_backend=backend)
-    assert await review_repository(config, proposal) == decision
+    assert (
+        await review_repository(
+            config, proposal, intent="Prepare only the approved files"
+        )
+        == decision
+    )
     assert (root / ".git").exists() is (project_state == "existing_unborn")
     if backend == "claude_code":
         options = clients[0].options
@@ -491,6 +498,7 @@ async def test_actual_chief_reviewer_is_fresh_tools_disabled_exact_json(
         sent = request["messages"]
     assert len(sent) == 1 and sent[0]["role"] == "user"
     reviewed = json.loads(sent[0]["content"])
+    assert reviewed["player_intent"] == "Prepare only the approved files"
     assert reviewed["root"] == str(root)
     assert reviewed["root_identity"] == list(proposal.root_identity)
     assert reviewed["unborn"] is (project_state == "existing_unborn")
@@ -531,7 +539,7 @@ async def test_lone_surrogate_envelope_fallback_finishes_real_memory_turn(
     )
     await settled(service)
     server = BridgeServer(config=config, project_service=service)
-    monkeypatch.setattr("bridge.server.load_agent", lambda _: "definition")
+    monkeypatch.setattr("bridge.server.load_agent", lambda _, **kw: "definition")
     raw = '{"answer":"\\ud800"}'
     offline_clients[0].reply.return_value = raw
     history = {}

@@ -29,8 +29,8 @@ class TestClassifyRequest:
     def test_resume(self):
         assert classify_request({"type": "resume"}) == RequestType.RESUME
 
-    def test_unknown_type_defaults_to_conversation(self):
-        assert classify_request({"type": "bogus"}) == RequestType.CONVERSATION
+    def test_unknown_type_is_invalid(self):
+        assert classify_request({"type": "bogus"}) == RequestType.INVALID
 
 
 class TestParseRequest:

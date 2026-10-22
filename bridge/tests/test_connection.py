@@ -5,9 +5,14 @@ from unittest.mock import AsyncMock
 
 import pytest
 
+pytestmark = pytest.mark.usefixtures("explicit_extras")
+
 
 @pytest.mark.asyncio
-async def test_pending_npc_does_not_block_stop_or_discovery():
+@pytest.mark.parametrize(
+    "discovery_kind", ["describe_workspace", "agent_status", "project_setup"]
+)
+async def test_pending_npc_does_not_block_stop_or_discovery(discovery_kind):
     from bridge.connection import ConnectionState
 
     entered = []
@@ -25,7 +30,7 @@ async def test_pending_npc_does_not_block_stop_or_discovery():
     state = ConnectionState(socket, dispatch)
     state.submit("npc", {})
     state.submit("stop", {"type": "deactivate_domain"})
-    state.submit("discovery", {"type": "describe_workspace"})
+    state.submit("discovery", {"type": discovery_kind})
     for _ in range(10):
         await asyncio.sleep(0)
     assert set(entered) == {"npc", "stop", "discovery"}
@@ -110,7 +115,7 @@ async def test_new_connection_cannot_steal_domain_output(tmp_path, monkeypatch):
                 type="domain_query",
                 domain_id="engineering",
                 domain_session_id=generation,
-                agent_id="builder",
+                agent_id="backend-architect",
                 task="work",
                 request_id="run",
             )

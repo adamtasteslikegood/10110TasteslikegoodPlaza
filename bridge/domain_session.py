@@ -17,6 +17,7 @@ from uuid import uuid4
 
 from bridge.context import compose_context
 from bridge.agents import load_agent
+from bridge.agent_bindings import require_working_binding, InvalidBinding
 from bridge.config import BridgeConfig
 from bridge.domain_protocol import DomainCommandError, error_packet
 from bridge.domain_sdk import DomainSDKOwner, SDKOutcome
@@ -134,6 +135,12 @@ class DomainSession:
     @property
     def state(self):
         return self._state
+
+    @property
+    def can_run(self):
+        return self._state in (SessionState.ACTIVE, SessionState.BACKGROUND) and not (
+            self._stopping or self._broken or self._inflight is not None
+        )
 
     @property
     def clean_inactive(self):
@@ -263,6 +270,12 @@ class DomainSession:
     ) -> None:
         # No await before installing the single in-flight record.
         command = dict(command)
+        try:
+            require_working_binding(command.get("agent_id"), self.domain_id)
+        except InvalidBinding:
+            return await self._error(command, "invalid_binding", emit, context)
+        if command.get("domain_id") != self.domain_id:
+            return await self._error(command, "invalid_binding", emit, context)
         if command.get("domain_session_id") != self.domain_session_id:
             return await self._error(command, "session_unavailable", emit, context)
         for packet in self._entries:

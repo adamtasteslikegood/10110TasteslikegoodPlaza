@@ -36,7 +36,9 @@ class ConversationEngine:
         timeout=None,
         *,
         config: BridgeConfig | None = None,
+        registry=None,
     ):
+        self._registry = registry
         self._config = config if config is not None else default_config()
         self._backend = (
             backend
@@ -105,7 +107,11 @@ class ConversationEngine:
                 "agent_id contains invalid characters",
             )
 
-        definition = load_agent(agent_id)
+        definition = (
+            load_agent(agent_id, registry=self._registry)
+            if self._registry is not None
+            else load_agent(agent_id)
+        )
         if definition is None:
             return make_error(agent_id, task, "not_found", f"No agent '{agent_id}'")
 

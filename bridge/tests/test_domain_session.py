@@ -33,7 +33,7 @@ async def setup(tmp_path, monkeypatch):
     monkeypatch.setattr("bridge.domain_session.DomainSDKOwner", factory, raising=False)
     monkeypatch.setattr(
         "bridge.domain_session.load_agent",
-        lambda agent: "definition" if agent == "builder" else None,
+        lambda agent: "definition" if agent == "backend-architect" else None,
     )
     session = DomainSession(
         "engineering", "generation", config=default_config(), project_service=service
@@ -223,7 +223,7 @@ async def test_unknown_agent_rejected_before_checkpoint(setup):
         packets.append(packet)
 
     await session.admit_query(query(agent_id="unknown"), context=context(), emit=emit)
-    assert packets[-1]["error_type"] == "invalid_request"
+    assert packets[-1]["error_type"] == "invalid_binding"
     assert service.memory.load().revision == revision and not owners[0].calls
 
 

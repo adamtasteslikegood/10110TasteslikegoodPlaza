@@ -30,6 +30,30 @@ class DomainManager:
         self._sessions: dict[str, list[DomainSession]] = {}
         self._closing = False
 
+    def can_run(self, domain):
+        generations = self._sessions.get(domain, [])
+        return bool(generations and generations[-1].can_run)
+
+    def snapshot(self, domain):
+        generations = self._sessions.get(domain, [])
+        packet = (
+            generations[-1].snapshot()
+            if generations
+            else dict(
+                type="domain_state",
+                project_id=self._service.snapshot().get("project_id"),
+                workspace_id=self._service.workspace_snapshot(domain).get(
+                    "workspace_id"
+                ),
+                domain_id=domain,
+                domain_session_id=None,
+                state="inactive",
+                execution_state="idle",
+            )
+        )
+        packet["available_generations"] = [s.domain_session_id for s in generations]
+        return packet
+
     def _new_session(self, domain):
         generations = self._sessions.get(domain)
         if generations and not generations[-1].clean_inactive:

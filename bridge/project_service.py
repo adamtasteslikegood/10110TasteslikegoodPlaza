@@ -33,7 +33,7 @@ from bridge.workspace_lease import observe_reservation
 REFERRAL = "Talk to the Chief Architect to prepare this project, then come back and we can work on it."
 
 
-async def review_repository(config, proposal, *, deadline=None):
+async def review_repository(config, proposal, *, deadline=None, intent=""):
     """Fresh configured tools-disabled adapter; no history or memory preflight."""
     engine = ConversationEngine(config=config)
     definition = load_agent("systems-architect")
@@ -43,6 +43,7 @@ async def review_repository(config, proposal, *, deadline=None):
         )
     payload = asdict(proposal)
     payload["root"] = str(proposal.root)
+    payload["player_intent"] = intent
     inspected_state = (
         "existing local Git repository with no HEAD commit"
         if proposal.unborn
@@ -263,6 +264,19 @@ class ProjectService:
             )
         )
 
+    @property
+    def initialized(self):
+        return self._initialized
+
+    def capacity_snapshot(self, domain_id=None):
+        owner = self._capacity_owner
+        return dict(
+            limit=1,
+            available=owner is None,
+            domain_id=owner.domain_id if owner else None,
+            domain_session_id=owner.domain_session_id if owner else None,
+        )
+
     def reserve_capacity(self, owner):
         if self._capacity_owner is not None and self._capacity_owner is not owner:
             raise WorkspaceError(
@@ -317,7 +331,7 @@ class ProjectService:
                 pass
             raise
 
-    async def interact_setup(self, agent_id, request_id, *, deadline=None):
+    async def interact_setup(self, agent_id, request_id, *, deadline=None, intent=""):
         stage = self._snapshot["stage"]
         if stage in ("ready", "unconfigured"):
             return None
@@ -334,7 +348,7 @@ class ProjectService:
             )
         self._snapshot.update(stage="reviewing", reason=None, architect_decision=None)
         self._setup_task = asyncio.create_task(
-            self._setup(deadline), name="chief-project-setup"
+            self._setup(deadline, intent), name="chief-project-setup"
         )
         # A caller's response budget never cancels approved initialization. The
         # service retains that task through completion and shutdown drainage.
@@ -361,7 +375,7 @@ class ProjectService:
             )
         return "Chief Architect review deadline expired; no initialization was approved. Review cleanup may still be in progress."
 
-    async def _setup(self, deadline):
+    async def _setup(self, deadline, intent=""):
         try:
             async with asyncio.timeout_at(deadline):
                 proposal = await owned_io(
@@ -371,7 +385,7 @@ class ProjectService:
                     await self._reviewer(proposal)
                     if self._reviewer is not None
                     else await review_repository(
-                        self._config, proposal, deadline=deadline
+                        self._config, proposal, deadline=deadline, intent=intent
                     )
                 )
                 approval = parse_init_approval(proposal, payload)

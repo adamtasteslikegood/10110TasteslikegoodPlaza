@@ -4,6 +4,8 @@ import asyncio
 import json
 
 import pytest
+
+pytestmark = pytest.mark.usefixtures("explicit_extras")
 from unittest.mock import AsyncMock, MagicMock
 
 from bridge.server import BridgeServer
@@ -176,7 +178,7 @@ class TestConversationHistoryRouting:
     def answering(self, conv):
         """Make the mocked engine keep a history the way the real one does."""
 
-        async def handle(request, history=None, *, metadata=None):
+        async def handle(request, history=None, *, metadata=None, context_packet=None):
             if history is not None:
                 history += [
                     {"role": "user", "content": request["task"]},
@@ -262,7 +264,7 @@ class TestConversationHistoryRouting:
         histories = {}
         for agent_id in (["a"], {"a": 1}, 7):
             await server.dispatch({"agent_id": agent_id, "task": "hi"}, histories)
-            assert self.passed_history(conv) is None
+            conv.handle_request.assert_not_called()
         assert histories == {}
 
     async def test_json_that_is_no_object_is_an_error_not_a_crash(self, mock_engines):

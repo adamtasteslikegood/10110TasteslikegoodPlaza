@@ -6,6 +6,7 @@ from uuid import uuid4
 
 from bridge.domain_protocol import COMMANDS, error_packet
 from bridge.protocol import make_error
+from bridge.interaction_protocol import COMMANDS as INTERACTIONS, interaction_error
 from bridge.workspace import WorkspaceError
 
 
@@ -69,13 +70,18 @@ class ConnectionState:
         data = data if isinstance(data, dict) else {}
         kind = data.get("type")
         domain = isinstance(kind, str) and kind in COMMANDS
+        interaction = isinstance(kind, str) and kind in INTERACTIONS
         slot = (
             "stop"
             if kind == "deactivate_domain"
             else (
                 "discovery"
-                if kind in ("describe_workspace", "domain_status")
-                else "control" if domain else "npc"
+                if kind in ("describe_workspace", "domain_status", "agent_status")
+                else (
+                    "setup"
+                    if kind == "project_setup"
+                    else "control" if domain else "npc"
+                )
             )
         )
         if self.closed and slot == "npc":
@@ -107,6 +113,10 @@ class ConnectionState:
                     "An NPC conversation is already in progress",
                 )
             )
+            if interaction:
+                packet = interaction_error(
+                    data, "service_busy", dict(self._project_snapshot())
+                )
             if (
                 not domain
                 and isinstance(data.get("request_id"), str)

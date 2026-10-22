@@ -11,6 +11,7 @@ from bridge.tests.test_workspace import bootstrap
 
 class FakeProjectService:
     owner_run_id = "domain-test-run"
+    initialized = False
 
     def __init__(self, tmp_path):
         _, runtime, self.workspace = bootstrap(tmp_path, domain_id="engineering")
@@ -21,6 +22,16 @@ class FakeProjectService:
         self.capacity = None
         self.reservation = None
         self.memory_result = None
+
+    def capacity_snapshot(self, domain_id=None):
+        return dict(
+            limit=1,
+            available=self.capacity is None,
+            domain_id=self.capacity.domain_id if self.capacity else None,
+            domain_session_id=(
+                self.capacity.domain_session_id if self.capacity else None
+            ),
+        )
 
     def reserve_capacity(self, owner):
         from bridge.workspace import WorkspaceError
@@ -85,8 +96,8 @@ class FakeProjectService:
             stage="ready",
         )
 
-    async def refresh_snapshot(self):
-        return self.snapshot()
+    async def refresh_snapshot(self, domain_id=None):
+        return self.workspace_snapshot(domain_id) if domain_id else self.snapshot()
 
     def close(self):
         try:
@@ -138,7 +149,7 @@ class FakeOwner:
         return CleanupOutcome(self.clean, None if self.clean else "failure")
 
 
-def context(request="run", connection="origin", agent="builder"):
+def context(request="run", connection="origin", agent="backend-architect"):
     return RequestContext(connection, request, agent, "domain", "model", "engineering")
 
 
@@ -148,7 +159,7 @@ def query(request="run", generation="generation", **changes):
         domain_id="engineering",
         domain_session_id=generation,
         request_id=request,
-        agent_id="builder",
+        agent_id="backend-architect",
         task="Build something",
     )
     values.update(changes)

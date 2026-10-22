@@ -149,7 +149,7 @@ async def test_provider_errors_echo_id_without_changing_error_fields(
 async def test_missing_agent_error_echoes_id(
     runtime_config, offline_clients, monkeypatch
 ):
-    monkeypatch.setattr("bridge.conversation.load_agent", lambda _: None)
+    monkeypatch.setattr("bridge.conversation.load_agent", lambda _, **kw: None)
     server = BridgeServer(config=runtime_config)
     response = await server.dispatch(
         {"agent_id": "absent", "task": "hi", "request_id": "missing-agent"}
@@ -160,8 +160,8 @@ async def test_missing_agent_error_echoes_id(
             "task": "hi",
             "output": "",
             "status": "error",
-            "error_type": "not_found",
-            "message": "No agent 'absent'",
+            "error_type": "invalid_binding",
+            "message": "Agent binding is unavailable",
             "request_id": "missing-agent",
         }
     ]

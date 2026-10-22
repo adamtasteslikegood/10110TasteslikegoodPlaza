@@ -22,6 +22,7 @@ GENERATION_COMMANDS = COMMANDS - {
     "activate_domain",
 }
 ERROR_MESSAGES = {
+    "invalid_binding": "The selected agent does not belong to this domain.",
     "workspace_unconfigured": "Configure a project before starting domain work.",
     "workspace_invalid": "The configured workspace needs inspection.",
     "capacity_limit": "Execution capacity is reserved by another session.",
