@@ -12,6 +12,10 @@ PERMISSION_MODES = ("dontAsk", "bypassPermissions")
 ACCEPTANCE_VERSION = 1
 GUARD_SOURCES = (
     "bridge/config.py",
+    "bridge/project_files.py",
+    "bridge/workspace.py",
+    "bridge/workspace_lease.py",
+    "bridge/project_memory.py",
     "bridge/readiness.py",
     "bridge/guarded_transport.py",
     "bridge/domain_sdk.py",

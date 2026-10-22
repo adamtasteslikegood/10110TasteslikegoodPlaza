@@ -346,9 +346,27 @@ def test_acceptance_manifest_requires_versions_cases_inventory_and_exact_sources
         changed[field] = value
         with pytest.raises(RuntimeError):
             module.check_acceptance(envelope(changed), tmp_path, "dontAsk")
-    (tmp_path / module.GUARD_SOURCES[0]).write_text("changed source")
-    with pytest.raises(RuntimeError):
-        module.check_acceptance(envelope(evidence), tmp_path, "dontAsk")
+    for name in module.GUARD_SOURCES:
+        source = tmp_path / name
+        original = source.read_bytes()
+        source.write_text("changed source")
+        for mode in ("dontAsk", "bypassPermissions"):
+            with pytest.raises(RuntimeError):
+                module.check_acceptance(envelope(evidence), tmp_path, mode)
+        source.write_bytes(original)
+    transitive = {
+        "bridge/project_files.py",
+        "bridge/workspace.py",
+        "bridge/workspace_lease.py",
+        "bridge/project_memory.py",
+    }
+    assert transitive <= set(module.GUARD_SOURCES)
+    previous = json.loads(json.dumps(evidence))
+    for name in transitive:
+        del previous["source_sha256"][name]
+    for mode in ("dontAsk", "bypassPermissions"):
+        with pytest.raises(RuntimeError):
+            module.check_acceptance(envelope(previous), tmp_path, mode)
 
 
 def test_runtime_missing_acceptance_manifest_fails_closed(monkeypatch, tmp_path):

@@ -266,7 +266,9 @@ class ProjectMemoryStore:
                     with files.directory(directory, create=create):
                         pass
                     check()
-                lock = files.FileLock.acquire(self._base / "memory.lock")
+                lock = files.FileLock.acquire(
+                    self._base / "memory.lock", deadline=deadline
+                )
                 stack.callback(lock.close)
                 check()
                 yield check, stack

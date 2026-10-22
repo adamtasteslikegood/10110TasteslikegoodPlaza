@@ -621,11 +621,12 @@ def inspect_service(service, owners, observer):
 async def inspect_observation(service, owners, observer):
     """A short memory checkpoint lock is not a failed model task or a retry."""
     from bridge.project_memory import MemoryError
+    from bridge.readiness import owned_io
 
     async with asyncio.timeout(2):
         while True:
             try:
-                return inspect_service(service, owners, observer)
+                return await owned_io(inspect_service, service, owners, observer)
             except MemoryError:
                 # Only read-only observation is repeated. Permanent damage still
                 # fails this bounded deadline; no command/provider is resubmitted.

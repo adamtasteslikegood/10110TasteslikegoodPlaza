@@ -11,6 +11,7 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import time
 from uuid import UUID, uuid4
 
 from bridge import project_files as files
@@ -384,7 +385,13 @@ def _validate_tree(workspace: ExecutionWorkspace, *, runtime_root: Path) -> None
 
 def _check_idle(workspace: ExecutionWorkspace) -> files.FileLock:
     try:
-        lock = files.FileLock.acquire(workspace.git_dir / "plaza-execution.lock")
+        lock = files.FileLock.acquire(
+            workspace.git_dir / "plaza-execution.lock",
+            deadline=time.monotonic() + files.SHORT_LOCK_SECONDS,
+            stop_waiting=lambda: os.path.lexists(
+                workspace.git_dir / "plaza-unclean.json"
+            ),
+        )
     except BlockingIOError:
         raise WorkspaceError(
             "workspace_busy", "Workspace is reserved by a domain"

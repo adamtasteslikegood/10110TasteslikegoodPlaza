@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import re
 import threading
+import time
 from uuid import uuid4
 
 from bridge import project_files as files
@@ -80,7 +81,11 @@ class WorkspaceLease:
             )
             try:
                 lock = files.FileLock.acquire(
-                    workspace.git_dir / "plaza-execution.lock"
+                    workspace.git_dir / "plaza-execution.lock",
+                    deadline=time.monotonic() + files.SHORT_LOCK_SECONDS,
+                    stop_waiting=lambda: os.path.lexists(
+                        workspace.git_dir / "plaza-unclean.json"
+                    ),
                 )
             except BlockingIOError:
                 domain = None
@@ -176,8 +181,6 @@ def observe_reservation(workspace: ExecutionWorkspace) -> dict | None:
     Open only an existing inode. No creation, fsync, recovery or lease acquisition.
     A held foreign marker identifies an owner; it cannot prove healthy cleanup.
     """
-    import fcntl
-
     path = workspace.git_dir / "plaza-execution.lock"
     busy = False
     try:
@@ -185,9 +188,17 @@ def observe_reservation(workspace: ExecutionWorkspace) -> dict | None:
             fd = files._open(parent, path.name, os.O_RDONLY)
             try:
                 try:
-                    fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    files.lock_exclusive(
+                        fd,
+                        deadline=time.monotonic() + files.SHORT_LOCK_SECONDS,
+                        stop_waiting=lambda: os.path.lexists(
+                            workspace.git_dir / "plaza-unclean.json"
+                        ),
+                    )
                 except BlockingIOError:
                     busy = True
+                # A bounded wait must not lend a replaced lock inode authority.
+                files.FileLock(path, fd).validate()
                 marker = _observe_marker(workspace, busy)
             finally:
                 os.close(fd)

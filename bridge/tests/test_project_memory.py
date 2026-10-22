@@ -361,7 +361,7 @@ def test_partial_revision_is_not_reinitialized(memory, monkeypatch, operation):
     assert all(p.read_bytes() == data for p, data in before.items())
 
 
-def test_nonblocking_admission_and_late_write_failure(memory, monkeypatch):
+def test_bounded_admission_and_late_write_failure(memory, monkeypatch):
     module, store = memory
     turn = start(module, store)
     lock = files.FileLock.acquire(store.workspace.common_git_dir / "plaza/memory.lock")
@@ -369,7 +369,7 @@ def test_nonblocking_admission_and_late_write_failure(memory, monkeypatch):
         started = time.monotonic()
         with pytest.raises(module.MemoryError):
             store.load()
-        assert time.monotonic() - started < 0.5
+        assert time.monotonic() - started < 2.0
     finally:
         lock.close()
     original = files.atomic_replace
