@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "milestone": "M12 character/domain amendment",
+  "date": "2026-10-22",
+  "auth_category": "API key",
+  "auth_provenance": "Controller execution context; raw guard reports do not independently record authentication.",
+  "attempts": [
+    {
+      "attempt": 1,
+      "permission_mode": "dontAsk",
+      "tested_commit": "5a218d111eba9d085fc678382fd49fd68e24dc20",
+      "artifact": "specs/evidence/m12-character-guard-dontAsk-2026-10-22-attempt1.json",
+      "sha256": "9293cef6eafbec226c21fd457900c4f35346edebe8e03c9225793e74d430d2eb",
+      "exit_code": 1,
+      "accepted": false,
+      "observed_cases": 0,
+      "errors": [
+        "Required matrix is incomplete or duplicated",
+        "probe interrupted: WorkspaceError"
+      ],
+      "failure_boundary": "The real Git fixture prepared the default Core workspace, then WorkspaceLease.acquire rejected its probe domain identifier. run_case awaits this fixture before defining ObservedClient or constructing DomainSDKOwner; no SDK owner/client creation or model query was reached. Local bundled CLI --version and file hashing had already completed. This boundary was independently reproduced offline; it is not inferred solely from an empty case list."
+    },
+    {
+      "attempt": 2,
+      "permission_mode": "dontAsk",
+      "tested_commit": "e67c926bd6b10dc3fe3ad5cf29d4382090a69cb3",
+      "artifact": "specs/evidence/m12-character-guard-dontAsk-2026-10-22.json",
+      "sha256": "c289785acee197c45ed7d47af341389e4cd2501965852a5091f734b4df0267ee",
+      "exit_code": 0,
+      "accepted": true,
+      "observed_cases": 29,
+      "errors": [],
+      "reported_terminal_cost_usd": 0.767295,
+      "terminal_cost_observations": 24
+    },
+    {
+      "attempt": 3,
+      "permission_mode": "bypassPermissions",
+      "tested_commit": "e67c926bd6b10dc3fe3ad5cf29d4382090a69cb3",
+      "artifact": "specs/evidence/m12-character-guard-bypassPermissions-2026-10-22.json",
+      "sha256": "f01dfca54113370860cad544657f536856358696305756c53b11383ad86ec97a",
+      "exit_code": 0,
+      "accepted": true,
+      "observed_cases": 29,
+      "errors": [],
+      "reported_terminal_cost_usd": 0.6647689999999999,
+      "terminal_cost_observations": 24
+    }
+  ],
+  "decision": "Attempt 1 remains failed and unchanged. Harness correction e67c926 binds the lease and TurnIntent to the actual workspace department and workspace identity without changing production guards. After independent review and all eight CI checks passed, the controller deliberately invoked a fresh full dontAsk matrix, inspected its accepted outcome, then separately invoked bypassPermissions. No automatic retry loop, skipped case, acceptance relaxation or source-hash refresh.",
+  "activation": {
+    "path": "bridge/tool_guard_acceptance.json",
+    "schema_version": 1,
+    "sha256": "8aa36d6227c3ec7ed5c33a5e712e5be0ffe8a3187ae0d00a50c44b5f5031cae2",
+    "records": {
+      "dontAsk": "specs/evidence/m12-character-guard-dontAsk-2026-10-22.json",
+      "bypassPermissions": "specs/evidence/m12-character-guard-bypassPermissions-2026-10-22.json"
+    },
+    "validation": "Controller strictly decoded and validated both raw reports and current six source hashes, compared actual installed SDK/AnyIO/CLI versions and actual bundled binary SHA against both records before atomic replacement, then verified both runtime modes. Worker independently rechecked retained raw hashes, commit/source bindings, accepted-record equality and both local runtime verifications."
+  },
+  "versions": {
+    "sdk": "0.2.136",
+    "anyio": "4.14.2",
+    "cli": "2.1.228 (Claude Code)"
+  },
+  "cli_sha256": "d535985e6941a3eb00179ccd7f52ceb0c6623a0305a518ebc4e6514f84a94c99",
+  "limits": [
+    "Reported terminal costs cover 24 retained terminal observations per accepted mode; they exclude nonterminal cancellation queries and are not a billing total.",
+    "Guard acceptance only. Godot/plain-client live acceptance remains pending at this evidence commit.",
+    "Linux API-key observations do not close owner laptop, native OAuth or desktop acceptance."
+  ]
+}
