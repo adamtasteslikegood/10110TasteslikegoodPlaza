@@ -4,7 +4,7 @@ title: Platform Decisions — engine, transport, data layer, licence, repo polic
 tier: 2
 authority: implementation
 status: ACTIVE
-doc_set_version: 0.2.17
+doc_set_version: 0.2.18
 last_updated: 2026-10
 owner: adamtasteslikegood
 derives_from: [META-SPEC]
@@ -356,6 +356,18 @@ The ruling resolves the former unqualified synchronous-bridge mismatch in
 [`SPEC-DRIVERS-025` §4.13](../../specs/meta/spec-drivers-v0.2.5.md).
 The M10 defaults in `D-035` retain 20 domain turns and a USD 1.0 budget.
 
+**Amended owner ruling, 2026-10-22, doc set 0.2.18:** approval of the revised
+`M12-CHARACTER-DOMAIN-AMENDMENT` at `eadb0b4` places every catalog agent in its
+canonical department domain. NPC dialogue fronts that asynchronous work; D-033
+synchronous conversation applies to extras outside the catalog. Extras cannot
+shadow catalog IDs. Approach/status makes no provider/provisioning call; Start
+only reserves/prepares; Send explicitly Runs. Leaving backgrounds; Stop remains
+available while session ownership persists, including idle/background states.
+One domain serializes work without a queue; representative identity is captured
+per Run and retained on results. Capability adds to earned progression under
+D-009, preserving SB-08 arrival and SB-09 first delegation. Second-department
+playability and concurrent execution require separate evidence.
+
 ### `D-035` — Centralized non-secret bridge configuration (M10)
 
 **Approved policy, not a runtime completion claim.** Ratified from the
@@ -538,7 +550,8 @@ One bridge session binds to one project through `WORKSPACE_ROOT_DIR`, default
 Relative paths use the selected config directory. This extends `D-035`'s schema
 without changing its precedence or credential handling.
 
-For a ready repository, the bridge creates/reuses a dedicated named worktree
+For a ready repository, the bridge creates/reuses one dedicated named worktree per
+`(project_id, domain_id)`, shared by that department’s agents,
 outside source/runtime trees, preserving edits. Missing Git waits for interaction
 with the existing `systems-architect` agent; other agents refer the client to that
 role. Its exact-proposal approval authorizes `main` initialization and a reviewed
@@ -546,7 +559,8 @@ seed commit without a second human prompt. Startup/proximity alone do not approv
 it. Git initialization preserves excluded files and any prior index; no remote,
 push, destructive reset or automatic integration is authorized.
 
-Start acquires the initial worktree's exclusive session-length reservation; Stop
+Start prepares/reuses the selected department’s worktree and acquires its exclusive
+session-length reservation; Stop
 releases it only after confirmed SDK cleanup. Backgrounding, idle time and socket
 loss retain it. SDK connect/query/disconnect share one owner task. Every enabled
 tool path must pass a bridge-enforced Git/worktree/memory readiness check; mandatory
@@ -555,6 +569,29 @@ Uncertain teardown blocks reuse. Worktrees and cooperative locks are not host,
 network or descendant-process sandbox containment. Broader runtime providers and
 parallel workspaces remain later design work. The policy is client-independent;
 Godot's movement/referral presentation belongs to the M12 UI specification.
+
+**Amended owner ruling, 2026-10-22:** the approved amendment at `eadb0b4`
+supersedes project-global worktree ownership. Department worktrees use versioned
+validated ownership records and per-worktree reservations; capacity is a separate
+limit. A valid legacy Core tree is adopted in place, preserving path, branch,
+identity, commits and dirty edits. Live/uncertain owners or incomplete migration
+block reuse; no other department may adopt it. Provisioning uses a short common
+project lock; project memory remains shared under D-039. One configured main root
+and restart-based configuration snapshots remain unchanged. Chief setup is a typed
+pre-ready operation with exact inspected proposal/allowlist, `main`, and no second
+human prompt; Start then prepares only the selected domain. Tools remain gated.
+
+The amendment §§7–8 define bounded, fresh-per-turn game/work guidance and a strict
+boolean `DOMAIN_DANGEROUSLY_SKIP_PERMISSIONS=false`, with the `PLAZA_` override.
+False selects `dontAsk`, true selects `bypassPermissions`; Read/Edit/Bash inventory,
+mandatory fail-closed PreToolUse/readiness guards, reservations and memory checks
+remain in both modes. `INSTALL_CONTEXT_DIR=../.local/plaza-context` and
+`PROJECT_GUIDANCE_FILE=PLAZA_AGENTS.md` support `PLAZA_` overrides. Guidance bounds
+are 8 KiB each shipped/installation file, 32 KiB project guidance, 4 KiB runtime
+facts; refresh each admitted turn and diagnose identities/revisions, not bodies.
+Changed source/runtime/mode requires real guard acceptance; no hash-only refresh,
+production bypass or automatic paid retry is authorized. Ratification is design
+approval, not implementation or desktop/OAuth acceptance.
 
 ### `D-039` — Native bounded three-file project memory
 
@@ -590,4 +627,4 @@ not here. Add the `D-nnn` to this file's `decides:` list and to
 `scripts/validate_specs.py` fails the build if the two disagree, and now also fails
 if a document declares `decides:` without an authority licensed to originate.
 
-*Doc set version: 0.2.17 · Last updated: October 2026*
+*Doc set version: 0.2.18 · Last updated: October 2026*

@@ -4,7 +4,7 @@ title: 10110 TastesLike Plaza — Bridge-First Platform Roadmap
 tier: 3
 authority: derived
 status: ACTIVE
-doc_set_version: 0.2.17
+doc_set_version: 0.2.18
 last_updated: 2026-10
 owner: adamtasteslikegood
 derives_from: [PROJECT-OVERVIEW, DESIGN-25D, SPEC-DRIVERS-025, BRIDGE-PLATFORM-DESIGN]
@@ -456,7 +456,7 @@ surfaces remain outside that sequence unless a later design schedules them.
 > is ACTIVE, with written approval recorded 2026-10-21. The
 > [implementation plan](../docs/superpowers/plans/2026-10-21-m12-project-execution.md)
 > is owner-approved for subagent-driven execution. M12 implementation has deterministic
-> and Linux live evidence; merge, laptop binary and desktop acceptance remain open. M13/M14
+> and Linux live evidence; baseline merged in PR #357; laptop binary and desktop acceptance remain open. M13/M14
 > sequencing may change or combine state and isolation; M15's provider remains
 > unselected. See the owner update in `BRIDGE-PLATFORM-DESIGN`.
 
@@ -547,7 +547,7 @@ instructions. The [2026-10-21 Linux live flow](evidence/m12-live-2026-10-21.json
 and [fresh 29-case guard matrix](evidence/m12-guard-2026-10-21.json) passed;
 [recorded evidence and limits](../QUICKSTART.md#m12-live-evidence-and-desktop-checks)
 keep Linux live proof, laptop-binary verification and desktop checks distinct.
-Implementation merge and owner M12 desktop acceptance remain outstanding.
+Baseline implementation merged in PR #357; owner M12 desktop acceptance remains outstanding.
 
 Connect domain lifecycle and execution to the frontend through the UI-agnostic
 bridge contract. Verify the complete path with a live Agent SDK run, including
@@ -557,6 +557,25 @@ alone does not complete this milestone or establish domain/background execution.
 Keep the completed M8 conversation proof distinct from this new
 execution proof. Preserve synchronous NPC calls with timeout (`D-033`) and
 asynchronous buffered domain execution with existing caps (`D-034`).
+
+**Approved M12 correction, 2026-10-22:** the owner approved the revised
+[character/domain amendment](../docs/superpowers/specs/2026-10-22-m12-character-domain-amendment.md)
+at `eadb0b4` (“ok, build it”); doc set 0.2.18 ratifies D-033/D-034/D-038.
+Catalog characters use their canonical department domain through NPC dialogue;
+extras retain synchronous conversation. M12 now includes one safely owned
+worktree per project/department (with in-place legacy Core preservation), shared
+project memory, pre-ready Chief setup, fresh bounded game/work context and a
+guarded owner permission setting. The [implementation plan](../docs/superpowers/plans/2026-10-22-m12-character-domains.md)
+is authorized; correction implementation/acceptance remains pending. Existing
+Linux evidence certifies its tested baseline only. M12 was merged in PR #357;
+references above to its outstanding merge describe the earlier delivery snapshot.
+Desktop/OAuth acceptance remains separate from cloud API-key evidence.
+
+The M6 second-department unlock additionally requires Engineering execution in
+its own worktree plus earned progression. Preserve SB-08's access/introduction
+and SB-09's first delegation; first explicit Start may prepare the worktree after
+access, avoiding a locked-door preparation dependency. This correction supplies
+the service foundation, not the second playable department or M5/M6 completion.
 
 ### Milestone 13 — Durable local application state
 
@@ -570,7 +589,9 @@ the application's state store.
 
 ### Milestone 14 — Independent execution workspaces
 
-Extend M12's minimum dedicated worktree to independently assigned workspaces.
+Extend M12's per-department worktree foundation with broader parallel execution
+and isolation. Department provisioning is already M12 scope; concurrent capacity
+and sandbox containment require their own design and evidence.
 Its order relative to M13 may change or combine persistence and isolation in a
 provider-specific design. Isolate execution under the design's ownership,
 lifecycle and cleanup contract. Verify that concurrent or failed runs cannot

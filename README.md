@@ -4,7 +4,7 @@ title: 10110 TastesLike Plaza — Project Overview
 tier: 2
 authority: derived
 status: ACTIVE
-doc_set_version: 0.2.17
+doc_set_version: 0.2.18
 last_updated: 2026-10
 owner: adamtasteslikegood
 derives_from: [STORYBOARD-W1, DESIGN-25D, PLATFORM-DECISIONS, BRIDGE-PLATFORM-DESIGN]
@@ -63,6 +63,14 @@ runtime follows [`D-037`](docs/designs/platform-decisions.md#d-037--claude-codea
 Claude Code through Agent SDK, with explicit API-key-only Messages API compatibility
 and no automatic fallback. See [Quick start](QUICKSTART.md) for authentication,
 bounded request history and the separate live SDK evidence/acceptance limits.
+
+The owner approved the revised [M12 character/domain amendment](docs/superpowers/specs/2026-10-22-m12-character-domain-amendment.md)
+at `eadb0b4` on 2026-10-22 (“ok, build it”). Ratified policy in doc set 0.2.18
+makes catalog characters working department representatives through NPC dialogue;
+extras use conversation. Each department owns a worktree in the configured project
+and shares project notes. Fresh game/work guidance and guarded permission control
+are approved. Correction implementation and acceptance remain pending; no second
+playable department or concurrent capacity is claimed.
 
 ```
 Layer 4 — Real agent execution  (EXISTS)

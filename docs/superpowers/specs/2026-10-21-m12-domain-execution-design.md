@@ -4,7 +4,7 @@ title: M12 — Project worktree, short-term memory and domain execution
 tier: 2
 authority: implementation
 status: ACTIVE
-doc_set_version: 0.2.17
+doc_set_version: 0.2.18
 last_updated: 2026-10
 owner: adamtasteslikegood
 derives_from: [PLATFORM-DECISIONS, DESIGN-25D, BRIDGE-PLATFORM-DESIGN]
@@ -65,6 +65,29 @@ and M14's broader isolation may be reordered or combined in their
 designs; integrated providers can offer both. M15 remains the hosted durability
 and ownership capability, with no provider selected. A durable object alone does
 not specify an execution filesystem or sandbox.
+
+### 1.1 Approved amendment — controlling current scope
+
+Owner approval of the revised [character/domain amendment](2026-10-22-m12-character-domain-amendment.md)
+at `eadb0b4` on 2026-10-22 (“ok, build it”), ratified in doc set 0.2.18,
+supersedes the following sections wherever their original implementation scope
+conflicts. This document retains the original delivered implementation contract
+and evidence context; amendment approval is not implementation or acceptance.
+
+| Original sections | Current approved contract |
+|---|---|
+| §§1, 4.1, 4.3: singleton worktree/capacity | One worktree/reservation per `(project_id, domain_id)`; same-department serialization, separate capacity limit. Safely adopt valid legacy Core in place preserving identity/path/branch/commits/dirty edits; uncertain or partial migration blocks reuse. |
+| §§4.1–4.2, 6: NPC setup entry | Typed `project_setup` reaches Chief review before readiness; non-Chief referral remains reachable, never falls back to tools-disabled work. Exact inspected proposal/allowlist, `main`, no second human prompt; Start prepares the selected domain after project readiness. |
+| §§4.4–4.5: NPC context/tool distinction | Catalog agents are working domain representatives; extras alone use tools-disabled conversation. Project TODO/HANDOFF/PROGRESS stays one serialized set under the common Git directory, attributing domain/agent/workspace. Fresh bounded game/work context applies to extras, setup and Runs. |
+| §4.5 and §8 item 10: ordinary permission denial | Strict boolean permission setting defaults false (`dontAsk`); true uses `bypassPermissions`. Both retain Read/Edit/Bash inventory, mandatory fail-closed readiness/PreToolUse, reservation, memory and budget guards, and source/runtime/mode-bound real acceptance. |
+| §§5–7: controls and role capture | NPC dialogue fronts domain state; approach/status is read-only, Start prepares/reserves, Send explicitly Runs. Shared department state captures representative per Run; leaving backgrounds. Stop remains available during idle/background ownership. Replay/status never activates, submits or steals focus. |
+| §8: independent NPC conversation/live proof | Use an explicitly declared extra for independent tools-disabled conversation. Keep existing catalog agents working. Two-department service fixtures prove separation without claiming concurrency or playable second-department delivery. Laptop/OAuth acceptance stays separate from cloud API-key evidence. |
+
+The amendment §§5–10 supply exact migration, context/configuration and acceptance
+requirements. M13 richer persistence, M14 broader concurrency/isolation and M15
+hosted state remain future work. Engineering's playable unlock belongs to M6 and
+requires earned progression plus supported execution, preserving SB-08 arrival
+and SB-09 first delegation. No storyboard beat is changed.
 
 ## 2. Verified baseline and changes required
 

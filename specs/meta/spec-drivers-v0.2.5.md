@@ -4,7 +4,7 @@ title: Spec Drivers v0.2.5 — what this doc-set version must produce
 tier: 0
 authority: constitution
 status: ACTIVE
-doc_set_version: 0.2.17
+doc_set_version: 0.2.18
 last_updated: 2026-10
 owner: adamtasteslikegood
 derives_from: [META-SPEC]
@@ -521,42 +521,26 @@ observed cloud SDK recall run and its limits. The ruling itself is not execution
 proof; M11 desktop acceptance, M12 completion and closure of issue #341 are not
 claimed here.
 
-### 4.15 Working characters versus extras — written amendment pending
+### 4.15 Working characters versus extras — **RESOLVED**
 
-Owner clarification, 2026-10-22 UTC: the Systems Architect is a working
-representative of Core. Its existing NPC dialogue should front a domain session,
-with contextual Start/Run actions and the feel of a classic 2D RPG conversation.
-The owner also clarified that sync/async describes execution, not NPC membership.
-Every catalog agent belongs to a canonical department/domain, represented by its
-color and room(s), with one worktree per department within the selected project.
-The conversation engine remains capable and aware, reserved for story/tutorial
-characters outside working domains. D-010's scripted navigation guide remains
-scripted. The existing three memory files remain shared across the project.
-The owner also requests game/work context and an explicit config/environment
-switch for Claude's ordinary permission bypass.
+The earlier D-033/M12 wording put all NPC dialogue on synchronous tools-disabled
+conversation and D-038 used one project-global worktree. The owner clarified
+that catalog characters work in their canonical department domains through NPC
+dialogue; synchronous conversation serves extras outside the catalog. Department
+worktrees share one project-scoped memory set. Game/work context and a guarded
+owner-controlled permission switch complete that correction.
 
-Current `DESIGN-25D` D-033 and the approved M12 specification describe all ordinary
-NPC dialogue as synchronous conversation, with NPC tools disabled and a separate
-domain panel. M12 also says readiness leaves ordinary permission denials in place,
-and D-038/the current implementation use a project-global execution worktree.
-Those statements need scoped amendments to express the new owner direction.
-Retain D-038's readiness/bootstrap and explicit controls while changing worktree
-ownership to `(project_id, domain_id)`; execution capacity is a separate limit.
-Retain D-017's taxonomy, D-039's project memory and D-009's earned unlocks. Pair
-the existing SB-08 Engineering expansion with verified second-department execution
-capability. Minimal department worktree provisioning belongs in the M12 correction;
+**Owner resolution, 2026-10-22:** the revised
+[M12 character/domain amendment](../../docs/superpowers/specs/2026-10-22-m12-character-domain-amendment.md)
+at `eadb0b4` was approved with “ok, build it”. Doc set 0.2.18 ratifies it in
+DESIGN-25D D-033, PLATFORM-DECISIONS D-034/D-038 and the original M12 specification;
+D-006 stays superseded and D-039 stays project-scoped. The registered
+[plan](../../docs/superpowers/plans/2026-10-22-m12-character-domains.md) implements
+that approved scope under PLZG-289. Minimal department provisioning is M12;
 M14 retains broader parallel execution/isolation, M13 richer local persistence,
-and M15 hosted durability. M6's unlock slice depends on working execution support.
-
-The proposed reconciliation is the
-[M12 character/domain amendment](../../docs/superpowers/specs/2026-10-22-m12-character-domain-amendment.md),
-tracked under [PLZG-289](https://tasteslikegood.atlassian.net/browse/PLZG-289).
-It is DRAFT: the owner selected the interaction direction, but written-spec
-review is still pending. On approval, ratify the engine-role distinction in the
-entitled design/decision documents and amend the original M12 sections together.
-This entry records the difference; it does not originate product policy or claim
-that the runtime has changed. No new narrative beat or delivered concurrent
-capacity is claimed; D-006 remains superseded history.
+and M15 hosted durability. M6 Engineering access additionally requires execution
+support while preserving earned unlocks and SB-08/SB-09 order. No runtime delivery,
+second playable department, concurrency or new acceptance is claimed here.
 
 ## 5. Exit criteria to v1.0.0
 
@@ -569,4 +553,4 @@ cut has not been made** — the set is still `0.2.16`. Making it is the owner's 
 Between here and there, each round closes with the same check: the register has no
 conflict that has been open longer than the round that discovered it.
 
-*Doc set version: 0.2.17 · Last updated: October 2026*
+*Doc set version: 0.2.18 · Last updated: October 2026*

@@ -3,8 +3,8 @@ doc_id: M12-CHARACTER-DOMAIN-AMENDMENT
 title: M12 amendment — Working characters, shared context and permission control
 tier: 2
 authority: implementation
-status: DRAFT
-doc_set_version: 0.2.17
+status: ACTIVE
+doc_set_version: 0.2.18
 last_updated: 2026-10
 owner: adamtasteslikegood
 derives_from: [STORYBOARD-W1, AGENT-DIRECTORY, DESIGN-25D, PLATFORM-DECISIONS, M12-DOMAIN-EXECUTION-DESIGN]
@@ -55,11 +55,12 @@ The owner permits Claude Code's permission bypass behind a boolean JSON setting
 with an environment override. Explicit Start/Run, walking-away backgrounding,
 Chief Architect bootstrap, dedicated worktrees and memory checks remain.
 
-**Written-spec review is pending.** The interface choice and requirements above
-are owner directions; the detailed design below is proposed for review.
+**Owner-approved, 2026-10-22:** the owner approved the revised written specification
+at `eadb0b4` with “ok, build it”. This ratifies the detailed design and authorizes
+implementation; it does not establish runtime completion or acceptance.
 
 This amendment has no runtime implementation or completed acceptance evidence.
-Implementation planning follows written-spec approval. Tracking remains
+The implementation plan is registered and authorized for execution. Tracking remains
 [PLZG-289](https://tasteslikegood.atlassian.net/browse/PLZG-289).
 
 ## 2. Verified baseline and evidence limits
@@ -334,7 +335,7 @@ The current player message defines the requested work within those capabilities.
 
 ### Sources, configuration and scope
 
-| Proposed key | Default | Behavior |
+| Configuration key | Default | Behavior |
 |---|---|---|
 | `INSTALL_CONTEXT_DIR` | `../.local/plaza-context` | Selected-config-relative directory containing optional `GAME_CONTEXT.md` and `WORK_CONTEXT.md` for this installation's owner. |
 | `PROJECT_GUIDANCE_FILE` | `PLAZA_AGENTS.md` | Relative path inside the configured main project root. The owner may explicitly select `AGENTS.md`, `CLAUDE.md` or `CLAUDE.local.md` instead. |
@@ -492,22 +493,22 @@ amendment. Any advertised parallel capacity requires its own concurrent evidence
 
 ## 11. Ratification and delivery
 
-On written approval, update the entitled documents together before implementing:
-D-033's synchronous NPC scope becomes extras conversation; D-034 owns working
-character execution regardless of presentation. Keep D-006 as superseded history.
-Amend D-038 from a project-global worktree to department-owned worktrees, while
-preserving its bootstrap, reservation and tool-readiness guarantees. Amend original
-M12 sections on workspace ownership/capacity, NPC tool availability, independent
-conversations, frontend controls and ordinary permission denials. Preserve D-039's
-project-scoped memory, D-017's taxonomy and D-009's earned progression. Reconcile
-the roadmap's M12/M14 boundary and M6 unlock dependencies without marking future
-milestones or new story content delivered.
-Register this amendment as active only at that point; retain the original spec
-as historical implementation context with clear amended sections.
+Ratified in doc set 0.2.18 following owner approval of `eadb0b4` on 2026-10-22
+(“ok, build it”). `DESIGN-25D` D-033 now scopes synchronous conversation to extras;
+`PLATFORM-DECISIONS` D-034 covers every catalog working character regardless of
+presentation. D-038 now owns department worktrees within one configured project,
+with safe legacy Core adoption, unchanged bootstrap/readiness and reservations.
+D-006 remains superseded; D-039 remains one shared project-memory set.
 
-The pending reconciliation is indexed in `SPEC-DRIVERS-025` §4.15. This draft
-does not silently rewrite ratified policy, change storyboard beats, or authorize
-implementation by itself. After written-spec approval, produce the implementation
-plan for review and execution-method selection through the Superpowers workflow.
+The original M12 specification explicitly identifies amended sections; the roadmap
+keeps M13 persistence, M14 broader concurrency/isolation and M15 hosted durability
+separate. M6's Engineering unlock requires tested execution support without
+changing SB-08 arrival or SB-09 delegation. No second playable department, sandbox,
+concurrent capacity, runtime implementation or acceptance is delivered by ratification.
+
+`SPEC-DRIVERS-025` §4.15 records the owner resolution. The registered
+[implementation plan](../plans/2026-10-22-m12-character-domains.md) carries the
+execution and verification breakdown; implementation and owner desktop/OAuth
+acceptance remain separate from prior cloud API-key evidence.
 
 *Last updated: October 2026*

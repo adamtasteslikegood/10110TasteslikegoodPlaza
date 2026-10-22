@@ -11,7 +11,7 @@ section at release time. PR references in parentheses.
 **Two version axes, deliberately separate.** This file and the tags track the
 **application**: the 3D era was `0.0.x`, and the 2.5D line is `0.1.y`. The
 `doc_set_version:` in every governed document's frontmatter is the **document
-set's** number and is unrelated — it reached `0.2.17` on its own axis. Prose that
+set's** number and is unrelated — it reached `0.2.18` on its own axis. Prose that
 cites `v0.2.7` or `v0.2.8` as software releases is conflating the two; those were
 spec-set versions, and no application release existed before `v0.1.22`.
 
@@ -19,12 +19,14 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ### Documentation — M12 working-character amendment (PLZG-289)
 
-- Add a draft for NPC dialogue backed by domain sessions, contextual RPG work
-  controls, shared game/project awareness and a config/environment permission
-  bypass. Department domains each own one worktree, retain shared project notes,
-  and connect future tutorial unlocks to verified execution support. Record the
-  required reconciliation with current NPC/domain/workspace policy.
-  Written review, implementation planning and runtime changes remain pending.
+- Ratify the owner-approved revised specification at `eadb0b4` (2026-10-22,
+  “ok, build it”) in doc set 0.2.18. Scope synchronous conversation to extras and
+  working catalog characters to department domains; adopt one worktree per
+  project/department while retaining shared project notes. Approve contextual
+  Start/Run, fresh bounded game/work guidance and guarded permission control.
+- Reconcile D-033/D-034/D-038, original M12 and roadmap dependencies, resolve
+  conflict §4.15, and register the authorized implementation plan. Preserve D-006
+  as superseded and D-039 as project-scoped. No runtime or new acceptance claimed.
 
 ### Added — M12 bounded acceptance and operations (PLZG-289)
 
