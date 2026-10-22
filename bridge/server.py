@@ -21,6 +21,7 @@ import websockets
 
 from bridge.config import BridgeConfig, ConfigError, default_config, load_config
 from bridge.observability import BridgeRecorder, RequestContext
+from bridge.context import compose_context, ContextError
 from bridge.conversation import ConversationEngine, ExecutionMetadata
 from bridge.domain_session import _SDK_ENV_PASSTHROUGH
 from bridge.domain_manager import DomainManager
@@ -299,6 +300,10 @@ class BridgeServer:
                 "success" if success else "failure",
                 metadata,
             )
+        if metadata.context_sources is not None:
+            self._event(
+                "context_composed", context, context_sources=metadata.context_sources
+            )
         return resp
 
     async def _call_conversation(self, data, histories, metadata):
@@ -308,8 +313,28 @@ class BridgeServer:
             if histories is not None and isinstance(agent_id, str)
             else None
         )
-        options = dict(metadata=metadata)
         if self._config.workspace_root_dir is None:
+            try:
+                context_packet = await owned_io(
+                    compose_context,
+                    self._config,
+                    agent_id=agent_id,
+                    execution_kind="extra",
+                    domain_id=None,
+                    project=self.project.snapshot(),
+                    workspace=None,
+                    tools=[],
+                    permission_mode="dontAsk",
+                    interaction="conversation",
+                )
+            except ContextError:
+                return make_error(
+                    agent_id or "",
+                    data.get("task", ""),
+                    "context_unavailable",
+                    "Context is unavailable",
+                )
+            options = dict(metadata=metadata, context_packet=context_packet)
             response = (
                 await self.conversation.handle_request(data, history, **options)
                 if history is not None
@@ -355,17 +380,28 @@ class BridgeServer:
             async with asyncio.timeout_at(deadline):
                 memory = self.project.require_memory()
                 attempted = True
-                prepared = asyncio.create_task(
-                    self.project.require_readiness().prepare_turn(turn)
-                )
+                prepared = asyncio.create_task(self.project.prepare_memory_turn(turn))
                 snapshot = await asyncio.shield(prepared)
                 self.project.publish_memory(snapshot)
+                context_packet = await owned_io(
+                    compose_context,
+                    self._config,
+                    agent_id=agent,
+                    execution_kind="extra",
+                    domain_id=None,
+                    project=self.project.snapshot(),
+                    workspace=None,
+                    tools=[],
+                    permission_mode="dontAsk",
+                    interaction="conversation",
+                )
                 response = await self.conversation.handle_request(
                     data,
                     history,
                     metadata=metadata,
                     prior_project_notes=snapshot.as_context(),
                     deadline=deadline,
+                    context_packet=context_packet,
                 )
                 outcome = "success" if response.get("status") == "ok" else "error"
                 output = (

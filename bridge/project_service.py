@@ -2,10 +2,11 @@
 
 import asyncio
 from copy import deepcopy
-from dataclasses import asdict
+from dataclasses import asdict, replace
 import json
 from pathlib import Path
 
+from bridge.context import compose_context
 from bridge.agents import load_agent
 from bridge.agent_bindings import DOMAIN_IDS
 from bridge.conversation import ConversationEngine
@@ -70,13 +71,28 @@ async def review_repository(config, proposal, *, deadline=None):
     )
     if remaining <= 0:
         raise TimeoutError()
+    context_packet = await owned_io(
+        compose_context,
+        replace(config, workspace_root_dir=proposal.root),
+        agent_id="systems-architect",
+        execution_kind="chief_review",
+        domain_id="core",
+        project=dict(
+            stage="needs_architect", project_id=getattr(proposal, "project_id", None)
+        ),
+        workspace=None,
+        tools=[],
+        permission_mode="dontAsk",
+        interaction="explicit_repository_setup",
+    )
+    metadata = ExecutionMetadata(context_sources=context_packet.diagnostics())
     raw = await engine._backend.complete(
-        definition=definition + instructions,
+        definition=definition + "\n" + context_packet.render() + instructions,
         messages=[dict(role="user", content=json.dumps(payload, ensure_ascii=True))],
         model=engine.model,
         timeout=remaining,
         max_output_tokens=config.conversation_max_output_tokens,
-        metadata=ExecutionMetadata(),
+        metadata=metadata,
     )
     try:
         return _decode(raw.encode("utf-8"))
@@ -270,23 +286,7 @@ class ProjectService:
                 # Refresh within this owned worker so normal source commits do
                 # not invalidate later Starts; retain the helper's short-window
                 # inspection comparison and all persisted ownership checks.
-                project = inspect_project(self._project.root)
-                if (
-                    any(
-                        getattr(project, key) != getattr(self._project, key)
-                        for key in (
-                            "root",
-                            "root_identity",
-                            "common_git_dir",
-                            "project_id",
-                        )
-                    )
-                    or _identity(project.common_git_dir)
-                    != self._project_common_identity
-                ):
-                    raise WorkspaceError(
-                        "workspace_invalid", "Configured project identity changed"
-                    )
+                project = self._validated_project()
                 workspace = prepare_worktree(
                     project, domain_id=domain_id, runtime_root=self._runtime_root
                 )
@@ -399,6 +399,46 @@ class ProjectService:
                 + self._snapshot["reason"]
                 + ". Existing files were preserved."
             )
+
+    def _validated_project(self):
+        project = inspect_project(self._project.root)
+        if (
+            any(
+                getattr(project, key) != getattr(self._project, key)
+                for key in ("root", "root_identity", "common_git_dir", "project_id")
+            )
+            or _identity(project.common_git_dir) != self._project_common_identity
+        ):
+            raise WorkspaceError(
+                "workspace_invalid", "Configured project identity changed"
+            )
+        return project
+
+    async def prepare_memory_turn(self, turn):
+        """Project-only extras admission; never provisions a department worktree."""
+        memory = self.require_memory()
+
+        def prepare():
+            project = self._validated_project()
+            if any(
+                getattr(memory.workspace, key) != value
+                for key, value in (
+                    ("project_id", project.project_id),
+                    ("common_git_dir", project.common_git_dir),
+                    ("project_root", project.root),
+                    ("source_identity", project.root_identity),
+                )
+            ):
+                raise WorkspaceError(
+                    "workspace_invalid", "Project memory binding changed"
+                )
+            if turn.domain_id is not None or turn.workspace_id is not None:
+                raise WorkspaceError(
+                    "workspace_invalid", "Extra turn has a workspace binding"
+                )
+            return memory.begin_turn(turn)
+
+        return await owned_io(prepare)
 
     def require_workspace(self, domain_id="core"):
         self.require_memory()

@@ -40,6 +40,8 @@ _DEFAULTS: dict[str, object] = {
     "LOG_MAX_TOTAL_BYTES": 104857600,
     "LOG_MAX_AGE_DAYS": 14,
     "WORKSPACE_ROOT_DIR": None,
+    "INSTALL_CONTEXT_DIR": "../.local/plaza-context",
+    "PROJECT_GUIDANCE_FILE": "PLAZA_AGENTS.md",
 }
 _TEXT_KEYS = frozenset(
     {
@@ -53,6 +55,8 @@ _TEXT_KEYS = frozenset(
         "DOMAIN_TIER",
         "LOG_DIR",
         "LOG_LEVEL",
+        "INSTALL_CONTEXT_DIR",
+        "PROJECT_GUIDANCE_FILE",
     }
 )
 _INTEGER_KEYS = frozenset(
@@ -98,6 +102,8 @@ class BridgeConfig:
     log_max_age_days: int
     source_path: Path
     workspace_root_dir: Path | None = None
+    install_context_dir: Path = Path("../.local/plaza-context")
+    project_guidance_file: str = "PLAZA_AGENTS.md"
 
     def model_for(self, tier: str) -> str:
         """Resolve an approved tier without model fallback or upgrades."""
@@ -193,6 +199,10 @@ def _build(values: Mapping[str, object], source_path: Path) -> BridgeConfig:
             raise ConfigError(
                 "WORKSPACE_ROOT_DIR must identify an existing directory"
             ) from None
+    install_dir = Path(values["INSTALL_CONTEXT_DIR"])
+    if not install_dir.is_absolute():
+        install_dir = source_path.parent / install_dir
+    attributes["install_context_dir"] = Path(os.path.abspath(install_dir))
     try:
         log_dir = Path(values["LOG_DIR"])
         if not log_dir.is_absolute():

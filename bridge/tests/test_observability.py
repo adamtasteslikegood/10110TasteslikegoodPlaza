@@ -489,3 +489,27 @@ def test_agent_path_redaction_is_stable_distinct_and_preserves_capture(
         )
         <= cfg.log_max_total_bytes
     )
+
+
+def test_context_diagnostics_only_capture_identities_and_revisions(tmp_path):
+    cfg = config(tmp_path)
+    recorder = BridgeRecorder(cfg, "plaza", redactions=("secret",))
+    assert recorder.event(
+        "context_composed",
+        context(),
+        context_sources=[
+            dict(
+                identity="/secret/guidance",
+                scope="project",
+                revision="abc",
+                text="private instruction body",
+                runtime="private runtime",
+            )
+        ],
+    )
+    recorder.close()
+    row = records(cfg)[0]
+    assert row["context_sources"] == [
+        dict(identity="/[REDACTED]/guidance", scope="project", revision="abc")
+    ]
+    assert "private" not in json.dumps(row)

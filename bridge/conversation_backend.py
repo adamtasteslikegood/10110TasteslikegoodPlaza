@@ -10,6 +10,7 @@ class ExecutionMetadata:
 
     provider_session_id: str | None = None
     memory_delta: dict | None = None
+    context_sources: list[dict] | None = None
 
 
 class ConversationFailure(Exception):

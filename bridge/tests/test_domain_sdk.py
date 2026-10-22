@@ -552,3 +552,31 @@ async def test_installed_query_close_drains_hook_io_through_repeated_cancel(
                     await handle.wait()
                 except Exception:
                     pass  # Closed-channel response is expected during fixture teardown.
+
+
+@pytest.mark.asyncio
+async def test_each_mailbox_query_carries_current_context(owner):
+    from bridge.context import ContextPacket
+
+    sdk, clients = owner
+    await sdk.start()
+    try:
+        for text in ("first context", "second context"):
+            packet = ContextPacket(
+                text, "work", '{"tools": ["Read", "Edit", "Bash"]}', ()
+            )
+            await sdk.execute(
+                agent_id="builder",
+                definition="role",
+                task="task",
+                prior_project_notes="prior data",
+                context_packet=packet,
+            )
+            import json
+
+            command = json.loads(clients[0].prompt)
+            assert text in command["current_context"]
+            assert command["prior_project_notes"] == "prior data"
+        assert len(clients) == 1
+    finally:
+        await sdk.stop()

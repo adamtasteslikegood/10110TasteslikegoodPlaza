@@ -755,3 +755,43 @@ async def test_retained_duplicate_replays_after_real_idle_owner_failure(
         "disconnect",
     ]
     assert service.reservation.held
+
+
+@pytest.mark.asyncio
+async def test_persistent_domain_context_refresh_and_symlink_replacement(
+    setup, tmp_path
+):
+    session, service, owners = setup
+    root = service.workspace.project_root
+    guidance = root / "PLAZA_AGENTS.md"
+    session._config = replace(
+        session._config,
+        workspace_root_dir=root,
+        install_context_dir=tmp_path / "owner-absent",
+    )
+    guidance.write_text("first revision")
+    await session.start()
+    packets = []
+
+    async def emit(packet):
+        packets.append(packet)
+
+    await session.admit_query(query("first"), context=context("first"), emit=emit)
+    await collect_until(session, packets)
+    first = owners[0].calls[0]["context_packet"]
+    assert "first revision" in first.render()
+    guidance.write_text("second revision")
+    packets.clear()
+    await session.admit_query(query("second"), context=context("second"), emit=emit)
+    await collect_until(session, packets)
+    second = owners[0].calls[1]["context_packet"]
+    assert "second revision" in second.render()
+    assert first.diagnostics() != second.diagnostics()
+    assert len(owners) == 1
+    guidance.unlink()
+    guidance.symlink_to(root / "README.md")
+    packets.clear()
+    await session.admit_query(query("third"), context=context("third"), emit=emit)
+    assert packets[-1]["error_type"] == "context_unavailable"
+    assert len(owners[0].calls) == 2
+    assert "pending" not in service.memory.load().todo

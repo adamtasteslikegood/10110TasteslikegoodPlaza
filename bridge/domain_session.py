@@ -15,6 +15,7 @@ import time
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
+from bridge.context import compose_context
 from bridge.agents import load_agent
 from bridge.config import BridgeConfig
 from bridge.domain_protocol import DomainCommandError, error_packet
@@ -369,6 +370,18 @@ class DomainSession:
                 snapshot = await self._readiness.prepare_turn(run.intent)
                 self._memory_revision = snapshot.revision
                 self._service.publish_memory(snapshot)
+            context_packet = await owned_io(
+                compose_context,
+                self._config,
+                agent_id=run.command["agent_id"],
+                execution_kind="domain",
+                domain_id=self.domain_id,
+                project=self._service.snapshot(),
+                workspace=self._service.workspace_snapshot(self.domain_id),
+                tools=["Read", "Edit", "Bash"],
+                permission_mode="dontAsk",
+                interaction="explicit_run",
+            )
             run.preparing = False
             # The owner may have failed while checkpoint IO was awaiting.
             await self._require_owner_ready()
@@ -413,7 +426,11 @@ class DomainSession:
         run.admitted.set_result(packet)
         if self._recorder:
             self._recorder.message(run.context, "user", run.command["task"], "input")
-            self._recorder.event("execution_started", run.context)
+            self._recorder.event(
+                "execution_started",
+                run.context,
+                context_sources=context_packet.diagnostics(),
+            )
         try:
             if self._stopping:
                 outcome = SDKOutcome("", "cancelled", "stopped", None, None)
@@ -423,6 +440,7 @@ class DomainSession:
                     definition=definition,
                     task=run.command["task"],
                     prior_project_notes=snapshot.as_context(),
+                    context_packet=context_packet,
                 )
         except Exception:
             self._broken = True

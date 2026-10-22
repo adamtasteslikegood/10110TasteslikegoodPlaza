@@ -35,6 +35,8 @@ DEFAULTS = {
     "LOG_MAX_TOTAL_BYTES": 104857600,
     "LOG_MAX_AGE_DAYS": 14,
     "WORKSPACE_ROOT_DIR": None,
+    "INSTALL_CONTEXT_DIR": "../.local/plaza-context",
+    "PROJECT_GUIDANCE_FILE": "PLAZA_AGENTS.md",
 }
 DEFAULT_PATH = Path(__file__).resolve().parents[1] / "config.json"
 INTEGER_KEYS = [
@@ -72,14 +74,18 @@ def test_complete_defaults_and_committed_file_agree():
     settings = default_config()
     assert isinstance(settings, BridgeConfig)
     expected = dict(
-        DEFAULTS, LOG_DIR=str((DEFAULT_PATH.parent / DEFAULTS["LOG_DIR"]).resolve())
+        DEFAULTS,
+        LOG_DIR=str((DEFAULT_PATH.parent / DEFAULTS["LOG_DIR"]).resolve()),
+        INSTALL_CONTEXT_DIR=str(
+            (DEFAULT_PATH.parent / DEFAULTS["INSTALL_CONTEXT_DIR"]).resolve()
+        ),
     )
     assert settings.effective_settings() == expected
     assert load_config(environ={}) == settings
     assert settings.source_path == DEFAULT_PATH
     for key, value in expected.items():
         assert getattr(settings, key.lower()) == (
-            Path(value) if key == "LOG_DIR" else value
+            Path(value) if key in ("LOG_DIR", "INSTALL_CONTEXT_DIR") else value
         )
 
 

@@ -1,0 +1,218 @@
+from dataclasses import replace
+import pytest
+from bridge.config import default_config, load_config
+from bridge.context import compose_context, ContextError
+
+
+def packet(config, **overrides):
+    args = dict(
+        agent_id="systems-architect",
+        execution_kind="extra",
+        domain_id=None,
+        project={"stage": "needs_architect"},
+        workspace=None,
+        tools=[],
+        permission_mode="dontAsk",
+        interaction="conversation",
+    )
+    args.update(overrides)
+    return compose_context(config, **args)
+
+
+def test_config_relative_and_override(tmp_path):
+    path = tmp_path / "config.json"
+    path.write_text("{}")
+    config = load_config(
+        path,
+        environ={
+            "PLAZA_INSTALL_CONTEXT_DIR": "owner",
+            "PLAZA_PROJECT_GUIDANCE_FILE": "notes.md",
+        },
+    )
+    assert config.install_context_dir == tmp_path / "owner"
+    assert config.project_guidance_file == "notes.md"
+
+
+def test_refresh_and_project_isolation_before_git(tmp_path):
+    a, b = tmp_path / "a", tmp_path / "b"
+    a.mkdir()
+    b.mkdir()
+    config = replace(
+        default_config(), workspace_root_dir=a, install_context_dir=tmp_path / "absent"
+    )
+    first = packet(config)
+    (a / "PLAZA_AGENTS.md").write_text("first project")
+    second = packet(config)
+    assert "first project" in second.render()
+    assert first.diagnostics() != second.diagnostics()
+    (a / "PLAZA_AGENTS.md").write_text("updated project")
+    assert "updated project" in packet(config).render()
+    assert (
+        "updated project" not in packet(replace(config, workspace_root_dir=b)).render()
+    )
+    assert "updated project" not in str(packet(config).diagnostics())
+
+
+@pytest.mark.parametrize(
+    "kind", ["symlink", "directory", "utf8", "oversize", "traversal", "missing"]
+)
+def test_invalid_project_guidance(tmp_path, kind):
+    config = replace(
+        default_config(),
+        workspace_root_dir=tmp_path,
+        install_context_dir=tmp_path / "absent",
+    )
+    target = tmp_path / "PLAZA_AGENTS.md"
+    if kind == "symlink":
+        target.symlink_to("/etc/hosts")
+    if kind == "directory":
+        target.mkdir()
+    if kind == "utf8":
+        target.write_bytes(b"\xff")
+    if kind == "oversize":
+        target.write_bytes(b"x" * 32769)
+    if kind == "traversal":
+        config = replace(config, project_guidance_file="../outside")
+    if kind == "missing":
+        config = replace(config, project_guidance_file="selected.md")
+    with pytest.raises(ContextError):
+        packet(config)
+
+
+def test_exact_limits(tmp_path):
+    install = tmp_path / "install"
+    install.mkdir()
+    config = replace(
+        default_config(), workspace_root_dir=tmp_path, install_context_dir=install
+    )
+    (tmp_path / "PLAZA_AGENTS.md").write_bytes(b"p" * 32768)
+    (install / "GAME_CONTEXT.md").write_bytes(b"g" * 8192)
+    packet(config)
+    (install / "GAME_CONTEXT.md").write_bytes(b"g" * 8193)
+    with pytest.raises(ContextError):
+        packet(config)
+    (install / "GAME_CONTEXT.md").unlink()
+    with pytest.raises(ContextError):
+        packet(config, interaction="x" * 4096)
+
+
+@pytest.mark.parametrize("name", ["GAME_CONTEXT.md", "WORK_CONTEXT.md"])
+@pytest.mark.parametrize("kind", ["utf8", "directory", "symlink", "oversize"])
+def test_invalid_installation_sources(tmp_path, name, kind):
+    config = replace(default_config(), install_context_dir=tmp_path)
+    source = tmp_path / name
+    if kind == "utf8":
+        source.write_bytes(b"\xff")
+    if kind == "directory":
+        source.mkdir()
+    if kind == "symlink":
+        source.symlink_to("/etc/hosts")
+    if kind == "oversize":
+        source.write_bytes(b"x" * 8193)
+    with pytest.raises(ContextError):
+        packet(config)
+
+
+def test_intermediate_symlink_and_nested_repository_rejected(tmp_path):
+    root = tmp_path / "root"
+    root.mkdir()
+    other = tmp_path / "other"
+    other.mkdir()
+    (other / "guide.md").write_text("outside")
+    (root / "linked").symlink_to(other, target_is_directory=True)
+    config = replace(
+        default_config(),
+        workspace_root_dir=root,
+        project_guidance_file="linked/guide.md",
+    )
+    with pytest.raises(ContextError):
+        packet(config)
+    nested = root / "nested"
+    nested.mkdir()
+    (nested / ".git").write_text("gitdir: elsewhere")
+    (nested / "guide.md").write_text("submodule")
+    with pytest.raises(ContextError):
+        packet(replace(config, project_guidance_file="nested/guide.md"))
+
+
+@pytest.mark.asyncio
+async def test_extra_entry_context_and_failure_before_backend(tmp_path, monkeypatch):
+    from unittest.mock import AsyncMock
+    from bridge.server import BridgeServer
+    from bridge.conversation import ConversationEngine
+    from bridge.conversation_backend import ExecutionMetadata
+
+    config = replace(default_config(), install_context_dir=tmp_path)
+    backend = AsyncMock()
+    backend.complete.return_value = "answer"
+    server = BridgeServer(config=config)
+    server.conversation = ConversationEngine(config=config, backend=backend)
+    monkeypatch.setattr("bridge.conversation.load_agent", lambda _: "role claims tools")
+    history = {}
+    response = await server._call_conversation(
+        dict(agent_id="extra", task="hello"), history, ExecutionMetadata()
+    )
+    assert response["status"] == "ok"
+    definition = backend.complete.call_args.kwargs["definition"]
+    assert (
+        "STORYBOARD-W1" in definition and "Project TODO/HANDOFF/PROGRESS" in definition
+    )
+    assert '"tools": []' in definition
+    assert history["extra"][-1]["content"] == "answer"
+    (tmp_path / "WORK_CONTEXT.md").symlink_to("/etc/hosts")
+    response = await server._call_conversation(
+        dict(agent_id="extra", task="again"), history, ExecutionMetadata()
+    )
+    assert response["error_type"] == "context_unavailable"
+    assert backend.complete.await_count == 1
+    assert len(history["extra"]) == 2
+    await server.project.close()
+
+
+def test_exact_runtime_and_shipped_limits(tmp_path):
+    from bridge.context import _read
+
+    config = replace(default_config(), install_context_dir=tmp_path / "absent")
+    size = len(packet(config, interaction="").runtime.encode("utf-8"))
+    assert (
+        len(packet(config, interaction="x" * (4096 - size)).runtime.encode("utf-8"))
+        == 4096
+    )
+    with pytest.raises(ContextError):
+        packet(config, interaction="x" * (4097 - size))
+    source = tmp_path / "brief.md"
+    source.write_bytes(b"x" * 8192)
+    assert len(_read(tmp_path, "brief.md", 8192, "shipped").text) == 8192
+    source.write_bytes(b"x" * 8193)
+    with pytest.raises(ContextError):
+        _read(tmp_path, "brief.md", 8192, "shipped")
+
+
+def test_fifo_and_absolute_path_rejected(tmp_path):
+    import os
+
+    config = replace(default_config(), workspace_root_dir=tmp_path)
+    os.mkfifo(tmp_path / "PLAZA_AGENTS.md")
+    with pytest.raises(ContextError):
+        packet(config)
+    with pytest.raises(ContextError):
+        packet(replace(config, project_guidance_file="/etc/hosts"))
+
+
+@pytest.mark.asyncio
+async def test_chief_invalid_context_prevents_reviewer_backend(tmp_path, monkeypatch):
+    from unittest.mock import AsyncMock
+    from types import SimpleNamespace
+    from bridge.project_service import review_repository
+    from bridge.repository_setup import build_init_proposal
+
+    (tmp_path / "PLAZA_AGENTS.md").write_bytes(b"\xff")
+    backend = SimpleNamespace(complete=AsyncMock())
+    engine = SimpleNamespace(_backend=backend, model="model")
+    monkeypatch.setattr(
+        "bridge.project_service.ConversationEngine", lambda **kwargs: engine
+    )
+    monkeypatch.setattr("bridge.project_service.load_agent", lambda _: "chief")
+    with pytest.raises(ContextError):
+        await review_repository(default_config(), build_init_proposal(tmp_path))
+    backend.complete.assert_not_awaited()
