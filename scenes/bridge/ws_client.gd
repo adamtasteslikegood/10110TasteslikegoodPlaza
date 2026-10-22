@@ -391,6 +391,11 @@ func _on_domain_packet(packet: Dictionary) -> void:
 				_resume_queue.append(change.domain_id)
 		var settled_control: bool = change.reason == "domain_state" and command.get("type") != "domain_status" and change.settled
 		if change.reason == "domain_result" or failed_control or settled_control:
+			# Lifecycle/capacity changes invalidate every observed working character.
+			# Queue even behind an in-flight status: its fence predates settlement.
+			for agent_id in _characters:
+				if _characters[agent_id].get("execution_kind") == "working" and agent_id not in _character_queue:
+					_character_queue.append(agent_id)
 			describe_workspace()
 	_pump_discovery()
 

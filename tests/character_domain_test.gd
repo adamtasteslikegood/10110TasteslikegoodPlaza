@@ -45,7 +45,7 @@ func service() -> void:
 			var observation := state("", lifecycle if prepared else "inactive")
 			observation.erase("request_id")
 			if not prepared: observation.domain_session_id = null
-			var response := {"type": "agent_status", "request_id": p.request_id, "agent_id": p.agent_id, "execution_kind": "working", "domain_id": "core", "project": workspace(""), "workspace": {"stage": "ready" if prepared else "unprepared"}, "domain_state": observation, "capabilities": {"can_start": true, "can_run": prepared, "can_prepare_project": true}}
+			var response := {"type": "agent_status", "request_id": p.request_id, "agent_id": p.agent_id, "execution_kind": "working", "domain_id": "core", "project": workspace(""), "workspace": {"stage": "ready" if prepared else "unprepared"}, "domain_state": observation, "capabilities": {"can_start": not prepared or lifecycle == "inactive", "can_run": prepared and lifecycle in ["active", "background"], "can_prepare_project": true}}
 			status_packets.append(response)
 			if not hold_status: peer.send_text(JSON.stringify(response))
 		elif p.get("type") == "domain_status":
@@ -206,10 +206,22 @@ func _ready() -> void:
 	await review_regressions()
 	await review_round2()
 	check(not button("Stop").disabled, "idle owned session retains Stop")
+	check(not BridgeClient.character_snapshot("systems-architect").capabilities.can_start and not BridgeClient.character_snapshot("security-auditor").capabilities.can_start, "active status caches false Start for both representatives")
+	hold_status = true
+	BridgeClient.agent_status("systems-architect")
+	await frames()
+	var before_stop_status: Dictionary = status_packets.back()
 	button("Stop").pressed.emit()
 	await frames()
 	check(count("deactivate_domain") == 1, "primary Stop releases idle ownership explicitly")
-	await deliver(state(latest("deactivate_domain").request_id, "inactive"))
+	lifecycle = "inactive"
+	await deliver(state(latest("deactivate_domain").request_id, lifecycle))
+	hold_status = false
+	await deliver(before_stop_status)
+	await frames(20)
+	check(not button("Start").disabled, "Stop refreshes primary Start without manual status or approach")
+	check(not pane.get_node("Panel/Scroll/Rows/Actions/Start").disabled, "Stop refreshes secondary Start without manual status or approach")
+	check(BridgeClient.character_snapshot("systems-architect").capabilities.can_start and BridgeClient.character_snapshot("security-auditor").capabilities.can_start, "Stop refreshes every observed representative capability")
 	# Late discovery can cache an observation, never reopen a departed character.
 	hold_status = true
 	BridgeClient.agent_status("security-auditor")
