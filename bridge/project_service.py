@@ -20,6 +20,7 @@ from bridge.repository_setup import (
 from bridge.workspace import (
     WorkspaceError,
     _decode,
+    _identity,
     inspect_project,
     load_workspace,
     prepare_worktree,
@@ -94,6 +95,7 @@ class ProjectService:
         )
         self._reviewer = reviewer
         self._project = None
+        self._project_common_identity = None
         self._workspaces = {}
         self._readiness_by_domain = {}
         self._workspace_states = {}
@@ -163,6 +165,7 @@ class ProjectService:
     async def _prepare(self, project, setup=None):
         def prepare():
             self._project = project
+            self._project_common_identity = _identity(project.common_git_dir)
             self._memory = ProjectMemoryStore(project)
             self._snapshot["project_id"] = project.project_id
             self._snapshot["memory"]["path"] = str(
@@ -263,8 +266,29 @@ class ProjectService:
 
         async def prepare():
             def provision():
+                # Configuration freezes the repository binding, not its HEAD.
+                # Refresh within this owned worker so normal source commits do
+                # not invalidate later Starts; retain the helper's short-window
+                # inspection comparison and all persisted ownership checks.
+                project = inspect_project(self._project.root)
+                if (
+                    any(
+                        getattr(project, key) != getattr(self._project, key)
+                        for key in (
+                            "root",
+                            "root_identity",
+                            "common_git_dir",
+                            "project_id",
+                        )
+                    )
+                    or _identity(project.common_git_dir)
+                    != self._project_common_identity
+                ):
+                    raise WorkspaceError(
+                        "workspace_invalid", "Configured project identity changed"
+                    )
                 workspace = prepare_worktree(
-                    self._project, domain_id=domain_id, runtime_root=self._runtime_root
+                    project, domain_id=domain_id, runtime_root=self._runtime_root
                 )
                 self._install_workspace(workspace)
                 return workspace

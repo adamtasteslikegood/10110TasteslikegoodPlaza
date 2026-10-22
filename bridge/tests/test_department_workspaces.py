@@ -381,3 +381,93 @@ async def test_restart_observes_both_departments_without_provisioning(
         "workspace_id"
     ] == engineering.workspace_id
     await second.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("restart", [False, True])
+async def test_lazy_start_accepts_new_source_commits(tmp_path, monkeypatch, restart):
+    from bridge.domain_session import DomainSession
+    from bridge.tests.domain_fakes import FakeOwner
+    from bridge.tests.test_workspace import git
+
+    root = repository(tmp_path)
+    service = ProjectService(
+        replace(default_config(), workspace_root_dir=root),
+        runtime_root=tmp_path / "runtime",
+        owner_run_id="advance-run",
+    )
+    monkeypatch.setattr("bridge.domain_session.DomainSDKOwner", FakeOwner)
+    await service.start()
+    await service._bootstrap_task
+    sessions = []
+    original = None
+    try:
+        if restart:
+            first = DomainSession(
+                "core", "before", config=service._config, project_service=service
+            )
+            sessions.append(first)
+            await first.start()
+            original = first._workspace
+            (original.worktree_path / "retained.txt").write_text(
+                "unsaved department work"
+            )
+            await first.stop()
+            assert not first._lease.held and service._capacity_owner is None
+        (root / "tracked.txt").write_text("normal new source commit")
+        git(root, "commit", "-am", "advance source")
+        current = git(root, "rev-parse", "HEAD")
+        session = DomainSession(
+            "core", "after", config=service._config, project_service=service
+        )
+        sessions.append(session)
+        await session.start()
+        workspace = session._workspace
+        assert workspace.domain_id == "core"
+        if original:
+            assert workspace == original
+            assert (
+                workspace.worktree_path / "retained.txt"
+            ).read_text() == "unsaved department work"
+            assert (
+                git(workspace.worktree_path, "rev-parse", "HEAD")
+                == original.initial_commit
+            )
+        else:
+            assert workspace.initial_commit == current
+            assert (
+                workspace.worktree_path / "tracked.txt"
+            ).read_text() == "normal new source commit"
+    finally:
+        for session in sessions:
+            await session.stop()
+        await service.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("substitute", ["root", "common"])
+async def test_lazy_start_rejects_substituted_repository_identity(tmp_path, substitute):
+    import shutil
+
+    root = repository(tmp_path)
+    service = ProjectService(
+        replace(default_config(), workspace_root_dir=root),
+        runtime_root=tmp_path / "runtime",
+        owner_run_id="substitution-run",
+    )
+    await service.start()
+    await service._bootstrap_task
+    target = root if substitute == "root" else root / ".git"
+    copy, backup = tmp_path / "replacement", tmp_path / "original"
+    shutil.copytree(target, copy)
+    target.rename(backup)
+    copy.rename(target)
+    try:
+        with pytest.raises(WorkspaceError) as error:
+            await service.prepare_domain("core")
+        assert error.value.code == "workspace_invalid"
+        assert not (root / ".git/plaza/workspaces").exists()
+    finally:
+        target.rename(copy)
+        backup.rename(target)
+        await service.close()
