@@ -193,7 +193,7 @@ async def test_stop_and_discovery_preempt_blocked_start_and_npc(tmp_path, monkey
                 busy["error_type"] == "domain_busy" and busy["request_id"] == "excess"
             )
             assert busy["project_id"] == activating["project_id"]
-            assert busy["workspace_id"] == activating["workspace_id"]
+            assert "workspace_id" not in busy
             await socket.send(
                 json.dumps(
                     dict(

@@ -191,9 +191,10 @@ class DomainSession:
         return task
 
     async def _reserve(self):
-        self._workspace = self._service.require_workspace()
+        self._service.reserve_capacity(self)
+        self._workspace = await self._service.prepare_domain(self.domain_id)
         self._memory = self._service.require_memory()
-        self._readiness = self._service.require_readiness()
+        self._readiness = self._service.require_readiness(self.domain_id)
 
         def acquire():
             self._lease = WorkspaceLease.acquire(
@@ -309,6 +310,7 @@ class DomainSession:
                 self.domain_id,
                 self.domain_session_id,
                 command["task"],
+                workspace_id=self._workspace.workspace_id,
             ),
             asyncio.get_running_loop().create_future(),
         )
@@ -550,6 +552,8 @@ class DomainSession:
             clean = False
         if self._lease:
             self._service.publish_cleanup(self._lease, clean=clean)
+        if clean:
+            self._service.release_capacity(self)
         self._transition(
             SessionState.INACTIVE if clean else SessionState.CLEANUP_FAILED
         )

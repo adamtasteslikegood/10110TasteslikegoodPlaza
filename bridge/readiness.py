@@ -109,13 +109,28 @@ class ReadinessService:
         self.memory = memory
 
     def _validate(self):
-        if self.memory.workspace != self.workspace:
+        if any(
+            getattr(self.memory.workspace, key) != getattr(self.workspace, key)
+            for key in (
+                "project_id",
+                "common_git_dir",
+                "project_root",
+                "source_identity",
+            )
+        ):
             raise WorkspaceError("workspace_invalid", "Project memory binding changed")
         validate_workspace(self.workspace, runtime_root=self.lease_runtime_root)
 
     async def prepare_turn(self, turn: TurnIntent) -> MemorySnapshot:
         def prepare():
             self._validate()
+            if turn.domain_id != self.workspace.domain_id or (
+                turn.workspace_id is not None
+                and turn.workspace_id != self.workspace.workspace_id
+            ):
+                raise WorkspaceError(
+                    "workspace_invalid", "Turn workspace binding changed"
+                )
             return self.memory.begin_turn(turn)
 
         return await owned_io(prepare)

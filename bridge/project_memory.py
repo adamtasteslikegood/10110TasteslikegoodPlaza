@@ -13,12 +13,13 @@ import hashlib
 import html
 import json
 import os
+from pathlib import Path
 import re
 import time
 from uuid import uuid4
 
 from bridge import project_files as files
-from bridge.workspace import ExecutionWorkspace, _decode
+from bridge.workspace import ExecutionWorkspace, ProjectInspection, _decode
 
 CAPS = {"todo": 16384, "handoff": 16384, "progress": 32768}
 SECTIONS = ("Goal", "Active work", "Decisions", "Evidence", "Blockers", "Next action")
@@ -30,6 +31,7 @@ IDENTITIES = (
     "agent_id",
     "domain_id",
     "domain_session_id",
+    "workspace_id",
 )
 
 
@@ -50,6 +52,7 @@ class TurnIntent:
     domain_id: str | None
     domain_session_id: str | None
     task: str
+    workspace_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -164,6 +167,9 @@ def _empty():
 
 
 def _validate_item(item):
+    item.setdefault("workspace_id", None)
+    if item["workspace_id"] is not None:
+        _identifier(item["workspace_id"])
     if set(item) != set(IDENTITIES) | {"id", "kind", "state", "text"}:
         raise ValueError("invalid item fields")
     for name in ("id", *IDENTITIES[:4]):
@@ -179,7 +185,14 @@ def _validate_item(item):
 
 
 def _validate_entry(entry):
+    entry.setdefault("workspace_id", None)
+    entry.setdefault("agent_id", None)
+    for key in ("workspace_id", "agent_id"):
+        if entry[key] is not None:
+            _identifier(entry[key])
     if set(entry) != {
+        "workspace_id",
+        "agent_id",
         "id",
         "utc",
         "event",
@@ -213,10 +226,27 @@ def _validate_entry(entry):
     _text(entry["summary"], 8192)
 
 
-class ProjectMemoryStore:
-    """One trusted Task-1 workspace descriptor; no Git/provider calls under lock."""
+@dataclass(frozen=True)
+class ProjectMemoryBinding:
+    project_id: str
+    common_git_dir: Path
+    project_root: Path
+    source_identity: tuple[int, int]
+    initial_commit: str
 
-    def __init__(self, workspace: ExecutionWorkspace):
+
+class ProjectMemoryStore:
+    """One project binding shared by departments; no Git/provider calls under lock."""
+
+    def __init__(self, workspace: ExecutionWorkspace | ProjectInspection):
+        if isinstance(workspace, ProjectInspection):
+            workspace = ProjectMemoryBinding(
+                workspace.project_id,
+                workspace.common_git_dir,
+                workspace.root,
+                workspace.root_identity,
+                workspace.head_commit,
+            )
         self.workspace = workspace
         self._base = workspace.common_git_dir / "plaza"
         self._directory = self._base / "session-memory"
@@ -603,6 +633,8 @@ class ProjectMemoryStore:
                 turn_id=item["turn_id"] if item else None,
                 request_id=item["request_id"] if item else None,
                 owner_run_id=item["owner_run_id"] if item else None,
+                workspace_id=item.get("workspace_id") if item else None,
+                agent_id=item.get("agent_id") if item else None,
                 domain_id=item["domain_id"] if item else domain_id,
                 domain_session_id=(
                     item["domain_session_id"] if item else domain_session_id

@@ -416,7 +416,10 @@ class BridgeServer:
 
     async def _handle_connection(self, websocket):
         connection = ConnectionState(
-            websocket, self.dispatch_raw, project_snapshot=self.project.snapshot
+            websocket,
+            self.dispatch_raw,
+            project_snapshot=self.project.snapshot,
+            workspace_snapshot=self.project.workspace_snapshot,
         )
         self._connections.add(connection)
         context = RequestContext(

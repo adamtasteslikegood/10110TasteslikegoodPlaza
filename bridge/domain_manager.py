@@ -79,7 +79,9 @@ class DomainManager:
                     else dict(
                         type="domain_state",
                         project_id=self._service.snapshot().get("project_id"),
-                        workspace_id=self._service.snapshot().get("workspace_id"),
+                        workspace_id=self._service.workspace_snapshot(
+                            command["domain_id"]
+                        ).get("workspace_id"),
                         domain_id=command["domain_id"],
                         domain_session_id=None,
                         state="inactive",
@@ -146,6 +148,11 @@ class DomainManager:
             )
         except Exception as error:
             snapshot = self._service.snapshot()
+            if command.get("domain_id"):
+                try:
+                    snapshot = self._service.workspace_snapshot(command["domain_id"])
+                except WorkspaceError:
+                    pass
             code = getattr(error, "code", "sdk_error")
             if session is not None:
                 command = dict(command, domain_session_id=session.domain_session_id)

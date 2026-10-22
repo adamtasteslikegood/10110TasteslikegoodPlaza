@@ -13,21 +13,58 @@ class FakeProjectService:
     owner_run_id = "domain-test-run"
 
     def __init__(self, tmp_path):
-        _, runtime, self.workspace = bootstrap(tmp_path)
+        _, runtime, self.workspace = bootstrap(tmp_path, domain_id="engineering")
         self.memory = ProjectMemoryStore(self.workspace)
         self.memory.initialize()
         self.memory.attach_run(self.owner_run_id)
         self.readiness = ReadinessService(self.workspace, runtime, self.memory)
+        self.capacity = None
         self.reservation = None
         self.memory_result = None
 
-    def require_workspace(self):
+    def reserve_capacity(self, owner):
+        from bridge.workspace import WorkspaceError
+
+        if self.capacity is not None and self.capacity is not owner:
+            raise WorkspaceError("capacity_limit", "Capacity reserved")
+        self.capacity = owner
+
+    def release_capacity(self, owner):
+        if self.capacity is owner:
+            self.capacity = None
+
+    async def prepare_domain(self, domain_id):
+        from bridge.workspace import prepare_worktree, inspect_project
+        from bridge.readiness import owned_io
+
+        self.workspace = await owned_io(
+            prepare_worktree,
+            inspect_project(self.workspace.project_root),
+            domain_id=domain_id,
+            runtime_root=self.readiness.lease_runtime_root,
+        )
+        self.readiness = ReadinessService(
+            self.workspace, self.readiness.lease_runtime_root, self.memory
+        )
+        return self.workspace
+
+    def workspace_snapshot(self, domain_id):
+        return dict(
+            self.snapshot(),
+            workspace_id=(
+                self.workspace.workspace_id
+                if domain_id == self.workspace.domain_id
+                else None
+            ),
+        )
+
+    def require_workspace(self, domain_id="engineering"):
         return self.workspace
 
     def require_memory(self):
         return self.memory
 
-    def require_readiness(self):
+    def require_readiness(self, domain_id="engineering"):
         return self.readiness
 
     def publish_reservation(self, lease):

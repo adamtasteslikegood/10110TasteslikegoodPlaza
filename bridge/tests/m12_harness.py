@@ -257,7 +257,7 @@ class Lifetime:
 
     @property
     def marker(self):
-        common = self.service.require_workspace().common_git_dir
+        common = self.service.require_memory().workspace.common_git_dir
         return (
             common
             / "plaza/runs"
@@ -265,9 +265,9 @@ class Lifetime:
         )
 
     def assert_released(self):
-        workspace = self.service.require_workspace()
+        workspace = self.service.require_workspace("engineering")
         assert observe_reservation(workspace) is None
-        assert self.service.snapshot()["reservation"] is None
+        assert self.service.workspace_snapshot("engineering")["reservation"] is None
         assert not (workspace.git_dir / "plaza-unclean.json").exists()
         for owner in self.provider.owners:
             assert owner._worker.done() and owner.transport.closed
@@ -309,7 +309,7 @@ async def restart_and_isolation(
     readback = Provider()
     readback.release.set()
     async with Lifetime(restart_dir, root, monkeypatch, readback) as restart:
-        reused = restart.service.require_workspace()
+        reused = restart.service.require_workspace("engineering")
         assert reused == work
         assert restart.service.require_memory().load() == memory_before
         assert not readback.clients and not readback.queries
@@ -334,7 +334,9 @@ async def restart_and_isolation(
     isolated = Provider()
     isolated.release.set()
     async with Lifetime(other_dir, other, monkeypatch, isolated) as second:
-        b_work = second.service.require_workspace()
+        socket = await second.socket()
+        gen = await socket.start()
+        b_work = second.service.require_workspace("engineering")
         assert b_work.project_id != work.project_id
         assert b_work.workspace_id != work.workspace_id
         assert b_work.common_git_dir != work.common_git_dir
@@ -342,8 +344,6 @@ async def restart_and_isolation(
         documents = b_work.common_git_dir / "plaza/session-memory"
         assert len(list(documents.glob("*.md"))) == 3
         assert all("ibis" not in p.read_text() for p in documents.glob("*.md"))
-        socket = await second.socket()
-        gen = await socket.start()
         await socket.run(gen, task="read previous notes")
         assert (await socket.reply("run", type="domain_result"))["output"].endswith(
             "isolated"

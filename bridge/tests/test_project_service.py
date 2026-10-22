@@ -78,7 +78,8 @@ async def test_chief_submission_confirms_once_without_human_prompt(tmp_path):
     assert service.snapshot()["stage"] == "ready"
     notes = service.require_memory().load()
     assert "Approved seed" in notes.progress
-    assert service.require_workspace().initial_commit in notes.progress
+    assert service._project.head_commit in notes.progress
+    assert service.workspace_snapshot("core")["workspace_id"] is None
     await service.close()
 
 
@@ -146,7 +147,7 @@ async def test_setup_save_failure_preserves_repository_and_never_reinitializes(
 
 
 @pytest.mark.asyncio
-async def test_final_setup_observation_failure_reports_failure_without_retry(
+async def test_setup_does_not_observe_or_provision_execution_checkout(
     tmp_path, monkeypatch
 ):
     import subprocess
@@ -184,24 +185,21 @@ async def test_final_setup_observation_failure_reports_failure_without_retry(
     try:
         reply = await service.interact_setup("systems-architect", "first")
         snapshot = service.snapshot()
-        assert snapshot["stage"] == "failed"
-        assert snapshot["reason"] == "workspace_invalid"
-        assert "Project setup failed: workspace_invalid" in reply
-        assert "are ready" not in reply
+        assert snapshot["stage"] == "ready"
+        assert "are ready" in reply
         assert snapshot["architect_decision"] == decisions[0]
         assert snapshot["memory"]["status"] == "saved"
         commit = git(root, "rev-parse", "HEAD")
         checkpoint = service._memory.load()
         assert decisions[0]["reason"] in checkpoint.progress
         assert commit in checkpoint.progress
-        with pytest.raises(WorkspaceError, match="Chief Architect") as error:
+        with pytest.raises(WorkspaceError) as error:
             service.require_workspace()
         assert error.value.code == "workspace_not_ready"
-        retry = await service.interact_setup("systems-architect", "second")
-        assert "operator inspection" in retry
-        assert git(root, "rev-parse", "HEAD") == commit
-        assert service._memory.load().progress == checkpoint.progress
-        assert len(decisions) == initialize.call_count == status.call_count == 1
+        assert await service.interact_setup("systems-architect", "second") is None
+        assert len(decisions) == initialize.call_count == 1
+        assert status.call_count == 0
+        assert not (root / ".git/plaza/workspaces").exists()
     finally:
         await service.close()
 
@@ -258,7 +256,7 @@ async def test_foreign_live_reservation_allows_bootstrap_memory_but_start_is_bus
         inspect_project(root), runtime_root=tmp_path / "runtime"
     )
     lease = WorkspaceLease.acquire(
-        workspace, domain_id="foreign", domain_session_id="foreign-generation"
+        workspace, domain_id="core", domain_session_id="foreign-generation"
     )
     service = ProjectService(
         replace(default_config(), workspace_root_dir=root),
@@ -269,11 +267,11 @@ async def test_foreign_live_reservation_allows_bootstrap_memory_but_start_is_bus
     try:
         await settled(service)
         assert service.snapshot()["stage"] == "ready"
-        assert service.snapshot()["reservation"]["domain_id"] == "foreign"
+        assert service.workspace_snapshot("core")["reservation"]["domain_id"] == "core"
         assert service.require_memory().load().revision >= 1
         server = BridgeServer(config=service._config, project_service=service)
         result = await server.dispatch(
-            dict(type="activate_domain", domain_id="local", request_id="start")
+            dict(type="activate_domain", domain_id="core", request_id="start")
         )
         assert result[-1]["error_type"] == "workspace_busy"
         await server._shutdown_domains()
@@ -550,18 +548,19 @@ def test_cleanup_publication_clears_only_matching_released_lease(tmp_path):
     service = ProjectService(
         default_config(), runtime_root=tmp_path, owner_run_id="run"
     )
-    first = SimpleNamespace(domain_id="first", domain_session_id="old", held=False)
-    second = SimpleNamespace(domain_id="second", domain_session_id="new", held=True)
+    first = SimpleNamespace(domain_id="core", domain_session_id="old", held=False)
+    second = SimpleNamespace(domain_id="core", domain_session_id="new", held=True)
+    service._workspace_states["core"] = service.workspace_snapshot("core")
     service.publish_reservation(second)
     service.publish_cleanup(first, clean=True)
-    assert service.snapshot()["reservation"]["domain_id"] == "second"
+    assert service.workspace_snapshot("core")["reservation"]["domain_id"] == "core"
     service.publish_cleanup(second, clean=True)
-    assert service.snapshot()["reservation"]["domain_id"] == "second"
+    assert service.workspace_snapshot("core")["reservation"]["domain_id"] == "core"
     service.publish_cleanup(second, clean=False)
-    assert service.snapshot()["reservation"]["cleanup_failed"]
+    assert service.workspace_snapshot("core")["reservation"]["cleanup_failed"]
     second.held = False
     service.publish_cleanup(second, clean=True)
-    assert service.snapshot()["reservation"] is None
+    assert service.workspace_snapshot("core")["reservation"] is None
 
 
 @pytest.mark.asyncio

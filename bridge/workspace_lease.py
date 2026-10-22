@@ -64,7 +64,7 @@ class WorkspaceLease:
             )
         except UnicodeError:
             invalid = True
-        if invalid:
+        if invalid or domain_id != workspace.domain_id:
             raise WorkspaceError(
                 "workspace_invalid", "Invalid domain reservation identifiers"
             )
@@ -126,7 +126,7 @@ class WorkspaceLease:
             return lease
 
     def validate(self) -> None:
-        if not self.held:
+        if not self.held or self.domain_id != self.workspace.domain_id:
             raise _cleanup_error()
         try:
             self._lock.validate()
