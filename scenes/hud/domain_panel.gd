@@ -98,6 +98,8 @@ func _open_nearby() -> void:
 
 func _open_remote() -> void:
 	if selected_domain_id.is_empty(): return
+	if BridgeClient.surface.domain_id == selected_domain_id and not BridgeClient.surface.agent_id.is_empty():
+		_agents[selected_domain_id] = BridgeClient.surface.agent_id
 	anchor_agent_id = ""
 	remote = true
 	_return_to_anchor = false

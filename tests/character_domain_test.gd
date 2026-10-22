@@ -204,6 +204,7 @@ func _ready() -> void:
 	await deliver(completion)
 	check(BridgeClient.domain_snapshot("core").results.size() == 1 and count("domain_query") == 1, "return replay deduplicates without execution")
 	await review_regressions()
+	await review_round2()
 	check(not button("Stop").disabled, "idle owned session retains Stop")
 	button("Stop").pressed.emit()
 	await frames()
@@ -216,7 +217,7 @@ func _ready() -> void:
 	var late: Dictionary = status_packets.back()
 	GameEvents.npc_left.emit("systems-architect")
 	await deliver(late)
-	check(not panel.visible and count("activate_domain") == 1 and count("domain_query") == 2, "late status after departure never opens or executes")
+	check(not panel.visible and count("activate_domain") == 1 and count("domain_query") == 3, "late status after departure never opens or executes")
 	# Typed service errors retain the status binding and settle only exact correlation.
 	var status_request := BridgeClient.agent_status("systems-architect")
 	await frames()
@@ -232,7 +233,7 @@ func _ready() -> void:
 	await deliver(wrong)
 	var failed_status := BridgeClient.character_snapshot("systems-architect")
 	check(failed_status.pending.is_empty() and failed_status.error == wrong.output and failed_status.domain_id == "core", "typed status error uses output and preserves binding")
-	check(not panel.visible and count("domain_query") == 2, "status error cannot steal foreground or execute")
+	check(not panel.visible and count("domain_query") == 3, "status error cannot steal foreground or execute")
 	var setup_late := BridgeClient.project_setup("systems-architect", "explicit review before disconnect")
 	await frames()
 	# Store observation fences refuse lifecycle snapshots captured before newer work.
@@ -324,3 +325,55 @@ func review_regressions() -> void:
 	await deliver(state(latest("background_domain").request_id, lifecycle))
 	GameEvents.npc_approached.emit("systems-architect", AgentRegistry.get_agent("systems-architect"))
 	await settle_return()
+
+func review_round2() -> void:
+	var pane := main.get_node("DomainHUD")
+	GameEvents.npc_approached.emit("security-auditor", AgentRegistry.get_agent("security-auditor"))
+	await frames()
+	check(BridgeClient.surface.agent_id == "security-auditor" and panel.visible, "R2 intentional Auditor dialogue owns Core surface")
+	pane.get_node("Global/Toolbar/RefocusButton").pressed.emit()
+	await frames()
+	var pane_input: LineEdit = pane.get_node("Panel/Scroll/Rows/TaskInput")
+	pane_input.text = "intentional Auditor remote-pane Run"
+	pane_input.text_changed.emit(pane_input.text)
+	pane.get_node("Panel/Scroll/Rows/Actions/Run").pressed.emit()
+	await frames()
+	var run := latest("domain_query")
+	check(run.agent_id == "security-auditor" and BridgeClient.surface.agent_id == "security-auditor", "R2 global Refocus handoff retains intentional Auditor Run representative")
+	await deliver({"type": "domain_result", "request_id": run.request_id, "project_id": "P", "workspace_id": "W", "domain_id": "core", "domain_session_id": "A", "output_id": "3", "agent_id": run.agent_id, "task": run.task, "output": "Auditor result line\n".repeat(100), "status": "success", "reason": "completed", "truncated": false, "memory": {"saved": true, "revision": 11, "error_type": null}})
+	GameEvents.npc_approached.emit("systems-architect", AgentRegistry.get_agent("systems-architect"))
+	await frames(8)
+	hud._manual_scroll(90)
+	await frames()
+	var outgoing: Dictionary = BridgeClient.domain_snapshot("core").view
+	check(not outgoing.follow and not outgoing.anchor.is_empty(), "R2 cross-domain fixture has settled outgoing semantic view")
+	var cached := BridgeClient.character_snapshot("systems-architect")
+	cached.domain_id = "engineering"
+	BridgeClient._characters["backend-architect"] = cached
+	var observation := state("", "inactive")
+	observation.domain_id = "engineering"
+	observation.workspace_id = null
+	observation.domain_session_id = null
+	BridgeClient.domains.observe_domain(observation, BridgeClient.domains.observation_fence())
+	BridgeClient.domains.save_view("engineering", 0, true, {})
+	var incoming: Dictionary = BridgeClient.domain_snapshot("engineering").view.duplicate(true)
+	hold_status = true
+	GameEvents.npc_approached.emit("backend-architect", AgentRegistry.get_agent("backend-architect"))
+	check(panel.visible and BridgeClient.surface.domain_id == "engineering", "R2 intentional cached cross-domain approach keeps incoming dialogue visible")
+	check(BridgeClient.domain_snapshot("engineering").view == incoming, "R2 cached domain transition never writes rendered Core anchor into incoming view")
+	await frames()
+	check(BridgeClient.domain_snapshot("engineering").view.anchor.is_empty() and count("activate_domain") == 1, "R2 incoming blank-domain view stays independent without implicit Start")
+	var observed: Dictionary = status_packets.back().duplicate(true)
+	observed.domain_id = "engineering"
+	observed.domain_state = observation
+	hold_status = false
+	await deliver(observed)
+	lifecycle = "background"
+	await deliver(state(latest("background_domain").request_id, lifecycle))
+	GameEvents.npc_approached.emit("systems-architect", AgentRegistry.get_agent("systems-architect"))
+	await frames()
+	lifecycle = "active"
+	await deliver(state(latest("refocus_domain").request_id))
+	var completion := state(latest("resume").request_id)
+	completion.merge({"type": "resume_complete", "high_water_mark": "3", "earliest_output_id": "1", "history_gap": false}, true)
+	await deliver(completion)

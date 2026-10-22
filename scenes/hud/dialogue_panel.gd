@@ -19,6 +19,8 @@ var _message_spans: Array[Dictionary] = []
 var _view_anchors: Dictionary = {}
 var _waiting := false
 var _domain_id := ""
+# Local binding may change before the outgoing surface saves its rendered view.
+var _rendered_domain_id := ""
 var _kind := ""
 var _setup_draft := ""
 var _assistant_span: Dictionary = {"start": 0, "length": 0, "request_id": ""}
@@ -147,6 +149,7 @@ func _on_conversation_changed(agent_id: String, reason: String, request_id: Stri
 	_update_actions()
 
 func _render(snapshot: Dictionary, reveal_id: String, scroll: float, preserve_reveal: bool = false, anchor: Dictionary = {}) -> void:
+	if _kind != "working": _rendered_domain_id = ""
 	var previous_span := _assistant_span
 	var previous_progress := _revealed - float(previous_span.start)
 	var was_revealing := _revealed < _reveal_end
@@ -235,9 +238,9 @@ func _save_view() -> void:
 	# overwrite the saved view when switching agents in consecutive frames.
 	if _scroll_guard or not AgentRegistry.has_agent(_current_agent_id):
 		return
-	if _kind == "working" and not _domain_id.is_empty():
-		if not _panel.visible or BridgeClient.surface.owner != "dialogue": return
-		BridgeClient.domains.save_view(_domain_id, _body_label.get_v_scroll_bar().value, _follow, _reading_anchor())
+	if not _rendered_domain_id.is_empty():
+		if not _panel.visible or BridgeClient.surface.owner != "dialogue" or BridgeClient.surface.domain_id != _rendered_domain_id: return
+		BridgeClient.domains.save_view(_rendered_domain_id, _body_label.get_v_scroll_bar().value, _follow, _reading_anchor())
 		return
 	_view_anchors[_current_agent_id] = _reading_anchor()
 	BridgeClient.save_conversation_view(_current_agent_id, _body_label.get_v_scroll_bar().value, _follow)
@@ -427,7 +430,9 @@ func _character_changed(agent: String, _reason: String, _request: String) -> voi
 	var domain: String = data.get("domain_id", "") if data.get("domain_id") != null else ""
 	var newly_bound := domain != _domain_id
 	_domain_id = domain
-	if newly_bound and _panel.visible and not domain.is_empty(): BridgeClient.surface.open("dialogue", domain, agent)
+	if newly_bound and _panel.visible and not domain.is_empty():
+		BridgeClient.surface.open("dialogue", domain, agent)
+		_panel.show()
 	if _kind == "extra":
 		if previous_kind == "extra" and _reason != "cached":
 			_update_actions()
@@ -439,6 +444,7 @@ func _character_changed(agent: String, _reason: String, _request: String) -> voi
 	elif _kind == "working":
 		_render_domain("", newly_bound)
 	else:
+		_rendered_domain_id = ""
 		_body_label.text = data.get("error", "Checking character status…")
 		_question_input.editable = false
 		_question_input.focus_mode = Control.FOCUS_NONE
@@ -478,6 +484,7 @@ func _render_domain(reveal_id: String = "", restore: bool = false) -> void:
 	var data := BridgeClient.character_snapshot(_current_agent_id)
 	for key in ["setup_output", "error"]:
 		if not data.get(key, "").is_empty(): messages.append({"role": "setup" if key == "setup_output" else "error", "content": data[key], "status": "notice", "generation": snapshot.domain_session_id, "request_id": key})
+	_rendered_domain_id = _domain_id
 	var presentation := {"messages": messages, "omitted": snapshot.get("omitted_count", 0), "pending": pending, "draft": snapshot.draft, "connected": BridgeClient.is_bridge_connected(), "generation": snapshot.domain_session_id}
 	_render(presentation, reveal_id, view.get("scroll", 0.0) if restore else _body_label.get_v_scroll_bar().value, true, view.get("anchor", {}) if restore else _reading_anchor())
 	_status_label.text = "%s · %s / %s · Project %s%s" % [_domain_id, snapshot.state, snapshot.execution_state, BridgeClient.workspace_snapshot().get("stage", "unknown"), " · Stop to release workspace" if not snapshot.domain_session_id.is_empty() and snapshot.state != "inactive" else ""]
