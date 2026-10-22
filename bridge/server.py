@@ -489,6 +489,8 @@ class BridgeServer:
             try:
                 resp = await self._call_conversation(data, histories, metadata)
             finally:
+                if metadata.cleanup_failed:
+                    self.project.note_cleanup_failure()
                 self._npc_tasks.discard(operation)
         except asyncio.CancelledError:
             if record:

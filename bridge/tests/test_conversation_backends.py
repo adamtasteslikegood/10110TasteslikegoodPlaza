@@ -47,7 +47,7 @@ def install_sdk(monkeypatch, stream=None, *, connect=None, disconnect=None):
 
     clients = []
 
-    def factory(*, options):
+    def factory(*, options, transport=None):
         client = AsyncMock()
         client.options = options
         client.connect.side_effect = connect
@@ -527,7 +527,7 @@ async def test_cleanup_failure_does_not_commit_success_and_keeps_observed_id(
     monkeypatch, runtime_config, runtime_archive
 ):
     async def disconnect():
-        raise RuntimeError("cleanup failed")
+        raise RuntimeError("private-disconnect-sentinel")
 
     install_sdk(monkeypatch, disconnect=disconnect)
     from bridge.server import BridgeServer
@@ -537,7 +537,8 @@ async def test_cleanup_failure_does_not_commit_success_and_keeps_observed_id(
     histories = {}
     response = await server.dispatch({"agent_id": "agent", "task": "hi"}, histories)
     assert response[0]["error_type"] == "api_error"
-    assert response[0]["message"] == "cleanup failed"
+    assert response[0]["message"] == "Claude Code cleanup failed"
+    assert "private-disconnect-sentinel" not in json.dumps(response)
     assert histories == {}
     records = [r for kind, r, _ in writer.records if kind == "transcript"]
     assert [(r["role"], r["outcome"]) for r in records] == [
@@ -545,6 +546,9 @@ async def test_cleanup_failure_does_not_commit_success_and_keeps_observed_id(
         ("error", "failure"),
     ]
     assert records[-1]["provider_session_id"] == "observed-session"
+    assert "private-disconnect-sentinel" not in json.dumps(writer.records)
+    with pytest.raises(RuntimeError, match="SDK cleanup"):
+        await server.project.close()
 
 
 @pytest.mark.asyncio
@@ -593,8 +597,10 @@ async def test_installed_transport_reaps_local_child_on_cancel(monkeypatch):
     processes = []
 
     class LocalClient:
-        def __init__(self, *, options):
-            self.transport = SubprocessCLITransport(prompt="", options=options)
+        def __init__(self, *, options, transport=None):
+            self.transport = transport or SubprocessCLITransport(
+                prompt="", options=options
+            )
 
         async def connect(self):
             process = await anyio.open_process(
@@ -842,6 +848,63 @@ async def test_repeated_server_cancellation_waits_for_npc_cleanup(
         ("error", "cancelled"),
     ]
     assert writer.closed == [False]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("phase", ["receive", "disconnect"])
+async def test_cleanup_failure_channel_preserves_repeated_caller_cancellation(
+    monkeypatch, phase
+):
+    from bridge import conversation_sdk
+    from bridge.conversation import ExecutionMetadata
+
+    receiving, cleaning, release = (asyncio.Event() for _ in range(3))
+
+    async def disconnect():
+        cleaning.set()
+        await release.wait()
+        raise OSError("private-cleanup-sentinel")
+
+    install_sdk(monkeypatch, disconnect=disconnect)
+    original = conversation_sdk.ClaudeSDKClient
+
+    def factory(**kwargs):
+        client = original(**kwargs)
+
+        async def receive():
+            receiving.set()
+            if phase == "receive":
+                await asyncio.Future()
+            yield assistant()
+            yield terminal()
+
+        client.receive_response = receive
+        return client
+
+    monkeypatch.setattr(conversation_sdk, "ClaudeSDKClient", factory)
+    metadata, history = ExecutionMetadata(), []
+    task = asyncio.create_task(
+        ConversationEngine().handle_request(
+            dict(agent_id="agent", task="synthetic"), history, metadata=metadata
+        )
+    )
+    try:
+        await asyncio.wait_for(
+            (receiving if phase == "receive" else cleaning).wait(), 1
+        )
+        task.cancel("original caller cancellation")
+        await asyncio.wait_for(cleaning.wait(), 1)
+        task.cancel("repeated caller cancellation")
+        await asyncio.sleep(0)
+        assert not task.done()
+    finally:
+        release.set()
+        with pytest.raises(asyncio.CancelledError) as cancelled:
+            await task
+    assert cancelled.value.args == ("original caller cancellation",)
+    assert metadata.cleanup_failed is True
+    assert history == []
+    assert not [t for t in asyncio.all_tasks() if t.get_name() == "npc-sdk-request"]
 
 
 @pytest.mark.asyncio

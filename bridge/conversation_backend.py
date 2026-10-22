@@ -9,11 +9,12 @@ _PARAGRAPH_BREAK = r"\r?\n[ \t]*\r?\n"
 
 @dataclass
 class ExecutionMetadata:
-    """Observed provider identity, never a resume handle or wire field."""
+    """Request-local identity, proposals and cleanup state; never a wire field."""
 
     provider_session_id: str | None = None
     memory_delta: dict | None = None
     context_sources: list[dict] | None = None
+    cleanup_failed: bool = False
 
 
 class ConversationFailure(Exception):

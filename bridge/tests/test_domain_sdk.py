@@ -652,6 +652,7 @@ def test_acceptance_manifest_requires_versions_cases_inventory_and_exact_sources
                 module.check_acceptance(envelope(evidence), tmp_path, mode)
         source.write_bytes(original)
     transitive = {
+        "bridge/conversation_backend.py",
         "bridge/project_files.py",
         "bridge/workspace.py",
         "bridge/workspace_lease.py",

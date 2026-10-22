@@ -24,6 +24,7 @@ from claude_agent_sdk.types import (
     ToolResultBlock,
     ToolUseBlock,
 )
+from claude_agent_sdk._internal.transport.subprocess_cli import SubprocessCLITransport
 
 from bridge.conversation_backend import (
     ConversationFailure,
@@ -42,6 +43,52 @@ _TOOL_BLOCKS = (
     ServerToolUseBlock,
     ServerToolResultBlock,
 )
+
+
+async def _empty():
+    return
+    yield {}
+
+
+class _OwnedTransport(SubprocessCLITransport):
+    """Retain only this request's child even when SDK close drops its handle."""
+
+    def __init__(self, *, options):
+        super().__init__(prompt=_empty(), options=options)
+        self.process = None
+
+    async def close(self):
+        self.process = self._process or self.process
+        await super().close()
+
+
+async def _cleanup(client, transport, metadata):
+    # Both operations stay in the original SDK worker / shielded AnyIO scope.
+    # In particular, an interrupted connect may not have created an SDK Query.
+    if client is not None:
+        try:
+            await client.disconnect()
+        except BaseException:
+            metadata.cleanup_failed = True
+    try:
+        await transport.close()
+    except BaseException:
+        metadata.cleanup_failed = True
+    process = transport.process
+    if process is not None and process.returncode is None:
+        metadata.cleanup_failed = True
+        try:
+            try:
+                process.kill()
+            except ProcessLookupError:
+                pass
+            with anyio.fail_after(5):
+                await process.wait()
+        except BaseException:
+            # Unconfirmed cleanup stays failed; ownership evidence is retained.
+            pass
+    if metadata.cleanup_failed:
+        raise ConversationFailure("Claude Code cleanup failed") from None
 
 
 def _options(definition, model, max_output_tokens):
@@ -155,19 +202,19 @@ class ClaudeCodeBackend:
                 if cancel_requested:
                     scope.cancel()
                 client = None
+                transport = _OwnedTransport(options=options)
                 try:
                     with anyio.fail_after(timeout):
                         await anyio.lowlevel.checkpoint()
-                        client = ClaudeSDKClient(options=options)
+                        client = ClaudeSDKClient(options=options, transport=transport)
                         await client.connect()
                         await client.query(prompt)
                         output = await _response(client, metadata)
                 finally:
-                    if client is not None:
-                        # AnyIO cancellation can be shielded by SDK cleanup;
-                        # raw task.cancel() cannot. Keep all SDK work in this task.
-                        with anyio.CancelScope(shield=True):
-                            await client.disconnect()
+                    # AnyIO cancellation can be shielded by SDK cleanup;
+                    # raw task.cancel() cannot. Keep all SDK work in this task.
+                    with anyio.CancelScope(shield=True):
+                        await _cleanup(client, transport, metadata)
             if scope.cancel_called:
                 raise asyncio.CancelledError()
             return output
@@ -191,5 +238,5 @@ class ClaudeCodeBackend:
                 except Exception:
                     break
             if not worker.cancelled():
-                worker.exception()  # retrieve a cleanup error, preserve cancellation
+                worker.exception()  # cleanup_failed separately preserves uncertainty
             raise

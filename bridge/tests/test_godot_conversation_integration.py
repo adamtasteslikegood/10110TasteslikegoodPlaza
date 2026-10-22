@@ -40,7 +40,7 @@ async def test_delayed_replies_failure_and_fresh_reconnect(
     api = MagicMock(side_effect=AssertionError("default SDK must never use API"))
     monkeypatch.setattr("bridge.conversation_api.AsyncAnthropic", api)
 
-    def factory(*, options):
+    def factory(*, options, transport=None):
         client = AsyncMock()
         index = len(clients)
         clients.append(client)
