@@ -1,5 +1,7 @@
 from dataclasses import replace
+from pathlib import Path
 import pytest
+from bridge import context
 from bridge.config import default_config, load_config
 from bridge.context import compose_context, ContextError
 
@@ -17,6 +19,57 @@ def packet(config, **overrides):
     )
     args.update(overrides)
     return compose_context(config, **args)
+
+
+@pytest.fixture
+def symlinked_checkout(tmp_path, monkeypatch):
+    checkout = tmp_path / "checkout"
+    checkout.symlink_to(
+        Path(context.__file__).resolve().parents[1], target_is_directory=True
+    )
+    monkeypatch.setattr(context, "__file__", str(checkout / "bridge/context.py"))
+    return checkout
+
+
+def test_shipped_context_through_symlinked_checkout(tmp_path, symlinked_checkout):
+    config = replace(default_config(), install_context_dir=tmp_path / "absent")
+    result = packet(config)
+    shipped = [source for source in result.sources if source.scope == "shipped"]
+    assert len(shipped) == 2
+    for source, name in zip(shipped, ("GAME_CONTEXT.md", "WORK_CONTEXT.md")):
+        canonical = (symlinked_checkout / "bridge/context" / name).resolve()
+        assert source.identity == str(canonical)
+        assert source.text == canonical.read_text(encoding="utf-8")
+        assert source.text
+
+
+@pytest.mark.parametrize("scope", ["installation", "project"])
+@pytest.mark.parametrize("position", ["root", "ancestor"])
+def test_guidance_symlink_roots_still_rejected(
+    tmp_path, symlinked_checkout, scope, position
+):
+    real = tmp_path / "real"
+    guidance = real / "guidance"
+    guidance.mkdir(parents=True)
+    (guidance / "GAME_CONTEXT.md").write_text("Owner guidance.")
+    (guidance / "PLAZA_AGENTS.md").write_text("Project guidance.")
+    linked = tmp_path / "linked"
+    linked.symlink_to(
+        guidance if position == "root" else real, target_is_directory=True
+    )
+    selected = linked if position == "root" else linked / "guidance"
+    config = replace(
+        default_config(), install_context_dir=guidance, workspace_root_dir=guidance
+    )
+    # First prove shipped guidance and the unlinked installation/project load.
+    packet(config)
+    override = (
+        {"install_context_dir": selected}
+        if scope == "installation"
+        else {"workspace_root_dir": selected}
+    )
+    with pytest.raises(ContextError, match="Guidance cannot be read safely"):
+        packet(replace(config, **override))
 
 
 def test_config_relative_and_override(tmp_path):

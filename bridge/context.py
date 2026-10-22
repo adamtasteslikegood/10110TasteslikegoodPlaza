@@ -124,7 +124,9 @@ def compose_context(
 ):
     """Synchronous bounded reads; async callers run this inside owned_io."""
     sources = []
-    shipped = Path(__file__).with_suffix("")
+    # The imported module is trusted; its checkout may have a symlinked ancestor.
+    # Owner/project paths and the guidance files still use strict no-follow reads.
+    shipped = Path(__file__).resolve().with_suffix("")
     for category in ("GAME", "WORK"):
         sources.append(_read(shipped, category + "_CONTEXT.md", 8192, "shipped"))
         sources.append(
