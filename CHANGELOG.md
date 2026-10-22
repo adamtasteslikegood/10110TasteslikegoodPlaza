@@ -17,6 +17,24 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
 
+### Fixed — M12 replies, diagnostics and requested shutdown (PLZG-289)
+
+- Decode supported final answer/memory envelopes conservatively, preserve prose,
+  and teach the real project-memory grammar without accepting unsupported aliases.
+- Preserve partial failed output in enabled transcripts and show readable causes
+  in both Godot panes. Keep operational diagnostics bounded, correlated and free
+  of raw tool bodies; explain managed branch/root-cwd constraints without weaker
+  readiness checks. Give domain command/execution events one owner.
+- Route actual CLI SIGINT/SIGTERM through graceful drain. Retain failed NPC/Chief
+  cleanup across request retirement, reap only captured owned children and keep
+  recording/project ownership unclean when cleanup cannot be confirmed.
+- Record 1,990 Python tests plus 118 subtests, eight Godot gates, fresh twelve-source
+  guards (29/29 per mode at `ec5d236`) and one selected `dontAsk` Linux API-key live
+  pass at clean `eaba12a`, bound to 48 relevant sources with three clean recording
+  closures. CLI signal behavior has separate provider-free process tests. Preserve
+  all historical evidence; owner laptop baseline behavior/latest OAuth are already
+  confirmed, while this correction's laptop and remaining desktop checks stay open.
+
 ### Changed — M12 character work and acceptance runners (PLZG-289)
 
 - Implement catalog-agent department routing, lazy per-department worktrees,

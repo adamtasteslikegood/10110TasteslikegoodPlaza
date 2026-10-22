@@ -1,0 +1,103 @@
+{
+  "schema_version": 1,
+  "milestone": "M12 runtime corrections",
+  "date": "2026-10-22",
+  "attempts": [
+    {
+      "attempt": 1,
+      "artifact": "specs/evidence/m12-runtime-live-dontAsk-2026-10-22.json",
+      "sha256": "b4a7a0891afc073cc210c8f137f6c06c76f2b13d3641393f3e9bccbab00df9f5",
+      "tested_commit": "eaba12a1cc8dca7a3d2aeba0d27cd7b12672c947",
+      "permission_mode": "dontAsk",
+      "auth_mode": "api_key",
+      "started_utc": "2026-10-22T23:04:10.770559+00:00",
+      "ended_utc": "2026-10-22T23:04:48.309619+00:00",
+      "exit_code": 0,
+      "accepted": true,
+      "completed": true,
+      "errors": [],
+      "desktop_accepted": false,
+      "scenario_check_counts": {
+        "initial": 17,
+        "restart": 9,
+        "isolation": 8
+      },
+      "clean_lifetimes": 3,
+      "cli_exit_codes": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "forced_teardown": false,
+      "reported_domain_terminal_cost_usd": [
+        0.276198,
+        0.104048,
+        0.074404
+      ]
+    }
+  ],
+  "decision": "One deliberately invoked selected-mode live attempt after inspected two-mode guard proof and committed activation. No automatic retry, source restamping, validator relaxation or prior-artifact replacement.",
+  "guard": {
+    "ledger": "specs/evidence/m12-runtime-guard-attempts-2026-10-22.json",
+    "tested_commit": "ec5d236c5864175ab712050590f3bedb0b350aa9",
+    "evidence_commit": "eaba12a1cc8dca7a3d2aeba0d27cd7b12672c947",
+    "accepted_cases": {
+      "dontAsk": 29,
+      "bypassPermissions": 29
+    },
+    "source_count": 12,
+    "activation_path": "bridge/tool_guard_acceptance.json",
+    "activation_sha256": "b322c3f8e4a2f77c5b2d9971953fc636a3cee65528c71c4ef26263427dc73864"
+  },
+  "binding": {
+    "live_source_count": 48,
+    "source_inventory": "Conservative binding of relevant source files, not trace coverage of every hashed file. The paid runner composes BridgeServer directly and bypasses CLI signal setup.",
+    "runtime_baseline": "Captured clean actual eaba12a before/after/controller-current baselines were equal before evidence/docs writing. Writer matched the unchanged report to the captured baseline, each captured tracked blob to the executed Git commit, and all 48 relevant hashes to the executed commit, preflight and current files.",
+    "raw_copy": "Byte-identical allowlisted runner JSON; no reserialization or observation edits.",
+    "historical_evidence": "All 20 previously tracked M12 evidence files remain byte-identical."
+  },
+  "versions": {
+    "sdk": "0.2.136",
+    "anyio": "4.14.2",
+    "cli": "2.1.228 (Claude Code)",
+    "godot": "4.7.1.stable.official.a13da4feb",
+    "python": "3.12.14",
+    "platform": "linux",
+    "cli_sha256": "d535985e6941a3eb00179ccd7f52ceb0c6623a0305a518ebc4e6514f84a94c99"
+  },
+  "actual_manifest_validation": [
+    {
+      "scenario": "a_initial",
+      "artifact": "/tmp/plaza-m12-live-kxlcb9i6/a-initial/logs/runs/20261022T230413960957Z-75edb37f482a4e35b6661dc17ccf9596/manifest.json",
+      "sha256": "4154cb3faab25084f4507b458aab9b5898bcb47d02357c7a19f7faacf60e665c",
+      "status": "closed",
+      "ended_at": "2026-10-22T23:04:35.473320+00:00"
+    },
+    {
+      "scenario": "a_restart",
+      "artifact": "/tmp/plaza-m12-live-kxlcb9i6/a-restart/logs/runs/20261022T230436996307Z-386dde3453034cf9b565347eedf3f9ae/manifest.json",
+      "sha256": "67a11cd440ff584797346380f307089d03884d365944cf10fab72ca89295d6d5",
+      "status": "closed",
+      "ended_at": "2026-10-22T23:04:42.576838+00:00"
+    },
+    {
+      "scenario": "b_isolation",
+      "artifact": "/tmp/plaza-m12-live-kxlcb9i6/b-isolation/logs/runs/20261022T230443770013Z-cc31425642fc40f7979e76842137f4a3/manifest.json",
+      "sha256": "f2dd01615a9fe10fa78ad6fa07d9b9828c5398a253a759df6becb2d7f309ba40",
+      "status": "closed",
+      "ended_at": "2026-10-22T23:04:47.795480+00:00"
+    }
+  ],
+  "offline_record": "specs/evidence/m12-runtime-offline-2026-10-22.json",
+  "limits": [
+    "Live acceptance covers dontAsk/Linux/API-key only; guard success in both modes does not imply live UI acceptance in both.",
+    "Actual CLI SIGINT/SIGTERM, cancellation and failed NPC/Chief cleanup have separate provider-free Linux process regression evidence in the full offline suite. This paid run did not simulate provider cleanup failures or execute CLI signal handlers.",
+    "Reported domain terminal estimates exclude unobserved/nonterminal calls and separate Chief/NPC calls; these are not billing totals.",
+    "Owner baseline laptop tools/worktree/memory behavior and latest OAuth are confirmed by owner report. New correction-specific laptop and remaining desktop acceptance are open; cloud evidence proves neither another native binary nor subscription billing.",
+    "Git worktrees and permission guards provide cooperative isolation, not host/network/process containment. Stronger isolation remains separate M13/M14 planning.",
+    "Private uploaded laptop recordings are excluded. Public data comes only from this disposable acceptance fixture. Raw disposable logs/artifacts remain at the recorded external paths.",
+    "PR merge and M12 completion are not claimed by this ledger."
+  ]
+}
