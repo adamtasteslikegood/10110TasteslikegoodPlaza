@@ -162,6 +162,8 @@ async def test_live_choreography_typed_setup_start_extra_restart_isolation(
     finally:
         report["lifetimes"].append(await life.stop())
     report["initial"]["notes"] = live.post_close_notes(life)
+    live._proof_wire(report["initial"]["wire"])
+    live._proof_wire(live.sanitize_evidence(report)["initial"]["wire"])
     assert report["initial"]["start"]["query_count"] == 0
     assert report["initial"]["context"]["facts"]["domain_id"] == "core"
     life = live.LiveLifetime(

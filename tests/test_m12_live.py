@@ -130,6 +130,76 @@ def test_runner_exists_and_complete_observed_proof_passes():
     assert module().validate_evidence(evidence()) == []
 
 
+def extra_status_wire(agent_id="fixture-extra-a"):
+    return dict(
+        commands=[
+            dict(type="agent_status", request_id="extra-status", agent_id=agent_id)
+        ],
+        emitted=[
+            dict(
+                type="agent_status",
+                request_id="extra-status",
+                agent_id=agent_id,
+                execution_kind="extra",
+                domain_id=None,
+            )
+        ],
+    )
+
+
+@pytest.mark.parametrize("agent_id", ["fixture-extra-a", "fixture-extra-b"])
+def test_wire_preserves_explicit_extra_null_domain(agent_id):
+    mod = module()
+    wire = extra_status_wire(agent_id)
+    assert mod._proof_wire(wire) == wire
+    sanitized = mod.sanitize_evidence(dict(initial=dict(wire=wire)))
+    assert sanitized["initial"]["wire"] == wire
+    assert mod._proof_wire(sanitized["initial"]["wire"]) == wire
+
+
+@pytest.mark.parametrize(
+    "damage",
+    [
+        "working",
+        "missing_kind",
+        "unknown_extra",
+        "domain_state",
+        "domain_result",
+        "command",
+        "extra_has_domain",
+        "null_session",
+    ],
+)
+def test_wire_null_domain_is_limited_to_explicit_extra_status(damage):
+    mod = module()
+    wire = extra_status_wire()
+    packet = wire["emitted"][0]
+    if damage == "working":
+        packet["execution_kind"] = "working"
+    elif damage == "missing_kind":
+        del packet["execution_kind"]
+    elif damage == "unknown_extra":
+        packet["agent_id"] = "systems-architect"
+    elif damage in ("domain_state", "domain_result"):
+        packet["type"] = damage
+    elif damage == "command":
+        wire["commands"][0] = packet.copy()
+    elif damage == "extra_has_domain":
+        packet["domain_id"] = "core"
+    elif damage == "null_session":
+        packet["domain_session_id"] = None
+    with pytest.raises(mod.AcceptanceError):
+        mod._proof_wire(wire)
+
+
+def test_complete_proof_includes_extra_status_packets():
+    record = evidence()
+    for name, packets in extra_status_wire().items():
+        record["initial"]["wire"][name][:0] = packets
+    assert module().validate_evidence(record) == []
+    assert module().validate_evidence(module().sanitize_evidence(record)) == []
+
+
 @pytest.mark.parametrize(
     "key",
     [

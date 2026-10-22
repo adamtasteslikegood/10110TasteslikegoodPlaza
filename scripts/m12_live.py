@@ -2106,6 +2106,25 @@ def _proof_wire(value):
         for packet in value[name]:
             _proof_fields(packet, ("request_id",), "wire packet")
             _proof_text(packet["request_id"], "wire request ID")
+            extra_status = (
+                name == "emitted"
+                and packet.get("type") == "agent_status"
+                and packet.get("execution_kind") == "extra"
+            )
+            if name == "emitted" and packet.get("type") == "agent_status":
+                _proof_fields(
+                    packet, ("agent_id", "execution_kind", "domain_id"), "agent status"
+                )
+                require(
+                    packet["execution_kind"] in ("working", "extra"),
+                    "wire execution kind",
+                )
+            if extra_status:
+                require(
+                    packet["agent_id"] in ("fixture-extra-a", "fixture-extra-b")
+                    and packet["domain_id"] is None,
+                    "wire extra binding",
+                )
             for key in (
                 "type",
                 "agent_id",
@@ -2114,6 +2133,8 @@ def _proof_wire(value):
                 "output_id",
             ):
                 if key in packet:
+                    if key == "domain_id" and extra_status:
+                        continue
                     _proof_text(packet[key], "wire " + key)
             for key in ("project_id", "workspace_id"):
                 if packet.get(key) is not None:
@@ -2767,6 +2788,7 @@ def sanitize_evidence(record):
                     "type",
                     "request_id",
                     "agent_id",
+                    "execution_kind",
                     "project_id",
                     "workspace_id",
                     "domain_id",
