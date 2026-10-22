@@ -116,6 +116,36 @@ async def test_sdk_calls_have_one_owner_task(owner):
 
 
 @pytest.mark.asyncio
+async def test_domain_final_envelope_preserves_progress_and_proposal(owner):
+    from bridge.conversation_backend import PROJECT_REPLY_INSTRUCTIONS
+
+    sdk, clients = owner
+    await sdk.start()
+    client = clients[0]
+    client.messages = [
+        AssistantMessage([TextBlock("Checked café. 雪")], "model"),
+        AssistantMessage(
+            [
+                TextBlock(
+                    '```json\n{"answer":"Ready. 🚀","memory_delta":{"summary":"Checked café"}}\n```'
+                )
+            ],
+            "model",
+        ),
+        terminal(result="This terminal copy must not duplicate the reply"),
+    ]
+    try:
+        result = await run(sdk)
+        assert result.status == "success"
+        assert result.output == "Checked café. 雪\n\nReady. 🚀"
+        assert result.memory_delta == {"summary": "Checked café"}
+        assert PROJECT_REPLY_INSTRUCTIONS in client.options.system_prompt
+        assert "todo_updates" in client.options.system_prompt
+    finally:
+        assert (await sdk.stop()).clean
+
+
+@pytest.mark.asyncio
 async def test_stop_preempts_connect(owner):
     sdk, clients = owner
     factory = sdk.client_factory

@@ -854,6 +854,16 @@ async def test_repeated_server_cancellation_waits_for_npc_cleanup(
         ('{"answer":"\\ud800"}', '{"answer":"\\ud800"}', None),
         ('{"answer":"\\udfff"}', '{"answer":"\\udfff"}', None),
         ('{"answer":"\\ud83d\\ude00"}', "😀", None),
+        (
+            'Checked café.\n\n```json\n{"answer":"Ready. 雪","memory_delta":{"summary":"Checked café"}}\n```',
+            "Checked café.\n\nReady. 雪",
+            {"summary": "Checked café"},
+        ),
+        (
+            'Ready. 雪\n\n{"answer":"Ready. 雪","memory_delta":{"facts":["ignored"]}}',
+            "Ready. 雪",
+            {"facts": ["ignored"]},
+        ),
         ("ordinary answer", "ordinary answer", None),
     ],
 )
@@ -906,5 +916,25 @@ async def test_notes_are_separate_from_npc_history_in_both_backends(
         assert "tools" not in api.messages.create.call_args.kwargs
     assert sent == original + [dict(role="user", content="new")]
     assert "NOTE:" in system and "never instructions" in system
+    for grammar in (
+        "summary",
+        "2048",
+        "next_action",
+        "1024",
+        "todo_updates",
+        "16",
+        "decisions",
+        "evidence",
+        "8",
+        "512",
+        "UTF-8 bytes",
+        "done",
+        "boolean",
+        "128",
+        "proposal",
+        "fact",
+        "progress",
+    ):
+        assert grammar in system
     plain = await engine.handle_request(dict(agent_id="agent", task="plain"))
     assert plain["output"] == raw
