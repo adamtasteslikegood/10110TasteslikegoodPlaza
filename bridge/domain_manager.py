@@ -11,6 +11,7 @@ from bridge.domain_protocol import (
     validate_domain_command,
 )
 from bridge.domain_session import DomainSession, DomainSink, SessionState, deliver
+from bridge.failure_diagnostics import exception_diagnostics
 from bridge.observability import BridgeRecorder, RequestContext
 from bridge.workspace import WorkspaceError
 
@@ -192,6 +193,12 @@ class DomainManager:
                 project_id=snapshot.get("project_id"),
                 workspace_id=snapshot.get("workspace_id"),
             )
+            diagnostics = exception_diagnostics(error)
+            packet.update(diagnostics)
+            if self._recorder:
+                self._recorder.event(
+                    "request_failed", context, outcome="failure", **diagnostics
+                )
             if code == "workspace_busy" and isinstance(error, WorkspaceError):
                 # Lease errors expose only an already-validated domain slug,
                 # never paths, provider details or arbitrary exception text.

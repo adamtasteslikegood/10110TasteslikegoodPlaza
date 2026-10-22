@@ -176,6 +176,7 @@ func _ready() -> void:
 	var terminal := {"type": "domain_result", "request_id": run.request_id, "project_id": "P", "workspace_id": "W", "domain_id": "core", "domain_session_id": "A", "output_id": "1", "agent_id": "systems-architect", "task": run.task, "output": "Architect output ibis", "status": "success", "reason": "completed", "truncated": false, "memory": {"saved": false, "revision": 9, "error_type": "write_failed"}}
 	await deliver(terminal)
 	check(results.text.contains("Architect output ibis") and results.text.contains("systems-architect") and results.text.contains("unsaved"), "same department terminal attributed with unsaved memory")
+	failed_result_rendering_checks(terminal)
 	check(input.text == "next draft" and BridgeClient.domain_snapshot("core").consumed_cursor == "1", "one shared draft and visible read cursor")
 	input.select(0, 4)
 	GameEvents.domain_changed.emit("core", "read", "")
@@ -268,6 +269,45 @@ func finish() -> void:
 	if failures.is_empty(): print("character_domain_test: OK — %d checks passed." % checks)
 	else: printerr("character_domain_test: %d failures / %d checks." % [failures.size(), checks])
 	get_tree().quit(0 if failures.is_empty() else 1)
+
+func failed_result_rendering_checks(template: Dictionary) -> void:
+	# Rendering regressions use synthetic result snapshots; lifecycle/transport
+	# admission is exercised by the surrounding native production scene flow.
+	var domain: Dictionary = BridgeClient.domains._domain("core")
+	var original_results: Array = domain.results.duplicate(true)
+	var pane := main.get_node("DomainHUD")
+	var pane_results: RichTextLabel = pane.get_node("Panel/Scroll/Rows/ResultsLabel")
+	for partial in ["", "Partial café 雪"]:
+		var failed := template.duplicate(true)
+		failed.output = partial
+		failed.status = "error"
+		failed.reason = "readiness_failed"
+		failed.readiness_category = "cwd_mismatch"
+		domain.results = [failed]
+		hud._render_domain(failed.request_id)
+		pane._refresh()
+		check(results.visible_characters == -1, "new failed result shows its cause immediately, including empty output")
+		for label in [results, pane_results]:
+			check(label.text.contains("root cwd") and label.text.contains("Stop"), "both panes show recovery for %s failed output" % ("empty" if partial.is_empty() else "partial"))
+			check(partial.is_empty() or label.text.contains(partial), "both panes retain Unicode failed partial answer")
+		if not partial.is_empty():
+			var span: Dictionary = hud.current_assistant_span()
+			check(results.text.substr(span.start, span.length) == partial, "failure cause stays alongside the exact partial assistant span")
+	var unknown := template.duplicate(true)
+	unknown.output = ""
+	unknown.status = "error"
+	unknown.reason = "synthetic-sensitive password=not-real"
+	domain.results = [unknown]
+	domain.error = {"error_type": "workspace_invalid", "message": "The configured workspace needs inspection.", "internal": "synthetic-sensitive"}
+	hud._render_domain()
+	pane._refresh()
+	for label in [results, pane_results]:
+		check(label.text.contains("could not complete") and label.text.contains("needs inspection"), "both panes show readable unknown failure and command notice")
+		check(not label.text.contains("synthetic-sensitive") and not label.text.contains("\"error_type\""), "ordinary failure display omits raw JSON and untrusted reason")
+	domain.results = original_results
+	domain.error = {}
+	hud._render_domain()
+	pane._refresh()
 
 func settle_return() -> void:
 	await frames()

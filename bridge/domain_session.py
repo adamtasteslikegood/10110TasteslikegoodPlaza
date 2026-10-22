@@ -21,6 +21,11 @@ from bridge.agent_bindings import require_working_binding, InvalidBinding
 from bridge.config import BridgeConfig
 from bridge.domain_protocol import DomainCommandError, error_packet
 from bridge.domain_sdk import DomainSDKOwner, SDKOutcome
+from bridge.failure_diagnostics import (
+    diagnostic_fields,
+    exception_diagnostics,
+    failure_reason,
+)
 from bridge.observability import BridgeRecorder, RequestContext
 from bridge.project_memory import MemorySaveResult, TurnIntent
 from bridge.readiness import owned_io
@@ -181,7 +186,7 @@ class DomainSession:
             type="domain_state",
             **self._identity(),
             state=self._state.value,
-            execution_state=execution
+            execution_state=execution,
         )
 
     def _transition(self, state):
@@ -370,11 +375,14 @@ class DomainSession:
             # The generation already started this owner. Its public start is an
             # idempotent readiness observation, never a reconnect/new worker.
             await self._owner.start()
-        except Exception:
+        except Exception as error:
             if self._stopping:
                 raise DomainCommandError("session_unavailable") from None
             self._broken = True
-            raise DomainCommandError("sdk_error") from None
+            safe = DomainCommandError(getattr(error, "code", "sdk_error"))
+            for key, value in exception_diagnostics(error, "transport_error").items():
+                setattr(safe, key, value)
+            raise safe from None
         if self._stopping:
             raise DomainCommandError("session_unavailable")
 
@@ -428,6 +436,20 @@ class DomainSession:
                 project_id=self._identity()["project_id"],
                 workspace_id=self._identity()["workspace_id"],
             )
+            cancelled = isinstance(error, asyncio.CancelledError)
+            diagnostics = (
+                {"terminal_reason": "stopped"}
+                if cancelled
+                else exception_diagnostics(error)
+            )
+            packet.update(diagnostics)
+            if self._recorder:
+                self._recorder.event(
+                    "request_cancelled" if cancelled else "request_failed",
+                    run.context,
+                    outcome="cancelled" if cancelled else "failure",
+                    **diagnostics,
+                )
             self._inflight = None
             await deliver(run.emit, packet, self._recorder, run.context)
             run.admitted.set_result(packet)
@@ -439,7 +461,7 @@ class DomainSession:
             request_id=run.command["request_id"],
             agent_id=run.command["agent_id"],
             task=run.command["task"],
-            execution_state="running"
+            execution_state="running",
         )
         # Sink failure cannot roll admission back; release execution after the
         # acceptance attempt even when the originating socket disappeared.
@@ -478,9 +500,18 @@ class DomainSession:
         outcome = SDKOutcome(
             output,
             outcome.status,
-            outcome.reason,
+            (
+                failure_reason(outcome.reason)
+                if outcome.status == "error"
+                else outcome.reason
+            ),
             outcome.provider_session_id,
             outcome.memory_delta,
+            **diagnostic_fields(
+                readiness_category=outcome.readiness_category,
+                tool_name=outcome.tool_name,
+                tool_use_id=outcome.tool_use_id,
+            ),
         )
         saved = await self._save(run, outcome)
         self._highwater += 1
@@ -495,8 +526,10 @@ class DomainSession:
             status=outcome.status,
             reason=outcome.reason,
             truncated=truncated,
-            memory=asdict(saved)
+            memory=asdict(saved),
         )
+        if outcome.readiness_category is not None:
+            terminal["readiness_category"] = outcome.readiness_category
         self._entries.append(terminal)
         self._output_bytes += len(output.encode("utf-8"))
         while (
@@ -512,7 +545,7 @@ class DomainSession:
                 "assistant" if outcome.status == "success" else "error",
                 (
                     output
-                    if outcome.status == "success"
+                    if outcome.status in ("success", "error")
                     else "cancelled" if outcome.status == "cancelled" else "sdk_error"
                 ),
                 record_outcome,
@@ -528,6 +561,10 @@ class DomainSession:
                 run.context,
                 outcome=record_outcome,
                 duration_ms=(time.monotonic() - started) * 1000,
+                terminal_reason=outcome.reason,
+                readiness_category=outcome.readiness_category,
+                tool_name=outcome.tool_name,
+                tool_use_id=outcome.tool_use_id,
             )
         await deliver(run.emit, terminal, self._recorder, run.context)
 

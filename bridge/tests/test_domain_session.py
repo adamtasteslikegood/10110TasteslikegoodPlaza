@@ -96,6 +96,126 @@ async def test_duplicate_run_is_not_reexecuted(setup):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("enabled", [True, False])
+async def test_failed_partial_reply_and_correlated_categories_record_once(
+    setup, runtime_archive, enabled
+):
+    from bridge.domain_sdk import SDKOutcome
+
+    session, _, owners = setup
+    recorder, writer = runtime_archive
+    recorder.config = replace(recorder.config, transcripts_enabled=enabled)
+    session._recorder = recorder
+    await session.start()
+    owners[0].outcome = SDKOutcome(
+        "Partial café 雪 credential-sentinel",
+        "error",
+        "readiness_failed",
+        "provider",
+        None,
+        readiness_category="cwd_mismatch",
+        tool_name="Bash",
+        tool_use_id="a" * 64,
+    )
+    packets = []
+
+    async def emit(packet):
+        packets.append(packet)
+
+    await session.admit_query(query(), context=context(), emit=emit)
+    await collect_until(session, packets)
+    await session.admit_query(query(), context=context(), emit=emit)
+    transcripts = [record for kind, record, _ in writer.records if kind == "transcript"]
+    events = [
+        record
+        for kind, record, _ in writer.records
+        if kind == "event" and record["event"] == "request_failed"
+    ]
+    assert len(events) == 1
+    assert events[0]["request_id"] == "run" and events[0]["domain_id"] == "engineering"
+    assert events[0]["terminal_reason"] == "readiness_failed"
+    assert events[0]["readiness_category"] == "cwd_mismatch"
+    assert events[0]["tool_name"] == "Bash" and events[0]["tool_use_id"] == "a" * 64
+    assert "Partial" not in str(events) and "credential-sentinel" not in str(events)
+    if enabled:
+        assert len(transcripts) == 2
+        assert transcripts[-1]["content"] == "Partial café 雪 [REDACTED]"
+        assert transcripts[-1]["outcome"] == "failure"
+    else:
+        assert transcripts == []
+        assert "Partial" not in str(writer.records)
+    assert packets[-1]["output"] == "Partial café 雪 credential-sentinel"
+    assert packets[-1]["readiness_category"] == "cwd_mismatch"
+    assert len(owners[0].calls) == 1
+
+
+@pytest.mark.asyncio
+async def test_real_branch_preflight_failure_records_safe_category(
+    setup, runtime_archive
+):
+    from bridge.tests.test_workspace import git
+
+    session, service, owners = setup
+    recorder, writer = runtime_archive
+    session._recorder = recorder
+    await session.start()
+    git(service.workspace.worktree_path, "checkout", "--detach")
+    packets = []
+
+    async def emit(packet):
+        packets.append(packet)
+
+    await session.admit_query(query(), context=context(), emit=emit)
+    assert len(packets) == 1 and packets[0]["error_type"] == "workspace_invalid"
+    assert packets[0]["readiness_category"] == "branch_changed"
+    events = [
+        record
+        for kind, record, _ in writer.records
+        if kind == "event" and record["event"] == "request_failed"
+    ]
+    assert len(events) == 1
+    assert (
+        events[0]["request_id"] == "run"
+        and events[0]["terminal_reason"] == "readiness_failed"
+    )
+    assert events[0]["readiness_category"] == "branch_changed"
+    assert not owners[0].calls
+
+
+@pytest.mark.asyncio
+async def test_cancelled_preflight_records_cancellation_without_body(
+    setup, runtime_archive, monkeypatch
+):
+    session, service, owners = setup
+    recorder, writer = runtime_archive
+    session._recorder = recorder
+    await session.start()
+
+    async def cancel(*args):
+        raise asyncio.CancelledError()
+
+    monkeypatch.setattr(service.readiness, "prepare_turn", cancel)
+    packets = []
+
+    async def emit(packet):
+        packets.append(packet)
+
+    await session.admit_query(query(), context=context(), emit=emit)
+    events = [
+        r
+        for kind, r, _ in writer.records
+        if kind == "event" and r["event"].startswith("request_")
+    ]
+    assert len(events) == 1 and events[0]["event"] == "request_cancelled"
+    assert (
+        events[0]["outcome"] == "cancelled"
+        and events[0]["terminal_reason"] == "stopped"
+    )
+    assert not owners[0].calls
+    assert not [r for kind, r, _ in writer.records if kind == "transcript"]
+
+
+@pytest.mark.asyncio
 async def test_memory_save_failure_does_not_retry_completed_task(setup, monkeypatch):
     session, service, owners = setup
     await session.start()

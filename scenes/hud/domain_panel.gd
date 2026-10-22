@@ -1,5 +1,7 @@
 extends CanvasLayer
 
+const FailureDisplay := preload("res://scenes/hud/failure_display.gd")
+
 ## View ownership only. BridgeClient owns admission, drafts and execution state.
 var nearby_agent_id := ""
 var anchor_agent_id := ""
@@ -231,11 +233,13 @@ func _refresh() -> void:
 		var archived: bool = result.domain_session_id != generation
 		var turn_memory: Dictionary = result.get("memory", {})
 		lines.append("[%s%s · %s · output %s · %s · memory %s]\n%s\n%s" % ["Archived " if archived else "", result.domain_session_id, result.agent_id, result.output_id, result.status, "saved" if turn_memory.get("saved", false) else "unsaved", result.get("task", ""), result.get("output", result.get("message", ""))])
+		var cause := FailureDisplay.cause(result)
+		if not cause.is_empty(): lines[-1] += "\nCause: " + cause
 		spans.append({"request_id": result.request_id, "generation": result.domain_session_id, "role": "assistant", "start": character_offset, "length": lines.back().length()})
 		character_offset += lines.back().length() + 2
 	var error: Dictionary = snapshot.get("error", {})
 	if not error.is_empty():
-		lines.append("Notice: %s — %s" % [error.get("error_type", "unknown"), error.get("message", "")])
+		lines.append("Notice: %s — %s" % [error.get("error_type", "unknown"), FailureDisplay.notice(error, false)])
 		var command_error: Dictionary = error.get("command_error", {})
 		if not command_error.is_empty():
 			lines.append("Command notice: %s — %s" % [command_error.get("error_type", "unknown"), command_error.get("message", "")])
