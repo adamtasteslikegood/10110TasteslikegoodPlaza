@@ -31,6 +31,7 @@ _DEFAULTS: dict[str, object] = {
     "CONVERSATION_MAX_OUTPUT_TOKENS": 4096,
     "CONTEXT_MAX_MESSAGES": 40,
     "DOMAIN_MAX_TURNS": 20,
+    "DOMAIN_DANGEROUSLY_SKIP_PERMISSIONS": False,
     "DOMAIN_MAX_BUDGET_USD": 1.0,
     "TRANSCRIPTS_ENABLED": True,
     "LOG_DIR": "../.local/bridge-logs",
@@ -105,6 +106,19 @@ class BridgeConfig:
     install_context_dir: Path = Path("../.local/plaza-context")
     project_guidance_file: str = "PLAZA_AGENTS.md"
 
+    domain_dangerously_skip_permissions: bool = False
+
+    @property
+    def domain_permission_mode(self) -> str:
+        """One effective mode for SDK execution, context facts and evidence."""
+        if type(self.domain_dangerously_skip_permissions) is not bool:
+            raise ConfigError("DOMAIN_DANGEROUSLY_SKIP_PERMISSIONS must be a boolean")
+        return (
+            "bypassPermissions"
+            if self.domain_dangerously_skip_permissions
+            else "dontAsk"
+        )
+
     def model_for(self, tier: str) -> str:
         """Resolve an approved tier without model fallback or upgrades."""
         if tier not in _TIERS:
@@ -157,8 +171,9 @@ def _build(values: Mapping[str, object], source_path: Path) -> BridgeConfig:
             raise ConfigError(f"{key} must be a positive finite number")
     if type(values["CONFIG_VERSION"]) is not int or values["CONFIG_VERSION"] != 1:
         raise ConfigError("CONFIG_VERSION must be the supported integer version 1")
-    if type(values["TRANSCRIPTS_ENABLED"]) is not bool:
-        raise ConfigError("TRANSCRIPTS_ENABLED must be a boolean")
+    for key in ("TRANSCRIPTS_ENABLED", "DOMAIN_DANGEROUSLY_SKIP_PERMISSIONS"):
+        if type(values[key]) is not bool:
+            raise ConfigError(f"{key} must be a boolean")
     if values["CONVERSATION_BACKEND"] not in ("claude_code", "messages_api"):
         raise ConfigError("CONVERSATION_BACKEND must be claude_code or messages_api")
     for key in ("CONVERSATION_TIER", "DOMAIN_TIER"):

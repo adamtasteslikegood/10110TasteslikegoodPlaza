@@ -400,7 +400,7 @@ class DomainSession:
                 project=self._service.snapshot(),
                 workspace=self._service.workspace_snapshot(self.domain_id),
                 tools=["Read", "Edit", "Bash"],
-                permission_mode="dontAsk",
+                permission_mode=self._config.domain_permission_mode,
                 interaction="explicit_run",
             )
             run.preparing = False

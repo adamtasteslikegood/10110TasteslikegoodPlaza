@@ -136,13 +136,20 @@ def test_intermediate_symlink_and_nested_repository_rejected(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_extra_entry_context_and_failure_before_backend(tmp_path, monkeypatch):
+@pytest.mark.parametrize("skip", [False, True])
+async def test_extra_entry_context_and_failure_before_backend(
+    tmp_path, monkeypatch, skip
+):
     from unittest.mock import AsyncMock
     from bridge.server import BridgeServer
     from bridge.conversation import ConversationEngine
     from bridge.conversation_backend import ExecutionMetadata
 
-    config = replace(default_config(), install_context_dir=tmp_path)
+    config = replace(
+        default_config(),
+        install_context_dir=tmp_path,
+        domain_dangerously_skip_permissions=skip,
+    )
     backend = AsyncMock()
     backend.complete.return_value = "answer"
     server = BridgeServer(config=config)
@@ -158,6 +165,7 @@ async def test_extra_entry_context_and_failure_before_backend(tmp_path, monkeypa
         "STORYBOARD-W1" in definition and "Project TODO/HANDOFF/PROGRESS" in definition
     )
     assert '"tools": []' in definition
+    assert '"permission_mode": "dontAsk"' in definition
     assert history["extra"][-1]["content"] == "answer"
     (tmp_path / "WORK_CONTEXT.md").symlink_to("/etc/hosts")
     response = await server._call_conversation(

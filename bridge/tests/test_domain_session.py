@@ -1,6 +1,7 @@
 """Generation ownership, real reservation/memory, deterministic admission/replay."""
 
 import asyncio
+import json
 import threading
 from dataclasses import replace
 
@@ -758,8 +759,9 @@ async def test_retained_duplicate_replays_after_real_idle_owner_failure(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("skip", [False, True])
 async def test_persistent_domain_context_refresh_and_symlink_replacement(
-    setup, tmp_path
+    setup, tmp_path, skip
 ):
     session, service, owners = setup
     root = service.workspace.project_root
@@ -768,6 +770,7 @@ async def test_persistent_domain_context_refresh_and_symlink_replacement(
         session._config,
         workspace_root_dir=root,
         install_context_dir=tmp_path / "owner-absent",
+        domain_dangerously_skip_permissions=skip,
     )
     guidance.write_text("first revision")
     await session.start()
@@ -780,6 +783,10 @@ async def test_persistent_domain_context_refresh_and_symlink_replacement(
     await collect_until(session, packets)
     first = owners[0].calls[0]["context_packet"]
     assert "first revision" in first.render()
+    assert (
+        json.loads(first.runtime)["permission_mode"]
+        == session._config.domain_permission_mode
+    )
     guidance.write_text("second revision")
     packets.clear()
     await session.admit_query(query("second"), context=context("second"), emit=emit)

@@ -434,8 +434,9 @@ def test_memory_publications_never_regress_last_confirmed_revision(tmp_path):
     "project_state", ["empty_non_git", "populated_non_git", "existing_unborn"]
 )
 @pytest.mark.parametrize("approved", [True, False])
+@pytest.mark.parametrize("skip", [False, True])
 async def test_actual_chief_reviewer_is_fresh_tools_disabled_exact_json(
-    tmp_path, monkeypatch, backend, project_state, approved
+    tmp_path, monkeypatch, backend, project_state, approved, skip
 ):
     import json
     from types import SimpleNamespace
@@ -473,7 +474,11 @@ async def test_actual_chief_reviewer_is_fresh_tools_disabled_exact_json(
     manager.__aenter__.return_value = api
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
     monkeypatch.setattr(conversation_api, "AsyncAnthropic", lambda **kwargs: manager)
-    config = replace(default_config(), conversation_backend=backend)
+    config = replace(
+        default_config(),
+        conversation_backend=backend,
+        domain_dangerously_skip_permissions=skip,
+    )
     assert (
         await review_repository(
             config, proposal, intent="Prepare only the approved files"
@@ -485,6 +490,8 @@ async def test_actual_chief_reviewer_is_fresh_tools_disabled_exact_json(
         options = clients[0].options
         instructions = options.system_prompt
         assert options.tools == [] and options.allowed_tools == []
+        assert options.permission_mode == "dontAsk"
+        assert '"permission_mode": "dontAsk"' in instructions
         assert options.model == config.model_for(config.conversation_tier)
         assert options.setting_sources == [] and options.skills == []
         sent = json.loads(clients[0].query.call_args.args[0].split("\n", 1)[1])[

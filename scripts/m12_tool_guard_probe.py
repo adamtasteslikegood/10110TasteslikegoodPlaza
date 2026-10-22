@@ -42,7 +42,7 @@ from claude_agent_sdk.types import (
 
 from scripts.evidence_output import FreshEvidenceOutput
 
-from bridge.config import load_config
+from bridge.config import default_config
 from bridge.domain_sdk import (
     DomainSDKOwner,
     DOMAIN_TOOLS,
@@ -57,6 +57,7 @@ from bridge.tool_guard_evidence import (
     BUDGET_USD,
     case_errors,
     validate_evidence,
+    PERMISSION_MODES,
 )
 from bridge.project_memory import ProjectMemoryStore, TurnIntent
 from bridge.readiness import ReadinessService, denial, owned_io
@@ -105,7 +106,8 @@ def fixture(directory):
     return workspace, memory, lease, runtime, token
 
 
-async def run_case(name, cli):
+async def run_case(name, cli, permission_mode):
+    config = probe_config(permission_mode)
     started = time.monotonic()
     record = dict(
         name=name,
@@ -286,6 +288,7 @@ async def run_case(name, cli):
                             tools=["Bash"],
                             model=MODEL,
                             maxTurns=2,
+                            permissionMode=permission_mode,
                             background=False,
                         )
                     }
@@ -391,7 +394,7 @@ async def run_case(name, cli):
                 disconnected.set()
 
         owner = DomainSDKOwner(
-            replace(load_config(), domain_tier="haiku"),
+            config,
             workspace,
             lease,
             service,
@@ -550,16 +553,28 @@ async def run_case(name, cli):
     return record
 
 
-async def main(output):
+def probe_config(permission_mode):
+    if permission_mode not in PERMISSION_MODES:
+        raise ValueError("Explicit permission mode is required")
+    return replace(
+        default_config(),
+        domain_tier="haiku",
+        domain_dangerously_skip_permissions=permission_mode == "bypassPermissions",
+    )
+
+
+async def main(output, permission_mode):
     with FreshEvidenceOutput(output) as destination:
-        return await _run(destination)
+        return await _run(destination, permission_mode)
 
 
-async def _run(output):
+async def _run(output, permission_mode):
+    probe_config(permission_mode)
     import claude_agent_sdk
 
     cli = Path(claude_agent_sdk.__file__).parent / "_bundled/claude"
     evidence = {
+        "permission_mode": permission_mode,
         "versions": {
             "sdk": importlib.metadata.version("claude-agent-sdk"),
             "anyio": importlib.metadata.version("anyio"),
@@ -592,7 +607,7 @@ async def _run(output):
     try:
         if evidence["versions"] == VERSIONS:
             for name in REQUIRED_CASES:
-                record = await run_case(name, str(cli))
+                record = await run_case(name, str(cli), permission_mode)
                 evidence["cases"].append(record)
                 # Keep paid-case observations on disk during the next case;
                 # the public destination is claimed only by final publication.
@@ -626,5 +641,6 @@ async def _run(output):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", required=True, type=Path)
+    parser.add_argument("--permission-mode", required=True, choices=PERMISSION_MODES)
     args = parser.parse_args()
-    raise SystemExit(asyncio.run(main(args.output)))
+    raise SystemExit(asyncio.run(main(args.output, args.permission_mode)))

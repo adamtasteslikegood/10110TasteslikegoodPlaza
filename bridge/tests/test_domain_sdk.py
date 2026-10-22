@@ -297,16 +297,27 @@ async def test_terminal_result_utf8_output_is_bounded(owner):
 
 def acceptance_fixture(module):
     """Synthetic schema fixture; this never writes or activates live evidence."""
-    import json
+    import importlib.util
+    from pathlib import Path
 
-    evidence = json.loads(module.ACCEPTANCE_PATH.read_text())
-    for record in evidence["cases"]:
-        record.setdefault("hook_tasks_remaining", 0)
-        if record["name"] in {"stop_query", "repeated_cancel"}:
-            record.setdefault("hook_worker_entered", True)
-            record.setdefault("hook_worker_finished", True)
-            record.setdefault("stop_waited_for_hook_worker", True)
+    path = Path(__file__).resolve().parents[2] / "tests/test_m12_tool_guard_probe.py"
+    spec = importlib.util.spec_from_file_location("guard_test_fixtures", path)
+    fixtures = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(fixtures)
+    evidence = fixtures.complete_evidence()
+    evidence.update(accepted=True, errors=[])
     return evidence
+
+
+def envelope(record):
+    from copy import deepcopy
+
+    second = deepcopy(record)
+    second["permission_mode"] = "bypassPermissions"
+    return {
+        "schema_version": 1,
+        "records": {"dontAsk": record, "bypassPermissions": second},
+    }
 
 
 def test_acceptance_manifest_requires_versions_cases_inventory_and_exact_sources(
@@ -323,7 +334,7 @@ def test_acceptance_manifest_requires_versions_cases_inventory_and_exact_sources
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(b"fixture source")
         evidence["source_sha256"][name] = hashlib.sha256(path.read_bytes()).hexdigest()
-    module.check_acceptance(evidence, tmp_path)
+    module.check_acceptance(envelope(evidence), tmp_path, "dontAsk")
     for field, value in [
         ("accepted", False),
         ("versions", {}),
@@ -334,10 +345,10 @@ def test_acceptance_manifest_requires_versions_cases_inventory_and_exact_sources
         changed = json.loads(json.dumps(evidence))
         changed[field] = value
         with pytest.raises(RuntimeError):
-            module.check_acceptance(changed, tmp_path)
+            module.check_acceptance(envelope(changed), tmp_path, "dontAsk")
     (tmp_path / module.GUARD_SOURCES[0]).write_text("changed source")
     with pytest.raises(RuntimeError):
-        module.check_acceptance(evidence, tmp_path)
+        module.check_acceptance(envelope(evidence), tmp_path, "dontAsk")
 
 
 def test_runtime_missing_acceptance_manifest_fails_closed(monkeypatch, tmp_path):
@@ -346,7 +357,7 @@ def test_runtime_missing_acceptance_manifest_fails_closed(monkeypatch, tmp_path)
         module, "ACCEPTANCE_PATH", tmp_path / "missing.json", raising=False
     )
     with pytest.raises(RuntimeError, match="acceptance"):
-        module._verify_runtime()
+        module._verify_runtime("dontAsk")
 
 
 @pytest.mark.asyncio
@@ -410,7 +421,7 @@ def test_runtime_acceptance_recomputes_complete_observations(mutation, tmp_path)
         evidence["source_sha256"][name] = hashlib.sha256(
             target.read_bytes()
         ).hexdigest()
-    module.check_acceptance(evidence, tmp_path)
+    module.check_acceptance(envelope(evidence), tmp_path, "dontAsk")
     if mutation == "stripped":
         evidence["cases"] = [
             {"name": c["name"], "errors": []} for c in evidence["cases"]
@@ -422,7 +433,7 @@ def test_runtime_acceptance_recomputes_complete_observations(mutation, tmp_path)
     else:
         evidence["cases"][0]["terminal"] = None
     with pytest.raises(RuntimeError, match="acceptance"):
-        module.check_acceptance(evidence, tmp_path)
+        module.check_acceptance(envelope(evidence), tmp_path, "dontAsk")
 
 
 @pytest.mark.asyncio
@@ -580,3 +591,28 @@ async def test_each_mailbox_query_carries_current_context(owner):
         assert len(clients) == 1
     finally:
         await sdk.stop()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("skip,mode", [(False, "dontAsk"), (True, "bypassPermissions")])
+async def test_production_start_verifies_actual_mode_before_connect(
+    owner, monkeypatch, skip, mode
+):
+    from dataclasses import replace
+
+    module = importlib.import_module("bridge.domain_sdk")
+    sdk, clients = owner
+    sdk.config = replace(sdk.config, domain_dangerously_skip_permissions=skip)
+    monkeypatch.setattr(module, "ClaudeSDKClient", sdk.client_factory)
+    verified = []
+
+    def reject(permission_mode):
+        verified.append(permission_mode)
+        raise RuntimeError("synthetic missing acceptance")
+
+    monkeypatch.setattr(module, "_verify_runtime", reject)
+    with pytest.raises(RuntimeError):
+        await sdk.start()
+    assert verified == [mode]
+    assert not clients
+    assert (await sdk.stop()).clean
