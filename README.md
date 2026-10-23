@@ -69,10 +69,13 @@ at `eadb0b4` on 2026-10-22 (“ok, build it”). Ratified policy in doc set 0.2.
 makes catalog characters working department representatives through NPC dialogue;
 extras use conversation. Each department owns a worktree in the configured project
 and shares project notes. Fresh game/work guidance and guarded permission control
-are implemented. Fresh ten-source guards passed 29/29 in both modes at `ba5599b`;
-the selected `dontAsk` Linux API-key Godot/plain-client flow passed at clean
-`a582f11`. Owner laptop/native OAuth/desktop acceptance remains open; no second
-playable department, concurrent capacity or amendment merge is claimed.
+are implemented and merged in PR #362, with runtime corrections merged in PR #365.
+Fresh twelve-source guards passed 29/29 in both modes at `ec5d236`; the selected
+`dontAsk` Linux API-key Godot/plain-client flow passed at clean `eaba12a`, bound to
+48 relevant sources. That earlier proof excludes the PLZG-293 clipboard helper.
+The owner confirmed laptop tools/worktree/memory behavior and latest OAuth; this
+correction's laptop and remaining desktop acceptance stay open. No second playable
+department or concurrent capacity is claimed.
 
 ```
 Layer 4 — Real agent execution  (EXISTS)

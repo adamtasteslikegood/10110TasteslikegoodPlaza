@@ -5,9 +5,11 @@ extends CanvasLayer
 const CHARS_PER_SECOND := 55.0
 const Geometry := preload("res://scenes/hud/dialogue_geometry.gd")
 const FailureDisplay := preload("res://scenes/hud/failure_display.gd")
+const Clipboard := preload("res://scenes/hud/transcript_clipboard.gd")
 const MINIMUM := Vector2(480, 260)
 const GRIP := 8.0
 
+var _clipboard: Node
 var _full_text := ""
 var _revealed := 0.0
 var _reveal_end := 0
@@ -44,6 +46,8 @@ var _drag_rect := Rect2()
 @onready var _status_label: Label = $Panel/Margin/Rows/StatusLabel
 
 func _ready() -> void:
+	_clipboard = Clipboard.new(_body_label, $Panel/Margin/Rows/Header/Clipboard/Copy, $Panel/Margin/Rows/Header/Clipboard/SelectAll)
+	_body_label.add_child(_clipboard)
 	GameEvents.npc_approached.connect(_on_npc_approached)
 	GameEvents.npc_left.connect(_on_npc_left)
 	GameEvents.conversation_changed.connect(_on_conversation_changed)
@@ -95,7 +99,7 @@ func _input(event: InputEvent) -> void:
 	elif owner == _body_label and event.is_action_pressed("chat_newest", false, true):
 		_manual_scroll(_bottom())
 	elif event.is_action_pressed("chat_focus_next", false, true) or event.is_action_pressed("chat_focus_previous", false, true):
-		var controls: Array[Control] = [_body_label, _question_input]
+		var controls: Array[Control] = [_body_label, $Panel/Margin/Rows/Header/Clipboard/Copy, $Panel/Margin/Rows/Header/Clipboard/SelectAll, _question_input]
 		for name in ["Prepare", "Start", "Send", "Stop", "Status"]: controls.append(_action(name))
 		var enabled: Array[Control] = []
 		for control in controls:
@@ -115,6 +119,7 @@ func _process(delta: float) -> void:
 		_set_scroll(_bottom())
 
 func _on_npc_approached(agent_id: String, agent_data: Dictionary) -> void:
+	_clipboard.invalidate()
 	_save_view()
 	_current_agent_id = agent_id
 	_agent_data = agent_data
@@ -132,6 +137,7 @@ func _on_npc_approached(agent_id: String, agent_data: Dictionary) -> void:
 func _on_npc_left(agent_id: String) -> void:
 	if agent_id != _current_agent_id:
 		return
+	_clipboard.invalidate()
 	_save_view()
 	BridgeClient.surface.close("dialogue")
 	_release_focus()
@@ -431,6 +437,7 @@ func _character_changed(agent: String, _reason: String, _request: String) -> voi
 	var domain: String = data.get("domain_id", "") if data.get("domain_id") != null else ""
 	var newly_bound := domain != _domain_id
 	_domain_id = domain
+	if newly_bound: _clipboard.invalidate()
 	if newly_bound and _panel.visible and not domain.is_empty():
 		BridgeClient.surface.open("dialogue", domain, agent)
 		_panel.show()
@@ -518,6 +525,7 @@ func _domain_changed(domain: String, reason: String, request: String) -> void:
 			_body_label.visible_characters = -1
 
 func _workspace_changed(_reason: String, _request: String) -> void:
+	_clipboard.invalidate()
 	if _current_agent_id.is_empty(): return
 	if BridgeClient.character_snapshot(_current_agent_id).is_empty():
 		_domain_id = ""
@@ -526,6 +534,7 @@ func _workspace_changed(_reason: String, _request: String) -> void:
 	_update_actions()
 
 func _surface_changing() -> void:
+	_clipboard.invalidate()
 	if BridgeClient.surface.owner == "dialogue": _save_view()
 
 func _surface_changed() -> void:

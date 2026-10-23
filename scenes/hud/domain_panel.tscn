@@ -64,6 +64,14 @@ expand_to_text_length = false
 
 [node name="Actions" type="HFlowContainer" parent="Panel/Scroll/Rows"]
 
+[node name="Copy" type="Button" parent="Panel/Scroll/Rows/Actions"]
+text = "Copy"
+tooltip_text = "Copy selected results, or all displayed results"
+
+[node name="SelectAll" type="Button" parent="Panel/Scroll/Rows/Actions"]
+text = "Select All"
+tooltip_text = "Select the displayed results"
+
 [node name="Start" type="Button" parent="Panel/Scroll/Rows/Actions"]
 text = "Start"
 

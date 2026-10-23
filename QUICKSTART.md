@@ -120,8 +120,8 @@ info — questions will show a "Bridge not connected" error until you start
 
 ## Project work and domain controls (M12)
 
-The runtime correction has recorded Linux API-key cloud acceptance: both
-twelve-source guard modes passed 29/29 at `ec5d236`, and the Godot/plain-client
+The runtime correction merged in PR #365 and has recorded Linux API-key cloud
+acceptance: both twelve-source guard modes passed 29/29 at `ec5d236`, and the Godot/plain-client
 flow passed in selected `dontAsk` mode at clean `eaba12a`, bound to 48 relevant
 source files. Chief setup, background work, independent extra conversation,
 replay, restart/readback, project isolation and all three clean bridge closures
@@ -228,6 +228,40 @@ files and logs; compare their recorded identities and actual Git/lock/process
 state before deciding on a specific repair. A `creating` record is not permission
 to delete an ownership record or discard the execution tree.
 
+
+## Copying NPC dialogue and domain results
+
+Use **Copy** or **Select All** in the NPC header or the domain pane's actions.
+Right-click transcript text for the same menu. Drag across text to select it,
+then use Copy to transfer it. Copy uses your selection when
+present; otherwise it copies the displayed transcript. Only currently revealed
+plain text is copied, including Unicode, line breaks and displayed context,
+speaker and status labels. Hidden typewriter text is excluded. Empty text
+disables the controls, and disconnected retained history remains copyable.
+
+Select All focuses the transcript so standard platform Select All/Copy shortcuts
+continue to work (Ctrl+A/Ctrl+C or Ctrl+Insert on Linux; platform mappings apply).
+Tab reaches both buttons. The input composer keeps its native editing and menu.
+Copying does not submit, start, stop or replay work. Closing or changing the
+character, domain or project dismisses the transcript menu and clears selection.
+
+The earlier runtime live report remains bound to its original 48 sources at
+`eaba12a`; it does not establish this newer clipboard helper's behavior. The
+focused panel scenes cover its UI behavior without a provider. For optional real
+Linux clipboard verification, set DISPLAY to an owned X11 display with Godot
+and `xclip` available:
+
+```bash
+python3 scripts/check_chat_clipboard.py --godot /path/to/godot \
+  --xclip /path/to/xclip --output /tmp/plaza-clipboard.json \
+  --screenshots /tmp/plaza-clipboard-layout
+```
+
+The driver runs production panels with synthetic fixtures, reads the clipboard
+and X11 PRIMARY from another process while Godot runs, and saves exact observed payloads and
+optional layout images. With no DISPLAY it reports a skip; headless checks alone
+do not establish desktop clipboard behavior. Native laptop acceptance remains
+separate from these checks.
 
 ## NPC conversation history and controls (M11)
 

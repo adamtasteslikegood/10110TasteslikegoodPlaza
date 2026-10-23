@@ -83,6 +83,7 @@ LIVE_SOURCES = tuple(
             "scenes/hud/dialogue_panel.tscn",
             "scenes/hud/domain_panel.gd",
             "scenes/hud/failure_display.gd",
+            "scenes/hud/transcript_clipboard.gd",
             "scenes/hud/domain_panel.tscn",
             "autoload/GameEvents.gd",
             "autoload/AgentRegistry.gd",

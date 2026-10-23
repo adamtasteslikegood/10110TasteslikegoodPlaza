@@ -38,6 +38,8 @@ func _ready() -> void:
 	await connect_bridge()
 	GameEvents.agent_query_sent.connect(func(_id, _text): sent += 1)
 	await history_checks()
+	await preload("res://tests/chat_clipboard_checks.gd").run(self, hud, body, composer, "Panel/Margin/Rows/Header/Clipboard/Copy", "Panel/Margin/Rows/Header/Clipboard/SelectAll")
+	await clipboard_scope_checks()
 	await input_geometry_checks()
 	await review_regressions()
 	finish()
@@ -112,7 +114,7 @@ func history_checks() -> void:
 	approach(B)
 	check(composer.text == "draft B" and composer.editable, "B has independent editable draft")
 	var b := submit("B question")
-	reply(A, a, "First reply knows kestrel-4417.")
+	reply(A, a, "First reply knows kestrel-4417. ✓\n雪")
 	check(not body.text.contains("First reply"), "hidden A success cannot animate or overwrite B")
 	BridgeClient._on_message(JSON.stringify({"agent_id": B, "request_id": b, "status": "error", "error_type": "engine", "message": "B independent error"}))
 	check(body.text.contains("B independent error") and composer.editable, "B error retained and re-enables only B")
@@ -247,7 +249,7 @@ func input_geometry_checks() -> void:
 	await key(KEY_ENTER)
 	check(sent == before + 1 and not composer.editable, "native Enter admits exactly one request")
 	await key(KEY_TAB)
-	check(body.has_focus(), "pending composer skipped in Tab order")
+	check(hud.get_node("Panel/Margin/Rows/Header/Clipboard/Copy").has_focus(), "pending composer skipped; Tab reaches Copy")
 	await key(KEY_TAB, false, true)
 	check(body.has_focus(), "pending composer skipped in reverse Tab order")
 	await key(KEY_ESCAPE)
@@ -441,9 +443,10 @@ func drag(point: Vector2, delta: Vector2) -> void:
 	await frames(4)
 
 func check_children(label: String) -> void:
+	await preload("res://tests/chat_clipboard_checks.gd").snapshot(self, "NPC-" + label)
 	await frames(3)
 	var bounds := panel.get_global_rect().grow(0.1)
-	for path in ["Margin", "Margin/Rows", "Margin/Rows/Header", "Margin/Rows/Header/Titles", "Margin/Rows/Header/Titles/NameLabel", "Margin/Rows/Header/Titles/RoleLabel", "Margin/Rows/BodyLabel", "Margin/Rows/InputRow", "Margin/Rows/InputRow/QuestionInput", "Margin/Rows/StatusLabel"]:
+	for path in ["Margin", "Margin/Rows", "Margin/Rows/Header", "Margin/Rows/Header/Titles", "Margin/Rows/Header/Titles/NameLabel", "Margin/Rows/Header/Titles/RoleLabel", "Margin/Rows/Header/Clipboard/Copy", "Margin/Rows/Header/Clipboard/SelectAll", "Margin/Rows/BodyLabel", "Margin/Rows/InputRow", "Margin/Rows/InputRow/QuestionInput", "Margin/Rows/StatusLabel"]:
 		var child: Control = panel.get_node(path)
 		if path != "Margin/Rows/StatusLabel":
 			check(child.is_visible_in_tree(), "%s: required %s is visible" % [label, path])
@@ -458,3 +461,25 @@ func scrollbar_thumb_center(bar: VScrollBar) -> Vector2:
 	var thumb := maxf(bar.get_theme_stylebox("grabber").get_minimum_size().y, track * bar.page / (bar.max_value - bar.min_value))
 	var ratio := (bar.value - bar.min_value) / maxf(1, bar.max_value - bar.min_value - bar.page)
 	return bar.global_position + Vector2(bar.size.x / 2, decrement + (track - thumb) * ratio + thumb / 2)
+
+func clipboard_scope_checks() -> void:
+	var clipboard = preload("res://tests/chat_clipboard_checks.gd")
+	await clipboard.stale_action(self, body, func(): approach(B), "NPC identity change")
+	approach(A)
+	await frames()
+	await clipboard.stale_action(self, body, func(): GameEvents.workspace_changed.emit("input", ""), "project change")
+	await clipboard.stale_action(self, body, func(): GameEvents.npc_left.emit(A), "NPC close")
+	approach(A)
+	await frames()
+	BridgeClient.set_process(false)
+	BridgeClient._on_connection_closed()
+	await frames()
+	var copy_button: Button = hud.get_node("Panel/Margin/Rows/Header/Clipboard/Copy")
+	check(not copy_button.disabled and copy_button.is_visible_in_tree() and not composer.editable, "clipboard: disconnected NPC history remains copyable")
+	await clipboard.click(self, copy_button)
+	await clipboard.checkpoint(self, "disconnected-NPC", body.text)
+	BridgeClient._connected = true
+	BridgeClient.conversations.begin_connection()
+	BridgeClient._notify_connection()
+	BridgeClient.set_process(true)
+	await frames()

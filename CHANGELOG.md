@@ -17,6 +17,19 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
 
+### Added — transcript clipboard controls (PLZG-293)
+
+- Add compact Copy/Select All buttons and right-click menus to NPC dialogue and
+  domain results, including disconnected history. Preserve selected plain text,
+  Unicode and displayed labels; without a selection, copy the revealed transcript.
+- Clamp every transcript Copy path before clipboard access so native selection
+  cannot publish hidden typewriter text; prevent native selected-text export to
+  X11 PRIMARY or drag targets. Keep composer editing, reading position,
+  keyboard traversal and explicit work controls; dismiss stale menus on scope changes.
+- Exercise actual panel input and add an optional X11/xclip desktop driver with
+  independent clipboard reads and layout captures. Existing runtime acceptance
+  stays bound to its original sources; native laptop checks remain separate.
+
 ### Fixed — M12 replies, diagnostics and requested shutdown (PLZG-289)
 
 - Decode supported final answer/memory envelopes conservatively, preserve prose,
