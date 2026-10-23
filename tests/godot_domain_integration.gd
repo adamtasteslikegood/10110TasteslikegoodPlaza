@@ -140,15 +140,40 @@ func _ready() -> void:
 		await finish()
 		return
 	check(not panel.visible and current_assistant() == unrelated.assistant, "hidden domain completion preserves NPC output and focus")
+	var previous_refocus: String = latest("refocus_domain").get("request_id", "")
+	var previous_resume: String = latest("resume").get("request_id", "")
 	await walk(Vector2(-125, -25))
 	await walk(Vector2(0, -90))
 	await click(hud.get_node("Global/Toolbar/NearbyDomainButton"))
-	if not await until(func(): return has_ack("resume_complete", latest("resume").get("request_id", ""))):
+	# The Auditor visit already replayed this generation. Capture this return's
+	# fresh controls, rather than combining independent latest-command queries.
+	var replay_deadline := Time.get_ticks_msec() + wait_msec
+	if not await until(func(): return not latest("refocus_domain").is_empty() and latest("refocus_domain").request_id != previous_refocus, replay_deadline):
 		await finish()
 		return
 	var refocus := latest("refocus_domain")
+	# Only an explicitly configured fake-bridge test uses this synchronization
+	# marker. It is separate from the real-live stage receipt protocol.
+	if OS.get_environment("PLAZA_M12_TEST_RETURN_GATE") == "1":
+		var marker_path := control.path_join("return-refocus-waiting.json")
+		var marker := FileAccess.open(marker_path + ".tmp", FileAccess.WRITE)
+		marker.store_string(JSON.stringify({"run_id": run_id, "refocus_request_id": refocus.request_id, "previous_resume_request_id": previous_resume, "domain_session_id": generation}))
+		marker.close()
+		check(DirAccess.rename_absolute(marker_path + ".tmp", marker_path) == OK, "atomic fake return-wait marker")
+	if not await until(func(): return has_ack("domain_state", refocus.request_id), replay_deadline):
+		await finish()
+		return
+	if not await until(func(): return not latest("resume").is_empty() and latest("resume").request_id != previous_resume, replay_deadline):
+		await finish()
+		return
 	var resume := latest("resume")
-	check(has_ack("domain_state", refocus.request_id), "exact Refocus ack precedes matching Resume completion")
+	if not await until(func(): return has_ack("resume_complete", resume.request_id), replay_deadline):
+		await finish()
+		return
+	var refocus_ack := acknowledgments.find({"reason": "domain_state", "request_id": refocus.request_id, "generation": generation})
+	var resume_ack := acknowledgments.find({"reason": "resume_complete", "request_id": resume.request_id, "generation": generation})
+	check(refocus_ack >= 0 and resume_ack > refocus_ack, "exact Refocus ack precedes matching Resume completion")
+	check(refocus.domain_session_id == generation and resume.domain_session_id == generation, "fresh return controls retain exact generation")
 	check(area.overlaps_body(player) and panel.visible, "physical return opens anchored domain results")
 	var snapshot := BridgeClient.domain_snapshot("core")
 	check(snapshot.results.size() == 1, "live push and replay deduplicate result identity")
@@ -287,8 +312,8 @@ func physics() -> void:
 func frames(n: int = 3) -> void:
 	for i in n: await get_tree().process_frame
 
-func until(predicate: Callable) -> bool:
-	var deadline := Time.get_ticks_msec() + wait_msec
+func until(predicate: Callable, deadline: int = 0) -> bool:
+	if deadline == 0: deadline = Time.get_ticks_msec() + wait_msec
 	while Time.get_ticks_msec() < deadline:
 		if predicate.call(): return true
 		await get_tree().process_frame
