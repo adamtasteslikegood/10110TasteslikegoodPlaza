@@ -22,10 +22,10 @@ spec-set versions, and no application release existed before `v0.1.22`.
 - Add compact Copy/Select All buttons and right-click menus to NPC dialogue and
   domain results, including disconnected history. Preserve selected plain text,
   Unicode and displayed labels; without a selection, copy the revealed transcript.
-- Clamp every transcript Copy path before clipboard access so native selection
-  cannot publish hidden typewriter text; prevent native selected-text export to
-  X11 PRIMARY or drag targets. Keep composer editing, reading position,
-  keyboard traversal and explicit work controls; dismiss stale menus on scope changes.
+- Clamp explicit transcript Copy paths to revealed text and disable native
+  selected-text drag export. Native PRIMARY selections contain only revealed text.
+  Keep composer editing, reading position, keyboard traversal and explicit work
+  controls; dismiss stale menus on scope changes.
 - Store only revealed text in selectable labels and append plain text as replies
   advance, so native word/paragraph selection and PRIMARY release cannot access
   hidden suffixes. Preserve typewriter timing, genuine selection and rendered readback.
