@@ -263,6 +263,14 @@ optional layout images. With no DISPLAY it reports a skip; headless checks alone
 do not establish desktop clipboard behavior. Native laptop acceptance remains
 separate from these checks.
 
+Recorded Linux/X11 proof at clean `18af8e6`: **50 independent clipboard reads**
+across both panes, including native partial-word/paragraph/drag selection,
+plus nine inspected layout captures. See the [observed payloads](specs/evidence/m12-clipboard-desktop-2026-10-23.json),
+[source binding](specs/evidence/m12-clipboard-sources-2026-10-23.json) and
+[verification history](specs/evidence/m12-clipboard-verification-2026-10-23.json).
+The history preserves the failed pointer-fixture attempt and distinguishes the
+full suite at `81fdb9b` from the later test/harness-only checks.
+
 ## NPC conversation history and controls (M11)
 
 Conversation-backed extras retain the M11 history controls below. Working
@@ -784,6 +792,7 @@ Remaining desktop items, retaining earlier owner confirmations:
 
 - [ ] Approach working characters without starting work; use typed referral/Prepare with the Chief and verify main/shared notes without an eager worktree.
 - [ ] Use dialogue Let's work/Send with mouse and keyboard; Enter never starts implicitly, pending draft stays editable, shared pane switching submits once, and scroll/selection/focus preserve movement.
+- [ ] On your native desktop, use Copy, Select All, right-click and platform shortcuts in both panes; paste selected and fallback text into another app during typing. Check Unicode/newlines, hidden-text exclusion, disconnected history, stale-menu dismissal, resize/focus and unchanged drafts/session controls.
 - [ ] Physically leave the anchor during real work; observe background state and hidden panel.
 - [ ] Switch Core representatives and preserve originating attribution; reach an explicit extra, finish its reply, return/refocus and see one domain result.
 - [ ] Stop idle and background sessions, confirm release, and start again; late status/reconnect packets never steal focus, switch the selected representative or submit work.

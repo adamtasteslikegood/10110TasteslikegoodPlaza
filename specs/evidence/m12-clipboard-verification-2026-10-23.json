@@ -1,0 +1,295 @@
+{
+  "schema_version": 1,
+  "issue": "PLZG-293",
+  "date": "2026-10-23",
+  "scope": "Synthetic provider-free Linux/X11 clipboard and layout verification; native laptop acceptance remains separate.",
+  "full_local": {
+    "source_head": "81fdb9beab33d4f71ac8bc8a33735e39ce09dba8",
+    "final_head": "81fdb9beab33d4f71ac8bc8a33735e39ce09dba8",
+    "status": "",
+    "checks": {
+      "pytest": {
+        "command": [
+          "/workspace/10110TasteslikegoodPlaza/.venv/bin/python",
+          "-m",
+          "pytest",
+          "-q",
+          "--tb=short"
+        ],
+        "exit_code": 0,
+        "seconds": 155.71,
+        "log": "/tmp/plaza-m12-clipboard-verification-20261023-81fdb9b/pytest.log",
+        "sha256": "3ea8ef3f00b05cb8f4bf1d944ce2f0cbe7559ae82422f9b3620f461bfae32431"
+      },
+      "godot": {
+        "command": [
+          "/workspace/10110TasteslikegoodPlaza/.venv/bin/python",
+          "scripts/run_headless.py",
+          "smoke",
+          "conversation_store",
+          "transport_client",
+          "dialogue_panel",
+          "domain_store",
+          "domain_transport",
+          "domain_panel",
+          "character_domain"
+        ],
+        "exit_code": 0,
+        "seconds": 30.41,
+        "log": "/tmp/plaza-m12-clipboard-verification-20261023-81fdb9b/godot.log",
+        "sha256": "7e0904a74e25ef2aedeab19523c923f95db828c2049a0370d1d36aa6c42686de"
+      },
+      "black": {
+        "command": [
+          "/workspace/10110TasteslikegoodPlaza/.venv/bin/python",
+          "-m",
+          "black",
+          "--check",
+          "."
+        ],
+        "exit_code": 0,
+        "seconds": 0.62,
+        "log": "/tmp/plaza-m12-clipboard-verification-20261023-81fdb9b/black.log",
+        "sha256": "f8f74faa897912227d44c0092b30b1bed2a206fbe6ca8dd3071b21f24b58555a"
+      },
+      "flake8": {
+        "command": [
+          "/workspace/10110TasteslikegoodPlaza/.venv/bin/python",
+          "-m",
+          "flake8",
+          ".",
+          "--select=E9,F63,F7,F82"
+        ],
+        "exit_code": 0,
+        "seconds": 2.63,
+        "log": "/tmp/plaza-m12-clipboard-verification-20261023-81fdb9b/flake8.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "specs": {
+        "command": [
+          "/workspace/10110TasteslikegoodPlaza/.venv/bin/python",
+          "scripts/validate_specs.py"
+        ],
+        "exit_code": 0,
+        "seconds": 0.07,
+        "log": "/tmp/plaza-m12-clipboard-verification-20261023-81fdb9b/specs.log",
+        "sha256": "ad51c73aedb0f4f476bcbd85218970cb178cdfe377d3958057946ba67c72c6ca"
+      },
+      "delivery": {
+        "command": [
+          "/workspace/10110TasteslikegoodPlaza/.venv/bin/python",
+          "scripts/validate_delivery_coordinates.py"
+        ],
+        "exit_code": 0,
+        "seconds": 0.11,
+        "log": "/tmp/plaza-m12-clipboard-verification-20261023-81fdb9b/delivery.log",
+        "sha256": "7ad830d3c1f2e1955e1f2b43f5ea53958c35d2722be39365c8cf59a22c8eee51"
+      },
+      "whitespace": {
+        "command": [
+          "git",
+          "diff",
+          "--check",
+          "27af88f2b7c68ae1946734c99a894d177a7f149f",
+          "81fdb9beab33d4f71ac8bc8a33735e39ce09dba8"
+        ],
+        "exit_code": 0,
+        "seconds": 0.02,
+        "log": "/tmp/plaza-m12-clipboard-verification-20261023-81fdb9b/whitespace.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    }
+  },
+  "full_local_environment": {
+    "GODOT_BIN": "/tmp/plaza-m12-godot-4.7.1/Godot_v4.7.1-stable_linux.x86_64",
+    "PLAZA_REQUIRE_GODOT": "1"
+  },
+  "delta": {
+    "head": "18af8e6bec172ed9608c7a29d2ac4b7a6aefd20f",
+    "files_changed_from_full_head": [
+      "bridge/tests/test_godot_conversation_integration.py",
+      "tests/chat_clipboard_checks.gd",
+      "tests/dialogue_panel_test.gd",
+      "tests/live_conversation.gd"
+    ],
+    "product_and_live49_unchanged": true,
+    "reported_focused_pytest": {
+      "passed": 46,
+      "seconds": 8.21,
+      "scope": "bridge/tests/test_godot_conversation_integration.py and tests/test_sprint_6_live.py; actual Godot live scene with fake SDK, natural reveal and native readback"
+    },
+    "headless_checks": {
+      "dialogue_panel": 289,
+      "domain_panel": 155
+    },
+    "raw_logs": [
+      {
+        "path": "/tmp/plaza-clipboard-fix2-related-pytest.log",
+        "sha256": "39811687878b1bb374fc1494094c13e8a4873e12132a65c9d0cc36f98bd3b875"
+      },
+      {
+        "path": "/tmp/plaza-clipboard-fix2-wait-green.log",
+        "sha256": "6d60a5b12f497877179f5533e1e2fee5d5bfdfcf85797eec0898ea6f4dd5bfa1"
+      },
+      {
+        "path": "/tmp/plaza-clipboard-fix2-domain-green.log",
+        "sha256": "b11560b479118960b3206ac95eae330570b03d578656d5eef73b5fb3702c8c3f"
+      }
+    ],
+    "provenance": "Original implementer ran focused delta checks and fresh reviewer inspected their RED/GREEN evidence; controller did not duplicate the complete Python campaign after test/harness-only fixes. Final-head CI is a separate delivery gate."
+  },
+  "desktop": {
+    "tested_head": "18af8e6bec172ed9608c7a29d2ac4b7a6aefd20f",
+    "source_stable": true,
+    "live_source_count": 49,
+    "additional_ui_source_count": 12,
+    "report": "specs/evidence/m12-clipboard-desktop-2026-10-23.json",
+    "report_sha256": "342ba59335911c91c1a1e5f3a1ed8d76592dc440fac62976439221b1acf4d7ec",
+    "source_provenance": "specs/evidence/m12-clipboard-sources-2026-10-23.json",
+    "source_provenance_sha256": "3e5d34b42b538893cecb43b973f82bad83ab0c2f8cab6757e43bd0dc884b1e63",
+    "independent_xclip_reads": 50,
+    "scene_checks": {
+      "dialogue_panel": 324,
+      "domain_panel": 180
+    },
+    "scene_exit_codes": [
+      0,
+      0
+    ],
+    "driver_exit": 0,
+    "owned_xvfb_exit": 0,
+    "events": "Synthetic native GUI events and a real X11 pointer/clipboard; not a claim that every button event was OS-generated. Both production panes use the default root viewport and popup embedding."
+  },
+  "controller_desktop_attempts": [
+    {
+      "head": "81fdb9beab33d4f71ac8bc8a33735e39ce09dba8",
+      "outcome": "failed",
+      "driver_exit": 1,
+      "owned_xvfb_exit": 0,
+      "cause": "Test fixture added native window offset to window-relative Godot warp; actual pointer +90px, empty drag selection and PRIMARY sentinel. No product hidden-text leak inferred.",
+      "raw_log": "/tmp/plaza-m12-clipboard-desktop-20261023-81fdb9b/desktop.log",
+      "raw_log_sha256": "c6c502e5344b58e8f714e496923ac3e89b21e18d6ee77192f5cd5300c70aa97a",
+      "source_provenance_sha256": "5920b545fe6de7cdf10452867c307ffeee742663559be7b4ae032b5fc1d80c16",
+      "success_report_created": false
+    },
+    {
+      "head": "18af8e6bec172ed9608c7a29d2ac4b7a6aefd20f",
+      "outcome": "passed",
+      "driver_exit": 0,
+      "owned_xvfb_exit": 0,
+      "raw_log": "/tmp/plaza-m12-clipboard-desktop-20261023-18af8e6/desktop.log",
+      "raw_log_sha256": "a4586d76b0ab3b79600d7c66caca378560e644dd821a0de8dff3cf6771e173d5"
+    }
+  ],
+  "scoped_diagnostics": {
+    "note": "Implementer bounded RED/GREEN dialogue-only native-pointer reproduction; separate from the controller two-pane attempts. Earlier standalone API probes are not product acceptance.",
+    "raw_logs": [
+      {
+        "path": "/tmp/plaza-clipboard-fix2-desktop-red.log",
+        "sha256": "aad897fbb9c256ef21d7cdd1ceaf17bd57d71fc62131a406297ad3f4f7bfae9d"
+      },
+      {
+        "path": "/tmp/plaza-clipboard-fix2-desktop-green.log",
+        "sha256": "790cf9ad45b9f8b0f27fc361412baec61427867e90a78a09143a94c30423ed1a"
+      }
+    ]
+  },
+  "visual_review": {
+    "reviewer": "Codex controller",
+    "images": [
+      {
+        "original": "NPC-minimum.png",
+        "path": "docs/evidence/m12-clipboard-2026-10-23/npc-minimum.png",
+        "sha256": "e1e55bb23ff4010fda822dfdea017d7f09f8db6af89a93c21b952555b2d87ddc"
+      },
+      {
+        "original": "NPC-long status.png",
+        "path": "docs/evidence/m12-clipboard-2026-10-23/npc-long-status.png",
+        "sha256": "68a20a7221bbf784d18bd52af336a91a3ec8970b5db6cc087f599ad0e026b1b6"
+      },
+      {
+        "original": "NPC-regrown viewport.png",
+        "path": "docs/evidence/m12-clipboard-2026-10-23/npc-regrown.png",
+        "sha256": "e1e55bb23ff4010fda822dfdea017d7f09f8db6af89a93c21b952555b2d87ddc"
+      },
+      {
+        "original": "NPC-required tiny layout (200, 100).png",
+        "path": "docs/evidence/m12-clipboard-2026-10-23/npc-200x100.png",
+        "sha256": "a0e7ccb538bb78c710785bea5af8b06a94cce94f2fd907c2868f353e4c469346"
+      },
+      {
+        "original": "NPC-required tiny layout (320, 140).png",
+        "path": "docs/evidence/m12-clipboard-2026-10-23/npc-320x140.png",
+        "sha256": "e65938430488e39f86a45cfda316714b3b9df5f609281c3a0771a86b18e97bdd"
+      },
+      {
+        "original": "NPC-small viewport.png",
+        "path": "docs/evidence/m12-clipboard-2026-10-23/npc-320x180.png",
+        "sha256": "c40fb6e033d75b8abb8ea2d530a53d55aa7681f4f4a4e5f67338e40b76c51e46"
+      },
+      {
+        "original": "domain-(640, 480).png",
+        "path": "docs/evidence/m12-clipboard-2026-10-23/domain-640x480.png",
+        "sha256": "0a1851e56598ce489de357d90b1b24d99c13fc79697f2981c22073523b57a249"
+      },
+      {
+        "original": "domain-(960, 720).png",
+        "path": "docs/evidence/m12-clipboard-2026-10-23/domain-960x720.png",
+        "sha256": "ed26f361015c956fd321b22d7aa3f0faea2d756d0657fe53c6cffb5abb16e182"
+      },
+      {
+        "original": "domain-(1280, 720).png",
+        "path": "docs/evidence/m12-clipboard-2026-10-23/domain-1280x720.png",
+        "sha256": "62054153a95c9dd08e24f9eb7b52fa8e14ae3782c5347d0d403e7bc110c0aefe"
+      }
+    ],
+    "assessment": "All nine captures inspected. Copy and Select All remain visible at minimum, resized and tiny NPC sizes; the 200px identity can truncate. Composer/status retain compact rows. Domain controls remain visible/reachable in its existing scrolling layout; at 640x480 the captured view is scrolled to actions, rather than displaying all transcript rows simultaneously."
+  },
+  "runtime_compatibility": {
+    "head": "18af8e6bec172ed9608c7a29d2ac4b7a6aefd20f",
+    "guard_source_sha256": {
+      "bridge/config.py": "5a5e00ac875ed8ef2a8fa224d74073f1786bdd58c95d058bacf7f3d25bfb0d0d",
+      "bridge/project_files.py": "2ecedc0308230381de3b01bd4ce2b578c756d5f58b1a1989a318494f1a28c96f",
+      "bridge/workspace.py": "7281f1f39be3853cae287b4ac160c6503775cd2e47963d3a1845aa45d6d2b693",
+      "bridge/workspace_lease.py": "b2cb53ee97d4e94f79e8f74517f409897343a4869c8687c6fcb2b4dceadc65cc",
+      "bridge/project_memory.py": "401cb11627aaf5c111f4b1e092ae4f7e6f595f7d3d09d2238290864f17ae93ab",
+      "bridge/readiness.py": "601d3f09e808d1e511fc6a050e825856bc71f6c01fb1623fdc7d7fd8b32f9191",
+      "bridge/failure_diagnostics.py": "4598c2a7d28a38cb1c58f563e185ff6812ee11b5d8b304597997c644bdf3c4dc",
+      "bridge/guarded_transport.py": "e5d6b4a1af15be7ce031b08d30a9bf232fd963bb143339cb201035d355211c68",
+      "bridge/domain_sdk.py": "f400c14ef9679e224a579514cc35e5f6747065637d42c1f4ec5033be7ae70314",
+      "bridge/conversation_backend.py": "677a9dbf9ef59a1d27e5cc4b4eac823e06a8778b6971694545801fed09255e0e",
+      "bridge/tool_guard_evidence.py": "94266d62b460e0cb561f6a0236563e78abfb3475b2fb19fdc021dd01a929e3cc",
+      "scripts/m12_tool_guard_probe.py": "157a5d6008359a97143c7a6153126f8eb0e3c06a688cac8f7735c404c5b7f584"
+    },
+    "guard_count": 12,
+    "live_source_count": 49,
+    "live_sources_unchanged_from": "81fdb9beab33d4f71ac8bc8a33735e39ce09dba8",
+    "existing_evidence_files_unchanged": 30,
+    "runtime_verification": {
+      "dontAsk": {
+        "passed": true,
+        "cli_sha256": "d535985e6941a3eb00179ccd7f52ceb0c6623a0305a518ebc4e6514f84a94c99"
+      },
+      "bypassPermissions": {
+        "passed": true,
+        "cli_sha256": "d535985e6941a3eb00179ccd7f52ceb0c6623a0305a518ebc4e6514f84a94c99"
+      }
+    },
+    "versions": {
+      "sdk": "0.2.136",
+      "anyio": "4.14.2"
+    },
+    "provider_calls": 0
+  },
+  "versions": {
+    "python": "3.12.14",
+    "godot": "4.7.1.stable.official.a13da4feb",
+    "display": "X11 under owned Xvfb / Mesa llvmpipe"
+  },
+  "limits": [
+    "Original paid runtime proof stays unchanged at eaba12a with48 sources and excludes this newer helper/prefix renderer. No new paid provider proof is claimed.",
+    "Full local1990+118-subtest campaign executed at81fdb9b; focused delta46 tests and updated headless/native desktop checks executed after the four test/harness changes.",
+    "No raw uploaded laptop logs or copied owner conversation text is included; all new fixtures and captured output are synthetic.",
+    "Native owner laptop acceptance, stronger environment containment and M13-M15 work remain separate."
+  ]
+}
