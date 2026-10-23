@@ -263,13 +263,15 @@ optional layout images. With no DISPLAY it reports a skip; headless checks alone
 do not establish desktop clipboard behavior. Native laptop acceptance remains
 separate from these checks.
 
-Recorded Linux/X11 proof at clean `18af8e6`: **50 independent clipboard reads**
+Recorded Linux/X11 proof at clean `3f0dde7`: **50 independent clipboard reads**
 across both panes, including native partial-word/paragraph/drag selection,
 plus nine inspected layout captures. See the [observed payloads](specs/evidence/m12-clipboard-desktop-2026-10-23.json),
 [source binding](specs/evidence/m12-clipboard-sources-2026-10-23.json) and
 [verification history](specs/evidence/m12-clipboard-verification-2026-10-23.json).
 The history preserves the failed pointer-fixture attempt and distinguishes the
-full suite at `81fdb9b` from the later test/harness-only checks.
+full suite at `81fdb9b` from the later test/harness-only checks. It also records the later
+Refocus/Resume harness correction and fresh source binding; the previous passing
+clipboard report remains available at its immutable recorded commit.
 
 ## NPC conversation history and controls (M11)
 

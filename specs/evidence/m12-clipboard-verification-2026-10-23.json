@@ -139,14 +139,14 @@
     "provenance": "Original implementer ran focused delta checks and fresh reviewer inspected their RED/GREEN evidence; controller did not duplicate the complete Python campaign after test/harness-only fixes. Final-head CI is a separate delivery gate."
   },
   "desktop": {
-    "tested_head": "18af8e6bec172ed9608c7a29d2ac4b7a6aefd20f",
+    "tested_head": "3f0dde736d44147b45eaaae9db7fb6cc30673aec",
     "source_stable": true,
     "live_source_count": 49,
     "additional_ui_source_count": 12,
     "report": "specs/evidence/m12-clipboard-desktop-2026-10-23.json",
-    "report_sha256": "342ba59335911c91c1a1e5f3a1ed8d76592dc440fac62976439221b1acf4d7ec",
+    "report_sha256": "487ca09690514da670a009b448dbcda3045e0b078d0e43e33ce070f456ac921a",
     "source_provenance": "specs/evidence/m12-clipboard-sources-2026-10-23.json",
-    "source_provenance_sha256": "3e5d34b42b538893cecb43b973f82bad83ab0c2f8cab6757e43bd0dc884b1e63",
+    "source_provenance_sha256": "98837eb3cbfb1ef8bdfb5fe10c2f6c8ba81701ab99397f516550be7770510809",
     "independent_xclip_reads": 50,
     "scene_checks": {
       "dialogue_panel": 324,
@@ -178,7 +178,19 @@
       "driver_exit": 0,
       "owned_xvfb_exit": 0,
       "raw_log": "/tmp/plaza-m12-clipboard-desktop-20261023-18af8e6/desktop.log",
-      "raw_log_sha256": "a4586d76b0ab3b79600d7c66caca378560e644dd821a0de8dff3cf6771e173d5"
+      "raw_log_sha256": "a4586d76b0ab3b79600d7c66caca378560e644dd821a0de8dff3cf6771e173d5",
+      "immutable_evidence_commit": "cd5e37b0ed02dae82a48f1a8df24f444193850a2",
+      "report_sha256": "342ba59335911c91c1a1e5f3a1ed8d76592dc440fac62976439221b1acf4d7ec",
+      "source_provenance_sha256": "3e5d34b42b538893cecb43b973f82bad83ab0c2f8cab6757e43bd0dc884b1e63"
+    },
+    {
+      "head": "3f0dde736d44147b45eaaae9db7fb6cc30673aec",
+      "outcome": "passed",
+      "driver_exit": 0,
+      "owned_xvfb_exit": 0,
+      "raw_log": "/tmp/plaza-m12-clipboard-desktop-20261023-3f0dde7/desktop.log",
+      "raw_log_sha256": "a4586d76b0ab3b79600d7c66caca378560e644dd821a0de8dff3cf6771e173d5",
+      "reason": "Fresh source binding after a test-only M12 integration harness correction; prior passing18af8e6 data is preserved at immutable cd5e37b and in retained raw files."
     }
   ],
   "scoped_diagnostics": {
@@ -205,7 +217,7 @@
       {
         "original": "NPC-long status.png",
         "path": "docs/evidence/m12-clipboard-2026-10-23/npc-long-status.png",
-        "sha256": "68a20a7221bbf784d18bd52af336a91a3ec8970b5db6cc087f599ad0e026b1b6"
+        "sha256": "f91e87325d3a548f307a1f489a8f234e6dbdfd834f52f3b1e99b1cae243922b6"
       },
       {
         "original": "NPC-regrown viewport.png",
@@ -230,23 +242,25 @@
       {
         "original": "domain-(640, 480).png",
         "path": "docs/evidence/m12-clipboard-2026-10-23/domain-640x480.png",
-        "sha256": "0a1851e56598ce489de357d90b1b24d99c13fc79697f2981c22073523b57a249"
+        "sha256": "4727e7efbd41ee570daca1d48ffb4f9a96cd373ce09054a7db11d49031530042"
       },
       {
         "original": "domain-(960, 720).png",
         "path": "docs/evidence/m12-clipboard-2026-10-23/domain-960x720.png",
-        "sha256": "ed26f361015c956fd321b22d7aa3f0faea2d756d0657fe53c6cffb5abb16e182"
+        "sha256": "350275c0612893fbade82113df1465b37ab0a75161eb1ac6a6a37fce5a0231c5"
       },
       {
         "original": "domain-(1280, 720).png",
         "path": "docs/evidence/m12-clipboard-2026-10-23/domain-1280x720.png",
-        "sha256": "62054153a95c9dd08e24f9eb7b52fa8e14ae3782c5347d0d403e7bc110c0aefe"
+        "sha256": "a9404a207ecdfb2f03ea04d92326200eda2f94cf7e3e3198eac961b84c421174"
       }
     ],
-    "assessment": "All nine captures inspected. Copy and Select All remain visible at minimum, resized and tiny NPC sizes; the 200px identity can truncate. Composer/status retain compact rows. Domain controls remain visible/reachable in its existing scrolling layout; at 640x480 the captured view is scrolled to actions, rather than displaying all transcript rows simultaneously."
+    "assessment": "All nine captures inspected. Copy and Select All remain visible at minimum, resized and tiny NPC sizes; the 200px identity can truncate. Composer/status retain compact rows. Domain controls remain visible/reachable in its existing scrolling layout; at 640x480 the captured view is scrolled to actions, rather than displaying all transcript rows simultaneously.",
+    "refreshed_at_head": "3f0dde736d44147b45eaaae9db7fb6cc30673aec",
+    "refresh_assessment": "Five captures are byte-identical to the prior proof. Controller viewed all four changed captures again; clipboard controls fit and the previously documented scrolling/tiny-identity limits remain."
   },
   "runtime_compatibility": {
-    "head": "18af8e6bec172ed9608c7a29d2ac4b7a6aefd20f",
+    "head": "3f0dde736d44147b45eaaae9db7fb6cc30673aec",
     "guard_source_sha256": {
       "bridge/config.py": "5a5e00ac875ed8ef2a8fa224d74073f1786bdd58c95d058bacf7f3d25bfb0d0d",
       "bridge/project_files.py": "2ecedc0308230381de3b01bd4ce2b578c756d5f58b1a1989a318494f1a28c96f",
@@ -263,7 +277,10 @@
     },
     "guard_count": 12,
     "live_source_count": 49,
-    "live_sources_unchanged_from": "81fdb9beab33d4f71ac8bc8a33735e39ce09dba8",
+    "comparison_head": "81fdb9beab33d4f71ac8bc8a33735e39ce09dba8",
+    "live_source_changes_from_comparison": [
+      "tests/godot_domain_integration.gd"
+    ],
     "existing_evidence_files_unchanged": 30,
     "runtime_verification": {
       "dontAsk": {
@@ -288,8 +305,85 @@
   },
   "limits": [
     "Original paid runtime proof stays unchanged at eaba12a with48 sources and excludes this newer helper/prefix renderer. No new paid provider proof is claimed.",
-    "Full local1990+118-subtest campaign executed at81fdb9b; focused delta46 tests and updated headless/native desktop checks executed after the four test/harness changes.",
+    "Full local1990+118-subtest campaign executed at81fdb9b; initial focused46-test delta at18af8e6; later test-only CI correlation delta and actual fresh desktop source binding at3f0dde7 are recorded separately. No retrospective final-head full-suite or paid-proof claim.",
     "No raw uploaded laptop logs or copied owner conversation text is included; all new fixtures and captured output are synthetic.",
     "Native owner laptop acceptance, stronger environment containment and M13-M15 work remain separate."
-  ]
+  ],
+  "prior_desktop_success": {
+    "tested_head": "18af8e6bec172ed9608c7a29d2ac4b7a6aefd20f",
+    "source_stable": true,
+    "live_source_count": 49,
+    "additional_ui_source_count": 12,
+    "report": "specs/evidence/m12-clipboard-desktop-2026-10-23.json",
+    "report_sha256": "342ba59335911c91c1a1e5f3a1ed8d76592dc440fac62976439221b1acf4d7ec",
+    "source_provenance": "specs/evidence/m12-clipboard-sources-2026-10-23.json",
+    "source_provenance_sha256": "3e5d34b42b538893cecb43b973f82bad83ab0c2f8cab6757e43bd0dc884b1e63",
+    "independent_xclip_reads": 50,
+    "scene_checks": {
+      "dialogue_panel": 324,
+      "domain_panel": 180
+    },
+    "scene_exit_codes": [
+      0,
+      0
+    ],
+    "driver_exit": 0,
+    "owned_xvfb_exit": 0,
+    "events": "Synthetic native GUI events and a real X11 pointer/clipboard; not a claim that every button event was OS-generated. Both production panes use the default root viewport and popup embedding.",
+    "immutable_evidence_commit": "cd5e37b0ed02dae82a48f1a8df24f444193850a2",
+    "verification_url": "https://github.com/adamtasteslikegood/10110TasteslikegoodPlaza/blob/cd5e37b0ed02dae82a48f1a8df24f444193850a2/specs/evidence/m12-clipboard-verification-2026-10-23.json"
+  },
+  "ci_gate_delta": {
+    "head": "3f0dde736d44147b45eaaae9db7fb6cc30673aec",
+    "base": "db31b01430e21bad183c9af610d90e243e2809f8",
+    "failed_ci_run": 39880220863,
+    "failed_ci_job": 120175546827,
+    "failure": "The scene could accept a completed prior Auditor Resume while the final Chief Refocus was pending; the separately chosen latest IDs were not a causal pair.",
+    "fix": "Freeze fresh same-generation Refocus and its exact acknowledgement, then fresh Resume and its exact terminal; retain one shared existing deadline and publish the frozen pair. No product behavior or real-live stage protocol changes.",
+    "controlled_regression": "An explicitly configured fake-only atomic marker releases a bounded final Refocus acknowledgement. Old predicate selects staleResume24/index22 versus newRefocus39/index38 and fails; corrected final trace uses Refocus39/Resume41, command38<39 and wire40<41.",
+    "changed_source_sha256": {
+      "tests/godot_domain_integration.gd": "24bacf5c05a918dba8c888a9a976c0b1f084335d4394afa922a85700d735f707",
+      "bridge/tests/test_godot_domain_integration.py": "e6711bd54b4e054700f44c57927c435a49e8a51f5d95aacb8e551c60f86a614b"
+    },
+    "focused": {
+      "related_pytest_passed": 6,
+      "related_seconds": 26.18,
+      "final_affected_pytest_passed": 3,
+      "final_affected_seconds": 14.5,
+      "native_checks": {
+        "normal": 35,
+        "live_shaped_fake": 37,
+        "delayed_ack": 36
+      },
+      "controller_smoke_agents": 132
+    },
+    "raw_logs": [
+      {
+        "path": "/tmp/plaza-m12-clipboard-ci-db31b01-export.log",
+        "sha256": "ce6be7b90e32d6d87d8a403cad37b341b74fdd8268b10fda346c3f4aa2b925de"
+      },
+      {
+        "path": "/tmp/plaza-m12-ci-correlation-red.log",
+        "sha256": "0abde2395484b0c5fe11bd4d12c5a012995f73fe340ec336206483a22dbc0002"
+      },
+      {
+        "path": "/tmp/plaza-m12-ci-correlation-green.log",
+        "sha256": "abcf45c5762614c46e3b095cba8b80c0292b4a603fd97caa815d3de68e701181"
+      },
+      {
+        "path": "/tmp/plaza-m12-ci-correlation-focused.log",
+        "sha256": "1aac858f5c07e0eb32d9b930efde8f1d33190641d05cc5d6868c85be1f1b4557"
+      },
+      {
+        "path": "/tmp/plaza-m12-ci-correlation-final-integration.log",
+        "sha256": "5ea88e0b34976c06a2deb102f93dbcf570685b9ee789c205179fe98be6cdff88"
+      },
+      {
+        "path": "/tmp/plaza-m12-ci-correlation-smoke-3f0dde7.log",
+        "sha256": "140cad67a13ef0c6117c1ff2b38ba4db7911dca8ccdc852e71c668b14d9f552b"
+      }
+    ],
+    "provider_calls": 0,
+    "provenance": "Implementer ran actual normal/live-shaped/delayed fake integrations and orchestration/inventory checks; controller inspected report/logs, ran smoke and refreshed actual desktop at the committed head. Final CI/scoped review are separate delivery gates."
+  }
 }

@@ -1,6 +1,6 @@
 {
   "kind": "chat_clipboard_desktop",
-  "observed_at": "2026-10-23T00:36:08.418423+00:00",
+  "observed_at": "2026-10-23T01:03:23.463204+00:00",
   "display": ":93",
   "scenes": [
     {
@@ -301,10 +301,10 @@
           "actual": "clipboard scope sentinel ✓"
         },
         {
-          "expected": "[Archived A · systems-architect · output 1 · success · memory unsaved]\nrun native once\ndomain result nonce ibis ✓\n雪\n\nNotice: unknown_outcome — An earlier generation's Run outcome is unknown\n\n[Unknown outcome · generation A · request a3d09729f4871ab12b430e63948e269d:domain:35]\noutcome must remain unknown",
+          "expected": "[Archived A · systems-architect · output 1 · success · memory unsaved]\nrun native once\ndomain result nonce ibis ✓\n雪\n\nNotice: unknown_outcome — An earlier generation's Run outcome is unknown\n\n[Unknown outcome · generation A · request 8e9013d11b510f474dd74a879be74e9d:domain:35]\noutcome must remain unknown",
           "name": "disconnected-domain",
           "selection": "clipboard",
-          "actual": "[Archived A · systems-architect · output 1 · success · memory unsaved]\nrun native once\ndomain result nonce ibis ✓\n雪\n\nNotice: unknown_outcome — An earlier generation's Run outcome is unknown\n\n[Unknown outcome · generation A · request a3d09729f4871ab12b430e63948e269d:domain:35]\noutcome must remain unknown"
+          "actual": "[Archived A · systems-architect · output 1 · success · memory unsaved]\nrun native once\ndomain result nonce ibis ✓\n雪\n\nNotice: unknown_outcome — An earlier generation's Run outcome is unknown\n\n[Unknown outcome · generation A · request 8e9013d11b510f474dd74a879be74e9d:domain:35]\noutcome must remain unknown"
         },
         {
           "expected": "project scope sentinel",
