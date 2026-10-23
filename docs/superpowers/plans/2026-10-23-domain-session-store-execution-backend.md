@@ -124,3 +124,12 @@ Phases 1 to 3 are the "A" work and can proceed without any cloud account. Phase 
 security review. Phase 5 is a spike and produces an ADR, not code to ship. Phase 6 closes the loop.
 Suggested ticket split: one ticket per phase, each created with its open questions as comments (repo convention).
 This plan does not alter any decision record; ratifying the plan and any new D-numbers is the owner's call.
+
+## Owner answers (Adam, 2026-10-23) - supersede the open questions above
+
+1. **SQLite: accepted.** M12 policy ("no database") will be updated by the owner; phase 2 uses stdlib `sqlite3`, no JSONL fallback. The policy edit is a separate owner-directed change, not part of this plan.
+2. **Session id: resume across bridge restarts**, unless the user or the bridge intentionally ended the session. Phase 2 must persist the id, an explicit `ended` marker and who ended it (user or bridge). Crash or restart is not an end. Needs a spec note against the M12 generation rules (new uuid per generation today).
+3. **Auth: both subscription OAuth and API key**, same as the local runtime; sign-in/token injection is the same for either path. A keyless federated option exists but is not available on the account (UNVERIFIED as a sub-option). Phase 5 still verifies that credential injection works inside a container and records what the policy permits; it no longer assumes API-key-only.
+4. **Hetzner is a second machine, part of B, built at the same time.** B now means a relay with two execution hosts: the laptop and the VPS. `ExecutionBackend` therefore needs a host identity, and the store/relay must handle sessions bound to a host. Phase 5's VPS baseline moves into phase 4; phase 5 keeps only the Cloudflare Sandbox questions.
+
+Consequences to design in phase 3/4: a session records its `host_id`; a resumed session routes to the same host or reports it unavailable; worktrees and credentials live per host; the DO relay is the shared index of sessions across hosts.
