@@ -22,6 +22,9 @@ var prepared := false
 var status_packets: Array[Dictionary] = []
 var hold_status := false
 var hold_domain_status := false
+var readiness_fixture: Dictionary = {}
+var project_stage := "ready"
+var observations: Array[Dictionary] = []
 
 func check(ok: bool, message: String) -> bool:
 	checks += 1
@@ -31,7 +34,7 @@ func check(ok: bool, message: String) -> bool:
 func workspace(id: String) -> Dictionary:
 	if unconfigured:
 		return {"type": "workspace_state", "request_id": id, "project_id": null, "workspace_id": null, "stage": "unconfigured", "reason": null, "architect_decision": null, "project_path": null, "worktree_path": null, "branch": null, "changed_files": null, "reservation": null, "memory": {"path": null, "status": "unavailable", "revision": null, "error_type": null}}
-	return {"type": "workspace_state", "request_id": id, "project_id": "P", "workspace_id": "W", "stage": "ready", "reason": null, "architect_decision": null, "project_path": "/project", "worktree_path": "/execution", "branch": "plaza/workspace-P", "changed_files": {"total": 0, "tracked": 0, "untracked": 0, "truncated": false}, "reservation": null, "memory": {"path": "/memory", "status": "saved", "revision": 8, "error_type": null}}
+	return {"type": "workspace_state", "request_id": id, "project_id": "P", "workspace_id": "W", "stage": project_stage, "reason": null, "architect_decision": null, "project_path": "/project", "worktree_path": "/execution", "branch": "plaza/workspace-P", "changed_files": {"total": 0, "tracked": 0, "untracked": 0, "truncated": false}, "reservation": null, "memory": {"path": "/memory", "status": "saved", "revision": 8, "error_type": null}}
 
 func state(id: String, value: String = "active") -> Dictionary:
 	return {"type": "domain_state", "request_id": id, "project_id": "P", "workspace_id": "W", "domain_id": "core", "domain_session_id": generation, "state": value, "execution_state": execution}
@@ -41,12 +44,14 @@ func service() -> void:
 	peer.poll()
 	while peer.get_available_packet_count() > 0:
 		var p: Dictionary = JSON.parse_string(peer.get_packet().get_string_from_utf8())
+		if p.get("type") in ["describe_workspace", "agent_status", "domain_status"]: observations.append(p.duplicate(true))
 		if p.get("type") == "describe_workspace": peer.send_text(JSON.stringify(workspace(p.request_id)))
 		elif p.get("type") == "agent_status":
 			var observation := state("", lifecycle if prepared else "inactive")
 			observation.erase("request_id")
 			if not prepared: observation.domain_session_id = null
 			var response := {"type": "agent_status", "request_id": p.request_id, "agent_id": p.agent_id, "execution_kind": "working", "domain_id": "core", "project": workspace(""), "workspace": {"stage": "ready" if prepared else "unprepared"}, "domain_state": observation, "capabilities": {"can_start": not prepared or lifecycle == "inactive", "can_run": prepared and lifecycle in ["active", "background"], "can_prepare_project": true}}
+			response.merge(readiness_fixture, true)
 			status_packets.append(response)
 			if not hold_status: peer.send_text(JSON.stringify(response))
 		elif p.get("type") == "domain_status":
@@ -54,7 +59,8 @@ func service() -> void:
 			if hold_domain_status:
 				commands.append(p)
 				continue
-			var response := state(p.request_id, lifecycle)
+			var response := state(p.request_id, lifecycle if prepared else "inactive")
+			if not prepared: response.domain_session_id = null
 			if fail_next_status:
 				fail_next_status = false
 				response.merge({"type": "domain_error", "status": "error", "error_type": "status_unavailable", "message": "status unavailable"}, true)
@@ -141,6 +147,7 @@ func _ready() -> void:
 	GameEvents.npc_approached.emit("systems-architect", AgentRegistry.get_agent("systems-architect"))
 	await frames(12)
 	check(not status_packets.is_empty() and commands.is_empty(), "approach performs observation only")
+	await blocked_readiness_checks()
 	check(panel.visible and not button("Start").disabled and button("Send").disabled, "primary explicit Start before Run")
 	input.text = "first task"
 	input.text_changed.emit(input.text)
@@ -276,6 +283,92 @@ func finish() -> void:
 	if failures.is_empty(): print("character_domain_test: OK — %d checks passed." % checks)
 	else: printerr("character_domain_test: %d failures / %d checks." % [failures.size(), checks])
 	get_tree().quit(0 if failures.is_empty() else 1)
+
+func blocked_readiness_checks() -> void:
+	var pane := main.get_node("DomainHUD")
+	var pane_results: RichTextLabel = pane.get_node("Panel/Scroll/Rows/ResultsLabel")
+	var original_rect: Rect2 = hud._desired_rect
+	hud._desired_rect.size = Vector2(480, 260)
+	hud._apply_geometry()
+	# Mutation: omitting workspace/capability reasons from either real renderer
+	# must fail despite project-ready, inactive/idle and correctly disabled controls.
+	var cases := [
+		["workspace_invalid", "failed", "workspace needs inspection"],
+		["cleanup_failed", "failed", "cleanup is unconfirmed"],
+		["workspace_busy", "ready", "workspace is reserved"],
+		["capacity_limit", "ready", "capacity is in use"],
+		["synthetic-sensitive password=not-real", "failed", "readiness could not be confirmed"],
+	]
+	for spec in cases:
+		readiness_fixture = {"workspace": {"stage": spec[1], "reason": spec[0] if spec[1] == "failed" else null, "reservation": {"domain_id": "core", "domain_session_id": "prior-owner", "cleanup_failed": spec[0] == "cleanup_failed"} if spec[0] in ["workspace_busy", "cleanup_failed"] else null}, "capabilities": {"can_start": false, "can_run": false, "can_prepare_project": false, "reason": spec[0]}}
+		GameEvents.npc_approached.emit("systems-architect", AgentRegistry.get_agent("systems-architect"))
+		await frames(15)
+		await click(button("Status"))
+		await frames(12)
+		check(BridgeClient.workspace_snapshot().stage == "ready" and BridgeClient.domain_snapshot("core").state == "inactive" and BridgeClient.domain_snapshot("core").execution_state == "idle", "blocked fixture retains ready project and inactive/idle department")
+		check(panel.visible and results.is_visible_in_tree() and results.size.y > 0 and visible_notice(spec[2]), "NPC minimum-size transcript exposes full blocked-readiness guidance: " + spec[0])
+		if results.get_parsed_text().contains(spec[2]):
+			# Mutation: putting guidance only in the truncated status label, or
+			# losing transcript scrolling, must not count as readable at minimum.
+			var reason_line := results.get_character_line(results.get_parsed_text().find(spec[2]))
+			results.scroll_to_line(reason_line)
+			await frames(2)
+			var reason_y := results.get_line_offset(reason_line) - results.get_v_scroll_bar().value
+			check(reason_y >= -1 and reason_y < results.size.y, "native minimum-size scrolling reaches blocked reason: " + spec[0])
+		check(hud.get_node("Panel/Margin/Rows/StatusLabel").text.contains("Department " + str(spec[1])), "NPC separates department readiness from Project ready")
+		check(button("Prepare").disabled and button("Start").disabled and button("Send").disabled and button("Stop").disabled and not button("Status").disabled, "blocked work controls remain fail closed")
+		input.text = "blocked draft café 雪"
+		input.text_changed.emit(input.text)
+		input.grab_focus()
+		await key(KEY_ENTER)
+		await click(button("Start"))
+		await click(button("Send"))
+		await click(pane.get_node("Global/Toolbar/NearbyDomainButton"))
+		pane.get_node("Panel/Scroll").ensure_control_visible(pane_results)
+		await frames(2)
+		check(pane.get_node("Panel").visible and pane_results.get_parsed_text().contains(spec[2]) and pane_results.get_parsed_text().contains("Refresh status"), "department pane exposes the same full safe readiness guidance: " + spec[0])
+		check(pane.get_node("Panel/Scroll").get_global_rect().intersects(pane_results.get_global_rect()), "department readiness transcript remains reachable through native scroll")
+		check(pane.get_node("Panel/Scroll/Rows/WorkspaceLabel").text.contains("Department: " + str(spec[1])), "department pane separates workspace readiness from project setup")
+		check(pane.get_node("Panel/Scroll/Rows/Actions/Start").disabled and pane.get_node("Panel/Scroll/Rows/Actions/Run").disabled, "department blocked Start/Run stay disabled")
+		for label in [results, pane_results]:
+			check(not label.get_parsed_text().contains("synthetic-sensitive") and not label.get_parsed_text().contains("\"capabilities\""), "readiness reasons use fixed guidance, never raw data")
+		check(commands.is_empty() and input.text == "blocked draft café 雪", "blocked Enter/buttons/status never provision, start, execute or discard draft")
+	# Mutation: pane Refresh that omits selected agent_status cannot observe this
+	# real fixture recovery; rereading project/domain alone retains stale reasons.
+	readiness_fixture = {}
+	var before := observations.size()
+	var refresh: Button = pane.get_node("Panel/Scroll/Rows/Actions/Status")
+	pane.get_node("Panel/Scroll").ensure_control_visible(refresh)
+	await frames()
+	await click(refresh)
+	await frames(20)
+	check(observations.slice(before).any(func(p): return p.type == "agent_status" and p.agent_id == "systems-architect"), "pane Refresh observes its exact selected representative")
+	check(not pane.get_node("Panel/Scroll/Rows/Actions/Start").disabled and commands.is_empty(), "actual refreshed recovery enables only explicit Start without executing")
+	check(not pane_results.get_parsed_text().contains("readiness could not be confirmed"), "pane removes stale blocker after actual status recovery")
+	GameEvents.npc_approached.emit("security-auditor", AgentRegistry.get_agent("security-auditor"))
+	await frames(15)
+	check(not results.get_parsed_text().contains("readiness could not be confirmed") and not button("Start").disabled, "representative change cannot copy stale readiness notice")
+	for stage in ["needs_architect", "initializing"]:
+		project_stage = stage
+		readiness_fixture = {"capabilities": {"can_start": false, "can_run": false, "can_prepare_project": stage == "needs_architect", "reason": "workspace_not_ready"}}
+		await click(button("Status"))
+		await frames(12)
+		check(results.get_parsed_text().contains("Chief Architect") if stage == "needs_architect" else results.get_parsed_text().contains("preparation is in progress"), "ordinary project readiness has fixed safe next step: " + stage)
+	unconfigured = true
+	readiness_fixture = {"capabilities": {"can_start": false, "can_run": false, "can_prepare_project": false, "reason": "workspace_unconfigured"}}
+	await click(button("Status"))
+	await frames(20)
+	check(BridgeClient.workspace_snapshot().stage == "unconfigured" and results.get_parsed_text().contains("Project is not configured") and not results.get_parsed_text().contains("preparation is in progress"), "project replacement clears prior readiness notice and exposes configuration step")
+	await click(pane.get_node("Global/Toolbar/NearbyDomainButton"))
+	check(pane_results.get_parsed_text().contains("Project is not configured") and pane.get_node("Panel/Scroll/Rows/Actions/Start").disabled, "unconfigured department pane shows setup guidance without enabling Start")
+	unconfigured = false
+	project_stage = "ready"
+	readiness_fixture = {}
+	GameEvents.npc_approached.emit("systems-architect", AgentRegistry.get_agent("systems-architect"))
+	await frames(15)
+	check(commands.is_empty() and not results.get_parsed_text().contains("Readiness:"), "healthy refresh clears guidance without implicit work")
+	hud._desired_rect = original_rect
+	hud._apply_geometry()
 
 func failed_result_rendering_checks(template: Dictionary) -> void:
 	# Rendering regressions use synthetic result snapshots; lifecycle/transport

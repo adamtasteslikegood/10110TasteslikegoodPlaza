@@ -132,6 +132,7 @@ func _background() -> void:
 func _recover() -> void:
 	BridgeClient.describe_workspace()
 	BridgeClient.domain_status(selected_domain_id)
+	BridgeClient.agent_status(_agents.get(selected_domain_id, ""))
 
 func _submit(text: String) -> void:
 	if _action("Run").disabled: return
@@ -196,7 +197,7 @@ func _refresh() -> void:
 	var character := BridgeClient.character_snapshot(_agents.get(selected_domain_id, ""))
 	var department: Dictionary = character.get("workspace", {})
 	var memory: Dictionary = workspace.get("memory", {})
-	_workspace.text = "Project: %s\nWorkspace: %s\nBranch: %s\nSetup: %s · Memory: %s" % [workspace.get("project_path", "unconfigured"), department.get("worktree_path", "unprepared"), department.get("branch", "unprepared"), workspace.get("stage", "unknown"), memory.get("status", "unavailable")]
+	_workspace.text = "Project: %s\nWorkspace: %s\nBranch: %s\nSetup: %s · Memory: %s\nDepartment: %s" % [workspace.get("project_path", "unconfigured"), department.get("worktree_path", "unprepared"), department.get("branch", "unprepared"), workspace.get("stage", "unknown"), memory.get("status", "unavailable"), FailureDisplay.department_status(character)]
 	_opener.visible = BridgeClient.character_snapshot(nearby_agent_id).get("execution_kind") == "working"
 	_opener.text = "Domain work · " + str(AgentRegistry.get_agent(nearby_agent_id).get("name", nearby_agent_id))
 	_select.visible = not _domains.is_empty()
@@ -252,6 +253,8 @@ func _refresh() -> void:
 			lines.append("Command notice: %s — %s" % [command_error.get("error_type", "unknown"), FailureDisplay.notice(command_error, false)])
 		for query in error.get("unresolved_queries", []):
 			lines.append("[Unknown outcome · generation %s · request %s]\n%s" % [query.get("domain_session_id", ""), query.get("request_id", ""), query.get("task", "")])
+	var readiness := FailureDisplay.readiness(workspace, character)
+	if not readiness.is_empty(): lines.append("Readiness: " + readiness)
 	var rendered := "\n\n".join(lines)
 	if _results.text != rendered:
 		_save_result_view(_results.get_v_scroll_bar().value)

@@ -167,6 +167,20 @@ domain. Systems Architect and Security Auditor share Core work, retaining the
 originating representative on each result. The secondary domain pane uses the
 same draft, generation, pending request, history and reading position.
 
+If work controls are disabled, read the **Readiness** notice in the NPC or domain
+transcript. Project setup can be ready while the department workspace needs
+inspection, retains an unconfirmed cleanup/reservation, or lacks execution
+capacity. Department readiness is shown separately. **Refresh status** observes
+the selected representative and department again; it never starts or retries work.
+Readiness notices clear when refreshed state confirms recovery. Unconfirmed cleanup
+requires operator inspection with ownership evidence retained, as described below;
+refreshing or restarting alone does not prove safe reuse.
+
+These blocked-state/recovery messages have provider-free UI regression coverage.
+Earlier live and clipboard evidence remains bound to its recorded sources and
+does not certify the updated display code. Correction-specific native laptop
+acceptance remains open; a disabled-control screenshot alone establishes no cause.
+
 Walking away or pressing Escape backgrounds work. An explicit extra can converse
 while Core runs; another Core agent shows the shared work. Return/refocus replays
 each result once. Completion, backgrounding and disconnect retain ownership.
