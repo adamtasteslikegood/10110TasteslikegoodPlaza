@@ -142,6 +142,15 @@ func history_checks() -> void:
 	body.visible_characters = -1
 	check(live_script.visible_in_span(body, span) == rendered_reply.length(), "live sampling counts actual parsed text after native append")
 	body.visible_characters = visible_limit
+	if check(live_script.has_method("wait_for_reveal"), "live finalization exposes bounded natural-reveal wait"):
+		hud.set_process(false)
+		var stalled: Dictionary = await live_script.wait_for_reveal(hud, body, span, 0.03)
+		check(stalled.get("error_type") == "reveal_timeout" and live_script.read_rendered_reply(body, span) == rendered_reply, "live finalization times out truthfully without force-revealing stalled text")
+		var wrong_span := span.duplicate()
+		wrong_span.request_id = "different-current-reply"
+		var changed: Dictionary = await live_script.wait_for_reveal(hud, body, wrong_span, 0.03)
+		check(changed.get("error_type") == "reveal_changed", "live finalization rejects a different current assistant span")
+		hud.set_process(true)
 	check(body.get_parsed_text().contains("Remember nonce") and old_text.contains("Remember nonce"), "older text remains present through reveal")
 	approach(B)
 	approach(A)

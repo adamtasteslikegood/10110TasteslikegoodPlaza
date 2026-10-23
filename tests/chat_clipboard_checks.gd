@@ -55,12 +55,16 @@ static func native_reveal_checks(test: Node) -> void:
 	seed_native_selection()
 	await pointer_button(test, viewport, start, true)
 	await pointer_motion(test, viewport, start, end)
+	gesture_diagnostic(body, "held", end)
 	test.check(body.get_selected_text() == selected_prefix, "native reveal: ordinary held drag genuinely selects revealed text")
 	# Continue across the blank next line where the old full buffer stored an
 	# entirely hidden paragraph, then release before any explicit Copy action.
 	var blank := end + Vector2(0, body.get_line_height(line) * 1.2)
 	await pointer_motion(test, viewport, end, blank)
 	await pointer_button(test, viewport, blank, false)
+	gesture_diagnostic(body, "released", blank)
+	if DisplayServer.get_name() != "headless":
+		test.check(viewport.get_mouse_position().distance_to(blank) < 2, "native reveal: desktop physical pointer matches viewport drag endpoint")
 	test.check(body.get_selected_text() == selected_prefix, "native reveal: blank-line drag/release cannot select hidden paragraph")
 	await checkpoint(test, "native-partial-drag-release-primary", selected_prefix, "primary")
 	await checkpoint(test, "native-partial-drag-release-clipboard", "native selection clipboard sentinel")
@@ -76,6 +80,10 @@ static func native_reveal_checks(test: Node) -> void:
 	if isolated != null: isolated.queue_free()
 	await test.frames(2)
 
+static func gesture_diagnostic(body: RichTextLabel, phase: String, expected_pointer: Vector2) -> void:
+	if OS.get_environment("PLAZA_CLIPBOARD_PROBE_DIR").is_empty(): return
+	print("CLIPBOARD_GESTURE " + JSON.stringify({"phase": phase, "selected": body.get_selected_text(), "expected_pointer": expected_pointer, "actual_pointer": body.get_viewport().get_mouse_position(), "window_position": DisplayServer.window_get_position(body.get_window().get_window_id())}))
+
 static func seed_native_selection() -> void:
 	DisplayServer.clipboard_set("native selection clipboard sentinel")
 	if DisplayServer.has_feature(DisplayServer.FEATURE_CLIPBOARD_PRIMARY):
@@ -83,7 +91,9 @@ static func seed_native_selection() -> void:
 
 static func pointer_button(test: Node, viewport: Viewport, point: Vector2, pressed: bool, double_click: bool = false) -> void:
 	if DisplayServer.get_name() != "headless":
-		Input.warp_mouse(viewport.get_screen_transform() * point + Vector2(DisplayServer.window_get_position(test.get_window().get_window_id())))
+		# Viewport converts to window-relative warp coordinates. XTest's root-
+		# screen coordinates include window position, but Input.warp_mouse must not.
+		viewport.warp_mouse(point)
 	var event := InputEventMouseButton.new()
 	event.position = point
 	event.global_position = point
@@ -95,7 +105,7 @@ static func pointer_button(test: Node, viewport: Viewport, point: Vector2, press
 
 static func pointer_motion(test: Node, viewport: Viewport, start: Vector2, end: Vector2) -> void:
 	if DisplayServer.get_name() != "headless":
-		Input.warp_mouse(viewport.get_screen_transform() * end + Vector2(DisplayServer.window_get_position(test.get_window().get_window_id())))
+		viewport.warp_mouse(end)
 	var event := InputEventMouseMotion.new()
 	event.position = end
 	event.global_position = end

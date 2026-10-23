@@ -18,6 +18,94 @@ MARKER = "godot_bridge_integration: OK — 39 checks passed."
 
 
 @pytest.mark.asyncio
+async def test_live_scene_waits_for_rendered_reply_after_early_progress_sample(
+    tmp_path, runtime_config, offline_clients
+):
+    godot = shutil.which(os.environ.get("GODOT_BIN", "godot"))
+    if not godot:
+        if os.environ.get("PLAZA_REQUIRE_GODOT"):
+            pytest.fail("Godot is required for this integration gate")
+        pytest.skip("Godot unavailable; the Godot CI job requires this integration")
+    replies = [
+        "A naturally revealed reply remembers kestrel-4417. Unicode ✓ 雪.",
+        "I forgot the token entirely. This second reply has no recalled nonce.",
+    ]
+    conversation, _domain, _api = offline_clients
+    conversation.reply.side_effect = replies
+    server = BridgeServer(config=runtime_config)
+    # Configure the existing transport before entering the actual live scene.
+    # The scene still owns submission, five-frame sampling and final LIVE output.
+    driver = tmp_path / "live_scene_driver.gd"
+    driver.write_text(
+        "extends SceneTree\n"
+        'func _initialize(): call_deferred("run")\n'
+        "func run():\n"
+        '\tload("res://tests/character_fixture.gd").extras()\n'
+        '\tvar bridge = root.get_node("BridgeClient")\n'
+        "\tbridge._socket.close()\n"
+        "\tbridge._socket = WebSocketPeer.new()\n"
+        "\tbridge._connected = false\n"
+        '\tbridge.bridge_url = OS.get_environment("PLAZA_TEST_BRIDGE_URL")\n'
+        "\tbridge._attempt_connect()\n"
+        '\troot.add_child(load("res://tests/live_conversation.tscn").instantiate())\n'
+    )
+    process = None
+    try:
+        async with websockets.serve(
+            server._handle_connection, "127.0.0.1", 0
+        ) as listener:
+            port = listener.sockets[0].getsockname()[1]
+            process = await asyncio.create_subprocess_exec(
+                godot,
+                "--headless",
+                "--path",
+                str(ROOT),
+                "--script",
+                str(driver),
+                env={
+                    **os.environ,
+                    "PLAZA_TEST_BRIDGE_URL": f"ws://127.0.0.1:{port}",
+                    "LIVE_AGENT": "fixture-extra-a",
+                    "LIVE_TURNS": json.dumps(["Remember kestrel-4417", "Recall it"]),
+                },
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.STDOUT,
+            )
+            completion = asyncio.create_task(process.communicate())
+            try:
+                stdout, _ = await asyncio.wait_for(asyncio.shield(completion), 15)
+            except TimeoutError:
+                process.kill()
+                stdout, _ = await completion
+                pytest.fail("live scene watchdog expired:\n" + stdout.decode())
+            output = stdout.decode()
+            assert process.returncode == 0, output
+            assert "SCRIPT ERROR" not in output and "ERROR:" not in output, output
+            records = [
+                json.loads(line.removeprefix("LIVE "))
+                for line in output.splitlines()
+                if line.startswith("LIVE ")
+            ]
+            assert len(records) == 2, output
+            assert [record["received"] for record in records] == replies, output
+            for record, reply in zip(records, replies):
+                assert record["label_holds_reply"], output
+                assert (
+                    record["typewriter_started_at"]
+                    < record["typewriter_after_frames"]
+                    < len(reply)
+                ), output
+            assert "kestrel-4417" not in records[1]["received"]
+            assert len(conversation.clients) == 2
+            print(output)
+    finally:
+        if process is not None and process.returncode is None:
+            process.kill()
+            await process.wait()
+        server.close()
+
+
+@pytest.mark.asyncio
 async def test_delayed_replies_failure_and_fresh_reconnect(
     tmp_path, runtime_config, offline_clients, monkeypatch
 ):
