@@ -5,9 +5,11 @@ extends CanvasLayer
 const CHARS_PER_SECOND := 55.0
 const Geometry := preload("res://scenes/hud/dialogue_geometry.gd")
 const FailureDisplay := preload("res://scenes/hud/failure_display.gd")
+const Clipboard := preload("res://scenes/hud/transcript_clipboard.gd")
 const MINIMUM := Vector2(480, 260)
 const GRIP := 8.0
 
+var _clipboard: Node
 var _full_text := ""
 var _revealed := 0.0
 var _reveal_end := 0
@@ -44,6 +46,8 @@ var _drag_rect := Rect2()
 @onready var _status_label: Label = $Panel/Margin/Rows/StatusLabel
 
 func _ready() -> void:
+	_clipboard = Clipboard.new(_body_label, $Panel/Margin/Rows/Header/Clipboard/Copy, $Panel/Margin/Rows/Header/Clipboard/SelectAll)
+	_body_label.add_child(_clipboard)
 	GameEvents.npc_approached.connect(_on_npc_approached)
 	GameEvents.npc_left.connect(_on_npc_left)
 	GameEvents.conversation_changed.connect(_on_conversation_changed)
@@ -95,7 +99,7 @@ func _input(event: InputEvent) -> void:
 	elif owner == _body_label and event.is_action_pressed("chat_newest", false, true):
 		_manual_scroll(_bottom())
 	elif event.is_action_pressed("chat_focus_next", false, true) or event.is_action_pressed("chat_focus_previous", false, true):
-		var controls: Array[Control] = [_body_label, _question_input]
+		var controls: Array[Control] = [_body_label, $Panel/Margin/Rows/Header/Clipboard/Copy, $Panel/Margin/Rows/Header/Clipboard/SelectAll, _question_input]
 		for name in ["Prepare", "Start", "Send", "Stop", "Status"]: controls.append(_action(name))
 		var enabled: Array[Control] = []
 		for control in controls:
@@ -109,12 +113,17 @@ func _input(event: InputEvent) -> void:
 func _process(delta: float) -> void:
 	if not _panel.visible or _revealed >= _reveal_end:
 		return
+	var previous := int(_revealed)
 	_revealed = minf(_revealed + CHARS_PER_SECOND * delta, _reveal_end)
+	# Keep hidden reply text out of the native selectable widget entirely.
+	# Plain appends retain native selection while the typewriter advances.
+	_body_label.add_text(_full_text.substr(previous, int(_revealed) - previous))
 	_body_label.visible_characters = int(_revealed)
 	if _follow:
 		_set_scroll(_bottom())
 
 func _on_npc_approached(agent_id: String, agent_data: Dictionary) -> void:
+	_clipboard.invalidate()
 	_save_view()
 	_current_agent_id = agent_id
 	_agent_data = agent_data
@@ -132,6 +141,7 @@ func _on_npc_approached(agent_id: String, agent_data: Dictionary) -> void:
 func _on_npc_left(agent_id: String) -> void:
 	if agent_id != _current_agent_id:
 		return
+	_clipboard.invalidate()
 	_save_view()
 	BridgeClient.surface.close("dialogue")
 	_release_focus()
@@ -192,7 +202,6 @@ func _render(snapshot: Dictionary, reveal_id: String, scroll: float, preserve_re
 		_full_text += "[New context restarted — prior history is display only]\n"
 	if _full_text.is_empty():
 		_full_text = _agent_data.get("description", "")
-	_body_label.text = _full_text
 	_reveal_end = _full_text.length()
 	_revealed = _reveal_end
 	_body_label.visible_characters = -1
@@ -204,6 +213,7 @@ func _render(snapshot: Dictionary, reveal_id: String, scroll: float, preserve_re
 		_revealed = _assistant_span.start + previous_progress
 		_reveal_end = _assistant_span.start + _assistant_span.length
 		_body_label.visible_characters = int(_revealed)
+	_body_label.text = _full_text.left(int(_revealed))
 	_settle_scroll(scroll, anchor)
 
 func _on_draft_changed(text: String) -> void:
@@ -249,9 +259,9 @@ func _save_view() -> void:
 func _bottom() -> float:
 	var bar := _body_label.get_v_scroll_bar()
 	var end := bar.max_value
-	if _body_label.visible_characters >= 0 and not _body_label.text.is_empty():
-		# RichTextLabel lays out the entire reply before revealing it. Following
-		# its raw maximum would show blank future lines until the reveal caught up.
+	if _body_label.visible_characters >= 0 and not _body_label.get_parsed_text().is_empty():
+		# Follow the last revealed line while incremental prefix layout settles;
+		# the native widget never stores the unrevealed reply.
 		var character := maxi(0, _body_label.visible_characters - 1)
 		var line := _body_label.get_character_line(character)
 		end = minf(end, _body_label.get_line_offset(line) + _body_label.get_line_height(line))
@@ -279,13 +289,13 @@ func _page(direction: int) -> void:
 	_manual_scroll(clampf(bar.value + direction * maxf(1, bar.page * 0.9), 0, _bottom()))
 
 func _reading_anchor() -> Dictionary:
-	if _follow or _body_label.text.is_empty():
+	if _follow or _body_label.get_parsed_text().is_empty():
 		return {}
 	# Find the first character on the line at/after the top of the viewport.
 	# Character identity survives wrapping; raw scrollbar pixels do not.
 	var value := _body_label.get_v_scroll_bar().value
 	var low := 0
-	var high := _body_label.text.length() - 1
+	var high := _body_label.get_parsed_text().length() - 1
 	while low < high:
 		var middle := (low + high) / 2
 		var offset := _body_label.get_line_offset(_body_label.get_character_line(middle))
@@ -308,7 +318,7 @@ func _resolve_anchor(anchor: Dictionary) -> Dictionary:
 		# The anchor's exchange was evicted. Show the omission notice/oldest
 		# retained content instead of guessing a position in a different reply.
 		return {"character": 0, "offset": 0.0}
-	return {"character": mini(anchor.character, maxi(0, _body_label.text.length() - 1)), "offset": anchor.offset}
+	return {"character": mini(anchor.character, maxi(0, _body_label.get_parsed_text().length() - 1)), "offset": anchor.offset}
 
 func _settle_scroll(value: float, anchor: Dictionary = {}) -> void:
 	_layout_anchor = anchor
@@ -319,8 +329,9 @@ func _settle_scroll(value: float, anchor: Dictionary = {}) -> void:
 	await get_tree().process_frame
 	if revision != _layout_revision:
 		return
-	if not anchor.is_empty() and not _body_label.text.is_empty():
+	if not anchor.is_empty() and not _body_label.get_parsed_text().is_empty():
 		var resolved := _resolve_anchor(anchor)
+		resolved.character = clampi(resolved.character, 0, maxi(0, _body_label.get_parsed_text().length() - 1))
 		value = _body_label.get_line_offset(_body_label.get_character_line(resolved.character)) + resolved.offset
 	_set_scroll(_bottom() if _follow else value)
 	_layout_anchor = {}
@@ -431,6 +442,7 @@ func _character_changed(agent: String, _reason: String, _request: String) -> voi
 	var domain: String = data.get("domain_id", "") if data.get("domain_id") != null else ""
 	var newly_bound := domain != _domain_id
 	_domain_id = domain
+	if newly_bound: _clipboard.invalidate()
 	if newly_bound and _panel.visible and not domain.is_empty():
 		BridgeClient.surface.open("dialogue", domain, agent)
 		_panel.show()
@@ -446,7 +458,12 @@ func _character_changed(agent: String, _reason: String, _request: String) -> voi
 		_render_domain("", newly_bound)
 	else:
 		_rendered_domain_id = ""
-		_body_label.text = data.get("error", "Checking character status…")
+		_full_text = data.get("error", "Checking character status…")
+		_reveal_end = _full_text.length()
+		_revealed = _reveal_end
+		_assistant_span = {"start": 0, "length": 0, "request_id": ""}
+		_body_label.text = _full_text
+		_body_label.visible_characters = -1
 		_question_input.editable = false
 		_question_input.focus_mode = Control.FOCUS_NONE
 	_update_actions()
@@ -515,9 +532,11 @@ func _domain_changed(domain: String, reason: String, request: String) -> void:
 			# Settle that older reveal so its clipping limit cannot hide the cause.
 			_reveal_end = _full_text.length()
 			_revealed = _reveal_end
+			_body_label.add_text(_full_text.substr(_body_label.get_parsed_text().length()))
 			_body_label.visible_characters = -1
 
 func _workspace_changed(_reason: String, _request: String) -> void:
+	_clipboard.invalidate()
 	if _current_agent_id.is_empty(): return
 	if BridgeClient.character_snapshot(_current_agent_id).is_empty():
 		_domain_id = ""
@@ -526,6 +545,7 @@ func _workspace_changed(_reason: String, _request: String) -> void:
 	_update_actions()
 
 func _surface_changing() -> void:
+	_clipboard.invalidate()
 	if BridgeClient.surface.owner == "dialogue": _save_view()
 
 func _surface_changed() -> void:

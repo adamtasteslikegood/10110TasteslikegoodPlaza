@@ -577,8 +577,9 @@ separate provider-free Linux process tests. Offline coverage at `ec5d236` includ
 1,990 Python tests, 118 subtests and eight Godot gates. Earlier Linux reports
 retain their original baselines and outcomes. The owner has confirmed laptop
 tools/worktree/memory behavior and latest OAuth; this correction's laptop and
-remaining desktop acceptance stay open. Runtime correction merge and M12
-completion are not claimed. PLZG-293 clipboard controls follow separately.
+remaining desktop acceptance stay open. Runtime corrections merged in PR #365;
+M12 completion is not claimed. PLZG-293 adds separate clipboard controls and UI
+verification; the earlier live proof excludes the new clipboard code.
 
 The M6 second-department unlock additionally requires Engineering execution in
 its own worktree plus earned progression. Preserve SB-08's access/introduction

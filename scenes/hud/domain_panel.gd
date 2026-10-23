@@ -1,8 +1,10 @@
 extends CanvasLayer
 
+const Clipboard := preload("res://scenes/hud/transcript_clipboard.gd")
 const FailureDisplay := preload("res://scenes/hud/failure_display.gd")
 
 ## View ownership only. BridgeClient owns admission, drafts and execution state.
+var _clipboard: Node
 var nearby_agent_id := ""
 var anchor_agent_id := ""
 var selected_domain_id := ""
@@ -26,6 +28,8 @@ var _result_spans: Array[Dictionary] = []
 @onready var _global_refocus: Button = $Global/Toolbar/RefocusButton
 
 func _ready() -> void:
+	_clipboard = Clipboard.new(_results, _action("Copy"), _action("SelectAll"))
+	_results.add_child(_clipboard)
 	GameEvents.npc_approached.connect(_approached)
 	GameEvents.npc_left.connect(_left)
 	GameEvents.domain_changed.connect(_domain_changed)
@@ -38,6 +42,7 @@ func _ready() -> void:
 	$Global/Toolbar/StopButton.pressed.connect(func(): BridgeClient.deactivate_domain(selected_domain_id))
 	_select.item_selected.connect(func(index):
 		if _panel.visible: _background()
+		_clipboard.invalidate()
 		selected_domain_id = _domains[index]
 		anchor_agent_id = ""
 		remote = true
@@ -151,6 +156,7 @@ func _character_changed(agent_id: String, _reason: String, _request_id: String) 
 	_refresh()
 
 func _surface_changing() -> void:
+	_clipboard.invalidate()
 	if BridgeClient.surface.owner == "pane": _save_result_view(_results.get_v_scroll_bar().value)
 
 func _surface_changed() -> void:
@@ -161,6 +167,7 @@ func _surface_changed() -> void:
 	_refresh()
 
 func _workspace_changed(_reason: String, _request_id: String) -> void:
+	_clipboard.invalidate()
 	var workspace := BridgeClient.workspace_snapshot()
 	var value: Variant = workspace.get("project_id")
 	var project: String = value if value is String else ""
@@ -292,7 +299,7 @@ func _input(event: InputEvent) -> void:
 		if _panel.visible: _background()
 		else: owner.release_focus()
 	elif _panel.is_ancestor_of(owner) and (event.is_action_pressed("chat_focus_next", false, true) or event.is_action_pressed("chat_focus_previous", false, true)):
-		var controls: Array[Control] = [_results, _task_input]
+		var controls: Array[Control] = [_results, _action("Copy"), _action("SelectAll"), _task_input]
 		for name in ["Start", "Run", "Refocus", "Background", "Stop", "Status"]: controls.append(_action(name))
 		var enabled: Array[Control] = []
 		for control in controls:

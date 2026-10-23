@@ -38,6 +38,9 @@ func _ready() -> void:
 	await connect_bridge()
 	GameEvents.agent_query_sent.connect(func(_id, _text): sent += 1)
 	await history_checks()
+	await preload("res://tests/chat_clipboard_checks.gd").native_reveal_checks(self)
+	await preload("res://tests/chat_clipboard_checks.gd").run(self, hud, body, composer, "Panel/Margin/Rows/Header/Clipboard/Copy", "Panel/Margin/Rows/Header/Clipboard/SelectAll")
+	await clipboard_scope_checks()
 	await input_geometry_checks()
 	await review_regressions()
 	finish()
@@ -99,7 +102,7 @@ func reply(id: String, request: String, text: String) -> void:
 
 func history_checks() -> void:
 	approach(A)
-	check(body.text == AgentRegistry.get_agent(A).description, "empty history introduces agent")
+	check(body.get_parsed_text() == AgentRegistry.get_agent(A).description, "empty history introduces agent")
 	composer.text = "draft A"
 	composer.text_changed.emit(composer.text)
 	approach(B)
@@ -112,42 +115,58 @@ func history_checks() -> void:
 	approach(B)
 	check(composer.text == "draft B" and composer.editable, "B has independent editable draft")
 	var b := submit("B question")
-	reply(A, a, "First reply knows kestrel-4417.")
-	check(not body.text.contains("First reply"), "hidden A success cannot animate or overwrite B")
+	reply(A, a, "First reply knows kestrel-4417. ✓\n雪")
+	check(not body.get_parsed_text().contains("First reply"), "hidden A success cannot animate or overwrite B")
 	BridgeClient._on_message(JSON.stringify({"agent_id": B, "request_id": b, "status": "error", "error_type": "engine", "message": "B independent error"}))
-	check(body.text.contains("B independent error") and composer.editable, "B error retained and re-enables only B")
+	check(body.get_parsed_text().contains("B independent error") and composer.editable, "B error retained and re-enables only B")
 	approach(A)
-	check(body.text.contains("You") and body.text.contains("Assistant") and body.text.contains("Remember nonce"), "ordered role transcript retained")
-	check(body.visible_characters == -1 or body.visible_characters == body.text.length(), "restored hidden reply is immediately visible")
+	check(body.get_parsed_text().contains("You") and body.get_parsed_text().contains("Assistant") and body.get_parsed_text().contains("Remember nonce"), "ordered role transcript retained")
+	check(body.visible_characters == -1 or body.visible_characters == body.get_parsed_text().length(), "restored hidden reply is immediately visible")
 	var second := submit("Recall the token")
-	var old_text := body.text
+	var old_text := body.get_parsed_text()
 	BridgeClient.send_query(A, "duplicate")
 	check(not composer.editable and hud._waiting, "empty-ID rejection cannot clear pending")
 	reply(A, second, "I forgot the token entirely.")
 	var span: Dictionary = hud.current_assistant_span()
-	check(body.text.substr(span.start, span.length) == "I forgot the token entirely.", "current assistant span excludes historical nonce (wrong-turn regression)")
-	check(not body.text.substr(span.start, span.length).contains("kestrel-4417") and body.text.contains("kestrel-4417"), "whole transcript would falsely pass nonce recall")
+	check(not body.get_parsed_text().substr(span.start, span.length).contains("kestrel-4417") and body.get_parsed_text().contains("kestrel-4417"), "whole transcript would falsely pass nonce recall")
 	var live_script = load("res://tests/live_conversation.gd")
 	if check(live_script != null and live_script.can_instantiate() and live_script.has_method("read_rendered_reply"), "live harness exposes actual-label assistant readback"):
-		check(live_script.read_rendered_reply(body, span) == "I forgot the token entirely.", "live turn-two readback cannot inherit turn-one nonce")
+		check(live_script.read_rendered_reply(body, span).is_empty(), "live readback excludes unrevealed turn-two answer")
 		check(live_script.visible_in_span(body, span) == 0, "live sampling subtracts assistant start offset")
 	check(body.visible_characters == span.start, "new reveal starts after all previous transcript text")
 	await frames(5)
 	check(body.visible_characters > span.start and body.visible_characters < span.start + span.length, "progressive visible reply advances relative to its span")
-	check(body.text.contains("Remember nonce") and old_text.contains("Remember nonce"), "older text remains present through reveal")
+	var rendered_reply := body.get_parsed_text().substr(span.start, span.length)
+	check(not rendered_reply.is_empty() and live_script.read_rendered_reply(body, span) == rendered_reply, "live harness reads appended native text rather than stale text property")
+	var visible_limit := body.visible_characters
+	body.visible_characters = -1
+	check(live_script.visible_in_span(body, span) == rendered_reply.length(), "live sampling counts actual parsed text after native append")
+	body.visible_characters = visible_limit
+	if check(live_script.has_method("wait_for_reveal"), "live finalization exposes bounded natural-reveal wait"):
+		hud.set_process(false)
+		var stalled: Dictionary = await live_script.wait_for_reveal(hud, body, span, 0.03)
+		check(stalled.get("error_type") == "reveal_timeout" and live_script.read_rendered_reply(body, span) == rendered_reply, "live finalization times out truthfully without force-revealing stalled text")
+		var wrong_span := span.duplicate()
+		wrong_span.request_id = "different-current-reply"
+		var changed: Dictionary = await live_script.wait_for_reveal(hud, body, wrong_span, 0.03)
+		check(changed.get("error_type") == "reveal_changed", "live finalization rejects a different current assistant span")
+		hud.set_process(true)
+	check(body.get_parsed_text().contains("Remember nonce") and old_text.contains("Remember nonce"), "older text remains present through reveal")
 	approach(B)
 	approach(A)
 	check(body.visible_characters == -1, "switch during reveal restores complete cached reply")
+	check(body.get_parsed_text().substr(span.start, span.length) == "I forgot the token entirely.", "current assistant span excludes historical nonce (wrong-turn regression)")
+	check(live_script.read_rendered_reply(body, span) == "I forgot the token entirely.", "live turn-two readback cannot inherit turn-one nonce")
 	GameEvents.npc_left.emit(B)
 	check(panel.visible and hud._current_agent_id == A, "unrelated NPC leave cannot close selected panel")
 	composer.text = "archived draft"
 	composer.text_changed.emit(composer.text)
 	BridgeClient._on_connection_closed()
-	check(body.text.contains("archived draft") and body.text.contains("Archived") and not composer.editable, "disconnect archives draft visibly and read-only")
+	check(body.get_parsed_text().contains("archived draft") and body.get_parsed_text().contains("Archived") and not composer.editable, "disconnect archives draft visibly and read-only")
 	BridgeClient.conversations.begin_connection()
 	BridgeClient._connected = true
 	BridgeClient._notify_connection()
-	check(body.text.contains("context restarted") and composer.text.is_empty() and composer.editable, "reconnect creates visible fresh context without copying draft")
+	check(body.get_parsed_text().contains("context restarted") and composer.text.is_empty() and composer.editable, "reconnect creates visible fresh context without copying draft")
 
 func input_geometry_checks() -> void:
 	for action in ["chat_page_up", "chat_page_down", "chat_oldest", "chat_newest", "chat_submit", "chat_release_focus", "chat_focus_next", "chat_focus_previous"]:
@@ -165,8 +184,9 @@ func input_geometry_checks() -> void:
 	var request := submit("long question")
 	reply(A, request, ("Long response line and some wrapping words. ".repeat(3) + "\n").repeat(100))
 	var fresh: Dictionary = hud.current_assistant_span()
-	check(body.text.substr(fresh.start, fresh.length).begins_with("Long response"), "fresh-generation assistant span uses exact rendered offsets")
 	await frames(4)
+	var initial := body.get_parsed_text().substr(fresh.start, fresh.length)
+	check(not initial.is_empty() and "Long response line and some wrapping words. ".begins_with(initial), "fresh-generation assistant span uses exact rendered prefix offsets")
 	var revealed_line := body.get_character_line(maxi(0, body.visible_characters - 1))
 	var revealed_y := body.get_line_offset(revealed_line)
 	check(body.get_v_scroll_bar().value <= revealed_y, "bottom-follow keeps revealed text in view instead of blank future lines")
@@ -247,7 +267,7 @@ func input_geometry_checks() -> void:
 	await key(KEY_ENTER)
 	check(sent == before + 1 and not composer.editable, "native Enter admits exactly one request")
 	await key(KEY_TAB)
-	check(body.has_focus(), "pending composer skipped in Tab order")
+	check(hud.get_node("Panel/Margin/Rows/Header/Clipboard/Copy").has_focus(), "pending composer skipped; Tab reaches Copy")
 	await key(KEY_TAB, false, true)
 	check(body.has_focus(), "pending composer skipped in reverse Tab order")
 	await key(KEY_ESCAPE)
@@ -285,7 +305,7 @@ func input_geometry_checks() -> void:
 	composer.text_submitted.emit(composer.text)
 	Engine.print_error_messages = true
 	check(sent == sync_before + 1 and not hud._waiting and composer.editable, "synchronous failed send cannot leave panel waiting")
-	check(body.text.contains("preserved failed send") and body.text.contains("Failed to send query"), "synchronous send failure remains visible")
+	check(body.get_parsed_text().contains("preserved failed send") and body.get_parsed_text().contains("Failed to send query"), "synchronous send failure remains visible")
 	BridgeClient.conversations._max_bytes = 20
 	composer.text = "inadmissible draft".repeat(100)
 	composer.text_changed.emit(composer.text)
@@ -307,7 +327,7 @@ func review_regressions() -> void:
 	composer.select(3, 9)
 	composer.text_changed.emit(composer.text)
 	check(BridgeClient.conversation_snapshot(A).messages.is_empty(), "admitted large draft evicts old messages")
-	check(not body.text.contains("Old retained answer") and body.text.contains("Older messages omitted"), "draft eviction immediately updates actual transcript and omission notice")
+	check(not body.get_parsed_text().contains("Old retained answer") and body.get_parsed_text().contains("Older messages omitted"), "draft eviction immediately updates actual transcript and omission notice")
 	check(composer.caret_column == 9 and composer.get_selection_from_column() == 3 and composer.get_selection_to_column() == 9, "draft eviction preserves native caret and selection")
 	# Preserve an ongoing reveal when older records, but not that reply, are evicted.
 	BridgeClient.conversations = load("res://scenes/bridge/conversation_store.gd").new(AgentRegistry.has_agent, 200, 240)
@@ -326,7 +346,7 @@ func review_regressions() -> void:
 	composer.select(4, 12)
 	composer.text_changed.emit(composer.text)
 	var after_span: Dictionary = hud.current_assistant_span()
-	check(BridgeClient.conversation_snapshot(A).messages.size() == 2 and not body.text.contains("OLD-"), "draft eviction retains only the new exchange in label")
+	check(BridgeClient.conversation_snapshot(A).messages.size() == 2 and not body.get_parsed_text().contains("OLD-"), "draft eviction retains only the new exchange in label")
 	check(body.visible_characters - int(after_span.start) == progress and body.visible_characters < after_span.start + after_span.length, "draft transcript refresh preserves exact reveal progress")
 	check(composer.caret_column == 12 and composer.get_selected_text() == "d".repeat(8), "draft transcript refresh keeps composer selection")
 	await frames(5)
@@ -357,7 +377,7 @@ func review_regressions() -> void:
 	check(BridgeClient.set_draft(A, "z".repeat(75)), "hidden draft can evict anchor message")
 	approach(A)
 	await frames(4)
-	check(body.text.contains("Older messages omitted") and body.get_v_scroll_bar().value == 0 and not hud._follow, "evicted hidden content anchor falls back to oldest retained text without following")
+	check(body.get_parsed_text().contains("Older messages omitted") and body.get_v_scroll_bar().value == 0 and not hud._follow, "evicted hidden content anchor falls back to oldest retained text without following")
 	# Stable message identity also survives earlier-history eviction; if the
 	# read message itself is evicted, newer retained text must not inherit its offset.
 	for evict_read_message in [false, true]:
@@ -371,7 +391,7 @@ func review_regressions() -> void:
 		BridgeClient.conversations.complete_request(A, "anchor-second", 1, newer)
 		approach(A)
 		await frames(4)
-		var content_start := body.text.find(older if evict_read_message else newer)
+		var content_start := body.get_parsed_text().find(older if evict_read_message else newer)
 		var character := content_start + 1800
 		var reading_line := body.get_character_line(character)
 		while body.get_character_line(character - 1) == reading_line:
@@ -383,8 +403,8 @@ func review_regressions() -> void:
 		check(BridgeClient.set_draft(A, "f".repeat(100)), "hidden draft evicts only older exchange")
 		approach(A)
 		await frames(4)
-		check(BridgeClient.conversation_snapshot(A).messages.size() == 2 and not body.text.contains("OLDER"), "hidden eviction keeps newer exchange and drops older display")
-		var expected := 0.0 if evict_read_message else body.get_line_offset(body.get_character_line(body.text.find(newer) + relative))
+		check(BridgeClient.conversation_snapshot(A).messages.size() == 2 and not body.get_parsed_text().contains("OLDER"), "hidden eviction keeps newer exchange and drops older display")
+		var expected := 0.0 if evict_read_message else body.get_line_offset(body.get_character_line(body.get_parsed_text().find(newer) + relative))
 		check(absf(body.get_v_scroll_bar().value - expected) < 2 and not hud._follow, "message anchor resolves after eviction; anchor removed=%s" % evict_read_message)
 	# Review 3: required identity and controls stay visible below 160px height.
 	hud._on_query_failed(A, "test", "A long status that needs compact layout. ".repeat(10))
@@ -441,9 +461,10 @@ func drag(point: Vector2, delta: Vector2) -> void:
 	await frames(4)
 
 func check_children(label: String) -> void:
+	await preload("res://tests/chat_clipboard_checks.gd").snapshot(self, "NPC-" + label)
 	await frames(3)
 	var bounds := panel.get_global_rect().grow(0.1)
-	for path in ["Margin", "Margin/Rows", "Margin/Rows/Header", "Margin/Rows/Header/Titles", "Margin/Rows/Header/Titles/NameLabel", "Margin/Rows/Header/Titles/RoleLabel", "Margin/Rows/BodyLabel", "Margin/Rows/InputRow", "Margin/Rows/InputRow/QuestionInput", "Margin/Rows/StatusLabel"]:
+	for path in ["Margin", "Margin/Rows", "Margin/Rows/Header", "Margin/Rows/Header/Titles", "Margin/Rows/Header/Titles/NameLabel", "Margin/Rows/Header/Titles/RoleLabel", "Margin/Rows/Header/Clipboard/Copy", "Margin/Rows/Header/Clipboard/SelectAll", "Margin/Rows/BodyLabel", "Margin/Rows/InputRow", "Margin/Rows/InputRow/QuestionInput", "Margin/Rows/StatusLabel"]:
 		var child: Control = panel.get_node(path)
 		if path != "Margin/Rows/StatusLabel":
 			check(child.is_visible_in_tree(), "%s: required %s is visible" % [label, path])
@@ -458,3 +479,25 @@ func scrollbar_thumb_center(bar: VScrollBar) -> Vector2:
 	var thumb := maxf(bar.get_theme_stylebox("grabber").get_minimum_size().y, track * bar.page / (bar.max_value - bar.min_value))
 	var ratio := (bar.value - bar.min_value) / maxf(1, bar.max_value - bar.min_value - bar.page)
 	return bar.global_position + Vector2(bar.size.x / 2, decrement + (track - thumb) * ratio + thumb / 2)
+
+func clipboard_scope_checks() -> void:
+	var clipboard = preload("res://tests/chat_clipboard_checks.gd")
+	await clipboard.stale_action(self, body, func(): approach(B), "NPC identity change")
+	approach(A)
+	await frames()
+	await clipboard.stale_action(self, body, func(): GameEvents.workspace_changed.emit("input", ""), "project change")
+	await clipboard.stale_action(self, body, func(): GameEvents.npc_left.emit(A), "NPC close")
+	approach(A)
+	await frames()
+	BridgeClient.set_process(false)
+	BridgeClient._on_connection_closed()
+	await frames()
+	var copy_button: Button = hud.get_node("Panel/Margin/Rows/Header/Clipboard/Copy")
+	check(not copy_button.disabled and copy_button.is_visible_in_tree() and not composer.editable, "clipboard: disconnected NPC history remains copyable")
+	await clipboard.click(self, copy_button)
+	await clipboard.checkpoint(self, "disconnected-NPC", body.get_parsed_text())
+	BridgeClient._connected = true
+	BridgeClient.conversations.begin_connection()
+	BridgeClient._notify_connection()
+	BridgeClient.set_process(true)
+	await frames()

@@ -1341,6 +1341,7 @@ def test_live_fingerprints_exist_and_cover_actual_context_and_ui():
         "bridge/context.py",
         "bridge/project_service.py",
         "scenes/bridge/domain_surface.gd",
+        "scenes/hud/transcript_clipboard.gd",
         "tests/character_fixture.gd",
     } <= set(mod.LIVE_SOURCES)
 

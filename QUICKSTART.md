@@ -120,8 +120,8 @@ info — questions will show a "Bridge not connected" error until you start
 
 ## Project work and domain controls (M12)
 
-The runtime correction has recorded Linux API-key cloud acceptance: both
-twelve-source guard modes passed 29/29 at `ec5d236`, and the Godot/plain-client
+The runtime correction merged in PR #365 and has recorded Linux API-key cloud
+acceptance: both twelve-source guard modes passed 29/29 at `ec5d236`, and the Godot/plain-client
 flow passed in selected `dontAsk` mode at clean `eaba12a`, bound to 48 relevant
 source files. Chief setup, background work, independent extra conversation,
 replay, restart/readback, project isolation and all three clean bridge closures
@@ -228,6 +228,50 @@ files and logs; compare their recorded identities and actual Git/lock/process
 state before deciding on a specific repair. A `creating` record is not permission
 to delete an ownership record or discard the execution tree.
 
+
+## Copying NPC dialogue and domain results
+
+Use **Copy** or **Select All** in the NPC header or the domain pane's actions.
+Right-click transcript text for the same menu. Drag across text to select it,
+then use Copy to transfer it. Copy uses your selection when
+present; otherwise it copies the displayed transcript. Only currently revealed
+plain text is copied, including Unicode, line breaks and displayed context,
+speaker and status labels. Hidden typewriter text is excluded. Empty text
+disables the controls, and disconnected retained history remains copyable.
+
+Select All focuses the transcript so standard platform Select All/Copy shortcuts
+continue to work (Ctrl+A/Ctrl+C or Ctrl+Insert on Linux; platform mappings apply).
+Tab reaches both buttons. The input composer keeps its native editing and menu.
+Copying does not submit, start, stop or replay work. Closing or changing the
+character, domain or project dismisses the transcript menu and clears selection.
+
+The earlier runtime live report remains bound to its original 48 sources at
+`eaba12a`; it does not establish this newer clipboard helper or prefix renderer's
+behavior. The focused panel scenes cover its UI behavior without a provider. For optional real
+Linux clipboard verification, set DISPLAY to an owned X11 display with Godot
+and `xclip` available:
+
+```bash
+python3 scripts/check_chat_clipboard.py --godot /path/to/godot \
+  --xclip /path/to/xclip --output /tmp/plaza-clipboard.json \
+  --screenshots /tmp/plaza-clipboard-layout
+```
+
+The driver runs production panels with synthetic fixtures, reads the clipboard
+and X11 PRIMARY from another process while Godot runs, and saves exact observed payloads and
+optional layout images. With no DISPLAY it reports a skip; headless checks alone
+do not establish desktop clipboard behavior. Native laptop acceptance remains
+separate from these checks.
+
+Recorded Linux/X11 proof at clean `3f0dde7`: **50 independent clipboard reads**
+across both panes, including native partial-word/paragraph/drag selection,
+plus nine inspected layout captures. See the [observed payloads](specs/evidence/m12-clipboard-desktop-2026-10-23.json),
+[source binding](specs/evidence/m12-clipboard-sources-2026-10-23.json) and
+[verification history](specs/evidence/m12-clipboard-verification-2026-10-23.json).
+The history preserves the failed pointer-fixture attempt and distinguishes the
+full suite at `81fdb9b` from the later test/harness-only checks. It also records the later
+Refocus/Resume harness correction and fresh source binding; the previous passing
+clipboard report remains available at its immutable recorded commit.
 
 ## NPC conversation history and controls (M11)
 
@@ -750,6 +794,7 @@ Remaining desktop items, retaining earlier owner confirmations:
 
 - [ ] Approach working characters without starting work; use typed referral/Prepare with the Chief and verify main/shared notes without an eager worktree.
 - [ ] Use dialogue Let's work/Send with mouse and keyboard; Enter never starts implicitly, pending draft stays editable, shared pane switching submits once, and scroll/selection/focus preserve movement.
+- [ ] On your native desktop, use Copy, Select All, right-click and platform shortcuts in both panes; paste selected and fallback text into another app during typing. Check Unicode/newlines, hidden-text exclusion, disconnected history, stale-menu dismissal, resize/focus and unchanged drafts/session controls.
 - [ ] Physically leave the anchor during real work; observe background state and hidden panel.
 - [ ] Switch Core representatives and preserve originating attribution; reach an explicit extra, finish its reply, return/refocus and see one domain result.
 - [ ] Stop idle and background sessions, confirm release, and start again; late status/reconnect packets never steal focus, switch the selected representative or submit work.

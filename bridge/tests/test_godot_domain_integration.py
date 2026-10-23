@@ -24,9 +24,13 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("live_mode", [False, True])
+@pytest.mark.parametrize(
+    "live_mode,delay_return_refocus",
+    [(False, False), (True, False), (False, True)],
+    ids=["normal", "live-shaped", "delayed-return"],
+)
 async def test_empty_project_physical_background_npc_and_rendered_replay(
-    tmp_path, monkeypatch, offline_clients, live_mode
+    tmp_path, monkeypatch, offline_clients, live_mode, delay_return_refocus
 ):
     godot = shutil.which(os.environ.get("GODOT_BIN", "godot"))
     if not godot:
@@ -55,6 +59,22 @@ async def test_empty_project_physical_background_npc_and_rendered_replay(
     async with Lifetime(
         tmp_path, root, monkeypatch, provider, reviewer=review, domain_id="core"
     ) as life:
+        release_return = asyncio.Event()
+        held_refocus = {}
+        dispatch = life.server.dispatch
+
+        async def gate_return(command, *args, **kwargs):
+            if (
+                delay_return_refocus
+                and command.get("type") == "refocus_domain"
+                and (control / "05-npc_rendered.json").exists()
+            ):
+                assert not held_refocus, "only the final return Refocus is held"
+                held_refocus.update(command)
+                await asyncio.wait_for(release_return.wait(), 5)
+            return await dispatch(command, *args, **kwargs)
+
+        monkeypatch.setattr(life.server, "dispatch", gate_return)
         validator = StageValidator(life.run_id, "godot")
         assert life.service.snapshot()["stage"] == "needs_architect"
         scene = ROOT / "tests/godot_domain_integration.tscn"
@@ -68,6 +88,10 @@ async def test_empty_project_physical_background_npc_and_rendered_replay(
         if live_mode:
             env["PLAZA_M12_LIVE"] = "1"
             (control / "task.txt").write_text("execute integration sentinel")
+        if delay_return_refocus:
+            env["PLAZA_M12_TEST_RETURN_GATE"] = "1"
+        else:
+            env.pop("PLAZA_M12_TEST_RETURN_GATE", None)
         process = await asyncio.create_subprocess_exec(
             godot,
             "--headless",
@@ -79,9 +103,41 @@ async def test_empty_project_physical_background_npc_and_rendered_replay(
             stderr=asyncio.subprocess.STDOUT,
         )
         output_task = asyncio.create_task(process.communicate())
+        generation = ""
         try:
             for seq, stage in enumerate(STAGES, 1):
                 path = control / f"{seq:02d}-{stage}.json"
+                if stage == "domain_rendered" and delay_return_refocus:
+                    marker = control / "return-refocus-waiting.json"
+                    await until(
+                        lambda: (marker.exists() and held_refocus)
+                        or process.returncode is not None
+                    )
+                    assert marker.exists() and held_refocus, (await output_task)[
+                        0
+                    ].decode()
+                    waiting = json.loads(marker.read_text())
+                    assert waiting["run_id"] == life.run_id
+                    assert waiting["refocus_request_id"] == held_refocus["request_id"]
+                    assert (
+                        waiting["domain_session_id"]
+                        == held_refocus["domain_session_id"]
+                        == generation
+                    )
+                    assert any(
+                        p.get("request_id") == waiting["previous_resume_request_id"]
+                        and p.get("type") == "resume_complete"
+                        and p.get("domain_session_id") == generation
+                        for p in life.emitted
+                    ), "an earlier replay must already be complete while fresh Refocus waits"
+                    print("CONTROLLED_RETURN " + json.dumps(waiting, sort_keys=True))
+                    release_return.set()
+                    await until(
+                        lambda: any(
+                            c["request_id"] == held_refocus["request_id"]
+                            for c in life.commands
+                        )
+                    )
                 await until(lambda: path.exists() or process.returncode is not None)
                 assert path.exists(), (await output_task)[0].decode()
                 receipt = validator.accept(json.loads(path.read_text()))
@@ -124,6 +180,7 @@ async def test_empty_project_physical_background_npc_and_rendered_replay(
                     runtime_before = (life.runtime / "sentinel").read_bytes()
                     assert life.marker.exists()
                 elif stage == "domain_running":
+                    generation = payload["domain_session_id"]
                     snapshot = life.service.workspace_snapshot("core")
                     assert snapshot["workspace_id"] == payload["workspace_id"]
                     work = life.service.require_workspace("core")
@@ -178,6 +235,51 @@ async def test_empty_project_physical_background_npc_and_rendered_replay(
                         if c["request_id"] == payload["refocus_request_id"]
                     )
                     assert refocus["type"] == "refocus_domain"
+                    assert life.commands.index(refocus) < life.commands.index(
+                        command
+                    ), "rendered replay must use a fresh Resume admitted after its Refocus"
+                    assert (
+                        refocus["domain_session_id"]
+                        == command["domain_session_id"]
+                        == payload["domain_session_id"]
+                    )
+                    refocus_acks = [
+                        p
+                        for p in life.emitted
+                        if p.get("type") == "domain_state"
+                        and p.get("request_id") == refocus["request_id"]
+                        and p.get("domain_session_id") == payload["domain_session_id"]
+                    ]
+                    assert (
+                        refocus_acks
+                    ), "rendered replay requires its exact Refocus ack"
+                    assert life.emitted.index(refocus_acks[-1]) < life.emitted.index(
+                        wire[-1]
+                    ), "exact Refocus ack must precede the selected Resume terminal"
+                    if delay_return_refocus:
+                        print(
+                            "CORRELATED_RETURN "
+                            + json.dumps(
+                                {
+                                    "refocus_request_id": refocus["request_id"],
+                                    "resume_request_id": command["request_id"],
+                                    "domain_session_id": payload["domain_session_id"],
+                                    "refocus_command_index": life.commands.index(
+                                        refocus
+                                    ),
+                                    "resume_command_index": life.commands.index(
+                                        command
+                                    ),
+                                    "refocus_ack_index": life.emitted.index(
+                                        refocus_acks[-1]
+                                    ),
+                                    "resume_terminal_index": life.emitted.index(
+                                        wire[-1]
+                                    ),
+                                },
+                                sort_keys=True,
+                            )
+                        )
                     terminal = session._entries[0]
                     godot_identity = identity(payload)
                     assert godot_identity == identity(terminal)
@@ -235,6 +337,7 @@ async def test_empty_project_physical_background_npc_and_rendered_replay(
             print((await output_task)[0].decode())
             raise
         finally:
+            release_return.set()
             provider.release.set()
             if process.returncode is None:
                 process.kill()
