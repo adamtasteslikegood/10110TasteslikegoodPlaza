@@ -17,6 +17,16 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
 
+### Fixed — blocked department chat guidance (PLZG-295)
+
+- Show fixed readiness guidance in both chat transcripts and distinguish project
+  setup from department readiness. Explain workspace inspection, unconfirmed
+  cleanup, reservations and capacity while keeping blocked work controls disabled.
+- Refresh the selected representative's readiness alongside department status;
+  clear stale guidance after observed recovery without starting or retrying work.
+  Provider-free UI checks cover this correction; earlier live/clipboard evidence
+  remains bound to its recorded sources, with laptop acceptance separate.
+
 ### Added — transcript clipboard controls (PLZG-293)
 
 - Add compact Copy/Select All buttons and right-click menus to NPC dialogue and

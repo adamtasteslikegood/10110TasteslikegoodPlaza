@@ -492,6 +492,11 @@ func _render_domain(reveal_id: String = "", restore: bool = false) -> void:
 	var view: Dictionary = snapshot.get("view", {})
 	if restore: _follow = view.get("follow", true)
 	var messages := []
+	var data := BridgeClient.character_snapshot(_current_agent_id)
+	var readiness := FailureDisplay.readiness(BridgeClient.workspace_snapshot(), data)
+	# Full guidance remains revealed, scrollable and copyable while the existing
+	# assistant span grows; it is not clipped by the compact status label.
+	if not readiness.is_empty(): messages.append({"role": "status", "content": "Readiness: " + readiness, "status": "notice", "generation": snapshot.domain_session_id, "request_id": "readiness"})
 	var reveal_failed := false
 	for result in snapshot.get("results", []):
 		messages.append({"role": "user", "content": result.task, "status": "submitted", "generation": result.domain_session_id, "request_id": result.request_id, "agent_id": result.agent_id})
@@ -508,13 +513,12 @@ func _render_domain(reveal_id: String = "", restore: bool = false) -> void:
 	if not pending.is_empty(): messages.append({"role": "user", "content": pending.task, "status": "pending", "generation": snapshot.domain_session_id, "request_id": pending.request_id, "agent_id": pending.agent_id})
 	var error: Dictionary = snapshot.get("error", {})
 	if not error.is_empty(): messages.append({"role": "error", "content": FailureDisplay.notice(error), "status": "notice", "generation": snapshot.domain_session_id, "request_id": "notice"})
-	var data := BridgeClient.character_snapshot(_current_agent_id)
 	for key in ["setup_output", "error"]:
 		if not data.get(key, "").is_empty(): messages.append({"role": "setup" if key == "setup_output" else "error", "content": data[key], "status": "notice", "generation": snapshot.domain_session_id, "request_id": key})
 	_rendered_domain_id = _domain_id
 	var presentation := {"messages": messages, "omitted": snapshot.get("omitted_count", 0), "pending": pending, "draft": snapshot.draft, "connected": BridgeClient.is_bridge_connected(), "generation": snapshot.domain_session_id}
 	_render(presentation, reveal_id, view.get("scroll", 0.0) if restore else _body_label.get_v_scroll_bar().value, not reveal_failed, view.get("anchor", {}) if restore else _reading_anchor())
-	_status_label.text = "%s · %s / %s · Project %s%s" % [_domain_id, snapshot.state, snapshot.execution_state, BridgeClient.workspace_snapshot().get("stage", "unknown"), " · Stop to release workspace" if not snapshot.domain_session_id.is_empty() and snapshot.state != "inactive" else ""]
+	_status_label.text = "%s · %s / %s · Project %s · Department %s%s" % [_domain_id, snapshot.state, snapshot.execution_state, BridgeClient.workspace_snapshot().get("stage", "unknown"), FailureDisplay.department_status(data), " · Stop to release workspace" if not snapshot.domain_session_id.is_empty() and snapshot.state != "inactive" else ""]
 	if snapshot.get("uncertain", false): _status_label.text += " · Unknown outcome — Refresh status"
 	if not BridgeClient.is_bridge_connected(): _status_label.text += " · Disconnected"
 	_status_label.show()
@@ -542,7 +546,8 @@ func _workspace_changed(_reason: String, _request: String) -> void:
 		_domain_id = ""
 		_kind = ""
 		BridgeClient.agent_status(_current_agent_id)
-	_update_actions()
+	if _kind == "working": _render_domain()
+	else: _update_actions()
 
 func _surface_changing() -> void:
 	_clipboard.invalidate()

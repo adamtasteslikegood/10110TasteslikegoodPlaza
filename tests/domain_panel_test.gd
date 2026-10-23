@@ -467,7 +467,9 @@ func unconfigured_hud_checks() -> void:
 	menu.id_pressed.emit(0)
 	await clipboard.checkpoint(self, "project-unconfigured", "project scope sentinel")
 	check(not panel.visible and hud.selected_domain_id == "" and hud.anchor_agent_id == "" and hud._domains.is_empty(), "final R3 authoritative unconfigured discovery clears HUD selection and anchors")
-	check(input.text == "" and results.text == "" and hud.get_node("Global/StatusLabel").text.contains("unconfigured"), "final R3 HUD clears prior project text and shows unconfigured state")
+	# Current-project guidance replaces the old empty state; no prior output or
+	# draft may survive the authoritative project replacement.
+	check(input.text == "" and results.get_parsed_text() == "Readiness: Project is not configured. Configure a project path, then ask the Chief Architect to review setup; Refresh status." and hud.get_node("Global/StatusLabel").text.contains("unconfigured"), "final R3 HUD replaces prior project text with only current setup guidance")
 
 func clipboard_scope_checks() -> void:
 	var clipboard = preload("res://tests/chat_clipboard_checks.gd")
