@@ -17,6 +17,15 @@ patterns; `claude-agent-sdk==0.2.136`, `anthropic==0.121.0`, `websockets==17.0.1
 database, dependency, autoload or container provider. Record the actual CLI version
 in live evidence; SDK version alone does not identify its tool-hook behavior.
 
+> **Amendment 2026-10-23 (owner, Adam: SQLite accepted).** The "no database" limit
+> above governs the M12 deliverable (project memory stays three Markdown files;
+> workspace ownership stays file based). It no longer bars stdlib `sqlite3`
+> (no new dependency, no service, a local file under `.git/plaza/`) for the
+> domain-session store introduced by the post-M12 plan
+> [2026-10-23-domain-session-store-execution-backend](2026-10-23-domain-session-store-execution-backend.md)
+> (phase 2). Still prohibited: any database server or network database, and
+> storing credentials or prompt bodies in it.
+
 **Spec:** [M12-DOMAIN-EXECUTION-DESIGN](../specs/2026-10-21-m12-domain-execution-design.md),
 written version at `57b631f` approved by the owner on 2026-10-21.
 `D-038`/`D-039` ratify the approved policy in doc set 0.2.17.

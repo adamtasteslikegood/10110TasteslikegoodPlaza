@@ -109,6 +109,16 @@ Implement one local Git mechanism now, without an empty plugin framework,
 provider registry, database or speculative container backend. Domain IDs,
 execution request IDs, workspace IDs and provider session IDs remain distinct.
 
+> **Amendment 2026-10-23 (owner, Adam: SQLite accepted).** "Database" here means
+> M12 scope: M12 adds none. A later, separate change may add a local stdlib
+> `sqlite3` file as the durable domain-session store (see
+> `docs/superpowers/plans/2026-10-23-domain-session-store-execution-backend.md`,
+> phase 2). That store is local only (no database server or network database),
+> adds no dependency, never holds credentials or prompt bodies, and does not
+> replace the three-file project memory or the workspace ownership metadata.
+> Whether a restarted bridge resumes a prior `domain_session_id` is a separate
+> spec change against the generation rules in this document, made in that phase.
+
 ## 4. Workspace selection and reservation
 
 ### 4.1 Configured project and automatic bootstrap
