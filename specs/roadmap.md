@@ -579,7 +579,7 @@ retain their original baselines and outcomes. The owner has confirmed laptop
 tools/worktree/memory behavior and latest OAuth; this correction's laptop and
 remaining desktop acceptance stay open. Runtime corrections merged in PR #365;
 M12 completion is not claimed. PLZG-293 adds separate clipboard controls and UI
-verification; the earlier live proof excludes the new helper.
+verification; the earlier live proof excludes the new clipboard code.
 
 The M6 second-department unlock additionally requires Engineering execution in
 its own worktree plus earned progression. Preserve SB-08's access/introduction

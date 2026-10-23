@@ -1,5 +1,111 @@
 extends RefCounted
 
+static func native_reveal_checks(test: Node) -> void:
+	# A real production panel owns the renderer. A SubViewport gives headless
+	# input a genuine pointer position; X11 uses the default product viewport.
+	var viewport: Viewport = test.get_viewport()
+	var isolated: SubViewport
+	if DisplayServer.get_name() == "headless":
+		isolated = SubViewport.new()
+		isolated.size = Vector2i(1280, 720)
+		test.add_child(isolated)
+		viewport = isolated
+	var hud: Node = load("res://scenes/hud/dialogue_panel.tscn").instantiate()
+	(viewport if isolated != null else test).add_child(hud)
+	hud.set_process(false)
+	hud._on_npc_approached("fixture-extra-a", AgentRegistry.get_agent("fixture-extra-a"))
+	var body: RichTextLabel = hud.get_node("Panel/Margin/Rows/BodyLabel")
+	var prefix := "Visible partial"
+	var answer := prefix + "SECRET\nNEVER revealed paragraph"
+	var request := "native-reveal-fixture"
+	hud._render({"messages": [{"generation": 1, "role": "assistant", "content": answer, "status": "completed", "request_id": request}], "pending": {}, "draft": "", "connected": true, "generation": 1}, request, 0)
+	hud._process((prefix.length() + 0.1) / hud.CHARS_PER_SECOND)
+	await test.frames(3)
+	var span: Dictionary = hud.current_assistant_span()
+	var expected: String = hud._full_text.left(int(span.start) + prefix.length())
+	test.check(body.get_parsed_text() == expected, "native reveal: selectable panel stores only currently revealed prefix")
+	var font := body.get_theme_font("normal_font")
+	var font_size := body.get_theme_font_size("normal_font_size")
+	var line := body.get_character_line(span.start)
+	var y := body.get_line_offset(line) + body.get_line_height(line) / 2 - body.get_v_scroll_bar().value
+	var word_x := font.get_string_size("Visible ", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+	word_x += font.get_string_size("partial", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x / 2
+	var word_point := body.global_position + Vector2(word_x, y)
+	seed_native_selection()
+	await pointer_button(test, viewport, word_point, true, true)
+	await pointer_button(test, viewport, word_point, false)
+	test.check(body.get_selected_text() == "partial", "native reveal: partial-word double click selects only revealed word")
+	await checkpoint(test, "native-partial-word-primary", "partial", "primary")
+	await checkpoint(test, "native-partial-word-clipboard", "native selection clipboard sentinel")
+	# Refresh native double-click timing immediately before the following single
+	# click, so it is a real triple click even after an external checkpoint read.
+	await pointer_button(test, viewport, word_point, true, true)
+	await pointer_button(test, viewport, word_point, false)
+	seed_native_selection()
+	await pointer_button(test, viewport, word_point, true)
+	await pointer_button(test, viewport, word_point, false)
+	test.check(body.get_selected_text() == prefix, "native reveal: paragraph triple click excludes unrevealed suffix and newline")
+	await checkpoint(test, "native-partial-paragraph-primary", prefix, "primary")
+	await checkpoint(test, "native-partial-paragraph-clipboard", "native selection clipboard sentinel")
+	body.deselect()
+	# Start two characters in, beyond the panel's real left resize grip.
+	var selected_prefix := prefix.substr(2)
+	var start := body.global_position + Vector2(font.get_string_size(prefix.left(2), HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x, y)
+	var end := body.global_position + Vector2(font.get_string_size(prefix, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x - 1, y)
+	seed_native_selection()
+	await pointer_button(test, viewport, start, true)
+	await pointer_motion(test, viewport, start, end)
+	test.check(body.get_selected_text() == selected_prefix, "native reveal: ordinary held drag genuinely selects revealed text")
+	# Continue across the blank next line where the old full buffer stored an
+	# entirely hidden paragraph, then release before any explicit Copy action.
+	var blank := end + Vector2(0, body.get_line_height(line) * 1.2)
+	await pointer_motion(test, viewport, end, blank)
+	await pointer_button(test, viewport, blank, false)
+	test.check(body.get_selected_text() == selected_prefix, "native reveal: blank-line drag/release cannot select hidden paragraph")
+	await checkpoint(test, "native-partial-drag-release-primary", selected_prefix, "primary")
+	await checkpoint(test, "native-partial-drag-release-clipboard", "native selection clipboard sentinel")
+	hud._process(3.0 / hud.CHARS_PER_SECOND)
+	await test.frames(2)
+	test.check(body.get_parsed_text() == expected + "SEC" and body.get_selected_text() == selected_prefix, "native reveal: append preserves existing mouse selection while reveal advances")
+	hud._on_npc_approached("systems-architect", AgentRegistry.get_agent("systems-architect"))
+	var changed := body.get_parsed_text()
+	hud._follow = false
+	hud._process(10)
+	test.check(body.get_parsed_text() == changed and not changed.contains("SECRET"), "native reveal: identity/status change cannot append previous hidden reply")
+	hud.queue_free()
+	if isolated != null: isolated.queue_free()
+	await test.frames(2)
+
+static func seed_native_selection() -> void:
+	DisplayServer.clipboard_set("native selection clipboard sentinel")
+	if DisplayServer.has_feature(DisplayServer.FEATURE_CLIPBOARD_PRIMARY):
+		DisplayServer.clipboard_set_primary("native selection primary sentinel")
+
+static func pointer_button(test: Node, viewport: Viewport, point: Vector2, pressed: bool, double_click: bool = false) -> void:
+	if DisplayServer.get_name() != "headless":
+		Input.warp_mouse(viewport.get_screen_transform() * point + Vector2(DisplayServer.window_get_position(test.get_window().get_window_id())))
+	var event := InputEventMouseButton.new()
+	event.position = point
+	event.global_position = point
+	event.button_index = MOUSE_BUTTON_LEFT
+	event.pressed = pressed
+	event.double_click = double_click
+	viewport.push_input(event, true)
+	await test.frames(1)
+
+static func pointer_motion(test: Node, viewport: Viewport, start: Vector2, end: Vector2) -> void:
+	if DisplayServer.get_name() != "headless":
+		Input.warp_mouse(viewport.get_screen_transform() * end + Vector2(DisplayServer.window_get_position(test.get_window().get_window_id())))
+	var event := InputEventMouseMotion.new()
+	event.position = end
+	event.global_position = end
+	event.relative = end - start
+	event.button_mask = MOUSE_BUTTON_MASK_LEFT
+	viewport.push_input(event, true)
+	# RichTextLabel's native held-click timer updates its selection every 50 ms.
+	await test.get_tree().create_timer(0.08).timeout
+	await test.frames(2)
+
 ## Runs against both production panels. Desktop checkpoints are independently
 ## read by scripts/check_chat_clipboard.py; headless runs never claim OS proof.
 static func run(test: Node, hud: Node, body: RichTextLabel, composer: LineEdit, copy_path: String, select_path: String) -> void:
@@ -8,7 +114,7 @@ static func run(test: Node, hud: Node, body: RichTextLabel, composer: LineEdit, 
 	var copy_button: Button = hud.get_node(copy_path)
 	var select_button: Button = hud.get_node(select_path)
 	var helper: Node = body.get_node("TranscriptClipboard")
-	var full := body.text
+	var full := body.get_parsed_text()
 	var original_visible := body.visible_characters
 	var was_processing := hud.is_processing()
 	hud.set_process(false)
@@ -142,7 +248,7 @@ static func run(test: Node, hud: Node, body: RichTextLabel, composer: LineEdit, 
 	await checkpoint(test, "empty-reveal-copy", "clipboard action sentinel")
 	body.visible_characters = -1
 	await test.frames(2)
-	var saved := body.text
+	var saved := body.get_parsed_text()
 	body.text = ""
 	await test.frames(2)
 	test.check(copy_button.disabled and select_button.disabled, "clipboard: empty transcript disables controls")
@@ -206,13 +312,13 @@ static func select_word(test: Node, body: RichTextLabel) -> String:
 	# status-label separator and correctly produce no native word selection.
 	var words := RegEx.new()
 	words.compile("[A-Za-z]{2,}")
-	var match := words.search(body.text.get_slice("\n", 0))
+	var match := words.search(body.get_parsed_text().get_slice("\n", 0))
 	if match == null:
 		test.check(false, "clipboard: synthetic renderer supplies a selectable word")
 		return ""
 	var font := body.get_theme_font("normal_font")
 	var font_size := body.get_theme_font_size("normal_font_size")
-	var prefix := body.text.left(match.get_start())
+	var prefix := body.get_parsed_text().left(match.get_start())
 	var x := font.get_string_size(prefix, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
 	x += font.get_string_size(match.get_string(), HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x / 2
 	var y := body.get_line_offset(0) + body.get_line_height(0) / 2 - body.get_v_scroll_bar().value

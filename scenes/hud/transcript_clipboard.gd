@@ -1,7 +1,7 @@
 extends Node
 
-## RichTextLabel's native selection may include an unrevealed typewriter suffix.
-## Own every transcript copy entry point before native handling can publish it.
+## Callers store only the revealed prefix: native mouse selection can publish
+## PRIMARY without a Copy event. Clamp explicit Copy paths as an extra boundary.
 var _label: RichTextLabel
 var _copy: Button
 var _select: Button

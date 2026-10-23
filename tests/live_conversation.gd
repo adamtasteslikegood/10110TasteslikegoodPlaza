@@ -104,9 +104,9 @@ func _abort(kind: String, message: String, turn: int = 0) -> void:
 ## Shared with the deterministic wrong-turn-two regression. The nonce from the
 ## first user message must never count as a model recall in a later reply.
 static func read_rendered_reply(body: RichTextLabel, span: Dictionary) -> String:
-	return body.text.substr(int(span.start), int(span.length))
+	return body.get_parsed_text().substr(int(span.start), int(span.length))
 
 
 static func visible_in_span(body: RichTextLabel, span: Dictionary) -> int:
-	var visible := body.text.length() if body.visible_characters < 0 else body.visible_characters
+	var visible := body.get_parsed_text().length() if body.visible_characters < 0 else body.visible_characters
 	return clampi(visible - int(span.start), 0, int(span.length))

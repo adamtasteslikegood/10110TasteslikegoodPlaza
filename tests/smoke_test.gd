@@ -309,7 +309,7 @@ func _check_hud_ready(instance: Node) -> void:
 	var body_label: RichTextLabel = hud.get_node_or_null("Panel/Margin/Rows/BodyLabel")
 	if body_label == null:
 		_fail("dialogue panel: BodyLabel path does not resolve")
-	elif body_label.text != agent.get("description", ""):
+	elif body_label.get_parsed_text() != agent.get("description", ""):
 		_fail("dialogue panel body text was not populated from the agent record")
 	elif body_label.visible_characters != -1:
 		_fail("empty-history introduction should be immediately visible")
@@ -342,12 +342,13 @@ func _check_hud_ready(instance: Node) -> void:
 	GameEvents.conversation_changed.emit("fixture-extra-a", "input", request_id)
 	BridgeClient._on_message(JSON.stringify({"agent_id": "fixture-extra-a", "request_id": request_id, "status": "ok", "output": "Hello from the bridge."}))
 	var span: Dictionary = hud.current_assistant_span()
-	if body_label.text.substr(span.start, span.length) != "Hello from the bridge.":
-		_fail("matched bridge response was not rendered in BodyLabel assistant span")
-	elif not body_label.text.contains("You (completed):\nSmoke question") or not body_label.text.contains("Assistant (completed):"):
+	if not body_label.get_parsed_text().contains("You (completed):\nSmoke question") or not body_label.get_parsed_text().contains("Assistant (completed):"):
 		_fail("transcript does not preserve ordered user/assistant role text")
-	elif body_label.visible_characters != span.start:
+	elif body_label.visible_characters != span.start or body_label.get_parsed_text().length() != span.start:
 		_fail("typewriter did not start at new assistant span")
+	hud._process(1.0)
+	if body_label.get_parsed_text().substr(span.start, span.length) != "Hello from the bridge.":
+		_fail("matched bridge response was not rendered in BodyLabel assistant span")
 
 	GameEvents.npc_left.emit("fixture-extra-a")
 	if panel.visible:

@@ -212,13 +212,14 @@ func _ready() -> void:
 	check(other.get("agent_id") == "fixture-extra-a", "other NPC native question uses ordinary NPC protocol")
 	await deliver({"agent_id": "fixture-extra-a", "request_id": other.request_id, "status": "ok", "output": "Ask the Chief Architect to review the configured project."})
 	var referral_span: Dictionary = main.get_node("HUD").current_assistant_span()
-	check(npc_body.text.substr(referral_span.start, referral_span.length) == "Ask the Chief Architect to review the configured project.", "current NPC assistant span renders ordinary referral")
+	main.get_node("HUD")._process(2.0)
+	check(npc_body.get_parsed_text().substr(referral_span.start, referral_span.length) == "Ask the Chief Architect to review the configured project.", "current NPC assistant span renders ordinary referral")
 	await key(KEY_ESCAPE)
-	var old_npc_text := npc_body.text
+	var old_npc_text := npc_body.get_parsed_text()
 	var terminal := {"type": "domain_result", "request_id": run.request_id, "project_id": "P", "workspace_id": "W", "domain_id": "core", "domain_session_id": "A", "output_id": "1", "agent_id": "systems-architect", "task": run.task, "output": "domain result nonce ibis ✓\n雪", "status": "success", "reason": "completed", "truncated": false, "memory": {"saved": false, "revision": 9, "error_type": "write_failed"}}
 	execution = "idle"
 	await deliver(terminal)
-	check(not panel.visible and get_viewport().gui_get_focus_owner() == null and npc_body.text == old_npc_text, "hidden result cannot open focus or overwrite NPC")
+	check(not panel.visible and get_viewport().gui_get_focus_owner() == null and npc_body.get_parsed_text() == old_npc_text, "hidden result cannot open focus or overwrite NPC")
 	check(hud.get_node("Global/StatusLabel").text.contains("1 unread"), "passive unread uses unconsumed receipt")
 	await walk(Vector2(-125, -25))
 	await walk(Vector2(0, -90))

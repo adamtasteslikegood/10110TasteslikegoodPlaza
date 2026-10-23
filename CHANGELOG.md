@@ -26,6 +26,9 @@ spec-set versions, and no application release existed before `v0.1.22`.
   cannot publish hidden typewriter text; prevent native selected-text export to
   X11 PRIMARY or drag targets. Keep composer editing, reading position,
   keyboard traversal and explicit work controls; dismiss stale menus on scope changes.
+- Store only revealed text in selectable labels and append plain text as replies
+  advance, so native word/paragraph selection and PRIMARY release cannot access
+  hidden suffixes. Preserve typewriter timing, genuine selection and rendered readback.
 - Exercise actual panel input and add an optional X11/xclip desktop driver with
   independent clipboard reads and layout captures. Existing runtime acceptance
   stays bound to its original sources; native laptop checks remain separate.

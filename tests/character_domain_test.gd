@@ -152,7 +152,7 @@ func _ready() -> void:
 	var setup := latest("project_setup")
 	check(setup.get("intent") == "first task", "Prepare sends explicit setup intent")
 	await deliver({"type": "project_setup", "agent_id": "systems-architect", "request_id": setup.request_id, "status": "ok", "output": "Approved setup", "project": workspace(""), "architect_decision": {"approved": true}})
-	check(results.text.contains("Approved setup") and input.text == "first task", "setup output visible without consuming domain draft")
+	check(results.get_parsed_text().contains("Approved setup") and input.text == "first task", "setup output visible without consuming domain draft")
 	button("Start").pressed.emit()
 	await frames()
 	var start := latest("activate_domain")
@@ -176,10 +176,12 @@ func _ready() -> void:
 	GameEvents.npc_approached.emit("security-auditor", AgentRegistry.get_agent("security-auditor"))
 	await frames(12)
 	check(panel.visible and not pane.get_node("Panel").visible, "other representative uses primary shared surface")
-	check(results.text.contains("systems-architect") and not button("Stop").disabled and button("Send").disabled, "inflight attribution remains original representative")
+	check(results.get_parsed_text().contains("systems-architect") and not button("Stop").disabled and button("Send").disabled, "inflight attribution remains original representative")
 	var terminal := {"type": "domain_result", "request_id": run.request_id, "project_id": "P", "workspace_id": "W", "domain_id": "core", "domain_session_id": "A", "output_id": "1", "agent_id": "systems-architect", "task": run.task, "output": "Architect output ibis", "status": "success", "reason": "completed", "truncated": false, "memory": {"saved": false, "revision": 9, "error_type": "write_failed"}}
 	await deliver(terminal)
-	check(results.text.contains("Architect output ibis") and results.text.contains("systems-architect") and results.text.contains("unsaved"), "same department terminal attributed with unsaved memory")
+	check(results.get_parsed_text().length() == results.visible_characters, "working dialogue native text contains only revealed terminal prefix")
+	hud._process(1.0)
+	check(results.get_parsed_text().contains("Architect output ibis") and results.get_parsed_text().contains("systems-architect") and results.get_parsed_text().contains("unsaved"), "same department terminal attributed with unsaved memory")
 	failed_result_rendering_checks(terminal)
 	check(input.text == "next draft" and BridgeClient.domain_snapshot("core").consumed_cursor == "1", "one shared draft and visible read cursor")
 	input.select(0, 4)
@@ -293,11 +295,11 @@ func failed_result_rendering_checks(template: Dictionary) -> void:
 		pane._refresh()
 		check(results.visible_characters == -1, "new failed result shows its cause immediately, including empty output")
 		for label in [results, pane_results]:
-			check(label.text.contains("root cwd") and label.text.contains("Stop"), "both panes show recovery for %s failed output" % ("empty" if partial.is_empty() else "partial"))
-			check(partial.is_empty() or label.text.contains(partial), "both panes retain Unicode failed partial answer")
+			check(label.get_parsed_text().contains("root cwd") and label.get_parsed_text().contains("Stop"), "both panes show recovery for %s failed output" % ("empty" if partial.is_empty() else "partial"))
+			check(partial.is_empty() or label.get_parsed_text().contains(partial), "both panes retain Unicode failed partial answer")
 		if not partial.is_empty():
 			var span: Dictionary = hud.current_assistant_span()
-			check(results.text.substr(span.start, span.length) == partial, "failure cause stays alongside the exact partial assistant span")
+			check(results.get_parsed_text().substr(span.start, span.length) == partial, "failure cause stays alongside the exact partial assistant span")
 	var unknown := template.duplicate(true)
 	unknown.output = ""
 	unknown.status = "error"
@@ -307,16 +309,16 @@ func failed_result_rendering_checks(template: Dictionary) -> void:
 	hud._render_domain()
 	pane._refresh()
 	for label in [results, pane_results]:
-		check(label.text.contains("could not complete") and label.text.contains("needs inspection"), "both panes show readable unknown failure and command notice")
-		check(not label.text.contains("synthetic-sensitive") and not label.text.contains("\"error_type\""), "ordinary failure display omits raw JSON and untrusted reason")
+		check(label.get_parsed_text().contains("could not complete") and label.get_parsed_text().contains("needs inspection"), "both panes show readable unknown failure and command notice")
+		check(not label.get_parsed_text().contains("synthetic-sensitive") and not label.get_parsed_text().contains("\"error_type\""), "ordinary failure display omits raw JSON and untrusted reason")
 	domain.results = original_results
 	domain.error = {}
 	hud._render_domain()
 	pane._refresh()
 
 func visible_notice(needle: String) -> bool:
-	var endpoint := results.text.find(needle) + needle.length()
-	return results.text.contains(needle) and (results.visible_characters < 0 or results.visible_characters >= endpoint)
+	var endpoint := results.get_parsed_text().find(needle) + needle.length()
+	return results.get_parsed_text().contains(needle) and (results.visible_characters < 0 or results.visible_characters >= endpoint)
 
 func diagnostic_command_regressions() -> void:
 	hold_status = false
@@ -357,7 +359,7 @@ func diagnostic_command_regressions() -> void:
 	failure.merge({"type": "domain_error", "status": "error", "error_type": "workspace_invalid", "message": "The configured workspace needs inspection.", "terminal_reason": "readiness_failed", "readiness_category": "branch_changed"}, true)
 	var arrival_check := func(domain: String, reason: String, request: String):
 		if domain == "core" and reason == "domain_error" and request == failure_id:
-			check(results.text.contains(failure.message), "actual domain_error notification appends ordinary notice text")
+			check(results.get_parsed_text().contains(failure.message), "actual domain_error notification appends ordinary notice text")
 			check(visible_notice(failure.message), "actual new command notice is immediately visible before passive refresh")
 	GameEvents.domain_changed.connect(arrival_check)
 	await deliver(failure)
@@ -366,7 +368,7 @@ func diagnostic_command_regressions() -> void:
 	check(notice.get("terminal_reason") == "readiness_failed" and notice.get("readiness_category") == "branch_changed", "real packet path retains diagnostic categories through automatic status refresh")
 	var pane_results: RichTextLabel = main.get_node("DomainHUD/Panel/Scroll/Rows/ResultsLabel")
 	for label in [results, pane_results]:
-		check(label.text.contains("owned branch") and label.text.contains("no automatic reset or checkout repair"), "normal notification renders branch recovery in both panes")
+		check(label.get_parsed_text().contains("owned branch") and label.get_parsed_text().contains("no automatic reset or checkout repair"), "normal notification renders branch recovery in both panes")
 	check(visible_notice("no automatic reset or checkout repair"), "new preflight notice is immediately inside visible range during prior successful reveal")
 	hud._process(float(answer.length()) / 55.0 + 1.0)
 	check(visible_notice("no automatic reset or checkout repair"), "preflight notice remains visible after prior successful animation duration")
@@ -387,7 +389,7 @@ func diagnostic_command_regressions() -> void:
 	var layered: Dictionary = BridgeClient.domain_snapshot("core").error
 	check(layered.get("error_type") == "replay_incomplete" and layered.get("command_error", {}).get("readiness_category") == "cwd_mismatch", "normal packet flow retains nested command category alongside receipt error")
 	for label in [results, pane_results]:
-		check(label.text.contains("Retained output is missing") and label.text.contains("root cwd") and label.text.contains("Stop"), "both panes render nested command recovery alongside receipt failure")
+		check(label.get_parsed_text().contains("Retained output is missing") and label.get_parsed_text().contains("root cwd") and label.get_parsed_text().contains("Stop"), "both panes render nested command recovery alongside receipt failure")
 	check(visible_notice("root cwd"), "nested command notice is inside NPC visible range")
 	status_id = BridgeClient.domain_status("core")
 	await frames()
@@ -397,7 +399,7 @@ func diagnostic_command_regressions() -> void:
 	await deliver(failure)
 	var unknown: Dictionary = BridgeClient.domain_snapshot("core").error.get("command_error", {})
 	check(not unknown.has("terminal_reason") and not unknown.has("readiness_category"), "real command flow drops untrusted diagnostic strings")
-	check(not results.text.contains("synthetic-sensitive") and not pane_results.text.contains("synthetic-sensitive"), "untrusted provider diagnostics remain absent from both panes")
+	check(not results.get_parsed_text().contains("synthetic-sensitive") and not pane_results.get_parsed_text().contains("synthetic-sensitive"), "untrusted provider diagnostics remain absent from both panes")
 	hold_domain_status = false
 
 func settle_return() -> void:

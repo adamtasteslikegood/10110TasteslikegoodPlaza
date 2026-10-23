@@ -72,7 +72,7 @@ and shares project notes. Fresh game/work guidance and guarded permission contro
 are implemented and merged in PR #362, with runtime corrections merged in PR #365.
 Fresh twelve-source guards passed 29/29 in both modes at `ec5d236`; the selected
 `dontAsk` Linux API-key Godot/plain-client flow passed at clean `eaba12a`, bound to
-48 relevant sources. That earlier proof excludes the PLZG-293 clipboard helper.
+48 relevant sources. That earlier proof excludes the PLZG-293 clipboard helper and prefix renderer.
 The owner confirmed laptop tools/worktree/memory behavior and latest OAuth; this
 correction's laptop and remaining desktop acceptance stay open. No second playable
 department or concurrent capacity is claimed.

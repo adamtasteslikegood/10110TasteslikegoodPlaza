@@ -14,7 +14,7 @@ import websockets
 from bridge.server import BridgeServer
 
 ROOT = Path(__file__).resolve().parents[2]
-MARKER = "godot_bridge_integration: OK — 38 checks passed."
+MARKER = "godot_bridge_integration: OK — 39 checks passed."
 
 
 @pytest.mark.asyncio

@@ -246,8 +246,8 @@ Copying does not submit, start, stop or replay work. Closing or changing the
 character, domain or project dismisses the transcript menu and clears selection.
 
 The earlier runtime live report remains bound to its original 48 sources at
-`eaba12a`; it does not establish this newer clipboard helper's behavior. The
-focused panel scenes cover its UI behavior without a provider. For optional real
+`eaba12a`; it does not establish this newer clipboard helper or prefix renderer's
+behavior. The focused panel scenes cover its UI behavior without a provider. For optional real
 Linux clipboard verification, set DISPLAY to an owned X11 display with Godot
 and `xclip` available:
 
