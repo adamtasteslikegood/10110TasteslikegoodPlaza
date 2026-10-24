@@ -109,3 +109,51 @@ notification DO; it does not demonstrate execution isolation or cursor-based
 agent recovery. The review records socket-memory/hibernation, pagination,
 persist/notify, initialization and auth findings at a pinned external commit.
 No open owner decision is resolved or changed by adding this reference.
+
+## Cloudflare plan and messaging facts — October 24, 2026
+
+Owner confirms an existing Workers Paid subscription at $5/month plus usage.
+This answers the paid-account prerequisite; it does not prove actual remote
+Claude execution/auth feasibility or authorize deployment. Account subscription
+and quotas were not independently read from the authenticated dashboard.
+
+Official documentation was rechecked using the Cloudflare docs connector and
+public pages requested with `Accept: text/markdown`:
+
+- [Workers pricing](https://developers.cloudflare.com/workers/platform/pricing/):
+  paid includes 10M requests and 30M CPU milliseconds/month. Free daily quotas
+  are a different plan, not additive to the paid allowances. Per-invocation
+  maximum CPU time is distinct from aggregate included usage and container runtime.
+- [DO pricing](https://developers.cloudflare.com/durable-objects/platform/pricing/):
+  paid includes 1M requests and 400,000 GB-s/month; duration and SQLite storage/rows
+  have their own meters. Hibernation eligibility matters for socket-heavy costs.
+- [Containers pricing](https://developers.cloudflare.com/containers/platform/pricing/):
+  paid includes 25 GiB-hours memory, 375 vCPU-minutes and 200 GB-hours disk/month,
+  with resource-specific overages. Containers included does not mean unlimited
+  containers at no additional cost. Claude/provider usage is separate.
+- [Queues architecture](https://developers.cloudflare.com/queues/reference/how-queues-works/)
+  and [delivery guarantees](https://developers.cloudflare.com/queues/reference/delivery-guarantees/):
+  asynchronous work delivery, at least once, no guaranteed publication ordering.
+  One configured consumer path can scale out; HTTP pull permits multiple concurrent
+  workers. This is not independent topic subscriptions each receiving every event.
+  A retryable agent job therefore needs deduplication/idempotency and host affinity.
+- [Queues pricing](https://developers.cloudflare.com/queues/platform/pricing/):
+  1M operations/month included on paid, then $0.40/M operations. A normal small
+  message consumes write/read/delete operations (typically three), not one.
+- [K2](https://developers.cloudflare.com/k2/) and
+  [its guarantees](https://developers.cloudflare.com/k2/reference/delivery-guarantees/):
+  a currently documented public-beta durable log on Workers Paid, with independent
+  subscriptions and at-least-once delivery. Closer to a Pub/Sub-style fan-out log
+  than Queues; availability, retention, beta terms and pricing need evaluation
+  before selection. No ordering/deduplication guarantee should be inferred.
+
+The reviewed near-term sequence is unchanged: owner/governance review, align the
+approved docs, PR to dev, then the local in-memory store extraction. Later choose
+whether any asynchronous dispatch/fan-out service is actually required. Queues
+or K2 is not a substitute for the canonical session/event store, workspace guards
+or execution sandbox. No new vendor/product decision is made in this note.
+
+Next owner question under Q02: map existing Stop/cancel behavior versus explicit
+intentional session End onto the recorded stable-session/resume requirement.
+A possible design is Stop current execution while retaining the session, with a
+separate explicit End; that is a recommendation to discuss, not a settled answer.
