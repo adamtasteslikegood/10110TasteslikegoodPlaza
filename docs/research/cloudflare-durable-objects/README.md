@@ -21,3 +21,8 @@ as the research reading entry point. Vendor snapshots were not edited or refetch
 The analysis and store/backend plan are research/proposals, not new canon.
 See [M13 decisions and questions](../../../M13_DECISIONS_AND_QUESTIONS.md)
 for recorded owner answers, governance conflicts and the next-session review gate.
+
+## Additional source review
+
+- [Brayden/chat: SQLite DOs, WebSockets and React Router](brayden-chat-review.md):
+  pinned source inspection, applicability to Plaza, and recovery/auth gaps.

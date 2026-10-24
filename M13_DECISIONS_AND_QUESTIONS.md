@@ -99,3 +99,13 @@ State vocabulary: **clarify scope** means no new product decision is presumed; *
 For each new item, cite the exact document/heading or D-number, quote the narrow conflicting claim, distinguish a current rule from historical evidence and an agent's extrapolation, state what owner decision is actually missing, and list every document that must change together. Record the eventual owner answer and implementing commit. Do not mark an issue resolved merely because it was discussed.
 
 Completed rows stay as provenance with links to the canonical resolution. This file is a review queue, not a second canonical decision register.
+
+## Additional reference — October 24, 2026
+
+[Brayden/chat source review](docs/research/cloudflare-durable-objects/brayden-chat-review.md)
+adds a concrete Workers/SQLite DO/React Router comparison for Q02–Q09 and Q11.
+It demonstrates per-channel durable message storage plus a shared authorization/
+notification DO; it does not demonstrate execution isolation or cursor-based
+agent recovery. The review records socket-memory/hibernation, pagination,
+persist/notify, initialization and auth findings at a pinned external commit.
+No open owner decision is resolved or changed by adding this reference.
