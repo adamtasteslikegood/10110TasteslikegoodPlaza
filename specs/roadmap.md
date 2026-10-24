@@ -566,12 +566,20 @@ extras retain synchronous conversation. M12 now includes one safely owned
 worktree per project/department (with in-place legacy Core preservation), shared
 project memory, pre-ready Chief setup, fresh bounded game/work context and a
 guarded owner permission setting. The [implementation plan](../docs/superpowers/plans/2026-10-22-m12-character-domains.md)
-is authorized and the correction is implemented. Fresh ten-source guards passed
-29/29 in both modes at `ba5599b`; the selected `dontAsk` Linux API-key
-Godot/plain-client flow passed at clean `a582f11`. Earlier Linux reports retain
-their original tested baselines and outcomes. Baseline M12 was merged in PR #357;
-this amendment does not yet claim merge. Owner laptop/native OAuth/desktop
-acceptance remains separate and open.
+is authorized and the amendment merged in PR #362. Subsequent runtime corrections
+preserve supported answer/memory output, actionable bounded failures and truthful
+requested shutdown/failed-cleanup state. Fresh twelve-source guards passed 29/29
+in both modes at `ec5d236`; the selected `dontAsk` Linux API-key Godot/plain-client
+flow passed at clean `eaba12a`, bound to 48 relevant source files, with three clean
+recording closures. This is a conservative source binding, not per-file trace
+coverage: the paid runner composes the server directly; actual CLI signals have
+separate provider-free Linux process tests. Offline coverage at `ec5d236` includes
+1,990 Python tests, 118 subtests and eight Godot gates. Earlier Linux reports
+retain their original baselines and outcomes. The owner has confirmed laptop
+tools/worktree/memory behavior and latest OAuth; this correction's laptop and
+remaining desktop acceptance stay open. Runtime corrections merged in PR #365;
+M12 completion is not claimed. PLZG-293 adds separate clipboard controls and UI
+verification; the earlier live proof excludes the new clipboard code.
 
 The M6 second-department unlock additionally requires Engineering execution in
 its own worktree plus earned progression. Preserve SB-08's access/introduction

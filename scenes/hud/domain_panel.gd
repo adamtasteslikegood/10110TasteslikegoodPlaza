@@ -1,6 +1,10 @@
 extends CanvasLayer
 
+const Clipboard := preload("res://scenes/hud/transcript_clipboard.gd")
+const FailureDisplay := preload("res://scenes/hud/failure_display.gd")
+
 ## View ownership only. BridgeClient owns admission, drafts and execution state.
+var _clipboard: Node
 var nearby_agent_id := ""
 var anchor_agent_id := ""
 var selected_domain_id := ""
@@ -24,6 +28,8 @@ var _result_spans: Array[Dictionary] = []
 @onready var _global_refocus: Button = $Global/Toolbar/RefocusButton
 
 func _ready() -> void:
+	_clipboard = Clipboard.new(_results, _action("Copy"), _action("SelectAll"))
+	_results.add_child(_clipboard)
 	GameEvents.npc_approached.connect(_approached)
 	GameEvents.npc_left.connect(_left)
 	GameEvents.domain_changed.connect(_domain_changed)
@@ -36,6 +42,7 @@ func _ready() -> void:
 	$Global/Toolbar/StopButton.pressed.connect(func(): BridgeClient.deactivate_domain(selected_domain_id))
 	_select.item_selected.connect(func(index):
 		if _panel.visible: _background()
+		_clipboard.invalidate()
 		selected_domain_id = _domains[index]
 		anchor_agent_id = ""
 		remote = true
@@ -125,6 +132,7 @@ func _background() -> void:
 func _recover() -> void:
 	BridgeClient.describe_workspace()
 	BridgeClient.domain_status(selected_domain_id)
+	BridgeClient.agent_status(_agents.get(selected_domain_id, ""))
 
 func _submit(text: String) -> void:
 	if _action("Run").disabled: return
@@ -149,6 +157,7 @@ func _character_changed(agent_id: String, _reason: String, _request_id: String) 
 	_refresh()
 
 func _surface_changing() -> void:
+	_clipboard.invalidate()
 	if BridgeClient.surface.owner == "pane": _save_result_view(_results.get_v_scroll_bar().value)
 
 func _surface_changed() -> void:
@@ -159,6 +168,7 @@ func _surface_changed() -> void:
 	_refresh()
 
 func _workspace_changed(_reason: String, _request_id: String) -> void:
+	_clipboard.invalidate()
 	var workspace := BridgeClient.workspace_snapshot()
 	var value: Variant = workspace.get("project_id")
 	var project: String = value if value is String else ""
@@ -187,7 +197,7 @@ func _refresh() -> void:
 	var character := BridgeClient.character_snapshot(_agents.get(selected_domain_id, ""))
 	var department: Dictionary = character.get("workspace", {})
 	var memory: Dictionary = workspace.get("memory", {})
-	_workspace.text = "Project: %s\nWorkspace: %s\nBranch: %s\nSetup: %s · Memory: %s" % [workspace.get("project_path", "unconfigured"), department.get("worktree_path", "unprepared"), department.get("branch", "unprepared"), workspace.get("stage", "unknown"), memory.get("status", "unavailable")]
+	_workspace.text = "Project: %s\nWorkspace: %s\nBranch: %s\nSetup: %s · Memory: %s\nDepartment: %s" % [workspace.get("project_path", "unconfigured"), department.get("worktree_path", "unprepared"), department.get("branch", "unprepared"), workspace.get("stage", "unknown"), memory.get("status", "unavailable"), FailureDisplay.department_status(character)]
 	_opener.visible = BridgeClient.character_snapshot(nearby_agent_id).get("execution_kind") == "working"
 	_opener.text = "Domain work · " + str(AgentRegistry.get_agent(nearby_agent_id).get("name", nearby_agent_id))
 	_select.visible = not _domains.is_empty()
@@ -231,16 +241,20 @@ func _refresh() -> void:
 		var archived: bool = result.domain_session_id != generation
 		var turn_memory: Dictionary = result.get("memory", {})
 		lines.append("[%s%s · %s · output %s · %s · memory %s]\n%s\n%s" % ["Archived " if archived else "", result.domain_session_id, result.agent_id, result.output_id, result.status, "saved" if turn_memory.get("saved", false) else "unsaved", result.get("task", ""), result.get("output", result.get("message", ""))])
+		var cause := FailureDisplay.cause(result)
+		if not cause.is_empty(): lines[-1] += "\nCause: " + cause
 		spans.append({"request_id": result.request_id, "generation": result.domain_session_id, "role": "assistant", "start": character_offset, "length": lines.back().length()})
 		character_offset += lines.back().length() + 2
 	var error: Dictionary = snapshot.get("error", {})
 	if not error.is_empty():
-		lines.append("Notice: %s — %s" % [error.get("error_type", "unknown"), error.get("message", "")])
+		lines.append("Notice: %s — %s" % [error.get("error_type", "unknown"), FailureDisplay.notice(error, false)])
 		var command_error: Dictionary = error.get("command_error", {})
 		if not command_error.is_empty():
-			lines.append("Command notice: %s — %s" % [command_error.get("error_type", "unknown"), command_error.get("message", "")])
+			lines.append("Command notice: %s — %s" % [command_error.get("error_type", "unknown"), FailureDisplay.notice(command_error, false)])
 		for query in error.get("unresolved_queries", []):
 			lines.append("[Unknown outcome · generation %s · request %s]\n%s" % [query.get("domain_session_id", ""), query.get("request_id", ""), query.get("task", "")])
+	var readiness := FailureDisplay.readiness(workspace, character)
+	if not readiness.is_empty(): lines.append("Readiness: " + readiness)
 	var rendered := "\n\n".join(lines)
 	if _results.text != rendered:
 		_save_result_view(_results.get_v_scroll_bar().value)
@@ -288,7 +302,7 @@ func _input(event: InputEvent) -> void:
 		if _panel.visible: _background()
 		else: owner.release_focus()
 	elif _panel.is_ancestor_of(owner) and (event.is_action_pressed("chat_focus_next", false, true) or event.is_action_pressed("chat_focus_previous", false, true)):
-		var controls: Array[Control] = [_results, _task_input]
+		var controls: Array[Control] = [_results, _action("Copy"), _action("SelectAll"), _task_input]
 		for name in ["Start", "Run", "Refocus", "Background", "Stop", "Status"]: controls.append(_action(name))
 		var enabled: Array[Control] = []
 		for control in controls:

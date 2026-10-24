@@ -13,7 +13,7 @@ This file is a non-authoritative working queue. The entitled decision register r
 
 ## Verified branch inventory and interruption checkpoint
 
-Observed remotely before reconciliation:
+Observed remotely before reconciliation (historical tips; see the resumed checkpoint below):
 
 | Ref | Observed tip | Finding |
 |---|---|---|
@@ -21,13 +21,19 @@ Observed remotely before reconciliation:
 | `origin/docs/add_notes_Docs` | `f37bff31a2aeae2e716e73b841a19dae3c89489a` | Imported UI notes, research snapshots, diagrams and owner-local config changes; 1 unique commit and 21 commits behind dev at inspection. |
 | `origin/plaza/workspace-integration` | `122cbc74e9b76c751b9cf57479bf0c1c8a1d7e46` | Research, proposed store/backend plan, recorded owner answers, and SQLite amendments to two M12 documents; 4 unique commits and 48 commits behind dev at inspection. |
 | `origin/docs/cloudflare-durable-objects-research` | `47373a365b9facc1aa01a17d11009377f63e743a` | Ancestor of workspace-integration; retain its provenance. |
-| `origin/feat/373-domain-session-store-extraction` | Not found | Both remote-ref inspection and GitHub branch lookup found no such branch. Asked Adam whether workspace-integration is the intended target; do not fabricate or silently substitute the missing branch. |
+| `origin/feat/373-domain-session-store-extraction` | Not found | Both remote-ref inspection and GitHub branch lookup found no such remote branch. Adam subsequently confirmed the feature branch is laptop-local and its work was pushed to plaza/workspace-integration; that is the approved planning target. |
 
 The remote fetch configuration originally selected only dev; the named research/integration refs were explicitly fetched before comparison. A successful generic fetch alone would not have refreshed them.
 
-**Reconciliation is incomplete.** In the existing isolated cloud worktree, a local branch `docs/PLZG-290-reconcile-notes` was created from the docs tip above. A `--no-commit --no-ff` merge of dev applied without textual conflicts. Before any merge commit/push, the execution environment became unavailable. The existing top-level `work` checkout was not changed. No remote merge, rebase, force-push, PR or implementation was performed at this checkpoint. This working file is being saved directly to the docs branch through the GitHub connector so the review queue survives the environment interruption.
+### Historical interruption checkpoint
 
-On resumption, fetch and inspect again. The remote docs tip will have advanced to include this file. Do not commit a stale interrupted merge without incorporating that new history. Preserve the interrupted state before choosing its recovery; do not blanket reset unrelated work.
+Before the environment recovered, in the existing isolated cloud worktree, a local branch `docs/PLZG-290-reconcile-notes` was created from the docs tip above. A `--no-commit --no-ff` merge of dev applied without textual conflicts. Before any merge commit/push, the execution environment became unavailable. The existing top-level `work` checkout was not changed. No remote merge, rebase, force-push, PR or implementation was performed at this checkpoint. This working file is being saved directly to the docs branch through the GitHub connector so the review queue survives the environment interruption.
+
+### Resumed checkpoint — docs history reconciled, planning merge next
+
+Adam confirmed `origin/plaza/workspace-integration` as the planning target. The workspace recovered. The interrupted staged merge was saved as a patch, aborted without discarding unrelated work, and rebuilt after incorporating remote checkpoint `421225e` into the local docs history. This docs reconciliation merges dev `971ac2f` without rewriting ancestry. Runtime/config/UI/tests/dependencies now match dev; the old owner-local `bridge/config.json` edits remain in original commit history, but are not the reconciled product defaults. Sixteen imported Markdown files were individually indexed as non-authoritative provenance/research; vendor snapshots and copied notes were not edited.
+
+The planning-branch merge, its verification and final handoff are the next operation. No PR or implementation is authorized in this round. Exact completed tips and acceptance results will be recorded in the final planning-branch checkpoint.
 
 ## Recorded owner direction: retain, do not repeatedly ask
 
@@ -67,14 +73,14 @@ State vocabulary: **clarify scope** means no new product decision is presumed; *
 | Q14 — verify claim | #373's delivery section currently targets `plaza/workspace-integration`; Adam now explicitly says integration isolation is temporary and the next session should open a PR to dev after review. | Update the task and handoff after the actual target branch is confirmed/reconciled. Do not implement phase 1 or open a PR in this round; do not turn temporary isolation into a permanent ban on dev integration. |
 | Q15 — historical fact update | Current dev summaries in CLAUDE/QUICKSTART/roadmap still describe M12 as awaiting laptop acceptance. [PLZG-289](https://tasteslikegood.atlassian.net/browse/PLZG-289) is now Done with the owner's filled checklist, 29/29 local guards in each mode and clean shutdown evidence. | Queue consistent delivery-status updates for the next reviewed PR, preserving original evidence/source bindings. This is a fact reconciliation, not a new platform decision. Do not restamp historical paid reports. |
 | Q16 — imported provenance / review before PR | `Docs/files/` (capital D) contains UI-copied notes, research snapshots, diagrams and raw Cloudflare pages. `docs/research/cloudflare-durable-objects/` carries another research collection. The archived `arch_convo_full.md` is copied selectable UI text, not a runtime transcript. | Preserve provenance and explicitly distinguish copied text from logged execution. Compare duplicate raw pages by content before choosing a canonical index; do not silently edit vendor snapshots or delete research. Review imported artifacts for owner-local/private material before future PR publication. |
-| Q17 — integration mechanics | The docs commit changes `bridge/config.json`: owner-local workspace path, permission bypass true and a larger conversation token cap. Those are not research documentation. | Recommended reconciliation: use dev's product defaults in the reconciled tree and preserve owner settings in original commit history/local setup guidance; do not accidentally ship laptop paths or alter execution behavior in a docs-only round. Record the actual choice when applied. No config reconciliation has been committed yet. |
+| Q17 — integration mechanics | The docs commit changes `bridge/config.json`: owner-local workspace path, permission bypass true and a larger conversation token cap. Those are not research documentation. | Recommended reconciliation: use dev's product defaults in the reconciled tree and preserve owner settings in original commit history/local setup guidance; do not accidentally ship laptop paths or alter execution behavior in a docs-only round. Record the actual choice when applied. Docs reconciliation selects dev defaults; original owner-local settings remain recoverable in commit `f37bff3`. This is a mechanical integration choice, not a new permission or settings policy. |
 | Q18 — validator finding | The conflict-free preliminary docs+dev merge fails `python3 scripts/validate_specs.py` with 16 imported Markdown paths under `Docs/files/` missing from the document registry. | Register each imported non-authoritative snapshot individually with a provenance-based exemption, or add proper frontmatter if it truly belongs in the governed set. Audit the additional lowercase research/plan files when merged too. Do not disable the validator, create blanket exemptions, grant imported text decision authority or bump decision versions just to pass. |
 
 ## Next-session review and integration checklist
 
-- [ ] Confirm the actual planning ref with Adam (pending question above); fetch all named remote refs explicitly.
-- [ ] Inspect the interrupted local merge and preserve its state; incorporate this remotely saved checkpoint before any branch push.
-- [ ] Merge current dev into the docs history without rewriting published ancestry; resolve owner-local config deliberately and validate docs.
+- [x] Confirm the planning ref with Adam: `origin/plaza/workspace-integration`; fetch all named remote refs explicitly.
+- [x] Preserve and rebuild the interrupted local merge, incorporating remote checkpoint `421225e` before further integration.
+- [x] Merge dev `971ac2f` into the docs history without rewriting ancestry; retain dev product defaults and index the imported snapshots. Validation is required before publication.
 - [ ] Merge the updated docs history into the confirmed planning branch; retain research commits, recorded owner answers and the provenance of pre-existing SQLite amendments.
 - [ ] Check byte identity of runtime, tests, dependencies and UI against current dev; any remaining non-doc change needs explicit explanation. No implementation is authorized in this round.
 - [ ] Resolve registry coverage and internal links without changing decision authority. Preserve all earlier acceptance artifacts unchanged.

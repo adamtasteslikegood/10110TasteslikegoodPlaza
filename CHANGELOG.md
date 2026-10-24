@@ -17,6 +17,50 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
 
+### Fixed — blocked department chat guidance (PLZG-295)
+
+- Show fixed readiness guidance in both chat transcripts and distinguish project
+  setup from department readiness. Explain workspace inspection, unconfirmed
+  cleanup, reservations and capacity while keeping blocked work controls disabled.
+- Refresh the selected representative's readiness alongside department status;
+  clear stale guidance after observed recovery without starting or retrying work.
+  Provider-free UI checks cover this correction; earlier live/clipboard evidence
+  remains bound to its recorded sources, with laptop acceptance separate.
+
+### Added — transcript clipboard controls (PLZG-293)
+
+- Add compact Copy/Select All buttons and right-click menus to NPC dialogue and
+  domain results, including disconnected history. Preserve selected plain text,
+  Unicode and displayed labels; without a selection, copy the revealed transcript.
+- Clamp explicit transcript Copy paths to revealed text and disable native
+  selected-text drag export. Native PRIMARY selections contain only revealed text.
+  Keep composer editing, reading position, keyboard traversal and explicit work
+  controls; dismiss stale menus on scope changes.
+- Store only revealed text in selectable labels and append plain text as replies
+  advance, so native word/paragraph selection and PRIMARY release cannot access
+  hidden suffixes. Preserve typewriter timing, genuine selection and rendered readback.
+- Exercise actual panel input and add an optional X11/xclip desktop driver with
+  independent clipboard reads and layout captures. Existing runtime acceptance
+  stays bound to its original sources; native laptop checks remain separate.
+
+### Fixed — M12 replies, diagnostics and requested shutdown (PLZG-289)
+
+- Decode supported final answer/memory envelopes conservatively, preserve prose,
+  and teach the real project-memory grammar without accepting unsupported aliases.
+- Preserve partial failed output in enabled transcripts and show readable causes
+  in both Godot panes. Keep operational diagnostics bounded, correlated and free
+  of raw tool bodies; explain managed branch/root-cwd constraints without weaker
+  readiness checks. Give domain command/execution events one owner.
+- Route actual CLI SIGINT/SIGTERM through graceful drain. Retain failed NPC/Chief
+  cleanup across request retirement, reap only captured owned children and keep
+  recording/project ownership unclean when cleanup cannot be confirmed.
+- Record 1,990 Python tests plus 118 subtests, eight Godot gates, fresh twelve-source
+  guards (29/29 per mode at `ec5d236`) and one selected `dontAsk` Linux API-key live
+  pass at clean `eaba12a`, bound to 48 relevant sources with three clean recording
+  closures. CLI signal behavior has separate provider-free process tests. Preserve
+  all historical evidence; owner laptop baseline behavior/latest OAuth are already
+  confirmed, while this correction's laptop and remaining desktop checks stay open.
+
 ### Changed — M12 character work and acceptance runners (PLZG-289)
 
 - Implement catalog-agent department routing, lazy per-department worktrees,

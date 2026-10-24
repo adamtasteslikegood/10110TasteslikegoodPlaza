@@ -249,6 +249,32 @@ def test_exact_runtime_and_shipped_limits(tmp_path):
         _read(tmp_path, "brief.md", 8192, "shipped")
 
 
+def test_work_context_explains_current_owned_branch_and_root_cwd(tmp_path):
+    config = replace(default_config(), install_context_dir=tmp_path / "absent")
+    result = packet(
+        config,
+        execution_kind="domain",
+        domain_id="engineering",
+        workspace={
+            "worktree_path": "/synthetic/owned",
+            "branch": "plaza/workspace-synthetic-engineering",
+        },
+    )
+    text = result.render()
+    assert (
+        "/synthetic/owned" in text and "plaza/workspace-synthetic-engineering" in text
+    )
+    for phrase in (
+        "root cwd",
+        "owned branch",
+        "subshell",
+        "without checkout",
+        "Stop",
+        "containment",
+    ):
+        assert phrase in text
+
+
 def test_fifo_and_absolute_path_rejected(tmp_path):
     import os
 

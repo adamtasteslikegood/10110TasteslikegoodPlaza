@@ -1,6 +1,7 @@
 """UI-independent routing over bounded, generation-owned domain sessions."""
 
 import asyncio
+import time
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
@@ -11,6 +12,7 @@ from bridge.domain_protocol import (
     validate_domain_command,
 )
 from bridge.domain_session import DomainSession, DomainSink, SessionState, deliver
+from bridge.failure_diagnostics import exception_diagnostics
 from bridge.observability import BridgeRecorder, RequestContext
 from bridge.workspace import WorkspaceError
 
@@ -94,6 +96,7 @@ class DomainManager:
         self, command: dict, *, context: RequestContext, emit: DomainSink
     ) -> None:
         session = None
+        started = time.monotonic()
         try:
             command = validate_domain_command(command)
             kind = command["type"]
@@ -192,6 +195,20 @@ class DomainManager:
                 project_id=snapshot.get("project_id"),
                 workspace_id=snapshot.get("workspace_id"),
             )
+            diagnostics = exception_diagnostics(error)
+            packet.update(diagnostics)
+            if self._recorder:
+                self._recorder.event(
+                    (
+                        "request_rejected"
+                        if code == "invalid_request"
+                        else "request_failed"
+                    ),
+                    context,
+                    outcome="rejected" if code == "invalid_request" else "failure",
+                    duration_ms=(time.monotonic() - started) * 1000,
+                    **diagnostics,
+                )
             if code == "workspace_busy" and isinstance(error, WorkspaceError):
                 # Lease errors expose only an already-validated domain slug,
                 # never paths, provider details or arbitrary exception text.

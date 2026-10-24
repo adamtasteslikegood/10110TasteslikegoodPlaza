@@ -21,6 +21,10 @@ var unconfigured := false
 var prepared := false
 var status_packets: Array[Dictionary] = []
 var hold_status := false
+var hold_domain_status := false
+var readiness_fixture: Dictionary = {}
+var project_stage := "ready"
+var observations: Array[Dictionary] = []
 
 func check(ok: bool, message: String) -> bool:
 	checks += 1
@@ -30,7 +34,7 @@ func check(ok: bool, message: String) -> bool:
 func workspace(id: String) -> Dictionary:
 	if unconfigured:
 		return {"type": "workspace_state", "request_id": id, "project_id": null, "workspace_id": null, "stage": "unconfigured", "reason": null, "architect_decision": null, "project_path": null, "worktree_path": null, "branch": null, "changed_files": null, "reservation": null, "memory": {"path": null, "status": "unavailable", "revision": null, "error_type": null}}
-	return {"type": "workspace_state", "request_id": id, "project_id": "P", "workspace_id": "W", "stage": "ready", "reason": null, "architect_decision": null, "project_path": "/project", "worktree_path": "/execution", "branch": "plaza/workspace-P", "changed_files": {"total": 0, "tracked": 0, "untracked": 0, "truncated": false}, "reservation": null, "memory": {"path": "/memory", "status": "saved", "revision": 8, "error_type": null}}
+	return {"type": "workspace_state", "request_id": id, "project_id": "P", "workspace_id": "W", "stage": project_stage, "reason": null, "architect_decision": null, "project_path": "/project", "worktree_path": "/execution", "branch": "plaza/workspace-P", "changed_files": {"total": 0, "tracked": 0, "untracked": 0, "truncated": false}, "reservation": null, "memory": {"path": "/memory", "status": "saved", "revision": 8, "error_type": null}}
 
 func state(id: String, value: String = "active") -> Dictionary:
 	return {"type": "domain_state", "request_id": id, "project_id": "P", "workspace_id": "W", "domain_id": "core", "domain_session_id": generation, "state": value, "execution_state": execution}
@@ -40,17 +44,23 @@ func service() -> void:
 	peer.poll()
 	while peer.get_available_packet_count() > 0:
 		var p: Dictionary = JSON.parse_string(peer.get_packet().get_string_from_utf8())
+		if p.get("type") in ["describe_workspace", "agent_status", "domain_status"]: observations.append(p.duplicate(true))
 		if p.get("type") == "describe_workspace": peer.send_text(JSON.stringify(workspace(p.request_id)))
 		elif p.get("type") == "agent_status":
 			var observation := state("", lifecycle if prepared else "inactive")
 			observation.erase("request_id")
 			if not prepared: observation.domain_session_id = null
 			var response := {"type": "agent_status", "request_id": p.request_id, "agent_id": p.agent_id, "execution_kind": "working", "domain_id": "core", "project": workspace(""), "workspace": {"stage": "ready" if prepared else "unprepared"}, "domain_state": observation, "capabilities": {"can_start": not prepared or lifecycle == "inactive", "can_run": prepared and lifecycle in ["active", "background"], "can_prepare_project": true}}
+			response.merge(readiness_fixture, true)
 			status_packets.append(response)
 			if not hold_status: peer.send_text(JSON.stringify(response))
 		elif p.get("type") == "domain_status":
 			status_attempts += 1
-			var response := state(p.request_id, lifecycle)
+			if hold_domain_status:
+				commands.append(p)
+				continue
+			var response := state(p.request_id, lifecycle if prepared else "inactive")
+			if not prepared: response.domain_session_id = null
 			if fail_next_status:
 				fail_next_status = false
 				response.merge({"type": "domain_error", "status": "error", "error_type": "status_unavailable", "message": "status unavailable"}, true)
@@ -137,6 +147,7 @@ func _ready() -> void:
 	GameEvents.npc_approached.emit("systems-architect", AgentRegistry.get_agent("systems-architect"))
 	await frames(12)
 	check(not status_packets.is_empty() and commands.is_empty(), "approach performs observation only")
+	await blocked_readiness_checks()
 	check(panel.visible and not button("Start").disabled and button("Send").disabled, "primary explicit Start before Run")
 	input.text = "first task"
 	input.text_changed.emit(input.text)
@@ -148,7 +159,7 @@ func _ready() -> void:
 	var setup := latest("project_setup")
 	check(setup.get("intent") == "first task", "Prepare sends explicit setup intent")
 	await deliver({"type": "project_setup", "agent_id": "systems-architect", "request_id": setup.request_id, "status": "ok", "output": "Approved setup", "project": workspace(""), "architect_decision": {"approved": true}})
-	check(results.text.contains("Approved setup") and input.text == "first task", "setup output visible without consuming domain draft")
+	check(results.get_parsed_text().contains("Approved setup") and input.text == "first task", "setup output visible without consuming domain draft")
 	button("Start").pressed.emit()
 	await frames()
 	var start := latest("activate_domain")
@@ -172,10 +183,13 @@ func _ready() -> void:
 	GameEvents.npc_approached.emit("security-auditor", AgentRegistry.get_agent("security-auditor"))
 	await frames(12)
 	check(panel.visible and not pane.get_node("Panel").visible, "other representative uses primary shared surface")
-	check(results.text.contains("systems-architect") and not button("Stop").disabled and button("Send").disabled, "inflight attribution remains original representative")
+	check(results.get_parsed_text().contains("systems-architect") and not button("Stop").disabled and button("Send").disabled, "inflight attribution remains original representative")
 	var terminal := {"type": "domain_result", "request_id": run.request_id, "project_id": "P", "workspace_id": "W", "domain_id": "core", "domain_session_id": "A", "output_id": "1", "agent_id": "systems-architect", "task": run.task, "output": "Architect output ibis", "status": "success", "reason": "completed", "truncated": false, "memory": {"saved": false, "revision": 9, "error_type": "write_failed"}}
 	await deliver(terminal)
-	check(results.text.contains("Architect output ibis") and results.text.contains("systems-architect") and results.text.contains("unsaved"), "same department terminal attributed with unsaved memory")
+	check(results.get_parsed_text().length() == results.visible_characters, "working dialogue native text contains only revealed terminal prefix")
+	hud._process(1.0)
+	check(results.get_parsed_text().contains("Architect output ibis") and results.get_parsed_text().contains("systems-architect") and results.get_parsed_text().contains("unsaved"), "same department terminal attributed with unsaved memory")
+	failed_result_rendering_checks(terminal)
 	check(input.text == "next draft" and BridgeClient.domain_snapshot("core").consumed_cursor == "1", "one shared draft and visible read cursor")
 	input.select(0, 4)
 	GameEvents.domain_changed.emit("core", "read", "")
@@ -246,6 +260,7 @@ func _ready() -> void:
 	var failed_status := BridgeClient.character_snapshot("systems-architect")
 	check(failed_status.pending.is_empty() and failed_status.error == wrong.output and failed_status.domain_id == "core", "typed status error uses output and preserves binding")
 	check(not panel.visible and count("domain_query") == 3, "status error cannot steal foreground or execute")
+	await diagnostic_command_regressions()
 	var setup_late := BridgeClient.project_setup("systems-architect", "explicit review before disconnect")
 	await frames()
 	# Store observation fences refuse lifecycle snapshots captured before newer work.
@@ -268,6 +283,217 @@ func finish() -> void:
 	if failures.is_empty(): print("character_domain_test: OK — %d checks passed." % checks)
 	else: printerr("character_domain_test: %d failures / %d checks." % [failures.size(), checks])
 	get_tree().quit(0 if failures.is_empty() else 1)
+
+func blocked_readiness_checks() -> void:
+	var pane := main.get_node("DomainHUD")
+	var pane_results: RichTextLabel = pane.get_node("Panel/Scroll/Rows/ResultsLabel")
+	var original_rect: Rect2 = hud._desired_rect
+	hud._desired_rect.size = Vector2(480, 260)
+	hud._apply_geometry()
+	# Mutation: omitting workspace/capability reasons from either real renderer
+	# must fail despite project-ready, inactive/idle and correctly disabled controls.
+	var cases := [
+		["workspace_invalid", "failed", "workspace needs inspection"],
+		["cleanup_failed", "failed", "cleanup is unconfirmed"],
+		["workspace_busy", "ready", "workspace is reserved"],
+		["capacity_limit", "ready", "capacity is in use"],
+		["synthetic-sensitive password=not-real", "failed", "readiness could not be confirmed"],
+	]
+	for spec in cases:
+		readiness_fixture = {"workspace": {"stage": spec[1], "reason": spec[0] if spec[1] == "failed" else null, "reservation": {"domain_id": "core", "domain_session_id": "prior-owner", "cleanup_failed": spec[0] == "cleanup_failed"} if spec[0] in ["workspace_busy", "cleanup_failed"] else null}, "capabilities": {"can_start": false, "can_run": false, "can_prepare_project": false, "reason": spec[0]}}
+		GameEvents.npc_approached.emit("systems-architect", AgentRegistry.get_agent("systems-architect"))
+		await frames(15)
+		await click(button("Status"))
+		await frames(12)
+		check(BridgeClient.workspace_snapshot().stage == "ready" and BridgeClient.domain_snapshot("core").state == "inactive" and BridgeClient.domain_snapshot("core").execution_state == "idle", "blocked fixture retains ready project and inactive/idle department")
+		check(panel.visible and results.is_visible_in_tree() and results.size.y > 0 and visible_notice(spec[2]), "NPC minimum-size transcript exposes full blocked-readiness guidance: " + spec[0])
+		if results.get_parsed_text().contains(spec[2]):
+			# Mutation: putting guidance only in the truncated status label, or
+			# losing transcript scrolling, must not count as readable at minimum.
+			var reason_line := results.get_character_line(results.get_parsed_text().find(spec[2]))
+			results.scroll_to_line(reason_line)
+			await frames(2)
+			var reason_y := results.get_line_offset(reason_line) - results.get_v_scroll_bar().value
+			check(reason_y >= -1 and reason_y < results.size.y, "native minimum-size scrolling reaches blocked reason: " + spec[0])
+		check(hud.get_node("Panel/Margin/Rows/StatusLabel").text.contains("Department " + str(spec[1])), "NPC separates department readiness from Project ready")
+		check(button("Prepare").disabled and button("Start").disabled and button("Send").disabled and button("Stop").disabled and not button("Status").disabled, "blocked work controls remain fail closed")
+		input.text = "blocked draft café 雪"
+		input.text_changed.emit(input.text)
+		input.grab_focus()
+		await key(KEY_ENTER)
+		await click(button("Start"))
+		await click(button("Send"))
+		await click(pane.get_node("Global/Toolbar/NearbyDomainButton"))
+		pane.get_node("Panel/Scroll").ensure_control_visible(pane_results)
+		await frames(2)
+		check(pane.get_node("Panel").visible and pane_results.get_parsed_text().contains(spec[2]) and pane_results.get_parsed_text().contains("Refresh status"), "department pane exposes the same full safe readiness guidance: " + spec[0])
+		check(pane.get_node("Panel/Scroll").get_global_rect().intersects(pane_results.get_global_rect()), "department readiness transcript remains reachable through native scroll")
+		check(pane.get_node("Panel/Scroll/Rows/WorkspaceLabel").text.contains("Department: " + str(spec[1])), "department pane separates workspace readiness from project setup")
+		check(pane.get_node("Panel/Scroll/Rows/Actions/Start").disabled and pane.get_node("Panel/Scroll/Rows/Actions/Run").disabled, "department blocked Start/Run stay disabled")
+		for label in [results, pane_results]:
+			check(not label.get_parsed_text().contains("synthetic-sensitive") and not label.get_parsed_text().contains("\"capabilities\""), "readiness reasons use fixed guidance, never raw data")
+		check(commands.is_empty() and input.text == "blocked draft café 雪", "blocked Enter/buttons/status never provision, start, execute or discard draft")
+	# Mutation: pane Refresh that omits selected agent_status cannot observe this
+	# real fixture recovery; rereading project/domain alone retains stale reasons.
+	readiness_fixture = {}
+	var before := observations.size()
+	var refresh: Button = pane.get_node("Panel/Scroll/Rows/Actions/Status")
+	pane.get_node("Panel/Scroll").ensure_control_visible(refresh)
+	await frames()
+	await click(refresh)
+	await frames(20)
+	check(observations.slice(before).any(func(p): return p.type == "agent_status" and p.agent_id == "systems-architect"), "pane Refresh observes its exact selected representative")
+	check(not pane.get_node("Panel/Scroll/Rows/Actions/Start").disabled and commands.is_empty(), "actual refreshed recovery enables only explicit Start without executing")
+	check(not pane_results.get_parsed_text().contains("readiness could not be confirmed"), "pane removes stale blocker after actual status recovery")
+	GameEvents.npc_approached.emit("security-auditor", AgentRegistry.get_agent("security-auditor"))
+	await frames(15)
+	check(not results.get_parsed_text().contains("readiness could not be confirmed") and not button("Start").disabled, "representative change cannot copy stale readiness notice")
+	for stage in ["needs_architect", "initializing"]:
+		project_stage = stage
+		readiness_fixture = {"capabilities": {"can_start": false, "can_run": false, "can_prepare_project": stage == "needs_architect", "reason": "workspace_not_ready"}}
+		await click(button("Status"))
+		await frames(12)
+		check(results.get_parsed_text().contains("Chief Architect") if stage == "needs_architect" else results.get_parsed_text().contains("preparation is in progress"), "ordinary project readiness has fixed safe next step: " + stage)
+	unconfigured = true
+	readiness_fixture = {"capabilities": {"can_start": false, "can_run": false, "can_prepare_project": false, "reason": "workspace_unconfigured"}}
+	await click(button("Status"))
+	await frames(20)
+	check(BridgeClient.workspace_snapshot().stage == "unconfigured" and results.get_parsed_text().contains("Project is not configured") and not results.get_parsed_text().contains("preparation is in progress"), "project replacement clears prior readiness notice and exposes configuration step")
+	await click(pane.get_node("Global/Toolbar/NearbyDomainButton"))
+	check(pane_results.get_parsed_text().contains("Project is not configured") and pane.get_node("Panel/Scroll/Rows/Actions/Start").disabled, "unconfigured department pane shows setup guidance without enabling Start")
+	unconfigured = false
+	project_stage = "ready"
+	readiness_fixture = {}
+	GameEvents.npc_approached.emit("systems-architect", AgentRegistry.get_agent("systems-architect"))
+	await frames(15)
+	check(commands.is_empty() and not results.get_parsed_text().contains("Readiness:"), "healthy refresh clears guidance without implicit work")
+	hud._desired_rect = original_rect
+	hud._apply_geometry()
+
+func failed_result_rendering_checks(template: Dictionary) -> void:
+	# Rendering regressions use synthetic result snapshots; lifecycle/transport
+	# admission is exercised by the surrounding native production scene flow.
+	var domain: Dictionary = BridgeClient.domains._domain("core")
+	var original_results: Array = domain.results.duplicate(true)
+	var pane := main.get_node("DomainHUD")
+	var pane_results: RichTextLabel = pane.get_node("Panel/Scroll/Rows/ResultsLabel")
+	for partial in ["", "Partial café 雪"]:
+		var failed := template.duplicate(true)
+		failed.output = partial
+		failed.status = "error"
+		failed.reason = "readiness_failed"
+		failed.readiness_category = "cwd_mismatch"
+		domain.results = [failed]
+		hud._render_domain(failed.request_id)
+		pane._refresh()
+		check(results.visible_characters == -1, "new failed result shows its cause immediately, including empty output")
+		for label in [results, pane_results]:
+			check(label.get_parsed_text().contains("root cwd") and label.get_parsed_text().contains("Stop"), "both panes show recovery for %s failed output" % ("empty" if partial.is_empty() else "partial"))
+			check(partial.is_empty() or label.get_parsed_text().contains(partial), "both panes retain Unicode failed partial answer")
+		if not partial.is_empty():
+			var span: Dictionary = hud.current_assistant_span()
+			check(results.get_parsed_text().substr(span.start, span.length) == partial, "failure cause stays alongside the exact partial assistant span")
+	var unknown := template.duplicate(true)
+	unknown.output = ""
+	unknown.status = "error"
+	unknown.reason = "synthetic-sensitive password=not-real"
+	domain.results = [unknown]
+	domain.error = {"error_type": "workspace_invalid", "message": "The configured workspace needs inspection.", "internal": "synthetic-sensitive"}
+	hud._render_domain()
+	pane._refresh()
+	for label in [results, pane_results]:
+		check(label.get_parsed_text().contains("could not complete") and label.get_parsed_text().contains("needs inspection"), "both panes show readable unknown failure and command notice")
+		check(not label.get_parsed_text().contains("synthetic-sensitive") and not label.get_parsed_text().contains("\"error_type\""), "ordinary failure display omits raw JSON and untrusted reason")
+	domain.results = original_results
+	domain.error = {}
+	hud._render_domain()
+	pane._refresh()
+
+func visible_notice(needle: String) -> bool:
+	var endpoint := results.get_parsed_text().find(needle) + needle.length()
+	return results.get_parsed_text().contains(needle) and (results.visible_characters < 0 or results.visible_characters >= endpoint)
+
+func diagnostic_command_regressions() -> void:
+	hold_status = false
+	GameEvents.npc_approached.emit("systems-architect", AgentRegistry.get_agent("systems-architect"))
+	await frames(20)
+	# Settle the earlier departure's actual Background/Refocus/replay commands
+	# before starting this independent generation; never replace store snapshots.
+	for _i in 6:
+		var returning: Dictionary = BridgeClient.domain_snapshot("core").pending_control
+		if returning.is_empty(): break
+		var returned := state(returning.request_id, "inactive")
+		if returning.get("type") == "resume":
+			returned.merge({"type": "resume_complete", "high_water_mark": "3", "earliest_output_id": "1", "history_gap": false}, true)
+		await deliver(returned)
+	generation = "diagnostics"
+	lifecycle = "active"
+	var start_id := BridgeClient.activate_domain("core")
+	check(not start_id.is_empty(), "diagnostic fixture admits explicit Start")
+	await frames()
+	await deliver(state(start_id, "activating"))
+	await deliver(state(start_id))
+	check(BridgeClient.domain_snapshot("core").state == "active" and BridgeClient.domain_snapshot("core").domain_session_id == generation, "diagnostic fixture receives active generation")
+	var success_id := BridgeClient.send_domain_query("core", "systems-architect", "successful animation before preflight failure")
+	check(not success_id.is_empty(), "diagnostic fixture admits explicit successful Run")
+	await frames()
+	var success := latest("domain_query")
+	var answer := "Successful café reply continues revealing. ".repeat(10)
+	await deliver({"type": "domain_result", "request_id": success_id, "project_id": "P", "workspace_id": "W", "domain_id": "core", "domain_session_id": generation, "output_id": "1", "agent_id": success.agent_id, "task": success.task, "output": answer, "status": "success", "reason": "completed", "truncated": false, "memory": {"saved": true, "revision": 12, "error_type": null}})
+	var span: Dictionary = hud.current_assistant_span()
+	check(results.visible_characters >= span.start and results.visible_characters < span.start + span.length, "real successful terminal starts ordinary typewriter reveal")
+	BridgeClient.set_domain_draft("core", "unrelated draft preserves successful animation")
+	await frames(2)
+	check(results.visible_characters >= span.start and results.visible_characters < span.start + span.length, "ordinary input notification preserves successful reveal without a failure")
+	var failure_id := BridgeClient.send_domain_query("core", "systems-architect", "preflight branch mismatch")
+	await frames()
+	check(BridgeClient.domain_snapshot("core").pending_query.get("request_id") == failure_id, "real pending Run exists before diagnostic preflight failure")
+	var failure := state(failure_id)
+	failure.merge({"type": "domain_error", "status": "error", "error_type": "workspace_invalid", "message": "The configured workspace needs inspection.", "terminal_reason": "readiness_failed", "readiness_category": "branch_changed"}, true)
+	var arrival_check := func(domain: String, reason: String, request: String):
+		if domain == "core" and reason == "domain_error" and request == failure_id:
+			check(results.get_parsed_text().contains(failure.message), "actual domain_error notification appends ordinary notice text")
+			check(visible_notice(failure.message), "actual new command notice is immediately visible before passive refresh")
+	GameEvents.domain_changed.connect(arrival_check)
+	await deliver(failure)
+	GameEvents.domain_changed.disconnect(arrival_check)
+	var notice: Dictionary = BridgeClient.domain_snapshot("core").error
+	check(notice.get("terminal_reason") == "readiness_failed" and notice.get("readiness_category") == "branch_changed", "real packet path retains diagnostic categories through automatic status refresh")
+	var pane_results: RichTextLabel = main.get_node("DomainHUD/Panel/Scroll/Rows/ResultsLabel")
+	for label in [results, pane_results]:
+		check(label.get_parsed_text().contains("owned branch") and label.get_parsed_text().contains("no automatic reset or checkout repair"), "normal notification renders branch recovery in both panes")
+	check(visible_notice("no automatic reset or checkout repair"), "new preflight notice is immediately inside visible range during prior successful reveal")
+	hud._process(float(answer.length()) / 55.0 + 1.0)
+	check(visible_notice("no automatic reset or checkout repair"), "preflight notice remains visible after prior successful animation duration")
+	# A receipt error and a separate command failure must coexist through the
+	# actual completion/error packets, without assigning snapshots or internals.
+	var replay_id := BridgeClient.resume_domain("core")
+	await frames()
+	var completion := state(replay_id)
+	completion.merge({"type": "resume_complete", "high_water_mark": "2", "earliest_output_id": "1", "history_gap": false}, true)
+	await deliver(completion)
+	hold_domain_status = true
+	var status_id := BridgeClient.domain_status("core")
+	await frames()
+	if status_id.is_empty(): status_id = latest("domain_status").get("request_id", "")
+	failure.request_id = status_id
+	failure.readiness_category = "cwd_mismatch"
+	await deliver(failure)
+	var layered: Dictionary = BridgeClient.domain_snapshot("core").error
+	check(layered.get("error_type") == "replay_incomplete" and layered.get("command_error", {}).get("readiness_category") == "cwd_mismatch", "normal packet flow retains nested command category alongside receipt error")
+	for label in [results, pane_results]:
+		check(label.get_parsed_text().contains("Retained output is missing") and label.get_parsed_text().contains("root cwd") and label.get_parsed_text().contains("Stop"), "both panes render nested command recovery alongside receipt failure")
+	check(visible_notice("root cwd"), "nested command notice is inside NPC visible range")
+	status_id = BridgeClient.domain_status("core")
+	await frames()
+	failure.request_id = status_id
+	failure.terminal_reason = "synthetic-sensitive"
+	failure.readiness_category = "synthetic-sensitive"
+	await deliver(failure)
+	var unknown: Dictionary = BridgeClient.domain_snapshot("core").error.get("command_error", {})
+	check(not unknown.has("terminal_reason") and not unknown.has("readiness_category"), "real command flow drops untrusted diagnostic strings")
+	check(not results.get_parsed_text().contains("synthetic-sensitive") and not pane_results.get_parsed_text().contains("synthetic-sensitive"), "untrusted provider diagnostics remain absent from both panes")
+	hold_domain_status = false
 
 func settle_return() -> void:
 	await frames()

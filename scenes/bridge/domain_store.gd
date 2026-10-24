@@ -10,6 +10,8 @@ const MAX_DOMAINS := 10
 const STATES := ["inactive", "activating", "active", "background", "stopping", "cleanup_failed"]
 const EXECUTION := ["idle", "running", "stopping", "cleanup_failed"]
 const COMMANDS := ["describe_workspace", "domain_status", "activate_domain", "domain_query", "background_domain", "refocus_domain", "deactivate_domain", "resume"]
+const TERMINAL_REASONS := ["sdk_error", "assistant_error", "permission_denied", "readiness_failed", "max_turns", "max_budget_usd", "max_tokens", "output_limit", "missing_terminal", "transport_error", "deferred_tool_use", "completed", "stopped", "not_executed"]
+const READINESS_CATEGORIES := ["cwd_mismatch", "branch_changed", "workspace_invalid", "lease_invalid", "memory_unavailable", "tool_correlation_invalid", "readiness_timeout", "readiness_error", "readiness_cancelled", "workspace_not_ready", "workspace_busy", "cleanup_failed", "context_unavailable"]
 
 var _project_id := ""
 var _workspace: Dictionary = {}
@@ -234,7 +236,10 @@ func admit_command(packet: Dictionary) -> bool:
 		d.pending_query = packet.duplicate(true)
 	elif kind != "domain_status":
 		d.pending_control = packet.duplicate(true)
-	d.error = {}
+	# Status observes lifecycle; even a healthy owner does not prove that the
+	# failed task's readiness cause has been repaired. Keep its actionable notice
+	# through automatic status refresh until another explicit work/control action.
+	if kind != "domain_status": d.error = {}
 	_trim(d)
 	return true
 
@@ -289,6 +294,10 @@ func apply_packet(packet: Dictionary) -> Dictionary:
 		if not _valid_error(packet):
 			return {}
 		d.error = {"error_type": packet.error_type, "message": packet.message}
+		if packet.get("terminal_reason") is String and packet.terminal_reason in TERMINAL_REASONS:
+			d.error.terminal_reason = packet.terminal_reason
+		if packet.get("readiness_category") is String and packet.readiness_category in READINESS_CATEGORIES:
+			d.error.readiness_category = packet.readiness_category
 		if d.pending_query.get("request_id") == id:
 			d.pending_query = {}
 			d.query_uncertain = false

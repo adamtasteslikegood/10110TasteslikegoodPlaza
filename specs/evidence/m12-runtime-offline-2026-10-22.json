@@ -1,0 +1,143 @@
+{
+  "schema_version": 1,
+  "milestone": "M12 runtime corrections",
+  "date": "2026-10-22",
+  "tested_commit": "ec5d236c5864175ab712050590f3bedb0b350aa9",
+  "provenance": "Controller ran complete offline gates at clean reviewed ec5d236 and retained raw logs. Task4 writer inspected those completed logs and the controller report, verified unchanged current/executed relevant source hashes and recorded results; it did not rerun the full suite or contact providers.",
+  "python": {
+    "passed": 1990,
+    "subtests_passed": 118,
+    "skipped": 0,
+    "seconds": 150.16,
+    "exit_code": 0,
+    "command": "GODOT_BIN=/tmp/plaza-m12-godot-4.7.1/Godot_v4.7.1-stable_linux.x86_64 PLAZA_REQUIRE_GODOT=1 /workspace/10110TasteslikegoodPlaza/.venv/bin/python -m pytest -q --tb=short"
+  },
+  "headless": {
+    "passed_gates": 8,
+    "exit_code": 0,
+    "checks": {
+      "smoke_agents": 132,
+      "conversation_store": 578,
+      "transport_client": 154,
+      "dialogue_panel": 220,
+      "domain_store": 169,
+      "domain_transport": 69,
+      "domain_panel": 111,
+      "character_domain": 86
+    },
+    "command": "GODOT_BIN=/tmp/plaza-m12-godot-4.7.1/Godot_v4.7.1-stable_linux.x86_64 /workspace/10110TasteslikegoodPlaza/.venv/bin/python scripts/run_headless.py smoke conversation_store transport_client dialogue_panel domain_store domain_transport domain_panel character_domain",
+    "command_provenance": "Equivalent reproducible invocation of the eight recorded gates. The retained controller summary/log proves their actual results and exit 0, but does not retain the exact outer shell wrapper."
+  },
+  "additional_checks": {
+    "black": "Full check: 105 files unchanged, exit 0.",
+    "fatal_flake8": "E9,F63,F7,F82: exit 0; empty diagnostic log.",
+    "specs": "23 governed documents; doc set 0.2.18; exit 0.",
+    "delivery": "Delivery coordinates validator exit 0; historical closed-sprint snapshot remains frozen.",
+    "whitespace": "Controller full-branch git diff --check b7b43d2..ec5d236: exit 0."
+  },
+  "raw_logs": {
+    "pytest": {
+      "path": "/tmp/plaza-m12-runtime-verification-20261022/ec5d236-pytest.log",
+      "sha256": "2de7ec462c67c06482ab7cd636f5445d5c13d671e2d9f3400fe79ca6cd8fb608"
+    },
+    "godot": {
+      "path": "/tmp/plaza-m12-runtime-verification-20261022/ec5d236-godot.log",
+      "sha256": "27529f59d090e366cfd7c99fe6b2fd0e12d688dcbb83e4224251fdc8f06b55b0"
+    },
+    "black": {
+      "path": "/tmp/plaza-m12-runtime-verification-20261022/ec5d236-black.log",
+      "sha256": "159c67ada9d49c6ab3f1ac801fbedf684180960b0f914231510cd858721b95d6"
+    },
+    "flake8": {
+      "path": "/tmp/plaza-m12-runtime-verification-20261022/ec5d236-flake8.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "specs": {
+      "path": "/tmp/plaza-m12-runtime-verification-20261022/ec5d236-specs.log",
+      "sha256": "ad51c73aedb0f4f476bcbd85218970cb178cdfe377d3958057946ba67c72c6ca"
+    },
+    "delivery": {
+      "path": "/tmp/plaza-m12-runtime-verification-20261022/ec5d236-delivery.log",
+      "sha256": "7ad830d3c1f2e1955e1f2b43f5ea53958c35d2722be39365c8cf59a22c8eee51"
+    }
+  },
+  "versions": {
+    "sdk": "0.2.136",
+    "anyio": "4.14.2",
+    "cli": "2.1.228 (Claude Code)",
+    "godot": "4.7.1.stable.official.a13da4feb",
+    "python": "3.12.14",
+    "platform": "linux",
+    "cli_sha256": "d535985e6941a3eb00179ccd7f52ceb0c6623a0305a518ebc4e6514f84a94c99"
+  },
+  "guard_source_sha256": {
+    "bridge/config.py": "5a5e00ac875ed8ef2a8fa224d74073f1786bdd58c95d058bacf7f3d25bfb0d0d",
+    "bridge/project_files.py": "2ecedc0308230381de3b01bd4ce2b578c756d5f58b1a1989a318494f1a28c96f",
+    "bridge/workspace.py": "7281f1f39be3853cae287b4ac160c6503775cd2e47963d3a1845aa45d6d2b693",
+    "bridge/workspace_lease.py": "b2cb53ee97d4e94f79e8f74517f409897343a4869c8687c6fcb2b4dceadc65cc",
+    "bridge/project_memory.py": "401cb11627aaf5c111f4b1e092ae4f7e6f595f7d3d09d2238290864f17ae93ab",
+    "bridge/readiness.py": "601d3f09e808d1e511fc6a050e825856bc71f6c01fb1623fdc7d7fd8b32f9191",
+    "bridge/failure_diagnostics.py": "4598c2a7d28a38cb1c58f563e185ff6812ee11b5d8b304597997c644bdf3c4dc",
+    "bridge/guarded_transport.py": "e5d6b4a1af15be7ce031b08d30a9bf232fd963bb143339cb201035d355211c68",
+    "bridge/domain_sdk.py": "f400c14ef9679e224a579514cc35e5f6747065637d42c1f4ec5033be7ae70314",
+    "bridge/conversation_backend.py": "677a9dbf9ef59a1d27e5cc4b4eac823e06a8778b6971694545801fed09255e0e",
+    "bridge/tool_guard_evidence.py": "94266d62b460e0cb561f6a0236563e78abfb3475b2fb19fdc021dd01a929e3cc",
+    "scripts/m12_tool_guard_probe.py": "157a5d6008359a97143c7a6153126f8eb0e3c06a688cac8f7735c404c5b7f584"
+  },
+  "live_source_sha256": {
+    "bridge/config.py": "5a5e00ac875ed8ef2a8fa224d74073f1786bdd58c95d058bacf7f3d25bfb0d0d",
+    "bridge/project_files.py": "2ecedc0308230381de3b01bd4ce2b578c756d5f58b1a1989a318494f1a28c96f",
+    "bridge/workspace.py": "7281f1f39be3853cae287b4ac160c6503775cd2e47963d3a1845aa45d6d2b693",
+    "bridge/workspace_lease.py": "b2cb53ee97d4e94f79e8f74517f409897343a4869c8687c6fcb2b4dceadc65cc",
+    "bridge/project_memory.py": "401cb11627aaf5c111f4b1e092ae4f7e6f595f7d3d09d2238290864f17ae93ab",
+    "bridge/readiness.py": "601d3f09e808d1e511fc6a050e825856bc71f6c01fb1623fdc7d7fd8b32f9191",
+    "bridge/failure_diagnostics.py": "4598c2a7d28a38cb1c58f563e185ff6812ee11b5d8b304597997c644bdf3c4dc",
+    "bridge/guarded_transport.py": "e5d6b4a1af15be7ce031b08d30a9bf232fd963bb143339cb201035d355211c68",
+    "bridge/domain_sdk.py": "f400c14ef9679e224a579514cc35e5f6747065637d42c1f4ec5033be7ae70314",
+    "bridge/conversation_backend.py": "677a9dbf9ef59a1d27e5cc4b4eac823e06a8778b6971694545801fed09255e0e",
+    "bridge/tool_guard_evidence.py": "94266d62b460e0cb561f6a0236563e78abfb3475b2fb19fdc021dd01a929e3cc",
+    "scripts/m12_tool_guard_probe.py": "157a5d6008359a97143c7a6153126f8eb0e3c06a688cac8f7735c404c5b7f584",
+    "scripts/m12_live.py": "5887c799edca391827a9a62cd29ec4f433a272b2044cd74c924a3a604ccb7c56",
+    "scripts/m12_stages.py": "2c283a24a7717f7fd2a1d01eba6cbf22bf5c9d5bb69fa7f6d80740df7eba79b8",
+    "tests/godot_domain_integration.gd": "0bcf008f5d96fe6271410fb0a91baf84d1ade5b0073a086abb595d45cb13d8e5",
+    "tests/godot_domain_integration.tscn": "e1147e59b66811384f743b2935a81613f68b0374fff18be60412d9ba3617d624",
+    "tests/character_fixture.gd": "be6f843c1eecdba3c8ae57993ff90e8e8102b43261baeac49c212edf858eb0f3",
+    "bridge/context.py": "c87ec45183d155a4a01349b16c032d938665c874615701157a523c8ab09a9d56",
+    "bridge/context/GAME_CONTEXT.md": "1639b6f615f368e99921d2a622f3728db33bc155cdf8bb466d229fba87589268",
+    "bridge/context/WORK_CONTEXT.md": "77ec45797dab7a7f19ac82864076dd284a1d89321cd89fa2aab1bd4212122e9e",
+    "bridge/agent_bindings.py": "33143416899711ade931420f6dbe9656e57608c925e0a570928606f0a7a220f8",
+    "bridge/agent_bindings.json": "87c31c10b036a021b01eaa79a7e66bfb6ec0664c19d3aaa1f100ae605e224319",
+    "bridge/extras.json": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+    "bridge/bridge.py": "2feb4af49f5e42928406a552d0f40849cf700cce5cdcb2b21570e378fa307383",
+    "bridge/server.py": "9047bb3ad10f24fcaed5dccb010fc5fb03b58ea9000a0e173c0ce28f8727f33a",
+    "bridge/project_service.py": "4b1013c5c0331dd3aef0997ad5f4467abe04a91a929820df528954c5b53b3fc9",
+    "bridge/domain_session.py": "15e075576abb6554f6c9e28351bd334450e7f76703227f58b64ac802ce946a15",
+    "bridge/observability.py": "79c0bb65f2b41faa26946d1e77ee3d7e3c4f09751534b44757240fea7f6f69e5",
+    "bridge/domain_manager.py": "09f47b86e54d8a3ae760f08add0b74a021bdebebd14c8627beb593e78f2c27e5",
+    "bridge/domain_protocol.py": "58f1ed37c0a70100f0d8c7b88f1eaf01a0e58c0b326d07538a972e96619db9cc",
+    "bridge/interaction_protocol.py": "34d4d66e6d39a54640bcf2d24e53f404333210d71569186e073cb7088f5343a6",
+    "bridge/conversation_sdk.py": "830068515ff5cb28d99f7688e17934022702db94b0dfa0b57720d544b945265c",
+    "bridge/repository_setup.py": "acd029ffb788484da1523f0e84fd821fc59a4c466a2c57b0c9e810421a101187",
+    "bridge/agents.py": "0655ad04e3813a3ae1403ae498f67ac9f27ee813df2bec7e1f497390ef89dc82",
+    "bridge/agents/systems-architect.md": "fb3c428bbd85a1b7a7d325f2e597100b20ad3db4394aeee1ccb703fac1f1a188",
+    "scenes/bridge/ws_client.gd": "f14cd5b4df4c3e0f501aa94ff0ed29ca7855fe200b3b8b5d92b29e470eaf30b3",
+    "scenes/bridge/domain_store.gd": "9426134a50702cb5b400b781f96f7294ab6741143238a6615aa47f5315e3b2f1",
+    "scenes/bridge/domain_surface.gd": "986c514f592b82deb02c4f454584041e2d9bcf1f118bb2a5f0a460b481c7257e",
+    "scenes/hud/dialogue_panel.gd": "49e69a0a30f663860453f4cea77efc5aa35480d1d5d8337e436b1a146791b635",
+    "scenes/hud/dialogue_panel.tscn": "ff7268e6d1b4342a20de545682acd5157cc283f14f08b902191496f29e703043",
+    "scenes/hud/domain_panel.gd": "b24b8131e344253e0c304ccafe499781f8d70a6bf8c9b5a1139ea4c131416246",
+    "scenes/hud/failure_display.gd": "ded85a055050cce18f9d91cc3ee4fafb5dca33a1dd7e0b08b571a8369facb9e2",
+    "scenes/hud/domain_panel.tscn": "68381f7e732004bfa9a768b947dcecdb8d4f706bb2e4268dcfd47d1da707daa9",
+    "autoload/GameEvents.gd": "73af4fa6ad5a41c67565cee60fa41d91d701f88c2a6b0b4b299d92c119aed9e9",
+    "autoload/AgentRegistry.gd": "1f1edd791c4d6890f246cd4a5a4317154704e31c130bc309697485650779d05b",
+    "scenes/main.tscn": "d785b9e54c3245c4b97dc54f0384b76fb12e1d32d4ed1c03099a5cbfb184f21e",
+    "project.godot": "b124d7084c60355db12572711b03918834bd812af44905a3f8a10e3a32f7b902",
+    "data/agents.json": "33f83c646a6d7b52c70365a1a6fc64a5b5d4be6615a98491953c055ebf36d747"
+  },
+  "coverage_notes": [
+    "Full offline suite includes real Godot/Python integrations and provider-free actual CLI signal processes, owned child cleanup, cancellation, already-retired NPC and Chief cleanup failure regressions.",
+    "Synthetic failures verify readable diagnostic propagation and partial-output privacy; the paid live flow separately verifies successful Linux SDK behavior.",
+    "LIVE_SOURCES binds 48 relevant sources conservatively. The paid runner bypasses CLI entrypoint; offline CLI evidence must remain separate.",
+    "These deterministic/provider-free results do not establish another native OS/architecture or owner desktop acceptance."
+  ]
+}

@@ -1337,9 +1337,11 @@ def test_live_fingerprints_exist_and_cover_actual_context_and_ui():
     mod = module()
     assert all((mod.ROOT / name).is_file() for name in mod.LIVE_SOURCES)
     assert {
+        "bridge/bridge.py",
         "bridge/context.py",
         "bridge/project_service.py",
         "scenes/bridge/domain_surface.gd",
+        "scenes/hud/transcript_clipboard.gd",
         "tests/character_fixture.gd",
     } <= set(mod.LIVE_SOURCES)
 

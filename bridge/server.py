@@ -229,7 +229,24 @@ class BridgeServer:
         return []
 
     def _record_dispatch_outcome(self, data, responses, context, started):
-        error = next((r for r in responses if r.get("status") == "error"), None)
+        # DomainManager/DomainSession own rejected domain commands and actual
+        # execution terminals, including their validated diagnostics. Dispatch
+        # owns admission and successful commands; replayed execution packets do
+        # not change the outcome of the replay command or create new failures.
+        error = next(
+            (
+                r
+                for r in responses
+                if r.get("status") == "error" and r.get("type") != "domain_result"
+            ),
+            None,
+        )
+        if (
+            _is_domain_request(data)
+            and error is not None
+            and error.get("type") == "domain_error"
+        ):
+            return
         if error is not None:
             name = (
                 "request_rejected"
@@ -472,6 +489,8 @@ class BridgeServer:
             try:
                 resp = await self._call_conversation(data, histories, metadata)
             finally:
+                if metadata.cleanup_failed:
+                    self.project.note_cleanup_failure()
                 self._npc_tasks.discard(operation)
         except asyncio.CancelledError:
             if record:
@@ -768,7 +787,7 @@ class BridgeServer:
                 self.close(clean=clean)
 
 
-async def serve():
+async def serve(*, stop_event: asyncio.Event | None = None):
     """Process composition root: load once, then construct network clients."""
     try:
         config = load_config()
@@ -784,7 +803,7 @@ async def serve():
     clean = False
     try:
         server = BridgeServer(config=config, recorder=recorder)
-        await server.serve()
+        await server.serve(stop_event=stop_event)
         clean = True
     finally:
         if server is None:

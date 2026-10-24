@@ -284,6 +284,70 @@
     {
       "path": "docs/superpowers/plans/2026-10-22-m12-character-domains.md",
       "reason": "Owner-authorized implementation plan derived from the revised M12-CHARACTER-DOMAIN-AMENDMENT at eadb0b4, approved 2026-10-22 with “ok, build it”. Execution artifact; no new product authority or runtime acceptance."
+    },
+    {
+      "path": "Docs/files/adams_cp_paste_ingame_agent_notes/2026OCT22/arch_convo_full.md",
+      "reason": "Historical owner-imported selectable in-game UI copy/paste, not a logged runtime transcript or governing specification. Retained as provenance; privacy/publication review remains separate."
+    },
+    {
+      "path": "Docs/files/adams_cp_paste_ingame_agent_notes/2026OCT22/how2zed0rk3yQA-sa.md",
+      "reason": "Historical owner-imported selectable in-game UI copy/paste, not a logged runtime transcript or governing specification. Retained as provenance; privacy/publication review remains separate."
+    },
+    {
+      "path": "Docs/files/cloudflare-durable-objects/raw/01-durable-objects-overview.md",
+      "reason": "Imported external Cloudflare documentation snapshot; preserve vendor response and provenance unchanged. Research input, never Plaza decision authority."
+    },
+    {
+      "path": "Docs/files/cloudflare-durable-objects/raw/02-what-are-durable-objects.md",
+      "reason": "Imported external Cloudflare documentation snapshot; preserve vendor response and provenance unchanged. Research input, never Plaza decision authority."
+    },
+    {
+      "path": "Docs/files/cloudflare-durable-objects/raw/03-storage-best-practices.md",
+      "reason": "Imported external Cloudflare documentation snapshot; preserve vendor response and provenance unchanged. Research input, never Plaza decision authority."
+    },
+    {
+      "path": "Docs/files/cloudflare-durable-objects/raw/04-sqlite-storage-api.md",
+      "reason": "Imported external Cloudflare documentation snapshot; preserve vendor response and provenance unchanged. Research input, never Plaza decision authority."
+    },
+    {
+      "path": "Docs/files/cloudflare-durable-objects/raw/05-limits.md",
+      "reason": "Imported external Cloudflare documentation snapshot; preserve vendor response and provenance unchanged. Research input, never Plaza decision authority."
+    },
+    {
+      "path": "Docs/files/cloudflare-durable-objects/raw/06-pricing.md",
+      "reason": "Imported external Cloudflare documentation snapshot; preserve vendor response and provenance unchanged. Research input, never Plaza decision authority."
+    },
+    {
+      "path": "Docs/files/cloudflare-durable-objects/raw/07-workers-python.md",
+      "reason": "Imported external Cloudflare documentation snapshot; preserve vendor response and provenance unchanged. Research input, never Plaza decision authority."
+    },
+    {
+      "path": "Docs/files/cloudflare-durable-objects/raw/08-workers-overview.md",
+      "reason": "Imported external Cloudflare documentation snapshot; preserve vendor response and provenance unchanged. Research input, never Plaza decision authority."
+    },
+    {
+      "path": "Docs/files/cloudflare-durable-objects/raw/09-agents-sdk.md",
+      "reason": "Imported external Cloudflare documentation snapshot; preserve vendor response and provenance unchanged. Research input, never Plaza decision authority."
+    },
+    {
+      "path": "Docs/files/cloudflare-durable-objects/raw/10-sandbox-sdk.md",
+      "reason": "Imported external Cloudflare documentation snapshot; preserve vendor response and provenance unchanged. Research input, never Plaza decision authority."
+    },
+    {
+      "path": "Docs/files/cloudflare-durable-objects/raw/11-containers.md",
+      "reason": "Imported external Cloudflare documentation snapshot; preserve vendor response and provenance unchanged. Research input, never Plaza decision authority."
+    },
+    {
+      "path": "Docs/files/durable-agent-microvm-sandbox/Durable_Runtime_Sanbox_worktree.md",
+      "reason": "Imported agent runtime/sandbox research note, not an approved Plaza design or product decision. Retained with original content as non-authoritative research input."
+    },
+    {
+      "path": "Docs/files/durable-agent-microvm-sandbox/MicroVM and Sandbox Options for Agent Sessions.md",
+      "reason": "Imported agent runtime/sandbox research note, not an approved Plaza design or product decision. Retained with original content as non-authoritative research input."
+    },
+    {
+      "path": "Docs/files/durable-agent-microvm-sandbox/Session State for Claude Agents.md",
+      "reason": "Imported agent runtime/sandbox research note, not an approved Plaza design or product decision. Retained with original content as non-authoritative research input."
     }
   ]
 }

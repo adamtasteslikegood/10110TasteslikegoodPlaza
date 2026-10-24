@@ -125,6 +125,67 @@ def test_invalid_delta_uses_excerpts_without_model_call(memory):
     )
 
 
+@pytest.mark.parametrize("invalid_key", [None, "facts", "progress"])
+def test_extracted_reply_settles_real_memory_as_untrusted_proposal(memory, invalid_key):
+    import json
+    from bridge.conversation_backend import decode_project_reply
+
+    module, store = memory
+    turn = start(module, store)
+    delta = {
+        "summary": "Synthetic café summary",
+        "next_action": "Review next change",
+        "todo_updates": [{"text": "Review followup", "done": False}],
+        "decisions": ["Use synthetic fixture"],
+        "evidence": ["Synthetic check"],
+    }
+    if invalid_key:
+        delta[invalid_key] = ["Untrusted alias"]
+    raw = (
+        "Checked café.\n\n```json\n"
+        + json.dumps({"answer": "Usable answer 雪", "memory_delta": delta})
+        + "\n```"
+    )
+    output, proposal = decode_project_reply(raw)
+    assert output == "Checked café.\n\nUsable answer 雪"
+    assert store.finish_turn(
+        turn.turn_id, outcome="success", output=output, delta=proposal
+    ).saved
+    saved = store.load()
+    if invalid_key:
+        assert "Synthetic café summary" not in saved.progress
+        assert "Review followup" not in saved.todo
+        assert "Usable answer 雪" in saved.progress
+    else:
+        assert "Model proposal summary: Synthetic café summary" in saved.progress
+        assert "Model proposal: Review next change" in saved.handoff
+        assert "Model proposal (pending): Review followup" in saved.todo
+        assert "Model proposal: Use synthetic fixture" in saved.handoff
+        assert "Model-proposed evidence (unverified): Synthetic check" in saved.handoff
+
+
+@pytest.mark.parametrize("indent", ["    ", "\t"])
+def test_indented_example_cannot_become_a_settled_memory_proposal(memory, indent):
+    from bridge.conversation_backend import decode_project_reply
+
+    module, store = memory
+    turn = start(module, store)
+    raw = (
+        "The literal payload is shown below.\n\n"
+        + indent
+        + '{"answer":"sample","memory_delta":{"summary":"Example content","todo_updates":[{"text":"Example TODO","done":true}]}}'
+    )
+    output, proposal = decode_project_reply(raw)
+    assert output == raw and proposal is None
+    assert store.finish_turn(
+        turn.turn_id, outcome="success", output=output, delta=proposal
+    ).saved
+    saved = store.load()
+    assert "Result excerpt" in saved.progress
+    assert "Model proposal summary: Example content" not in saved.progress
+    assert "Example TODO" not in saved.todo
+
+
 def test_proposals_do_not_own_execution_or_forge_completion(memory):
     module, store = memory
     first = start(module, store)

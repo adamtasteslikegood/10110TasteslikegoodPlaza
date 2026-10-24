@@ -34,7 +34,9 @@ from bridge.workspace_lease import observe_reservation
 REFERRAL = "Talk to the Chief Architect to prepare this project, then come back and we can work on it."
 
 
-async def review_repository(config, proposal, *, deadline=None, intent=""):
+async def review_repository(
+    config, proposal, *, deadline=None, intent="", metadata=None
+):
     """Fresh configured tools-disabled adapter; no history or memory preflight."""
     engine = ConversationEngine(config=config)
     definition = load_agent("systems-architect")
@@ -87,7 +89,8 @@ async def review_repository(config, proposal, *, deadline=None, intent=""):
         permission_mode="dontAsk",
         interaction="explicit_repository_setup",
     )
-    metadata = ExecutionMetadata(context_sources=context_packet.diagnostics())
+    metadata = metadata if metadata is not None else ExecutionMetadata()
+    metadata.context_sources = context_packet.diagnostics()
     raw = await engine._backend.complete(
         definition=definition + "\n" + context_packet.render() + instructions,
         messages=[dict(role="user", content=json.dumps(payload, ensure_ascii=True))],
@@ -123,6 +126,7 @@ class ProjectService:
         self._bootstrap_task = self._setup_task = None
         self._attached = self._closing = False
         self._initialized = False
+        self._cleanup_failed = False
         self._snapshot = dict(
             type="workspace_state",
             project_id=None,
@@ -145,6 +149,10 @@ class ProjectService:
     @property
     def owner_run_id(self):
         return self._owner_run_id
+
+    def note_cleanup_failure(self):
+        """Latch SDK cleanup uncertainty beyond request/connection retirement."""
+        self._cleanup_failed = True
 
     async def start(self):
         if self._bootstrap_task is None and not self._closing:
@@ -397,6 +405,7 @@ class ProjectService:
         return "Chief Architect review deadline expired; no initialization was approved. Review cleanup may still be in progress."
 
     async def _setup(self, deadline, intent=""):
+        metadata = ExecutionMetadata()
         try:
             async with asyncio.timeout_at(deadline):
                 proposal = await owned_io(
@@ -406,7 +415,11 @@ class ProjectService:
                     await self._reviewer(proposal)
                     if self._reviewer is not None
                     else await review_repository(
-                        self._config, proposal, deadline=deadline, intent=intent
+                        self._config,
+                        proposal,
+                        deadline=deadline,
+                        intent=intent,
+                        metadata=metadata,
                     )
                 )
                 approval = parse_init_approval(proposal, payload)
@@ -434,6 +447,9 @@ class ProjectService:
                 + self._snapshot["reason"]
                 + ". Existing files were preserved."
             )
+        finally:
+            if metadata.cleanup_failed:
+                self.note_cleanup_failure()
 
     def _validated_project(self):
         project = inspect_project(self._project.root)
@@ -602,6 +618,8 @@ class ProjectService:
                 await _join(task)
             except Exception:
                 pass
+        if self._cleanup_failed:
+            raise RuntimeError("SDK cleanup failed; project ownership retained")
         if self._attached:
             await owned_io(self._memory.detach_run, self.owner_run_id)
             self._attached = False

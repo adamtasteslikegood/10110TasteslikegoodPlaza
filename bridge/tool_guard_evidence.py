@@ -17,8 +17,10 @@ GUARD_SOURCES = (
     "bridge/workspace_lease.py",
     "bridge/project_memory.py",
     "bridge/readiness.py",
+    "bridge/failure_diagnostics.py",
     "bridge/guarded_transport.py",
     "bridge/domain_sdk.py",
+    "bridge/conversation_backend.py",
     "bridge/tool_guard_evidence.py",
     "scripts/m12_tool_guard_probe.py",
 )

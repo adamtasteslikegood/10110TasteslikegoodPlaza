@@ -109,7 +109,7 @@ async def test_setup_intent_reaches_exact_chief_review_without_worktree(
     await settled(service)
     reviews = []
 
-    async def review(config, proposal, *, deadline, intent):
+    async def review(config, proposal, *, deadline, intent, metadata=None):
         reviews.append((proposal, intent))
         return dict(
             proposal_id=proposal.proposal_id,
