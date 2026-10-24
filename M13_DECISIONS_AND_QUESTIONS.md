@@ -150,8 +150,10 @@ public pages requested with `Accept: text/markdown`:
 The reviewed near-term sequence is unchanged: owner/governance review, align the
 approved docs, PR to dev, then the local in-memory store extraction. Later choose
 whether any asynchronous dispatch/fan-out service is actually required. Queues
-or K2 is not a substitute for the canonical session/event store, workspace guards
-or execution sandbox. No new vendor/product decision is made in this note.
+or K2 would still require a designed session/replay/retention contract and would
+not itself provide workspace guards or an execution sandbox. K2 as an event-log
+backend is an option to evaluate, not a selected implementation. No new
+vendor/product decision is made in this note.
 
 Next owner question under Q02: map existing Stop/cancel behavior versus explicit
 intentional session End onto the recorded stable-session/resume requirement.
