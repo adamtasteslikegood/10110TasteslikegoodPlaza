@@ -1,5 +1,14 @@
 # Durable Objects + Workers Python + Agents SDK: fit for bridge domain sessions
 
+> **Reconciliation note:** the baseline below predates the latest M12 fixes.
+> M12 already supports plain clients, buffered replay and background/refocus
+> while its bridge is alive; restart/host durability is the remaining research
+> subject. D-005/D-020 require UI independence, not a Godot-only or local-client
+> restriction. Retained recommendations and older open questions below must be
+> read with the later recorded owner answers and the
+> [M13 review queue](../../../M13_DECISIONS_AND_QUESTIONS.md).
+> This annotation corrects baseline interpretation; it selects no architecture.
+
 Status: Proposed (analysis only, no decision taken). Evidence: files in `raw/` (fetched 2026-10-22) and the repo
 (`bridge/domain_manager.py`, `workspace_lease.py`, `project_memory.py`, 2026-08-12 domain-architecture spec).
 Items marked UNVERIFIED are not stated in the captured pages.

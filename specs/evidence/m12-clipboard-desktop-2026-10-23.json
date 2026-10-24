@@ -1,0 +1,319 @@
+{
+  "kind": "chat_clipboard_desktop",
+  "observed_at": "2026-10-23T01:03:23.463204+00:00",
+  "display": ":93",
+  "scenes": [
+    {
+      "scene": "dialogue_panel",
+      "observations": [
+        {
+          "expected": "partial",
+          "name": "native-partial-word-primary",
+          "selection": "primary",
+          "actual": "partial"
+        },
+        {
+          "expected": "native selection clipboard sentinel",
+          "name": "native-partial-word-clipboard",
+          "selection": "clipboard",
+          "actual": "native selection clipboard sentinel"
+        },
+        {
+          "expected": "Visible partial",
+          "name": "native-partial-paragraph-primary",
+          "selection": "primary",
+          "actual": "Visible partial"
+        },
+        {
+          "expected": "native selection clipboard sentinel",
+          "name": "native-partial-paragraph-clipboard",
+          "selection": "clipboard",
+          "actual": "native selection clipboard sentinel"
+        },
+        {
+          "expected": "sible partial",
+          "name": "native-partial-drag-release-primary",
+          "selection": "primary",
+          "actual": "sible partial"
+        },
+        {
+          "expected": "native selection clipboard sentinel",
+          "name": "native-partial-drag-release-clipboard",
+          "selection": "clipboard",
+          "actual": "native selection clipboard sentinel"
+        },
+        {
+          "expected": "[Archived context 1]\nYou (completed):\nRemember nonce kestrel-4417\n\nAssistant (completed):\nFirst reply knows kestrel-4417. ✓",
+          "name": "button-prefix",
+          "selection": "clipboard",
+          "actual": "[Archived context 1]\nYou (completed):\nRemember nonce kestrel-4417\n\nAssistant (completed):\nFirst reply knows kestrel-4417. ✓"
+        },
+        {
+          "expected": "[Archived context 1]\nYou (completed):\nRemember nonce kestrel-4417\n\nAssistant (completed):\nFirst reply knows kestrel-4417. ✓",
+          "name": "keyboard-fallback-prefix",
+          "selection": "clipboard",
+          "actual": "[Archived context 1]\nYou (completed):\nRemember nonce kestrel-4417\n\nAssistant (completed):\nFirst reply knows kestrel-4417. ✓"
+        },
+        {
+          "expected": "clipboard selection sentinel",
+          "name": "native-selected-click-clipboard",
+          "selection": "clipboard",
+          "actual": "clipboard selection sentinel"
+        },
+        {
+          "expected": "primary selection sentinel",
+          "name": "native-selected-click-primary",
+          "selection": "primary",
+          "actual": "primary selection sentinel"
+        },
+        {
+          "expected": "[Archived context 1]\nYou (completed):\nRemember nonce kestrel-4417\n\nAssistant (completed):\nFirst reply knows kestrel-4417. ✓",
+          "name": "keyboard-prefix",
+          "selection": "clipboard",
+          "actual": "[Archived context 1]\nYou (completed):\nRemember nonce kestrel-4417\n\nAssistant (completed):\nFirst reply knows kestrel-4417. ✓"
+        },
+        {
+          "expected": "[Archived context 1]\nYou (completed):\nRemember nonce kestrel-4417\n\nAssistant (completed):\nFirst reply knows kestrel-4417. ✓",
+          "name": "selected-button-prefix",
+          "selection": "clipboard",
+          "actual": "[Archived context 1]\nYou (completed):\nRemember nonce kestrel-4417\n\nAssistant (completed):\nFirst reply knows kestrel-4417. ✓"
+        },
+        {
+          "expected": "[Archived context 1]\nYou (completed):\nRemember nonce kestrel-4417\n\nAssistant (completed):\nFirst reply knows kestrel-4417. ✓",
+          "name": "scaled-menu-prefix",
+          "selection": "clipboard",
+          "actual": "[Archived context 1]\nYou (completed):\nRemember nonce kestrel-4417\n\nAssistant (completed):\nFirst reply knows kestrel-4417. ✓"
+        },
+        {
+          "expected": "[Archived context 1]\nYou (completed):\nRemember nonce kestrel-4417\n\nAssistant (completed):\nFirst reply knows kestrel-4417. ✓",
+          "name": "native-select-all-prefix",
+          "selection": "clipboard",
+          "actual": "[Archived context 1]\nYou (completed):\nRemember nonce kestrel-4417\n\nAssistant (completed):\nFirst reply knows kestrel-4417. ✓"
+        },
+        {
+          "expected": "[Archived context 1]\nYou (completed):\nRemember nonce kestrel-4417\n\nAssistant (completed):\nFirst reply knows kestrel-4417. ✓",
+          "name": "menu-prefix",
+          "selection": "clipboard",
+          "actual": "[Archived context 1]\nYou (completed):\nRemember nonce kestrel-4417\n\nAssistant (completed):\nFirst reply knows kestrel-4417. ✓"
+        },
+        {
+          "expected": "[Archived context 1]\nYou (completed):\nRemember nonce kestrel-4417\n\nAssistant (completed):\nFirst reply knows kestrel-4417. ✓",
+          "name": "keyboard-menu-prefix",
+          "selection": "clipboard",
+          "actual": "[Archived context 1]\nYou (completed):\nRemember nonce kestrel-4417\n\nAssistant (completed):\nFirst reply knows kestrel-4417. ✓"
+        },
+        {
+          "expected": "[Archived context 1]\nYou (completed):\nRemember nonce kestrel-4417\n\nAssistant (completed):\nFirst reply knows kestrel-4417. ✓",
+          "name": "keyboard-button-prefix",
+          "selection": "clipboard",
+          "actual": "[Archived context 1]\nYou (completed):\nRemember nonce kestrel-4417\n\nAssistant (completed):\nFirst reply knows kestrel-4417. ✓"
+        },
+        {
+          "expected": "[Archived context 1]\nYou (completed):\nRemember nonce kestrel-4417\n\nAssistant (completed):\nFirst reply knows kestrel-4417. ✓",
+          "name": "copy-binding",
+          "selection": "clipboard",
+          "actual": "[Archived context 1]\nYou (completed):\nRemember nonce kestrel-4417\n\nAssistant (completed):\nFirst reply knows kestrel-4417. ✓"
+        },
+        {
+          "expected": "[Archived context 1]\nYou (completed):\nRemember nonce kestrel-4417\n\nAssistant (completed):\nFirst reply knows kestrel-4417. ✓",
+          "name": "copy-binding",
+          "selection": "clipboard",
+          "actual": "[Archived context 1]\nYou (completed):\nRemember nonce kestrel-4417\n\nAssistant (completed):\nFirst reply knows kestrel-4417. ✓"
+        },
+        {
+          "expected": "Archived",
+          "name": "selected-word-button",
+          "selection": "clipboard",
+          "actual": "Archived"
+        },
+        {
+          "expected": "Archived",
+          "name": "selected-word-menu",
+          "selection": "clipboard",
+          "actual": "Archived"
+        },
+        {
+          "expected": "[Archived context 1]\nYou (completed):\nRemember nonce kestrel-4417\n\nAssistant (completed):\nFirst reply knows kestrel-4417. ✓\n雪\n\nYou (completed):\nRecall the token\n\nAssistant (completed):\nI forgot the token entirely.\n\nArchived draft (archived):\narchived draft\n\n[New context restarted — prior history is display only]\n",
+          "name": "menu-select-all-copy",
+          "selection": "clipboard",
+          "actual": "[Archived context 1]\nYou (completed):\nRemember nonce kestrel-4417\n\nAssistant (completed):\nFirst reply knows kestrel-4417. ✓\n雪\n\nYou (completed):\nRecall the token\n\nAssistant (completed):\nI forgot the token entirely.\n\nArchived draft (archived):\narchived draft\n\n[New context restarted — prior history is display only]\n"
+        },
+        {
+          "expected": "Clipboard composer draft ✓",
+          "name": "native-composer-copy",
+          "selection": "clipboard",
+          "actual": "Clipboard composer draft ✓"
+        },
+        {
+          "expected": "clipboard action sentinel",
+          "name": "empty-reveal-copy",
+          "selection": "clipboard",
+          "actual": "clipboard action sentinel"
+        },
+        {
+          "expected": "clipboard scope sentinel ✓",
+          "name": "stale-NPC identity change",
+          "selection": "clipboard",
+          "actual": "clipboard scope sentinel ✓"
+        },
+        {
+          "expected": "clipboard scope sentinel ✓",
+          "name": "stale-project change",
+          "selection": "clipboard",
+          "actual": "clipboard scope sentinel ✓"
+        },
+        {
+          "expected": "clipboard scope sentinel ✓",
+          "name": "stale-NPC close",
+          "selection": "clipboard",
+          "actual": "clipboard scope sentinel ✓"
+        },
+        {
+          "expected": "[Archived context 1]\nYou (completed):\nRemember nonce kestrel-4417\n\nAssistant (completed):\nFirst reply knows kestrel-4417. ✓\n雪\n\nYou (completed):\nRecall the token\n\nAssistant (completed):\nI forgot the token entirely.\n\nArchived draft (archived):\narchived draft\n\n",
+          "name": "disconnected-NPC",
+          "selection": "clipboard",
+          "actual": "[Archived context 1]\nYou (completed):\nRemember nonce kestrel-4417\n\nAssistant (completed):\nFirst reply knows kestrel-4417. ✓\n雪\n\nYou (completed):\nRecall the token\n\nAssistant (completed):\nI forgot the token entirely.\n\nArchived draft (archived):\narchived draft\n\n"
+        }
+      ],
+      "exit_code": 0
+    },
+    {
+      "scene": "domain_panel",
+      "observations": [
+        {
+          "expected": "[A · systems-architect · output 1 · success · memory unsaved]\nrun native once\ndomain result nonce ibis ✓",
+          "name": "button-prefix",
+          "selection": "clipboard",
+          "actual": "[A · systems-architect · output 1 · success · memory unsaved]\nrun native once\ndomain result nonce ibis ✓"
+        },
+        {
+          "expected": "[A · systems-architect · output 1 · success · memory unsaved]\nrun native once\ndomain result nonce ibis ✓",
+          "name": "keyboard-fallback-prefix",
+          "selection": "clipboard",
+          "actual": "[A · systems-architect · output 1 · success · memory unsaved]\nrun native once\ndomain result nonce ibis ✓"
+        },
+        {
+          "expected": "clipboard selection sentinel",
+          "name": "native-selected-click-clipboard",
+          "selection": "clipboard",
+          "actual": "clipboard selection sentinel"
+        },
+        {
+          "expected": "primary selection sentinel",
+          "name": "native-selected-click-primary",
+          "selection": "primary",
+          "actual": "primary selection sentinel"
+        },
+        {
+          "expected": "[A · systems-architect · output 1 · success · memory unsaved]\nrun native once\ndomain result nonce ibis ✓",
+          "name": "keyboard-prefix",
+          "selection": "clipboard",
+          "actual": "[A · systems-architect · output 1 · success · memory unsaved]\nrun native once\ndomain result nonce ibis ✓"
+        },
+        {
+          "expected": "[A · systems-architect · output 1 · success · memory unsaved]\nrun native once\ndomain result nonce ibis ✓",
+          "name": "selected-button-prefix",
+          "selection": "clipboard",
+          "actual": "[A · systems-architect · output 1 · success · memory unsaved]\nrun native once\ndomain result nonce ibis ✓"
+        },
+        {
+          "expected": "[A · systems-architect · output 1 · success · memory unsaved]\nrun native once\ndomain result nonce ibis ✓",
+          "name": "scaled-menu-prefix",
+          "selection": "clipboard",
+          "actual": "[A · systems-architect · output 1 · success · memory unsaved]\nrun native once\ndomain result nonce ibis ✓"
+        },
+        {
+          "expected": "[A · systems-architect · output 1 · success · memory unsaved]\nrun native once\ndomain result nonce ibis ✓",
+          "name": "native-select-all-prefix",
+          "selection": "clipboard",
+          "actual": "[A · systems-architect · output 1 · success · memory unsaved]\nrun native once\ndomain result nonce ibis ✓"
+        },
+        {
+          "expected": "[A · systems-architect · output 1 · success · memory unsaved]\nrun native once\ndomain result nonce ibis ✓",
+          "name": "menu-prefix",
+          "selection": "clipboard",
+          "actual": "[A · systems-architect · output 1 · success · memory unsaved]\nrun native once\ndomain result nonce ibis ✓"
+        },
+        {
+          "expected": "[A · systems-architect · output 1 · success · memory unsaved]\nrun native once\ndomain result nonce ibis ✓",
+          "name": "keyboard-menu-prefix",
+          "selection": "clipboard",
+          "actual": "[A · systems-architect · output 1 · success · memory unsaved]\nrun native once\ndomain result nonce ibis ✓"
+        },
+        {
+          "expected": "[A · systems-architect · output 1 · success · memory unsaved]\nrun native once\ndomain result nonce ibis ✓",
+          "name": "keyboard-button-prefix",
+          "selection": "clipboard",
+          "actual": "[A · systems-architect · output 1 · success · memory unsaved]\nrun native once\ndomain result nonce ibis ✓"
+        },
+        {
+          "expected": "[A · systems-architect · output 1 · success · memory unsaved]\nrun native once\ndomain result nonce ibis ✓",
+          "name": "copy-binding",
+          "selection": "clipboard",
+          "actual": "[A · systems-architect · output 1 · success · memory unsaved]\nrun native once\ndomain result nonce ibis ✓"
+        },
+        {
+          "expected": "[A · systems-architect · output 1 · success · memory unsaved]\nrun native once\ndomain result nonce ibis ✓",
+          "name": "copy-binding",
+          "selection": "clipboard",
+          "actual": "[A · systems-architect · output 1 · success · memory unsaved]\nrun native once\ndomain result nonce ibis ✓"
+        },
+        {
+          "expected": "systems",
+          "name": "selected-word-button",
+          "selection": "clipboard",
+          "actual": "systems"
+        },
+        {
+          "expected": "systems",
+          "name": "selected-word-menu",
+          "selection": "clipboard",
+          "actual": "systems"
+        },
+        {
+          "expected": "[A · systems-architect · output 1 · success · memory unsaved]\nrun native once\ndomain result nonce ibis ✓\n雪",
+          "name": "menu-select-all-copy",
+          "selection": "clipboard",
+          "actual": "[A · systems-architect · output 1 · success · memory unsaved]\nrun native once\ndomain result nonce ibis ✓\n雪"
+        },
+        {
+          "expected": "next draft",
+          "name": "native-composer-copy",
+          "selection": "clipboard",
+          "actual": "next draft"
+        },
+        {
+          "expected": "clipboard action sentinel",
+          "name": "empty-reveal-copy",
+          "selection": "clipboard",
+          "actual": "clipboard action sentinel"
+        },
+        {
+          "expected": "clipboard scope sentinel ✓",
+          "name": "stale-domain selection change",
+          "selection": "clipboard",
+          "actual": "clipboard scope sentinel ✓"
+        },
+        {
+          "expected": "clipboard scope sentinel ✓",
+          "name": "stale-domain close",
+          "selection": "clipboard",
+          "actual": "clipboard scope sentinel ✓"
+        },
+        {
+          "expected": "[Archived A · systems-architect · output 1 · success · memory unsaved]\nrun native once\ndomain result nonce ibis ✓\n雪\n\nNotice: unknown_outcome — An earlier generation's Run outcome is unknown\n\n[Unknown outcome · generation A · request 8e9013d11b510f474dd74a879be74e9d:domain:35]\noutcome must remain unknown",
+          "name": "disconnected-domain",
+          "selection": "clipboard",
+          "actual": "[Archived A · systems-architect · output 1 · success · memory unsaved]\nrun native once\ndomain result nonce ibis ✓\n雪\n\nNotice: unknown_outcome — An earlier generation's Run outcome is unknown\n\n[Unknown outcome · generation A · request 8e9013d11b510f474dd74a879be74e9d:domain:35]\noutcome must remain unknown"
+        },
+        {
+          "expected": "project scope sentinel",
+          "name": "project-unconfigured",
+          "selection": "clipboard",
+          "actual": "project scope sentinel"
+        }
+      ],
+      "exit_code": 0
+    }
+  ]
+}

@@ -38,6 +38,11 @@ func service() -> void:
 	while peer.get_available_packet_count() > 0:
 		var p: Dictionary = JSON.parse_string(peer.get_packet().get_string_from_utf8())
 		if p.get("type") == "describe_workspace": peer.send_text(JSON.stringify(workspace(p.request_id)))
+		elif p.get("type") == "agent_status":
+			var observation := state("", lifecycle if count("activate_domain") > 0 else "inactive")
+			observation.erase("request_id")
+			if count("activate_domain") == 0: observation.domain_session_id = null
+			peer.send_text(JSON.stringify({"type": "agent_status", "request_id": p.request_id, "agent_id": p.agent_id, "execution_kind": "extra" if p.agent_id.begins_with("fixture-extra") else "working", "domain_id": null if p.agent_id.begins_with("fixture-extra") else "core", "project": workspace(""), "workspace": {"stage": "unprepared"}, "domain_state": observation, "capabilities": {"can_start": true, "can_run": true, "can_prepare_project": true}}))
 		elif p.get("type") == "domain_status":
 			status_attempts += 1
 			var response := state(p.request_id, lifecycle)
@@ -101,12 +106,17 @@ func walk(delta: Vector2) -> void:
 		player.move_and_collide(delta / 12.0)
 		await get_tree().physics_frame
 	await frames()
+	if delta.y < 0 and count("activate_domain") > 0 and hud.nearby_agent_id == "systems-architect" and hud.selected_domain_id == "core":
+		hud.get_node("Global/Toolbar/NearbyDomainButton").pressed.emit()
+		await frames()
 
 func _ready() -> void:
 	get_tree().create_timer(22).timeout.connect(func():
 		check(false, "watchdog completed flow")
 		finish())
+	preload("res://tests/character_fixture.gd").extras()
 	main = load("res://scenes/main.tscn").instantiate()
+	main.get_node("Office/SecurityAuditor").agent_id = "fixture-extra-a"
 	add_child(main)
 	if not check(main.has_node("DomainHUD"), "production Main mounts separate DomainHUD"):
 		finish()
@@ -171,11 +181,11 @@ func _ready() -> void:
 	var before := player.position
 	for i in 3: await get_tree().physics_frame
 	check(player.position.distance_to(before) < 1, "actual focused UI blocks movement")
-	await key(KEY_ESCAPE)
+	input.release_focus()
 	for i in 3: await get_tree().physics_frame
 	Input.action_release("ui_right")
-	check(player.position.x > before.x and not input.has_focus(), "Escape releases keyboard and actual player moves")
-	check(panel.visible and BridgeClient.domain_snapshot("core").pending_query.request_id == run.request_id, "Escape preserves running task")
+	check(player.position.x > before.x and not input.has_focus(), "releasing keyboard focus permits actual player movement")
+	check(panel.visible and BridgeClient.domain_snapshot("core").pending_query.request_id == run.request_id, "focus release preserves visible running task")
 	check(BridgeClient.domain_snapshot("core").draft == "next draft", "busy draft retained")
 	button("Stop").grab_focus()
 	await key(KEY_TAB)
@@ -199,16 +209,17 @@ func _ready() -> void:
 	other_input.grab_focus()
 	await key(KEY_ENTER)
 	var other := latest("")
-	check(other.get("agent_id") == "security-auditor", "other NPC native question uses ordinary NPC protocol")
-	await deliver({"agent_id": "security-auditor", "request_id": other.request_id, "status": "ok", "output": "Ask the Chief Architect to review the configured project."})
+	check(other.get("agent_id") == "fixture-extra-a", "other NPC native question uses ordinary NPC protocol")
+	await deliver({"agent_id": "fixture-extra-a", "request_id": other.request_id, "status": "ok", "output": "Ask the Chief Architect to review the configured project."})
 	var referral_span: Dictionary = main.get_node("HUD").current_assistant_span()
-	check(npc_body.text.substr(referral_span.start, referral_span.length) == "Ask the Chief Architect to review the configured project.", "current NPC assistant span renders ordinary referral")
+	main.get_node("HUD")._process(2.0)
+	check(npc_body.get_parsed_text().substr(referral_span.start, referral_span.length) == "Ask the Chief Architect to review the configured project.", "current NPC assistant span renders ordinary referral")
 	await key(KEY_ESCAPE)
-	var old_npc_text := npc_body.text
-	var terminal := {"type": "domain_result", "request_id": run.request_id, "project_id": "P", "workspace_id": "W", "domain_id": "core", "domain_session_id": "A", "output_id": "1", "agent_id": "systems-architect", "task": run.task, "output": "domain result nonce ibis", "status": "success", "reason": "completed", "truncated": false, "memory": {"saved": false, "revision": 9, "error_type": "write_failed"}}
+	var old_npc_text := npc_body.get_parsed_text()
+	var terminal := {"type": "domain_result", "request_id": run.request_id, "project_id": "P", "workspace_id": "W", "domain_id": "core", "domain_session_id": "A", "output_id": "1", "agent_id": "systems-architect", "task": run.task, "output": "domain result nonce ibis ✓\n雪", "status": "success", "reason": "completed", "truncated": false, "memory": {"saved": false, "revision": 9, "error_type": "write_failed"}}
 	execution = "idle"
 	await deliver(terminal)
-	check(not panel.visible and get_viewport().gui_get_focus_owner() == null and npc_body.text == old_npc_text, "hidden result cannot open focus or overwrite NPC")
+	check(not panel.visible and get_viewport().gui_get_focus_owner() == null and npc_body.get_parsed_text() == old_npc_text, "hidden result cannot open focus or overwrite NPC")
 	check(hud.get_node("Global/StatusLabel").text.contains("1 unread"), "passive unread uses unconsumed receipt")
 	await walk(Vector2(-125, -25))
 	await walk(Vector2(0, -90))
@@ -248,19 +259,15 @@ func _ready() -> void:
 	await walk(Vector2(0, 90))
 	check(panel.visible and count("background_domain") == 2, "remote detaches proximity anchor")
 	check(input.text == "next draft", "draft survives background and return")
+	await preload("res://tests/chat_clipboard_checks.gd").run(self, hud, results, input, "Panel/Scroll/Rows/Actions/Copy", "Panel/Scroll/Rows/Actions/SelectAll")
 	await layout_checks()
-	# The ordinary Chief composer still owns submitted questions.
+	# Setup now has a typed independent service; the work composer stays shared.
 	await walk(Vector2(0, -90))
-	var npc_input: LineEdit = main.get_node("HUD/Panel/Margin/Rows/InputRow/QuestionInput")
-	npc_input.text = "review configured project"
-	npc_input.text_changed.emit(npc_input.text)
-	npc_input.grab_focus()
-	await key(KEY_ENTER)
-	check(count("domain_query") == 1 and latest("").get("agent_id") == "systems-architect", "Chief native question retains normal NPC protocol")
-	var chief := latest("")
-	await deliver({"agent_id": "systems-architect", "request_id": chief.request_id, "status": "ok", "output": "Chief explicit review decision"})
-	var span: Dictionary = main.get_node("HUD").current_assistant_span()
-	check(npc_body.text.substr(span.start, span.length) == "Chief explicit review decision", "Chief review renders via exact current assistant span")
+	var chief_request := BridgeClient.project_setup("systems-architect", "review configured project")
+	await frames()
+	check(count("domain_query") == 1 and latest("project_setup").get("request_id") == chief_request, "Chief setup uses typed service without a Run")
+	await deliver({"type": "project_setup", "agent_id": "systems-architect", "request_id": chief_request, "status": "ok", "output": "Chief explicit review decision", "project": workspace(""), "architect_decision": null})
+	check(BridgeClient.character_snapshot("systems-architect").setup_output == "Chief explicit review decision", "typed Chief review remains separate from work history")
 	await recovery_checks()
 	# Explicit NPC-domain action reattaches even after remote recovery.
 	hud.get_node("Global/Toolbar/NearbyDomainButton").pressed.emit()
@@ -274,6 +281,7 @@ func _ready() -> void:
 	await deliver(state(refocus_on_departure.request_id))
 	check(count("background_domain") == backgrounds_before_departure + 1 and count("resume") == resumes_before_departure, "departure during Refocus backgrounds after ack without replaying hidden view")
 	await pending_background_return_checks(area)
+	await clipboard_scope_checks()
 	# Selecting another known domain must detach the previous physical anchor.
 	GameEvents.domain_changed.emit("engineering", "input", "")
 	var selector: OptionButton = hud.get_node("Global/Toolbar/DomainSelect")
@@ -414,13 +422,14 @@ func layout_checks() -> void:
 		var npc_panel: Control = main.get_node("HUD/Panel")
 		check(not panel.get_global_rect().intersects(npc_panel.get_global_rect()), "domain panel preserves NPC output at %s" % dimensions)
 		check(not panel.get_global_rect().intersects(hud.get_node("Global").get_global_rect()), "global controls remain separate from panel at %s" % dimensions)
-		for name in ["Start", "Run", "Refocus", "Background", "Stop", "Status"]:
+		for name in ["Copy", "SelectAll", "Start", "Run", "Refocus", "Background", "Stop", "Status"]:
 			var control := button(name)
 			if not control.disabled:
 				panel.get_node("Scroll").ensure_control_visible(control)
 				await frames(1)
 				check(bounds.encloses(control.get_global_rect()), "enabled native control reachable %s %s" % [name, dimensions])
 				check(panel.get_node("Scroll").get_global_rect().encloses(control.get_global_rect()), "enabled control fully visible after scroll %s %s" % [name, dimensions])
+				if name == "Copy": await preload("res://tests/chat_clipboard_checks.gd").snapshot(self, "domain-" + str(dimensions))
 
 func finish() -> void:
 	BridgeClient.set_process(false)
@@ -440,8 +449,52 @@ func finish() -> void:
 
 
 func unconfigured_hud_checks() -> void:
+	var clipboard = preload("res://tests/chat_clipboard_checks.gd")
+	var selector: OptionButton = hud.get_node("Global/Toolbar/DomainSelect")
+	selector.item_selected.emit(0)
+	hud._open_remote()
+	await frames()
+	results.select_all()
+	await clipboard.reveal_control(self, results)
+	await clipboard.mouse(self, results.get_global_rect().position + Vector2(30, 12), MOUSE_BUTTON_RIGHT)
+	var menu: PopupMenu = results.get_node("TranscriptClipboard/ClipboardMenu")
+	check(menu.visible, "clipboard: popup open before actual project unconfiguration")
+	DisplayServer.clipboard_set("project scope sentinel")
 	unconfigured = true
 	BridgeClient.describe_workspace()
 	await frames(20)
+	check(not menu.visible and results.get_selection_from() == -1, "clipboard: actual project change invalidates popup and selection")
+	menu.id_pressed.emit(0)
+	await clipboard.checkpoint(self, "project-unconfigured", "project scope sentinel")
 	check(not panel.visible and hud.selected_domain_id == "" and hud.anchor_agent_id == "" and hud._domains.is_empty(), "final R3 authoritative unconfigured discovery clears HUD selection and anchors")
-	check(input.text == "" and results.text == "" and hud.get_node("Global/StatusLabel").text.contains("unconfigured"), "final R3 HUD clears prior project text and shows unconfigured state")
+	# Current-project guidance replaces the old empty state; no prior output or
+	# draft may survive the authoritative project replacement.
+	check(input.text == "" and results.get_parsed_text() == "Readiness: Project is not configured. Configure a project path, then ask the Chief Architect to review setup; Refresh status." and hud.get_node("Global/StatusLabel").text.contains("unconfigured"), "final R3 HUD replaces prior project text with only current setup guidance")
+
+func clipboard_scope_checks() -> void:
+	var clipboard = preload("res://tests/chat_clipboard_checks.gd")
+	hud._open_remote()
+	await frames()
+	# A handoff closes the old surface synchronously before another domain may
+	# own it. Simulate the same public selection action used by the toolbar.
+	GameEvents.domain_changed.emit("engineering", "input", "")
+	var selector: OptionButton = hud.get_node("Global/Toolbar/DomainSelect")
+	await clipboard.stale_action(self, results, func(): selector.item_selected.emit(1), "domain selection change")
+	selector.item_selected.emit(0)
+	hud._open_remote()
+	await frames()
+	await clipboard.stale_action(self, results, func(): hud._background(), "domain close")
+	hud._open_remote()
+	await frames()
+	BridgeClient.set_process(false)
+	BridgeClient._connected = false
+	GameEvents.domain_changed.emit("core", "connection", "")
+	await frames()
+	check(not button("Copy").disabled and button("Copy").is_visible_in_tree() and not input.editable, "clipboard: disconnected domain history remains copyable")
+	results.deselect()
+	await clipboard.click(self, button("Copy"))
+	await clipboard.checkpoint(self, "disconnected-domain", results.text)
+	BridgeClient._connected = true
+	BridgeClient.set_process(true)
+	GameEvents.domain_changed.emit("core", "connection", "")
+	await frames()

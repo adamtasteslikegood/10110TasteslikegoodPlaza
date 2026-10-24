@@ -1,0 +1,530 @@
+{
+  "account-executive": {
+    "domain_id": "account-customer-success",
+    "execution_kind": "working"
+  },
+  "ai-engineer": {
+    "domain_id": "ai-automation",
+    "execution_kind": "working"
+  },
+  "ai-workflow-designer": {
+    "domain_id": "ai-automation",
+    "execution_kind": "working"
+  },
+  "analytics-reporter": {
+    "domain_id": "operations",
+    "execution_kind": "working"
+  },
+  "api-documenter": {
+    "domain_id": "engineering",
+    "execution_kind": "working"
+  },
+  "api-tester": {
+    "domain_id": "engineering",
+    "execution_kind": "working"
+  },
+  "app-store-optimizer": {
+    "domain_id": "marketing",
+    "execution_kind": "working"
+  },
+  "architect-review": {
+    "domain_id": "engineering",
+    "execution_kind": "working"
+  },
+  "automation-architect": {
+    "domain_id": "ai-automation",
+    "execution_kind": "working"
+  },
+  "backend-architect": {
+    "domain_id": "engineering",
+    "execution_kind": "working"
+  },
+  "backend-reliability-engineer": {
+    "domain_id": "engineering",
+    "execution_kind": "working"
+  },
+  "brand-guardian": {
+    "domain_id": "design",
+    "execution_kind": "working"
+  },
+  "business-analyst": {
+    "domain_id": "leadership",
+    "execution_kind": "working"
+  },
+  "business-model-analyzer": {
+    "domain_id": "research",
+    "execution_kind": "working"
+  },
+  "business-strategist": {
+    "domain_id": "leadership",
+    "execution_kind": "working"
+  },
+  "c-pro": {
+    "domain_id": "engineering",
+    "execution_kind": "working"
+  },
+  "cloud-architect": {
+    "domain_id": "engineering",
+    "execution_kind": "working"
+  },
+  "code-analyzer-debugger": {
+    "domain_id": "engineering",
+    "execution_kind": "working"
+  },
+  "competitive-intelligence": {
+    "domain_id": "research",
+    "execution_kind": "working"
+  },
+  "compliance-officer": {
+    "domain_id": "leadership",
+    "execution_kind": "working"
+  },
+  "config-safety-reviewer": {
+    "domain_id": "core",
+    "execution_kind": "working"
+  },
+  "content-creator": {
+    "domain_id": "marketing",
+    "execution_kind": "working"
+  },
+  "content-marketer": {
+    "domain_id": "marketing",
+    "execution_kind": "working"
+  },
+  "content-writer": {
+    "domain_id": "marketing",
+    "execution_kind": "working"
+  },
+  "cost-optimizer": {
+    "domain_id": "leadership",
+    "execution_kind": "working"
+  },
+  "cpp-pro": {
+    "domain_id": "engineering",
+    "execution_kind": "working"
+  },
+  "csharp-pro": {
+    "domain_id": "engineering",
+    "execution_kind": "working"
+  },
+  "customer-acquisition": {
+    "domain_id": "marketing",
+    "execution_kind": "working"
+  },
+  "customer-success-manager": {
+    "domain_id": "account-customer-success",
+    "execution_kind": "working"
+  },
+  "customer-support": {
+    "domain_id": "account-customer-success",
+    "execution_kind": "working"
+  },
+  "data-engineer": {
+    "domain_id": "engineering",
+    "execution_kind": "working"
+  },
+  "data-scientist": {
+    "domain_id": "engineering",
+    "execution_kind": "working"
+  },
+  "database-admin": {
+    "domain_id": "engineering",
+    "execution_kind": "working"
+  },
+  "database-optimizer": {
+    "domain_id": "engineering",
+    "execution_kind": "working"
+  },
+  "deep-research-specialist": {
+    "domain_id": "research",
+    "execution_kind": "working"
+  },
+  "deployment-engineer": {
+    "domain_id": "engineering",
+    "execution_kind": "working"
+  },
+  "devops-troubleshooter": {
+    "domain_id": "engineering",
+    "execution_kind": "working"
+  },
+  "docs-architect": {
+    "domain_id": "engineering",
+    "execution_kind": "working"
+  },
+  "docs-writer": {
+    "domain_id": "core",
+    "execution_kind": "working"
+  },
+  "dx-optimizer": {
+    "domain_id": "engineering",
+    "execution_kind": "working"
+  },
+  "educational-content-writer": {
+    "domain_id": "marketing",
+    "execution_kind": "working"
+  },
+  "elixir-pro": {
+    "domain_id": "engineering",
+    "execution_kind": "working"
+  },
+  "error-detective": {
+    "domain_id": "engineering",
+    "execution_kind": "working"
+  },
+  "experience-analyzer": {
+    "domain_id": "design",
+    "execution_kind": "working"
+  },
+  "experiment-tracker": {
+    "domain_id": "product",
+    "execution_kind": "working"
+  },
+  "feedback-synthesizer": {
+    "domain_id": "product",
+    "execution_kind": "working"
+  },
+  "finance-tracker": {
+    "domain_id": "leadership",
+    "execution_kind": "working"
+  },
+  "financial-analyst": {
+    "domain_id": "leadership",
+    "execution_kind": "working"
+  },
+  "flutter-expert": {
+    "domain_id": "engineering",
+    "execution_kind": "working"
+  },
+  "frontend-developer": {
+    "domain_id": "engineering",
+    "execution_kind": "working"
+  },
+  "frontend-ux-specialist": {
+    "domain_id": "engineering",
+    "execution_kind": "working"
+  },
+  "golang-pro": {
+    "domain_id": "engineering",
+    "execution_kind": "working"
+  },
+  "graphql-architect": {
+    "domain_id": "engineering",
+    "execution_kind": "working"
+  },
+  "growth-hacker": {
+    "domain_id": "marketing",
+    "execution_kind": "working"
+  },
+  "incident-responder": {
+    "domain_id": "engineering",
+    "execution_kind": "working"
+  },
+  "infrastructure-maintainer": {
+    "domain_id": "engineering",
+    "execution_kind": "working"
+  },
+  "instagram-curator": {
+    "domain_id": "marketing",
+    "execution_kind": "working"
+  },
+  "integration-specialist": {
+    "domain_id": "ai-automation",
+    "execution_kind": "working"
+  },
+  "investment-analyst": {
+    "domain_id": "leadership",
+    "execution_kind": "working"
+  },
+  "ios-developer": {
+    "domain_id": "engineering",
+    "execution_kind": "working"
+  },
+  "java-pro": {
+    "domain_id": "engineering",
+    "execution_kind": "working"
+  },
+  "javascript-pro": {
+    "domain_id": "engineering",
+    "execution_kind": "working"
+  },
+  "legacy-modernizer": {
+    "domain_id": "engineering",
+    "execution_kind": "working"
+  },
+  "legal-advisor": {
+    "domain_id": "leadership",
+    "execution_kind": "working"
+  },
+  "legal-compliance-checker": {
+    "domain_id": "leadership",
+    "execution_kind": "working"
+  },
+  "managed-services-engineer": {
+    "domain_id": "account-customer-success",
+    "execution_kind": "working"
+  },
+  "market-research-analyst": {
+    "domain_id": "research",
+    "execution_kind": "working"
+  },
+  "minecraft-bukkit-pro": {
+    "domain_id": "engineering",
+    "execution_kind": "working"
+  },
+  "ml-engineer": {
+    "domain_id": "ai-automation",
+    "execution_kind": "working"
+  },
+  "mlops-engineer": {
+    "domain_id": "ai-automation",
+    "execution_kind": "working"
+  },
+  "mobile-developer": {
+    "domain_id": "engineering",
+    "execution_kind": "working"
+  },
+  "network-engineer": {
+    "domain_id": "engineering",
+    "execution_kind": "working"
+  },
+  "operations-optimizer": {
+    "domain_id": "operations",
+    "execution_kind": "working"
+  },
+  "partnership-strategist": {
+    "domain_id": "leadership",
+    "execution_kind": "working"
+  },
+  "payment-integration": {
+    "domain_id": "engineering",
+    "execution_kind": "working"
+  },
+  "performance-benchmarker": {
+    "domain_id": "engineering",
+    "execution_kind": "working"
+  },
+  "performance-tuner": {
+    "domain_id": "core",
+    "execution_kind": "working"
+  },
+  "php-pro": {
+    "domain_id": "engineering",
+    "execution_kind": "working"
+  },
+  "prd-writer": {
+    "domain_id": "product",
+    "execution_kind": "working"
+  },
+  "pricing-strategist": {
+    "domain_id": "leadership",
+    "execution_kind": "working"
+  },
+  "product-engineer": {
+    "domain_id": "account-customer-success",
+    "execution_kind": "working"
+  },
+  "product-manager": {
+    "domain_id": "product",
+    "execution_kind": "working"
+  },
+  "project-shipper": {
+    "domain_id": "product",
+    "execution_kind": "working"
+  },
+  "prompt-engineer": {
+    "domain_id": "ai-automation",
+    "execution_kind": "working"
+  },
+  "prompt-engineer-advanced": {
+    "domain_id": "ai-automation",
+    "execution_kind": "working"
+  },
+  "python-pro": {
+    "domain_id": "engineering",
+    "execution_kind": "working"
+  },
+  "qa-test-engineer": {
+    "domain_id": "engineering",
+    "execution_kind": "working"
+  },
+  "quant-analyst": {
+    "domain_id": "leadership",
+    "execution_kind": "working"
+  },
+  "reddit-community-builder": {
+    "domain_id": "marketing",
+    "execution_kind": "working"
+  },
+  "reddit-intelligence": {
+    "domain_id": "research",
+    "execution_kind": "working"
+  },
+  "refactor-expert": {
+    "domain_id": "core",
+    "execution_kind": "working"
+  },
+  "reference-builder": {
+    "domain_id": "engineering",
+    "execution_kind": "working"
+  },
+  "requirements-generator": {
+    "domain_id": "product",
+    "execution_kind": "working"
+  },
+  "retention-specialist": {
+    "domain_id": "account-customer-success",
+    "execution_kind": "working"
+  },
+  "revenue-analyst": {
+    "domain_id": "operations",
+    "execution_kind": "working"
+  },
+  "risk-assessor": {
+    "domain_id": "leadership",
+    "execution_kind": "working"
+  },
+  "risk-manager": {
+    "domain_id": "leadership",
+    "execution_kind": "working"
+  },
+  "root-cause-analyzer": {
+    "domain_id": "core",
+    "execution_kind": "working"
+  },
+  "ruby-pro": {
+    "domain_id": "engineering",
+    "execution_kind": "working"
+  },
+  "rust-pro": {
+    "domain_id": "engineering",
+    "execution_kind": "working"
+  },
+  "sales-automator": {
+    "domain_id": "account-customer-success",
+    "execution_kind": "working"
+  },
+  "sales-engineer": {
+    "domain_id": "account-customer-success",
+    "execution_kind": "working"
+  },
+  "scala-pro": {
+    "domain_id": "engineering",
+    "execution_kind": "working"
+  },
+  "search-specialist": {
+    "domain_id": "research",
+    "execution_kind": "working"
+  },
+  "security-auditor": {
+    "domain_id": "core",
+    "execution_kind": "working"
+  },
+  "security-threat-analyst": {
+    "domain_id": "engineering",
+    "execution_kind": "working"
+  },
+  "sprint-prioritizer": {
+    "domain_id": "product",
+    "execution_kind": "working"
+  },
+  "sql-pro": {
+    "domain_id": "engineering",
+    "execution_kind": "working"
+  },
+  "studio-producer": {
+    "domain_id": "product",
+    "execution_kind": "working"
+  },
+  "support-responder": {
+    "domain_id": "operations",
+    "execution_kind": "working"
+  },
+  "support-ticket-handler": {
+    "domain_id": "operations",
+    "execution_kind": "working"
+  },
+  "systems-architect": {
+    "domain_id": "core",
+    "execution_kind": "working"
+  },
+  "tam-market-sizing": {
+    "domain_id": "research",
+    "execution_kind": "working"
+  },
+  "terraform-specialist": {
+    "domain_id": "engineering",
+    "execution_kind": "working"
+  },
+  "test-automator": {
+    "domain_id": "engineering",
+    "execution_kind": "working"
+  },
+  "test-engineer": {
+    "domain_id": "core",
+    "execution_kind": "working"
+  },
+  "test-results-analyzer": {
+    "domain_id": "engineering",
+    "execution_kind": "working"
+  },
+  "tiktok-strategist": {
+    "domain_id": "marketing",
+    "execution_kind": "working"
+  },
+  "tool-evaluator": {
+    "domain_id": "engineering",
+    "execution_kind": "working"
+  },
+  "trend-researcher": {
+    "domain_id": "product",
+    "execution_kind": "working"
+  },
+  "tutorial-engineer": {
+    "domain_id": "engineering",
+    "execution_kind": "working"
+  },
+  "twitter-engager": {
+    "domain_id": "marketing",
+    "execution_kind": "working"
+  },
+  "typescript-pro": {
+    "domain_id": "engineering",
+    "execution_kind": "working"
+  },
+  "ui-designer": {
+    "domain_id": "design",
+    "execution_kind": "working"
+  },
+  "ui-ux-analyst": {
+    "domain_id": "design",
+    "execution_kind": "working"
+  },
+  "ui-ux-designer": {
+    "domain_id": "engineering",
+    "execution_kind": "working"
+  },
+  "unity-developer": {
+    "domain_id": "engineering",
+    "execution_kind": "working"
+  },
+  "ux-researcher": {
+    "domain_id": "design",
+    "execution_kind": "working"
+  },
+  "visual-storyteller": {
+    "domain_id": "design",
+    "execution_kind": "working"
+  },
+  "whimsy-injector": {
+    "domain_id": "design",
+    "execution_kind": "working"
+  },
+  "workflow-analyst": {
+    "domain_id": "ai-automation",
+    "execution_kind": "working"
+  },
+  "workflow-optimizer": {
+    "domain_id": "engineering",
+    "execution_kind": "working"
+  }
+}

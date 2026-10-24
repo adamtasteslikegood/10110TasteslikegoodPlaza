@@ -8,10 +8,19 @@ SDK_VERSION = "0.2.136"
 CLI_VERSION = "2.1.228"
 ANYIO_VERSION = "4.14.2"
 DOMAIN_TOOLS = ("Read", "Edit", "Bash")
+PERMISSION_MODES = ("dontAsk", "bypassPermissions")
+ACCEPTANCE_VERSION = 1
 GUARD_SOURCES = (
+    "bridge/config.py",
+    "bridge/project_files.py",
+    "bridge/workspace.py",
+    "bridge/workspace_lease.py",
+    "bridge/project_memory.py",
     "bridge/readiness.py",
+    "bridge/failure_diagnostics.py",
     "bridge/guarded_transport.py",
     "bridge/domain_sdk.py",
+    "bridge/conversation_backend.py",
     "bridge/tool_guard_evidence.py",
     "scripts/m12_tool_guard_probe.py",
 )
@@ -296,10 +305,15 @@ def case_errors(record):
     return errors
 
 
-def validate_evidence(evidence, source_root=None):
+def validate_evidence(evidence, source_root=None, *, permission_mode=None):
     if not isinstance(evidence, dict):
         return ["Malformed evidence"]
     errors = []
+    mode = evidence.get("permission_mode")
+    if mode not in PERMISSION_MODES or (
+        permission_mode is not None and mode != permission_mode
+    ):
+        errors.append("Missing or mismatched permission mode")
     if evidence.get("versions") != VERSIONS:
         errors.append("Pinned runtime versions not verified")
     if (
@@ -368,3 +382,27 @@ def validate_evidence(evidence, source_root=None):
         if record.get("errors") != observed:
             errors.append(f"{record.get('name')}: inconsistent stored case validation")
     return errors
+
+
+def acceptance_envelope(records, source_root=None):
+    """Publish only two independently accepted, current-source probe records.
+
+    Never refresh fingerprints here: a source change requires new live probes.
+    """
+    from copy import deepcopy
+
+    if not isinstance(records, list) or len(records) != len(PERMISSION_MODES):
+        raise ValueError("Both permission mode records are required")
+    indexed = {}
+    for record in records:
+        if (
+            not isinstance(record, dict)
+            or record.get("permission_mode") not in PERMISSION_MODES
+            or record["permission_mode"] in indexed
+            or record.get("accepted") is not True
+            or record.get("errors") != []
+            or validate_evidence(record, source_root)
+        ):
+            raise ValueError("Invalid, duplicate or stale permission mode record")
+        indexed[record["permission_mode"]] = deepcopy(record)
+    return {"schema_version": ACCEPTANCE_VERSION, "records": indexed}

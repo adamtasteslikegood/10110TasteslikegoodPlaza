@@ -76,7 +76,7 @@ def owner(tmp_path):
         async def check_tool(self, *args, **kwargs):
             return None
 
-        def pre_tool_hook(self, lease):
+        def pre_tool_hook(self, lease, **kwargs):
             async def hook(*args):
                 return {}
 
@@ -88,7 +88,7 @@ def owner(tmp_path):
         return client
 
     instance = module.DomainSDKOwner(
-        load_config(), workspace, object(), Ready(), client_factory=factory
+        load_config(environ={}), workspace, object(), Ready(), client_factory=factory
     )
     return instance, clients
 
@@ -113,6 +113,57 @@ async def test_sdk_calls_have_one_owner_task(owner):
     assert client.options.hooks["PreToolUse"][0].matcher == ".*"
     assert client.options.tools == ["Read", "Edit", "Bash"]
     assert "notes" in client.prompt
+
+
+@pytest.mark.asyncio
+async def test_domain_final_envelope_preserves_progress_and_proposal(owner):
+    from bridge.conversation_backend import PROJECT_REPLY_INSTRUCTIONS
+
+    sdk, clients = owner
+    await sdk.start()
+    client = clients[0]
+    client.messages = [
+        AssistantMessage([TextBlock("Checked café. 雪")], "model"),
+        AssistantMessage(
+            [
+                TextBlock(
+                    '```json\n{"answer":"Ready. 🚀","memory_delta":{"summary":"Checked café"}}\n```'
+                )
+            ],
+            "model",
+        ),
+        terminal(result="This terminal copy must not duplicate the reply"),
+    ]
+    try:
+        result = await run(sdk)
+        assert result.status == "success"
+        assert result.output == "Checked café. 雪\n\nReady. 🚀"
+        assert result.memory_delta == {"summary": "Checked café"}
+        assert PROJECT_REPLY_INSTRUCTIONS in client.options.system_prompt
+        assert "todo_updates" in client.options.system_prompt
+    finally:
+        assert (await sdk.stop()).clean
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("indent", ["    ", "\t"])
+async def test_domain_indented_example_stays_visible_without_proposal(owner, indent):
+    sdk, clients = owner
+    await sdk.start()
+    literal = (
+        indent + '{"answer":"sample","memory_delta":{"summary":"Example content"}}'
+    )
+    clients[0].messages = [
+        AssistantMessage([TextBlock("The literal payload is shown below.")], "model"),
+        AssistantMessage([TextBlock(literal)], "model"),
+        terminal(),
+    ]
+    try:
+        result = await run(sdk)
+        assert result.output == "The literal payload is shown below.\n\n" + literal
+        assert result.memory_delta is None
+    finally:
+        assert (await sdk.stop()).clean
 
 
 @pytest.mark.asyncio
@@ -199,6 +250,252 @@ async def test_sdk_terminal_errors_keep_partial_text(owner, messages):
     result = await run(sdk)
     assert result.status == "error" and result.output == "partial"
     assert (await sdk.stop()).clean
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "changes,reason",
+    [
+        (
+            {
+                "permission_denials": [
+                    {
+                        "tool_name": "Bash",
+                        "tool_input": {"command": "synthetic-sensitive"},
+                    }
+                ],
+                "terminal_reason": "completed",
+            },
+            "permission_denied",
+        ),
+        ({"is_error": True, "terminal_reason": "completed"}, "sdk_error"),
+        ({"subtype": "error_max_turns"}, "max_turns"),
+        ({"terminal_reason": "max_budget_usd"}, "max_budget_usd"),
+        ({"stop_reason": "max_tokens"}, "max_tokens"),
+        ({"terminal_reason": "synthetic-sensitive password=not-real"}, "sdk_error"),
+        ({"subtype": "synthetic-sensitive password=not-real"}, "sdk_error"),
+    ],
+)
+async def test_terminal_failure_reasons_are_actionable_and_allowlisted(
+    owner, changes, reason
+):
+    sdk, clients = owner
+    await sdk.start()
+    try:
+        clients[0].messages = [
+            AssistantMessage([TextBlock("Partial café 雪")], "model"),
+            terminal(**changes),
+        ]
+        result = await run(sdk)
+        assert result.status == "error" and result.reason == reason
+        assert result.output == "Partial café 雪"
+        assert "synthetic-sensitive" not in repr(result)
+    finally:
+        await sdk.stop()
+
+
+@pytest.mark.asyncio
+async def test_readiness_denial_is_query_scoped_and_beats_completed_terminal(owner):
+    from bridge.workspace import WorkspaceError
+    from bridge.readiness import ReadinessService
+
+    sdk, clients = owner
+
+    class Ready(ReadinessService):
+        async def check_tool(self, lease, **kwargs):
+            if kwargs["tool_name"] != "__startup__":
+                raise WorkspaceError(
+                    "workspace_invalid",
+                    "synthetic-sensitive",
+                    readiness_category="cwd_mismatch",
+                )
+
+    sdk.readiness = Ready(sdk.workspace, sdk.workspace.worktree_path, None)
+    await sdk.start()
+    client = clients[0]
+    real_query = client.query
+
+    async def denied_query(prompt):
+        await real_query(prompt)
+        hook = client.options.hooks["PreToolUse"][0].hooks[0]
+        # SDK hooks run in detached handlers, never in the owner task itself.
+        result = await asyncio.create_task(
+            hook(
+                dict(
+                    hook_event_name="PreToolUse",
+                    cwd="/synthetic",
+                    tool_name="Bash",
+                    tool_use_id="opaque-tool",
+                ),
+                "opaque-tool",
+                {},
+            )
+        )
+        assert result["hookSpecificOutput"]["permissionDecision"] == "deny"
+
+    client.query = denied_query
+    try:
+        first = await run(sdk)
+        assert first.status == "error" and first.reason == "readiness_failed"
+        assert first.readiness_category == "cwd_mismatch"
+        assert first.tool_name == "Bash" and first.tool_use_id != "opaque-tool"
+        client.query = real_query
+        second = await run(sdk)
+        assert second.status == "success" and second.reason == "completed"
+        assert second.readiness_category is None and second.tool_use_id is None
+    finally:
+        await sdk.stop()
+
+
+@pytest.mark.asyncio
+async def test_startup_readiness_preserves_existing_safe_code(owner, monkeypatch):
+    from bridge.workspace import WorkspaceError
+
+    sdk, clients = owner
+
+    async def reject(*args, **kwargs):
+        raise WorkspaceError(
+            "workspace_invalid",
+            "synthetic-sensitive",
+            readiness_category="branch_changed",
+        )
+
+    monkeypatch.setattr(sdk.readiness, "check_tool", reject)
+    try:
+        with pytest.raises(RuntimeError) as caught:
+            await sdk.start()
+        assert caught.value.code == "workspace_invalid"
+        assert caught.value.readiness_category == "branch_changed"
+        assert caught.value.terminal_reason == "readiness_failed"
+        assert "synthetic-sensitive" not in str(caught.value)
+        assert not clients
+    finally:
+        await sdk.stop()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "stage,reason,category",
+    [
+        ("readiness", "readiness_failed", "readiness_error"),
+        ("connect", "transport_error", None),
+    ],
+)
+async def test_unknown_startup_failure_keeps_only_known_stage(
+    owner, monkeypatch, stage, reason, category
+):
+    sdk, _ = owner
+
+    async def reject(*args, **kwargs):
+        if stage == "connect":
+            raise TimeoutError("synthetic-sensitive")
+        raise RuntimeError("synthetic-sensitive")
+
+    if stage == "readiness":
+        monkeypatch.setattr(sdk.readiness, "check_tool", reject)
+    else:
+        monkeypatch.setattr(Client, "connect", reject)
+    try:
+        with pytest.raises(RuntimeError) as caught:
+            await sdk.start()
+        assert caught.value.terminal_reason == reason
+        assert caught.value.readiness_category == category
+        assert "synthetic-sensitive" not in str(caught.value)
+    finally:
+        await sdk.stop()
+
+
+@pytest.mark.asyncio
+async def test_terminal_permission_denial_retains_only_hashed_tool_correlation(owner):
+    import hashlib
+
+    sdk, clients = owner
+    await sdk.start()
+    clients[0].messages = [
+        terminal(
+            permission_denials=[
+                dict(
+                    tool_name="Bash",
+                    tool_use_id="synthetic-sensitive-id",
+                    tool_input={"command": "synthetic-sensitive command"},
+                )
+            ]
+        )
+    ]
+    try:
+        result = await run(sdk)
+        assert result.reason == "permission_denied"
+        assert result.tool_name == "Bash"
+        assert (
+            result.tool_use_id == hashlib.sha256(b"synthetic-sensitive-id").hexdigest()
+        )
+        assert "synthetic-sensitive" not in repr(result)
+    finally:
+        await sdk.stop()
+
+
+@pytest.mark.asyncio
+async def test_late_hook_denial_cannot_contaminate_a_later_query(owner):
+    from bridge.readiness import ReadinessService
+    from bridge.workspace import WorkspaceError
+
+    sdk, clients = owner
+    entered, release = asyncio.Event(), asyncio.Event()
+
+    class Ready(ReadinessService):
+        async def check_tool(self, lease, **kwargs):
+            if kwargs["tool_name"] != "__startup__":
+                entered.set()
+                await release.wait()
+                raise WorkspaceError(
+                    "workspace_invalid",
+                    "synthetic-sensitive",
+                    readiness_category="cwd_mismatch",
+                )
+
+    sdk.readiness = Ready(sdk.workspace, sdk.workspace.worktree_path, None)
+    await sdk.start()
+    client = clients[0]
+    real_query = client.query
+    handlers = []
+
+    async def first_query(prompt):
+        await real_query(prompt)
+        hook = client.options.hooks["PreToolUse"][0].hooks[0]
+        handlers.append(
+            asyncio.create_task(
+                hook(
+                    dict(
+                        hook_event_name="PreToolUse",
+                        cwd="/synthetic",
+                        tool_name="Bash",
+                        tool_use_id="old-tool",
+                    ),
+                    "old-tool",
+                    {},
+                )
+            )
+        )
+        await entered.wait()
+
+    async def second_query(prompt):
+        await real_query(prompt)
+        release.set()
+        denial = await handlers[0]
+        assert denial["hookSpecificOutput"]["permissionDecision"] == "deny"
+
+    client.query = first_query
+    try:
+        first = await run(sdk)
+        assert first.status == "success"
+        client.query = second_query
+        second = await run(sdk)
+        assert second.status == "success" and second.readiness_category is None
+        assert second.tool_use_id is None
+        assert first.status == "success" and first.readiness_category is None
+    finally:
+        release.set()
+        await sdk.stop()
 
 
 @pytest.mark.parametrize(
@@ -297,16 +594,27 @@ async def test_terminal_result_utf8_output_is_bounded(owner):
 
 def acceptance_fixture(module):
     """Synthetic schema fixture; this never writes or activates live evidence."""
-    import json
+    import importlib.util
+    from pathlib import Path
 
-    evidence = json.loads(module.ACCEPTANCE_PATH.read_text())
-    for record in evidence["cases"]:
-        record.setdefault("hook_tasks_remaining", 0)
-        if record["name"] in {"stop_query", "repeated_cancel"}:
-            record.setdefault("hook_worker_entered", True)
-            record.setdefault("hook_worker_finished", True)
-            record.setdefault("stop_waited_for_hook_worker", True)
+    path = Path(__file__).resolve().parents[2] / "tests/test_m12_tool_guard_probe.py"
+    spec = importlib.util.spec_from_file_location("guard_test_fixtures", path)
+    fixtures = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(fixtures)
+    evidence = fixtures.complete_evidence()
+    evidence.update(accepted=True, errors=[])
     return evidence
+
+
+def envelope(record):
+    from copy import deepcopy
+
+    second = deepcopy(record)
+    second["permission_mode"] = "bypassPermissions"
+    return {
+        "schema_version": 1,
+        "records": {"dontAsk": record, "bypassPermissions": second},
+    }
 
 
 def test_acceptance_manifest_requires_versions_cases_inventory_and_exact_sources(
@@ -323,7 +631,7 @@ def test_acceptance_manifest_requires_versions_cases_inventory_and_exact_sources
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(b"fixture source")
         evidence["source_sha256"][name] = hashlib.sha256(path.read_bytes()).hexdigest()
-    module.check_acceptance(evidence, tmp_path)
+    module.check_acceptance(envelope(evidence), tmp_path, "dontAsk")
     for field, value in [
         ("accepted", False),
         ("versions", {}),
@@ -334,10 +642,29 @@ def test_acceptance_manifest_requires_versions_cases_inventory_and_exact_sources
         changed = json.loads(json.dumps(evidence))
         changed[field] = value
         with pytest.raises(RuntimeError):
-            module.check_acceptance(changed, tmp_path)
-    (tmp_path / module.GUARD_SOURCES[0]).write_text("changed source")
-    with pytest.raises(RuntimeError):
-        module.check_acceptance(evidence, tmp_path)
+            module.check_acceptance(envelope(changed), tmp_path, "dontAsk")
+    for name in module.GUARD_SOURCES:
+        source = tmp_path / name
+        original = source.read_bytes()
+        source.write_text("changed source")
+        for mode in ("dontAsk", "bypassPermissions"):
+            with pytest.raises(RuntimeError):
+                module.check_acceptance(envelope(evidence), tmp_path, mode)
+        source.write_bytes(original)
+    transitive = {
+        "bridge/conversation_backend.py",
+        "bridge/project_files.py",
+        "bridge/workspace.py",
+        "bridge/workspace_lease.py",
+        "bridge/project_memory.py",
+    }
+    assert transitive <= set(module.GUARD_SOURCES)
+    previous = json.loads(json.dumps(evidence))
+    for name in transitive:
+        del previous["source_sha256"][name]
+    for mode in ("dontAsk", "bypassPermissions"):
+        with pytest.raises(RuntimeError):
+            module.check_acceptance(envelope(previous), tmp_path, mode)
 
 
 def test_runtime_missing_acceptance_manifest_fails_closed(monkeypatch, tmp_path):
@@ -346,7 +673,7 @@ def test_runtime_missing_acceptance_manifest_fails_closed(monkeypatch, tmp_path)
         module, "ACCEPTANCE_PATH", tmp_path / "missing.json", raising=False
     )
     with pytest.raises(RuntimeError, match="acceptance"):
-        module._verify_runtime()
+        module._verify_runtime("dontAsk")
 
 
 @pytest.mark.asyncio
@@ -410,7 +737,7 @@ def test_runtime_acceptance_recomputes_complete_observations(mutation, tmp_path)
         evidence["source_sha256"][name] = hashlib.sha256(
             target.read_bytes()
         ).hexdigest()
-    module.check_acceptance(evidence, tmp_path)
+    module.check_acceptance(envelope(evidence), tmp_path, "dontAsk")
     if mutation == "stripped":
         evidence["cases"] = [
             {"name": c["name"], "errors": []} for c in evidence["cases"]
@@ -422,7 +749,7 @@ def test_runtime_acceptance_recomputes_complete_observations(mutation, tmp_path)
     else:
         evidence["cases"][0]["terminal"] = None
     with pytest.raises(RuntimeError, match="acceptance"):
-        module.check_acceptance(evidence, tmp_path)
+        module.check_acceptance(envelope(evidence), tmp_path, "dontAsk")
 
 
 @pytest.mark.asyncio
@@ -503,7 +830,7 @@ async def test_installed_query_close_drains_hook_io_through_repeated_cancel(
 
     workspace = SimpleNamespace(worktree_path=tmp_path)
     sdk = DomainSDKOwner(
-        load_config(),
+        load_config(environ={}),
         workspace,
         object(),
         Ready(workspace, tmp_path, None),
@@ -552,3 +879,56 @@ async def test_installed_query_close_drains_hook_io_through_repeated_cancel(
                     await handle.wait()
                 except Exception:
                     pass  # Closed-channel response is expected during fixture teardown.
+
+
+@pytest.mark.asyncio
+async def test_each_mailbox_query_carries_current_context(owner):
+    from bridge.context import ContextPacket
+
+    sdk, clients = owner
+    await sdk.start()
+    try:
+        for text in ("first context", "second context"):
+            packet = ContextPacket(
+                text, "work", '{"tools": ["Read", "Edit", "Bash"]}', ()
+            )
+            await sdk.execute(
+                agent_id="builder",
+                definition="role",
+                task="task",
+                prior_project_notes="prior data",
+                context_packet=packet,
+            )
+            import json
+
+            command = json.loads(clients[0].prompt)
+            assert text in command["current_context"]
+            assert command["prior_project_notes"] == "prior data"
+        assert len(clients) == 1
+    finally:
+        await sdk.stop()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("skip,mode", [(False, "dontAsk"), (True, "bypassPermissions")])
+async def test_production_start_verifies_actual_mode_before_connect(
+    owner, monkeypatch, skip, mode
+):
+    from dataclasses import replace
+
+    module = importlib.import_module("bridge.domain_sdk")
+    sdk, clients = owner
+    sdk.config = replace(sdk.config, domain_dangerously_skip_permissions=skip)
+    monkeypatch.setattr(module, "ClaudeSDKClient", sdk.client_factory)
+    verified = []
+
+    def reject(permission_mode):
+        verified.append(permission_mode)
+        raise RuntimeError("synthetic missing acceptance")
+
+    monkeypatch.setattr(module, "_verify_runtime", reject)
+    with pytest.raises(RuntimeError):
+        await sdk.start()
+    assert verified == [mode]
+    assert not clients
+    assert (await sdk.stop()).clean

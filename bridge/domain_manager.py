@@ -1,6 +1,7 @@
 """UI-independent routing over bounded, generation-owned domain sessions."""
 
 import asyncio
+import time
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
@@ -11,6 +12,7 @@ from bridge.domain_protocol import (
     validate_domain_command,
 )
 from bridge.domain_session import DomainSession, DomainSink, SessionState, deliver
+from bridge.failure_diagnostics import exception_diagnostics
 from bridge.observability import BridgeRecorder, RequestContext
 from bridge.workspace import WorkspaceError
 
@@ -29,6 +31,34 @@ class DomainManager:
         self._config, self._service, self._recorder = config, project_service, recorder
         self._sessions: dict[str, list[DomainSession]] = {}
         self._closing = False
+
+    def owner_healthy(self, domain):
+        generations = self._sessions.get(domain, [])
+        return bool(generations and generations[-1].owner_healthy)
+
+    def can_run(self, domain):
+        generations = self._sessions.get(domain, [])
+        return bool(generations and generations[-1].can_run)
+
+    def snapshot(self, domain):
+        generations = self._sessions.get(domain, [])
+        packet = (
+            generations[-1].snapshot()
+            if generations
+            else dict(
+                type="domain_state",
+                project_id=self._service.snapshot().get("project_id"),
+                workspace_id=self._service.workspace_snapshot(domain).get(
+                    "workspace_id"
+                ),
+                domain_id=domain,
+                domain_session_id=None,
+                state="inactive",
+                execution_state="idle",
+            )
+        )
+        packet["available_generations"] = [s.domain_session_id for s in generations]
+        return packet
 
     def _new_session(self, domain):
         generations = self._sessions.get(domain)
@@ -66,6 +96,7 @@ class DomainManager:
         self, command: dict, *, context: RequestContext, emit: DomainSink
     ) -> None:
         session = None
+        started = time.monotonic()
         try:
             command = validate_domain_command(command)
             kind = command["type"]
@@ -79,7 +110,9 @@ class DomainManager:
                     else dict(
                         type="domain_state",
                         project_id=self._service.snapshot().get("project_id"),
-                        workspace_id=self._service.snapshot().get("workspace_id"),
+                        workspace_id=self._service.workspace_snapshot(
+                            command["domain_id"]
+                        ).get("workspace_id"),
                         domain_id=command["domain_id"],
                         domain_session_id=None,
                         state="inactive",
@@ -146,6 +179,11 @@ class DomainManager:
             )
         except Exception as error:
             snapshot = self._service.snapshot()
+            if command.get("domain_id"):
+                try:
+                    snapshot = self._service.workspace_snapshot(command["domain_id"])
+                except WorkspaceError:
+                    pass
             code = getattr(error, "code", "sdk_error")
             if session is not None:
                 command = dict(command, domain_session_id=session.domain_session_id)
@@ -157,6 +195,20 @@ class DomainManager:
                 project_id=snapshot.get("project_id"),
                 workspace_id=snapshot.get("workspace_id"),
             )
+            diagnostics = exception_diagnostics(error)
+            packet.update(diagnostics)
+            if self._recorder:
+                self._recorder.event(
+                    (
+                        "request_rejected"
+                        if code == "invalid_request"
+                        else "request_failed"
+                    ),
+                    context,
+                    outcome="rejected" if code == "invalid_request" else "failure",
+                    duration_ms=(time.monotonic() - started) * 1000,
+                    **diagnostics,
+                )
             if code == "workspace_busy" and isinstance(error, WorkspaceError):
                 # Lease errors expose only an already-validated domain slug,
                 # never paths, provider details or arbitrary exception text.

@@ -1,0 +1,2454 @@
+{
+  "schema_version": 1,
+  "run_id": "31f32567e47f4817afbf863185de475c",
+  "completed": true,
+  "errors": [],
+  "accepted": true,
+  "started_utc": "2026-10-22T12:39:39.640712+00:00",
+  "ended_utc": "2026-10-22T12:40:26.223535+00:00",
+  "auth_mode": "api_key",
+  "permission_mode": "dontAsk",
+  "desktop_accepted": false,
+  "instrumentation": "same SDK class: forward init/connect/query/receive_response/disconnect once; allowlisted options and messages only; original default factory; unchanged owner construction observed at domain_session binding; delegating dispatch emission and loopback ephemeral listener observation; explicit fixture-extra-a/fixture-extra-b registry; owner execute context diagnostics only",
+  "versions": {
+    "sdk": "0.2.136",
+    "anyio": "4.14.2",
+    "cli": "2.1.228 (Claude Code)",
+    "godot": "4.7.1.stable.official.a13da4feb",
+    "python": "3.12.14",
+    "platform": "linux",
+    "cli_sha256": "d535985e6941a3eb00179ccd7f52ceb0c6623a0305a518ebc4e6514f84a94c99"
+  },
+  "binding": {
+    "commit": "a582f114faadf2cb2b9b767fc10a695171446aca",
+    "source_sha256": {
+      "bridge/config.py": "5a5e00ac875ed8ef2a8fa224d74073f1786bdd58c95d058bacf7f3d25bfb0d0d",
+      "bridge/project_files.py": "2ecedc0308230381de3b01bd4ce2b578c756d5f58b1a1989a318494f1a28c96f",
+      "bridge/workspace.py": "ca2d5cc7eb4efc973160b634b7d4615f864acbb30dc2753809d94a2cefafd647",
+      "bridge/workspace_lease.py": "b2cb53ee97d4e94f79e8f74517f409897343a4869c8687c6fcb2b4dceadc65cc",
+      "bridge/project_memory.py": "401cb11627aaf5c111f4b1e092ae4f7e6f595f7d3d09d2238290864f17ae93ab",
+      "bridge/readiness.py": "f95766bf7752e7b69a310089dcfbe9d7a9cc52ded59047398d7977c202af1160",
+      "bridge/guarded_transport.py": "e5d6b4a1af15be7ce031b08d30a9bf232fd963bb143339cb201035d355211c68",
+      "bridge/domain_sdk.py": "eb9fceb935c6819e32113696ff520aa9156ec37628e6870f7dcb2c640f82271c",
+      "bridge/tool_guard_evidence.py": "71cac4cf92612ac59957b552baa90895233c50a5e9a8a3c13f8e162c7b8cdc16",
+      "scripts/m12_tool_guard_probe.py": "157a5d6008359a97143c7a6153126f8eb0e3c06a688cac8f7735c404c5b7f584",
+      "scripts/m12_live.py": "9658d4d23140d50432182ce9f483f7284b2a640258bcef12f194f51f1d38a67e",
+      "scripts/m12_stages.py": "2c283a24a7717f7fd2a1d01eba6cbf22bf5c9d5bb69fa7f6d80740df7eba79b8",
+      "tests/godot_domain_integration.gd": "0bcf008f5d96fe6271410fb0a91baf84d1ade5b0073a086abb595d45cb13d8e5",
+      "tests/godot_domain_integration.tscn": "e1147e59b66811384f743b2935a81613f68b0374fff18be60412d9ba3617d624",
+      "tests/character_fixture.gd": "be6f843c1eecdba3c8ae57993ff90e8e8102b43261baeac49c212edf858eb0f3",
+      "bridge/context.py": "c87ec45183d155a4a01349b16c032d938665c874615701157a523c8ab09a9d56",
+      "bridge/context/GAME_CONTEXT.md": "1639b6f615f368e99921d2a622f3728db33bc155cdf8bb466d229fba87589268",
+      "bridge/context/WORK_CONTEXT.md": "1277434ac38f6c27c7d3cb7d5ea1d64169fa92b91615892c24a01b405a7fcd52",
+      "bridge/agent_bindings.py": "33143416899711ade931420f6dbe9656e57608c925e0a570928606f0a7a220f8",
+      "bridge/agent_bindings.json": "87c31c10b036a021b01eaa79a7e66bfb6ec0664c19d3aaa1f100ae605e224319",
+      "bridge/extras.json": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+      "bridge/server.py": "842e2300824abaf5ec3eaf522a7767c973919c83fb8ee19ed400517bdd1b7869",
+      "bridge/project_service.py": "7898655708cf245697812f4e8959d78b7e08e3ab0d6edb835de169669d0a4888",
+      "bridge/domain_session.py": "f283c486aa60abd6f15cb0cc9b1b2b69c64afcef962671bd2f1682b59dd1de63",
+      "bridge/domain_manager.py": "78da5a5cc3cc1eb5e35cdd0f69cf623b2c6a712d2da361aab9094c65e468f8e2",
+      "bridge/domain_protocol.py": "58f1ed37c0a70100f0d8c7b88f1eaf01a0e58c0b326d07538a972e96619db9cc",
+      "bridge/interaction_protocol.py": "34d4d66e6d39a54640bcf2d24e53f404333210d71569186e073cb7088f5343a6",
+      "bridge/conversation_backend.py": "21f0034bf8d79b3878bac8411a1aa2db9cd7540c34b3d7cdf424654b857e32ff",
+      "bridge/conversation_sdk.py": "a615eef81998169f9eb3828168f4183cdb0fd88db93e4dc781623f0d91fd3354",
+      "bridge/repository_setup.py": "acd029ffb788484da1523f0e84fd821fc59a4c466a2c57b0c9e810421a101187",
+      "bridge/agents.py": "0655ad04e3813a3ae1403ae498f67ac9f27ee813df2bec7e1f497390ef89dc82",
+      "bridge/agents/systems-architect.md": "fb3c428bbd85a1b7a7d325f2e597100b20ad3db4394aeee1ccb703fac1f1a188",
+      "scenes/bridge/ws_client.gd": "f14cd5b4df4c3e0f501aa94ff0ed29ca7855fe200b3b8b5d92b29e470eaf30b3",
+      "scenes/bridge/domain_store.gd": "50a62c1d2387966efcfd2c2498c95ca3ec20f1c74e9ee4c71c25f48ab097d581",
+      "scenes/bridge/domain_surface.gd": "986c514f592b82deb02c4f454584041e2d9bcf1f118bb2a5f0a460b481c7257e",
+      "scenes/hud/dialogue_panel.gd": "7717c618dab2675a8ff907728e8a85fb4ea609b7fc06ee1cf26914650059183a",
+      "scenes/hud/dialogue_panel.tscn": "ff7268e6d1b4342a20de545682acd5157cc283f14f08b902191496f29e703043",
+      "scenes/hud/domain_panel.gd": "dcd4b29d2575be3f4dbbab3fc7f464656e956f3f371e711cdb1b08a44f2c9f37",
+      "scenes/hud/domain_panel.tscn": "68381f7e732004bfa9a768b947dcecdb8d4f706bb2e4268dcfd47d1da707daa9",
+      "autoload/GameEvents.gd": "73af4fa6ad5a41c67565cee60fa41d91d701f88c2a6b0b4b299d92c119aed9e9",
+      "autoload/AgentRegistry.gd": "1f1edd791c4d6890f246cd4a5a4317154704e31c130bc309697485650779d05b",
+      "scenes/main.tscn": "d785b9e54c3245c4b97dc54f0384b76fb12e1d32d4ed1c03099a5cbfb184f21e",
+      "project.godot": "b124d7084c60355db12572711b03918834bd812af44905a3f8a10e3a32f7b902",
+      "data/agents.json": "33f83c646a6d7b52c70365a1a6fc64a5b5d4be6615a98491953c055ebf36d747"
+    },
+    "runtime_before": {
+      "head": "a582f114faadf2cb2b9b767fc10a695171446aca",
+      "status": "",
+      "tracked_sha256": {
+        ".claude/README.md": "f8bfb6b4d3d8815858d34f124b65c33f446ca19140b1876bd3114cf0f86af1ab",
+        ".claude/gbrain.md": "d5f5d39fc57f97028ac16edcd2f8c23dde7f7aadac77401516f6b08a291fb26c",
+        ".claude/godot-conventions.md": "5d8d5ff1f4a88f2f808439cf21d2d7be5c1208b2160874e6726f0bc50831fa54",
+        ".claude/hooks/lib/pm-snapshot.sh": "e79552d7b37749d72a53ec507ff7510f78536874deed25b4d517ab48b8bbf883",
+        ".claude/hooks/precompact-session-log.sh": "dd94304b0a78063f4bedfda72c7c11587ae503fa3be0be79ae6826728de0f15c",
+        ".claude/hooks/pretooluse-pr-review-nudge.sh": "e321eff2e5f86714fd658fb968901f578c4129295e79552fae18298d2cbe7509",
+        ".claude/hooks/sessionend-session-log.sh": "4ef9adccaa7df73f9fd9d3c1a20b92c406194162e60c60ad9b9d0e31fcc37cd1",
+        ".claude/hooks/sessionstart-pm-briefing.sh": "24dddffacd793d67a30fa793706d159df98ad5954256da2c9c3e85bb05bf3332",
+        ".claude/pr-workflow.md": "0db7d942e0d508a25c1722b36e00637e1cdb8aca5d9ecdd51d7d4bd2963f84a8",
+        ".claude/routines/daily-issue-triage.md": "9f584bc4e6e06c5afbe9557b2a7a429aed51bc89c024ab3062753bead56de795",
+        ".claude/routines/weekly-doc-scan.md": "f679490bc7091781bdb72d7b5eb8f42eac9abbc0edef367bf788c392fbcaecbf",
+        ".claude/routines/weekly-submodule-check.md": "00a19b2017edaa4c8f85ad1701362b0bf2b1f540c2a8760f2e2d4b4f7970f481",
+        ".claude/settings.json": "f84dbd232dc15fff649e29d7fc7eb529b3b106b6760b5adb1f8ea79748820250",
+        ".claude/skills/grill-with-specs/SKILL.md": "ea6f6172470efc62c109ab6be7c3906c6737f3bd650c1465aafae637a9c40ad4",
+        ".claude/skills/review-specs/SKILL.md": "153f6b92efb418896c187c09b40fcef7b5863fecc485b44a23b29936129b1a90",
+        ".directory": "bbe4716dc9073b48f0acfbddc0d194fb5113a43394327d7e0b091493c4964eff",
+        ".env.example": "ff0e304ed50e776a492e084ef635c4a056959711369ddaf41885f148eca12fbc",
+        ".envrc": "7b2a941f848724dafa6a139897122e9d3af85e29c4f19e5a8d62ddacadebd03f",
+        ".github/workflows/ci.yml": "a35d94ab7ca494f673e22cc004400c0a1131fd46359b563531c545a732ca5a46",
+        ".github/workflows/claude-review.yml": "b8c2b5c7c4765da7197e0c60a1071c17458dd07d43d05f4bd8de4b003bea84cc",
+        ".github/workflows/daily-repo-status.yml": "6bd374c8f66ba50a718ab298def080c45c25a901b8816798f8a927b3d3079506",
+        ".github/workflows/issue-arborist.yml": "92d9e4d1726690c1edab5a829537eaf0063d7921316e52e2dbf2de2c5865d1d5",
+        ".github/workflows/issue-triage.yml": "446a8765109a038a59f4e64354c0bcc31a4376167d6e2aea55ab7ee1453334b0",
+        ".github/workflows/jira-auto-transition.yml": "c9a5ef8fa466beae4e987eb1aad52aa4967a733a4e352f8e14f01de60c6990e1",
+        ".github/workflows/release-please.yml": "5d15e0d823fb4dd88ce0972ba6b0b218db1db2db31ec0382b8b28e464e614e77",
+        ".gitignore": "561d54d6458a76662d45c2e22f260ab9e7315c2894be94d0c98b202d0103ec96",
+        ".gitmodules": "b6f6dcc84561fd7959c236fba9c8958b68d7ff360dd1d8ce9e7744bb5bd45dd9",
+        ".gstack/tmp/codex-review-output.txt": "8432466a80b88ebd756eb1317afcfe7d4ff9c040ccb5e2592dd5c217a8c3e354",
+        ".gstack/tmp/codex-review-output2.txt": "923cb2f79369c23420729fe460ea41fdac7dd19b19966ae0144068f02ae2d985",
+        ".gstack/tmp/pr19-review.json": "0dc72eb4c4220780cdeb508cbed8d8af82c7bd6905b24c4e5fdc2f6c471a9008",
+        ".release-please-manifest.json": "ddb4a22cda08b2769f37b1f1f341370248bf3bd44f5b729ddc1e6140f47edadf",
+        "CHANGELOG.md": "ddaffb4db2c51aacdc616d4f694a30a6f2e4b9e626421ef82122983d69a3be96",
+        "CLAUDE.md": "fe25846661836843db59f39dfe4b2dbc3f431e7fad215654b3570e2dc40668e8",
+        "CONTRIBUTING.md": "5bdd647ce473d9f783fe9980fc8a497cebc0eede050f07686fad0263cc018da4",
+        "Docs/files/README.md": "192d9e028abe05a903f5d4063da5d5f419df1352e0214ef64feda9cd68a32ccd",
+        "LICENSE": "9cf9cf624f4cfbc925d1507f47eef68a16e416241184d71826df7b7817a51248",
+        "QUICKSTART.md": "99e4a95f32ecc2681624616b74732620bc1fc63d94dd7823824b71b5b96a8667",
+        "README.md": "f1e06bb8bc99e2e8a2428a4f375515c60c0c91e82b1848828077b7ef6fb17fb1",
+        "Soundtrack/retro_midi_loops_222/looped_track_01.wav": "aee4f6684310774ff175705f21c385b550c626d0d4e1d03d36a7ac44c0197d22",
+        "Soundtrack/retro_midi_loops_222/looped_track_02.wav": "80b54eed12f89a464e01632c49091cb5eb27b828e7f62a29ac912d17aa0a4c1f",
+        "Soundtrack/retro_midi_loops_222/looped_track_04.wav": "e40be75314331b6216ed4f6be379e98c082b7ab81f6398f27d16cb739a9117f0",
+        "Soundtrack/retro_midi_loops_222/looped_track_05.wav": "d88eae1bc6b6caca84cdd64f410e776f98424078a76c7ec5325b620d2b92338b",
+        "Soundtrack/retro_midi_loops_222/looped_track_10.wav": "63ec214ae29f4108d3c0ec0f939aeadb5deefc16d5e6364cfc8f5166e1164630",
+        "Soundtrack/retro_midi_loops_222/looped_track_14.wav": "a4643e161a95dfac0efaeff66dd5a8c06669acdf23e01371ad2fd274f0293c1a",
+        "Soundtrack/retro_midi_loops_222/segment_intro-b.wav": "ad664a14d51c8d8c91591adf94e56af3aeb8465a10e4de28ef71d55b1b870791",
+        "Soundtrack/retro_midi_loops_222/segment_intro.wav": "b4697ef39624b5261598db74cff2a5e63d640e3ef1a0e939983148b0ef744817",
+        "Soundtrack/retro_midi_loops_222/segment_verse_b.wav": "53ba1a94fef0311b6ba2b6ec511c10f39d50694a7e62d1cca832e7decfa88b1a",
+        "autoload/AgentRegistry.gd": "1f1edd791c4d6890f246cd4a5a4317154704e31c130bc309697485650779d05b",
+        "autoload/AgentRegistry.gd.uid": "9af1fb85227572e5ac112b57f4bfcaf8fe8c75e2ed02073b789a5e3afc6d7508",
+        "autoload/GameEvents.gd": "73af4fa6ad5a41c67565cee60fa41d91d701f88c2a6b0b4b299d92c119aed9e9",
+        "autoload/GameEvents.gd.uid": "a3da7c734582e77e118a914e06c6f825d4054fea923f64ccc43439112236049d",
+        "autoload/GameState.gd": "91769285985ed1fd2ff9e7d10b6ddfecce6af6f2f358231063e77f791dbbfdfa",
+        "autoload/GameState.gd.uid": "68b7b8fd5b96cefc653e8d18ba43106332356526b85bbb49f23180fbced7621c",
+        "bridge/PROTOCOL.md": "46765715f16449587ff7c327eaa6ed00405379ef2f57c2bd15f20d8cafefefa5",
+        "bridge/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bridge/agent_bindings.json": "87c31c10b036a021b01eaa79a7e66bfb6ec0664c19d3aaa1f100ae605e224319",
+        "bridge/agent_bindings.py": "33143416899711ade931420f6dbe9656e57608c925e0a570928606f0a7a220f8",
+        "bridge/agents.py": "0655ad04e3813a3ae1403ae498f67ac9f27ee813df2bec7e1f497390ef89dc82",
+        "bridge/agents/account-executive.md": "d4ab9e7661521dbd7f0fc971bbbb70dacc4ce9e7a6ebb9f9d69a7a7b5badaeec",
+        "bridge/agents/ai-engineer.md": "f43927d6e1a928ae1eb83b8942381874c61d437e5f2f4ff31933d14972a8c8fa",
+        "bridge/agents/ai-workflow-designer.md": "73db2143a5feed2bc06b8a286079729218298acc04602e064eeea4c5392cd36b",
+        "bridge/agents/analytics-reporter.md": "587089c1f7b43a70478e82bd17c548f7af0b5df66aea694360a7b7ca94fb6f1b",
+        "bridge/agents/api-documenter.md": "9aa72477cf7775504c70bd3b130b56a4b2621d8323f05e6035005a75407a91f8",
+        "bridge/agents/api-tester.md": "8d646a7b34d077fc40f5eac89680d669e3ec83bc3b7edf3db7b71edfa5f53580",
+        "bridge/agents/app-store-optimizer.md": "9dd136cda528af65a8a7c71e391aa0b34f64e1ebd7270e1dc0e37408aa49dc8c",
+        "bridge/agents/architect-review.md": "41dcfb66bc41a66fe36d09aec545eeafdbd241e7daa6fb86b435a7cacea63c2b",
+        "bridge/agents/automation-architect.md": "b5909d1ed198e49f98408c2406ff9611b52fbeafaea7c8847f5ce29f7be769b8",
+        "bridge/agents/backend-architect.md": "dd099e9338c46bae4a5b6692ae5b370cffaebf58a82fa96c2cfec465d9af3c7e",
+        "bridge/agents/backend-reliability-engineer.md": "0ab7d1f1d91f3810b3f97ccf41811a87e0c28417c980420f24588f09f20198f7",
+        "bridge/agents/brand-guardian.md": "53ba97eacbca2002b67822f00cdecb92b79d974e548d46e974f1fa94f3970ea8",
+        "bridge/agents/business-analyst.md": "a40d8ea1fff60d38eae57453b7891848966c7251cc512811ac7166aa4d3a5a0e",
+        "bridge/agents/business-model-analyzer.md": "d9b51c848baf34238e47c13acf5c41ad9aa0996ab47f4a8aac5c66165266ebe5",
+        "bridge/agents/business-strategist.md": "c70ea756da54f586c4f724c57198360ef2d08ff04ac3324a7d0e7902628bc7a0",
+        "bridge/agents/c-pro.md": "4772466d1931987fbe50ea861568fa0de91cc9a32347bacc8b9afc30bac6a8d9",
+        "bridge/agents/cloud-architect.md": "de65d58760de40c5f34dbdf5aef7004a309ece3976f5998eddddabbe30f26bbf",
+        "bridge/agents/code-analyzer-debugger.md": "a0cbc2536788360669a6361b3d6174d59f16a0fd113bc1a3e4c2467fb4b2ff03",
+        "bridge/agents/competitive-intelligence.md": "4d11dbae44b8bb7bc34e220138b0a9b3e13d1c8bdbc064eae0f4453bcde2ae4a",
+        "bridge/agents/compliance-officer.md": "1a82c40dd07e769e26e35f020eeae69d6ba8b9a0902beeb91bc404eff0ab8f26",
+        "bridge/agents/config-safety-reviewer.md": "3b516f7c829dd2d4c51976de5e03ed5f90781ebc19af9a412c56b74460441d04",
+        "bridge/agents/content-creator.md": "061a9c97d233b74701740ba262ffc5efde2359c18bb576c4eedeef82091e8024",
+        "bridge/agents/content-marketer.md": "28b53d58988c402015593639295083d77f6695b21b49f60afbdc55d9f402dbe8",
+        "bridge/agents/content-writer.md": "c6897b0e6a9cdfaf8a4a8020c0fb4ec6759ef2b93f1ce13a48cab28a40bb18be",
+        "bridge/agents/cost-optimizer.md": "3f1010ed779de7709d6b0099772bfdb4bf097544a4b88baa4f2012c96fda0b4b",
+        "bridge/agents/cpp-pro.md": "e1dc62b706fd039db37402f62f3bfb72787f44117ab451fddc1a74f7eaf66f66",
+        "bridge/agents/csharp-pro.md": "1fcb8df1a557592d14f4543508741a5b1dce7a4bf936da29d3c8f3d8817b95b8",
+        "bridge/agents/customer-acquisition.md": "b53687313b267c9d98a1521485ea4b830e02c2d95582b82e545cf470560989ed",
+        "bridge/agents/customer-success-manager.md": "5ffc0704a9336608496baeb5d61b44cf8ae1ea4701ad670c20d0aa19dddc3ff4",
+        "bridge/agents/customer-support.md": "e02a896ccfdaa050cc0b182d3309e3d478158c35200da5a0e20ffb476bcb10c6",
+        "bridge/agents/data-engineer.md": "fa819b0fb73fed6570170d8759fde691b9268f7fddb7f4985ff42f20c797813d",
+        "bridge/agents/data-scientist.md": "8d53b348e5301350429b17c6f8c9b5fa0dacc2829fafd3bb1f7efd4ffb6c5fe6",
+        "bridge/agents/database-admin.md": "953e2061baa203f7f08163abd30429bd0e7cd7f79fc70c668d880b46e9d588e8",
+        "bridge/agents/database-optimizer.md": "950170f94dd48ffad4806aa1cbc3c186c5f36eb241f8c1e0e9f5e356699d2557",
+        "bridge/agents/deep-research-specialist.md": "244c7cf53d56f7a21b1534522323f2be39bc2b4a9a157117e1c2d57fddd1faad",
+        "bridge/agents/deployment-engineer.md": "d2c3f400c7fd44ed5589366980a5f235c3076ca71e6120c43d3a8e2defaed6e3",
+        "bridge/agents/devops-troubleshooter.md": "dcd18debf26e2ea8e8df28abddbcda34574afc1bab5e2af69532ed31cdc10896",
+        "bridge/agents/docs-architect.md": "b1b4ad616182775720c44e1e72df51ed62a65a36a29fda618d7c506324b65a9b",
+        "bridge/agents/docs-writer.md": "e03e865df48f34c13011d397c0cbd04429b4d3e5d6508e9f3240408bd3fb0baf",
+        "bridge/agents/dx-optimizer.md": "576f209a7d595910d605a86868ae680a6e86298748b802c93adee6165804b9f8",
+        "bridge/agents/educational-content-writer.md": "0f67da14c881f89a2a0eabb98d2bb7ef8d578dd04119ae80e94c41e8248b78af",
+        "bridge/agents/elixir-pro.md": "2f37c7965499e7128786cc9a86ec5e61dca0373f62261cef178060bd4f2d86ec",
+        "bridge/agents/error-detective.md": "a02f15843a26c962c8c0e1579292dcb6b80a3413e2b23cc99ede4d65b4227e33",
+        "bridge/agents/experience-analyzer.md": "1476d90665481d51c02846c911320ef39caf9e95019b3802712bb07a2ad17891",
+        "bridge/agents/experiment-tracker.md": "4b5e577823d39b67dd0bb4cd5fd156682e9d375545aae83717b952359625cf88",
+        "bridge/agents/feedback-synthesizer.md": "bcf75ca1477d3683cbf2ef58482cb6774fa8cce5d2234f671de23ae61351cf0f",
+        "bridge/agents/finance-tracker.md": "458ef3b079c07ef4aed2d1ba52566245f04e53e6578b6d851c895eb66e33a2dc",
+        "bridge/agents/financial-analyst.md": "91beb9b04ef69c02a614d8ba3b03b6dc96a04a253f8c87c21c60afa6a5907059",
+        "bridge/agents/flutter-expert.md": "2f5773c60b0da7aa07f05bda9b954eb564bf2798411f09dfc071a0e8c17bb5be",
+        "bridge/agents/frontend-developer.md": "53ef88dcdf22780f9c2e0e4cb9b7d77b2c93b1c1c59e3cdb0ea53c6c50aa3815",
+        "bridge/agents/frontend-ux-specialist.md": "f61bd177f621b93aaacd127ed9cf68456a21f0783e8e3f4ae1d4e6bb16f7c8d6",
+        "bridge/agents/golang-pro.md": "9018d561b856ebe2ade4a66a0a6002aac8f9192d9c2e9b10fd6abf1222f87fb7",
+        "bridge/agents/graphql-architect.md": "2f59177e45a03a17f363d7b05c9dc01c9cd960da090d0a540c0e45e0ef5fafce",
+        "bridge/agents/growth-hacker.md": "96305a528e37b57b6aae25e8fa9279b4da5e4c21eb6df7912baba0d7ce272375",
+        "bridge/agents/incident-responder.md": "5f26682d684ee9cba2fffb1e5f69dfc6725d1ff4f3e746da93e36f75bbe0fb1b",
+        "bridge/agents/infrastructure-maintainer.md": "1d911515dffc3be6e9f39169528b87c1df7106b12ef377dd9b40bb73f68e03bc",
+        "bridge/agents/instagram-curator.md": "3ee8a9c63527ede579d65e3d5255c94cecd5299587deccb0bd2a9a410200c19e",
+        "bridge/agents/integration-specialist.md": "d1a6c65c83677dd08fa9403779c8abc297e8153e5b23e91f6e17e7bacb7545c4",
+        "bridge/agents/investment-analyst.md": "60bd8f5851825d86c70a3dd3936ca3eb2ecd4fe45c4235f9f9551e89bdba2125",
+        "bridge/agents/ios-developer.md": "72fbbd69724b097c812f7ca091b07f2cdcffd85c45ee552d8ba17c156945fd69",
+        "bridge/agents/java-pro.md": "b889e2c2662c1f61de137a845de1fa460e9cebc784ccdd72d9b4f948845e4c97",
+        "bridge/agents/javascript-pro.md": "a0403add3f1cb72da715d85fe18a5c8cb757af90d7fdb3454cba765f6f9c8fa6",
+        "bridge/agents/legacy-modernizer.md": "6ff371320707bb371fc355832288379959f172077149a877a7e6e092868f5ed2",
+        "bridge/agents/legal-advisor.md": "d808c145afe11c58890c92ca647e2b60d5dd9d152d978d42cc123a268a971009",
+        "bridge/agents/legal-compliance-checker.md": "846e1e79d631fe907280f6524f0a535e5dec5bd3909233e2a05071bc24891e9f",
+        "bridge/agents/managed-services-engineer.md": "7b487d3c63ce756140ee1bc400737062f710fda7b0d87264511efc2ca5898814",
+        "bridge/agents/market-research-analyst.md": "5efac3582e0c861dcd6a64e48235094d70fa7065ba70cec926b69d90f41f1524",
+        "bridge/agents/minecraft-bukkit-pro.md": "bc15ef014e25f36b0815f743891d01ab1e5d65abadb7741a350d93af03769cc0",
+        "bridge/agents/ml-engineer.md": "b89525158e3f73ffdac357fbdddfd3b6efaa0ecedabf7a4485444ed0f5d43317",
+        "bridge/agents/mlops-engineer.md": "d14b8fd53145d00dbf1c9c89802e70da2d684235fe3c30a9b4474092c9781d80",
+        "bridge/agents/mobile-developer.md": "9a21115f8c3da2a2af7d191509beed61e45dc3bcedaf9141ace3f1e7a4988e2b",
+        "bridge/agents/network-engineer.md": "187b9909587fc55394eb7ec8105b2593fba32a80ec37692b8f7d573989678370",
+        "bridge/agents/operations-optimizer.md": "09b07ae0f7367bd1cfbe54dc6be670bddb2e896b7c4c6af1e68dcf8d105651a0",
+        "bridge/agents/partnership-strategist.md": "aea37b0807ee684cb7aa1cf36a44e118dcbcd72dcf7b5edf41ad1574a4c7341c",
+        "bridge/agents/payment-integration.md": "14f8bae3053b45f2884f90f5d0107a93a0a90c82adc3a70e5672862436560e98",
+        "bridge/agents/performance-benchmarker.md": "1f3dbdd4c668d14cae6987be45b10a5886950c5faf793f83656f8d055c97cd0c",
+        "bridge/agents/performance-tuner.md": "72fff88b4c0093381ef3d46c0264f35235740e517366058ff3ae800979a79ee0",
+        "bridge/agents/php-pro.md": "51ee53e13d3dd69345b18c19cdeb09dae6b8ce1b47bc168c622cb183b864345e",
+        "bridge/agents/prd-writer.md": "94dc7c3a2cf5845b1cf21eb2c7c4dab3e3c9b17855102e2c018a3ab21503d564",
+        "bridge/agents/pricing-strategist.md": "781eb0fdbe1b1c97d8f18c7bb8e2002cf1c04603d878b0bc8c0afbddd348882e",
+        "bridge/agents/product-engineer.md": "594b3fb04470bc44f3ae82feacc1b4103146dc93a372b1374d6f0561059b15fa",
+        "bridge/agents/product-manager.md": "8728811a26f2da88c1b6b17e05087698a686368ad28de0a26af72f1d1109c301",
+        "bridge/agents/project-shipper.md": "09ac65fc8aa3237cdaa2b4fe8db0485a99e5a71f4502c98f139b4ec7719f818c",
+        "bridge/agents/prompt-engineer-advanced.md": "f60f709391f4005016fcd5d2530e1a76d88f40ebdc6ea54f6e719a8dc3d26ecf",
+        "bridge/agents/prompt-engineer.md": "5d5681c80e926d02b68278a4e7c4228605f65127f40f78f209e348e7096a23a3",
+        "bridge/agents/python-pro.md": "673e9511bdb4bcbdb0e9133162691e44abcd66eb50194586f2777f75e3c5dd43",
+        "bridge/agents/qa-test-engineer.md": "ded517c11969d58efa9226e4b737cf2d4a1cc352e7da6a472d077e8233628546",
+        "bridge/agents/quant-analyst.md": "29f45b1e73ae81d74630291a7edd3e429ff86fa213609bd06922de395c5e6819",
+        "bridge/agents/reddit-community-builder.md": "590123f6ebb1ad6fad715a20946ced125e55dccde0c73566875c2950bf75509d",
+        "bridge/agents/reddit-intelligence.md": "f826015e67fdb074c24e21dca83be85b752983776cb5f76841b9bd2979f274ac",
+        "bridge/agents/refactor-expert.md": "d754c53da6f6d7f6ffb91648471c78347101427bd0e1edb66f7a98a9e68e0334",
+        "bridge/agents/reference-builder.md": "545ee595f40f6b41bc904d6dd0dffe86def41bf3f29f2567e3f8b22b06f85713",
+        "bridge/agents/requirements-generator.md": "afb31c70a0731d8d77fa1957e0789542042b9e53b016ae5fd15ac43b70629c92",
+        "bridge/agents/retention-specialist.md": "74ef6e25514a19f23913b9e8dc5b95ffe22f70988f605777c9d6f123004e9441",
+        "bridge/agents/revenue-analyst.md": "881fb29f99a65e9723b7ce798b9da1479f542a725646d78cac908c101037a26e",
+        "bridge/agents/risk-assessor.md": "de220072401a30994c59397cf304355cd032c68e9ff6422e7cfe7aefbc4fdf0b",
+        "bridge/agents/risk-manager.md": "728107ab66c20dc8864d7b324802fa83f16a97186b347ea3ce4b777dfe0c82ce",
+        "bridge/agents/root-cause-analyzer.md": "f5c7bfc8b76506d5fe32268b35238905ec427ab32ca5a69f16c1029b9ac7feb8",
+        "bridge/agents/ruby-pro.md": "b0d2507012bcfe5bd5f1dd959267c89e240d55a90a6590aea343bc97c72fa827",
+        "bridge/agents/rust-pro.md": "fae3547a57a33cac016fcb0fe9be8db4c4dd1832963971e7a9e0f8c367fa1e45",
+        "bridge/agents/sales-automator.md": "528158ae2ab3a6a141058d8ae953d515643857e07c83178e3627f87fa588d25e",
+        "bridge/agents/sales-engineer.md": "5eff5e460344a24eaa420d4eaa54ea69b71c7b8f457a04aa581004986de37761",
+        "bridge/agents/scala-pro.md": "6f142403ae61bc557f7a5c4d5c6373e992de8dc5bef939a68bfbfde4a6b94af3",
+        "bridge/agents/search-specialist.md": "4462ec3583918181487e02beea912824a5c462fef0f63a6241fb9e9ffced68d4",
+        "bridge/agents/security-auditor.md": "58f573d3191444ed545b315b012a696be3099761c349a905931ae284051cfcbf",
+        "bridge/agents/security-threat-analyst.md": "cf6169b97aad5ee593902ec60c4e8748b9871f4972274a4b4384d10c8d2083e2",
+        "bridge/agents/sprint-prioritizer.md": "f57e11bb27405cb82ce766006ae58de8a4ecd59196af757c2d9d192a4ce33e45",
+        "bridge/agents/sql-pro.md": "6842557027000ef0ebca1592f650bee8bb948ccac3543d3d749f295e1ba37e50",
+        "bridge/agents/studio-producer.md": "a646174673adfc1c1bef3cc1947448fc957fdcbe61aca885517003b26a3cb988",
+        "bridge/agents/support-responder.md": "3e0be48fe29933e3c494ddd7b637ee0483484edcff832d3b56750135026f3cec",
+        "bridge/agents/support-ticket-handler.md": "b02e7fbb105bd12fed773c737f91771c7b364e61c82e34578f66f509a9c33d81",
+        "bridge/agents/systems-architect.md": "fb3c428bbd85a1b7a7d325f2e597100b20ad3db4394aeee1ccb703fac1f1a188",
+        "bridge/agents/tam-market-sizing.md": "f151643ea48ddd7e14cf80ef556e1203864d6b6fb2a2e7a637543d17b9728beb",
+        "bridge/agents/terraform-specialist.md": "b6319689a1d77ab5b14531b6fac0b22e6a559810df442a21cee152fc75b9e3c7",
+        "bridge/agents/test-automator.md": "4eaa8aee6142c3cc429bfeb7c6f0bbb157e5131d9bc81ed3e71676885162f5bd",
+        "bridge/agents/test-engineer.md": "2193f0d004f529b3d3415ffc38ab96d8de479456a4ebe7c001d876eb0eb521f1",
+        "bridge/agents/test-results-analyzer.md": "279068d57c16c97eec61662521d5338fdf7ec1b40d23c6c4f214f58ff599ae57",
+        "bridge/agents/tiktok-strategist.md": "4d2dc0ac18f5d5cd4bfebdb8f54309b199f0a6065e535a526ac0cc360a56072a",
+        "bridge/agents/tool-evaluator.md": "f171db7df7d5ef2379ef50e2b28d72e95c383b0a644ff1749bbce98c081fb3c2",
+        "bridge/agents/trend-researcher.md": "b9038f7f14b9715f0a8cb4339948b042695548ee5837f82d19a7c52eb751759c",
+        "bridge/agents/tutorial-engineer.md": "7665812ebbaa69bcd92783c8bc2d0a333ec08db8b1719b11e8b92c33ed481195",
+        "bridge/agents/twitter-engager.md": "e14456358d292bc9b25d69c4d5c523fc2fed4eeaccfc3252ebc8570457758651",
+        "bridge/agents/typescript-pro.md": "38982e2a4a9cfac9ed94e856be69e16fddb67fb269647b5429a0ff6e04d2ec4e",
+        "bridge/agents/ui-designer.md": "920a6dd8ecde24aa8bcf008b7eb6dab8e21be37c1d75568687235e9a000a10ca",
+        "bridge/agents/ui-ux-analyst.md": "efab4cac5e0088ca57fd0ab41204a9150f1958d1403094051462f9685caba89e",
+        "bridge/agents/ui-ux-designer.md": "2cb96c2d9361d8b2cf46f91cdec65d7ea2374c860cd445126d65e76acf93a99d",
+        "bridge/agents/unity-developer.md": "a4f8c234d4cfa44526f6acf9ddc53a1db2d7ecf7dcac587228a55b818ce4a10c",
+        "bridge/agents/ux-researcher.md": "da81df2b09b96156579fcaec9b00fd5def068ec411083625bd5a2f3136972198",
+        "bridge/agents/visual-storyteller.md": "329be7d45c22c05dc95da8f2fbc533358c5d9dfe8edbe6282debd7e813807955",
+        "bridge/agents/whimsy-injector.md": "e46bf42c0bf8ab5ad7dbf60f16883d88c97935682faea36297480b768560db76",
+        "bridge/agents/workflow-analyst.md": "e2e5bd0520047ef9969a13304ae832d80e47ec60c911082977f733671168e949",
+        "bridge/agents/workflow-optimizer.md": "59976399e8ca6248f570301d346fe78ef13e07c9af09170661a6d0411bb5ff69",
+        "bridge/bridge.py": "ff07b4e81a1c72efbfde230771b1d626f0f4282c810c4d1cc63710af76b834cf",
+        "bridge/config.json": "de993a56804d107efdd5e2348e7f98ee909be97adb393f29fb8fb80b5f8a09de",
+        "bridge/config.py": "5a5e00ac875ed8ef2a8fa224d74073f1786bdd58c95d058bacf7f3d25bfb0d0d",
+        "bridge/connection.py": "2ab242a43316bef2d5a28111430885c1a15c045cbcd12fe864cde7973b2ddd73",
+        "bridge/context.py": "c87ec45183d155a4a01349b16c032d938665c874615701157a523c8ab09a9d56",
+        "bridge/context/GAME_CONTEXT.md": "1639b6f615f368e99921d2a622f3728db33bc155cdf8bb466d229fba87589268",
+        "bridge/context/WORK_CONTEXT.md": "1277434ac38f6c27c7d3cb7d5ea1d64169fa92b91615892c24a01b405a7fcd52",
+        "bridge/conversation.py": "715e9b98cb7c93cf065b1b8115e465aa9246cbb42190c035244b65bb2cae04c7",
+        "bridge/conversation_api.py": "f51becaad26e1c17ed8b366221a055965ead14b3b7628b99d73111475171dae6",
+        "bridge/conversation_backend.py": "21f0034bf8d79b3878bac8411a1aa2db9cd7540c34b3d7cdf424654b857e32ff",
+        "bridge/conversation_sdk.py": "a615eef81998169f9eb3828168f4183cdb0fd88db93e4dc781623f0d91fd3354",
+        "bridge/domain_manager.py": "78da5a5cc3cc1eb5e35cdd0f69cf623b2c6a712d2da361aab9094c65e468f8e2",
+        "bridge/domain_protocol.py": "58f1ed37c0a70100f0d8c7b88f1eaf01a0e58c0b326d07538a972e96619db9cc",
+        "bridge/domain_sdk.py": "eb9fceb935c6819e32113696ff520aa9156ec37628e6870f7dcb2c640f82271c",
+        "bridge/domain_session.py": "f283c486aa60abd6f15cb0cc9b1b2b69c64afcef962671bd2f1682b59dd1de63",
+        "bridge/extras.json": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+        "bridge/guarded_transport.py": "e5d6b4a1af15be7ce031b08d30a9bf232fd963bb143339cb201035d355211c68",
+        "bridge/interaction_protocol.py": "34d4d66e6d39a54640bcf2d24e53f404333210d71569186e073cb7088f5343a6",
+        "bridge/log_storage.py": "1f20a67abf04b2059fe23aa78a1ecc9a9138e94e6db3f549221995c415a4cbe7",
+        "bridge/observability.py": "fc7f3545a0acea5c26cfbe70438845a978ac5e60fb9ee68e3a4230d5ce1fa416",
+        "bridge/project_files.py": "2ecedc0308230381de3b01bd4ce2b578c756d5f58b1a1989a318494f1a28c96f",
+        "bridge/project_memory.py": "401cb11627aaf5c111f4b1e092ae4f7e6f595f7d3d09d2238290864f17ae93ab",
+        "bridge/project_service.py": "7898655708cf245697812f4e8959d78b7e08e3ab0d6edb835de169669d0a4888",
+        "bridge/protocol.py": "db978820fe75e8cd47d7dbecb1106e96a64d8777a848aa8a93a0eec065a86ee7",
+        "bridge/readiness.py": "f95766bf7752e7b69a310089dcfbe9d7a9cc52ded59047398d7977c202af1160",
+        "bridge/repository_setup.py": "acd029ffb788484da1523f0e84fd821fc59a4c466a2c57b0c9e810421a101187",
+        "bridge/server.py": "842e2300824abaf5ec3eaf522a7767c973919c83fb8ee19ed400517bdd1b7869",
+        "bridge/sync.py": "24e014b5379658433936a7ce81a6de086a1e90465ab1a20e5078108a586bf853",
+        "bridge/tests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bridge/tests/conftest.py": "36f81e951510d49fb7c8b22266bf1dc568734fdb29510f6469b6296f109d4e7d",
+        "bridge/tests/domain_fakes.py": "c8900385355812d6468518581e67ef842b50951302c3291557713598802253b3",
+        "bridge/tests/m12_harness.py": "012d94f04b6423d7e0e4de5cddd28ffed6b88b35c9f28d033faadae8e6ce4b8d",
+        "bridge/tests/test_agent_bindings.py": "6d67e0ac9f093fe96f52754d6cb324bcdcb3def378b309e5f318efbedfa742d3",
+        "bridge/tests/test_agents.py": "df77911c06bf3eff270ca2aa47833bcf9f11a0c2503a9940759576c8e8b995d7",
+        "bridge/tests/test_config.py": "542c2e5b2083f9b8a184e2677275c226f90b7f55ea26543112e83b6caf939b4d",
+        "bridge/tests/test_connection.py": "e8ff477d44a68fd22c1c8a48a1ce64f67f10b2c169edd7d400c5f0b16ea28c7f",
+        "bridge/tests/test_context.py": "69bcf288a409d09f2840019658886b1d95b644d5a983632552213609a6612d14",
+        "bridge/tests/test_conversation.py": "95ee914ab6812ae29f9e97241d85762423bb646756e6d523e539a14bcac6ee2c",
+        "bridge/tests/test_conversation_backends.py": "f708c3e8456c8e132b74a3e8a0067413c06ff5363dc7926fe66f9911ff203ea6",
+        "bridge/tests/test_department_workspaces.py": "d3f9093e31cf2c7c7f0e7fee31b426a4b5ed1a76f4b366198246d9abccbdc4a2",
+        "bridge/tests/test_domain_manager.py": "2d3e4fae8c9eaab660023b8ae70e162459f259b9dc0bc89d1daf304620214409",
+        "bridge/tests/test_domain_sdk.py": "6f1b1d04cdf4dd243b3cfd48ffbda7b93a4f63c8b9fbbbb072b0b591116b7950",
+        "bridge/tests/test_domain_session.py": "e4043039930b255b80d702597c1681516730f3fbf48c4ae03990c2e5dfeadadb",
+        "bridge/tests/test_godot_conversation_integration.py": "e7d62cede5d4677ea9108ea1283a94dd9b77c93b94d17a2eb5b813183c85359e",
+        "bridge/tests/test_godot_domain_integration.py": "6a2e58400cebf79748a76c015377b59d312208e5c33e618a214b73034336e057",
+        "bridge/tests/test_guarded_transport.py": "b10f24e39a5965ee32e9b2e15c66713c17e16d40d4bf806c238f46508f6bd67c",
+        "bridge/tests/test_interaction_protocol.py": "0b5f9f454451653cdf5191d7e7e90c0f8f5e9e9b13dafc629d893bc04339fe61",
+        "bridge/tests/test_log_storage.py": "7d1e9cd2d1797a27c477bd97d9842fdfc3f931aedcbeed9063d10b89bc8356f5",
+        "bridge/tests/test_m12_integration.py": "e063306a51fb27829fc88194abef7653178d03ba7e8c73ef2c1de45acd801252",
+        "bridge/tests/test_m12_live_orchestration.py": "c9756eefc52dc9c885c8aa1d9f2c08a171d599463d601ce5aed9473e21d061eb",
+        "bridge/tests/test_observability.py": "c85742d75036178e9b386630a3b3b3f74c5408a343cf55402915a512b929b978",
+        "bridge/tests/test_observability_integration.py": "0b7474b38a72c11adcd5993672f59b6dad26cbda889018f00ff6fcc8f3f5f3a5",
+        "bridge/tests/test_permission_mode.py": "2a96b23f1e4dc99e67024f267e6bddcc437de71cc5d82179c3ac4cf2e19d22cf",
+        "bridge/tests/test_project_memory.py": "9e2619218475a0e070a927591a082f3dbfd6b902f2db4bfc719bd0849553c2c5",
+        "bridge/tests/test_project_service.py": "6462c6c4e4f42fffdc14a0e217c68e7767faf27a84e17bc7c60b440ef617343f",
+        "bridge/tests/test_protocol.py": "c5ce8217c300b9135b50803378facfc6042f47444c42e758d1eb1b888f496754",
+        "bridge/tests/test_readiness.py": "34f0ff0ea3931378a2e0d12d6cd2e5580a0ea5a83e6ffcc71b5bb476faba8c7c",
+        "bridge/tests/test_repository_setup.py": "f2c3778c8bec1162a611557db9772f5b17eeba2bc969c3d38d0531d66966d1b5",
+        "bridge/tests/test_request_correlation.py": "0ce774539d7ee1b6b75110ed8e1069be5a7c6e497bf46c91e0df791c8f9ceab1",
+        "bridge/tests/test_runtime_wiring.py": "2ddfae3ddb158ace47115fd94c445030af6a566e9d7ad4f7e62d4bbcc199dd7e",
+        "bridge/tests/test_server.py": "e4b53c18d592238eb793882145cd2eab1e4a559964bbe2818f1b872e89b3e97c",
+        "bridge/tests/test_short_lock_contention.py": "aae175e17f6063df8d50c41943904ed4e1d94aea9069ab9805c67b13bd139a5b",
+        "bridge/tests/test_workspace.py": "0863f0bdaa2fa6d2cdcd87862ff108d3740ca0f5542e9cdfd27d4e5bd2996a52",
+        "bridge/tests/test_workspace_lease.py": "778f6cff4df33412018756a4c07344426bc39c5ce8d1f28fa638f6a28640bf88",
+        "bridge/tool_guard_acceptance.json": "24cd3b4a7d13192721fb081f58b4ce19a60af5607cd244158bc02c45cd7d85fa",
+        "bridge/tool_guard_evidence.py": "71cac4cf92612ac59957b552baa90895233c50a5e9a8a3c13f8e162c7b8cdc16",
+        "bridge/workspace.py": "ca2d5cc7eb4efc973160b634b7d4615f864acbb30dc2753809d94a2cefafd647",
+        "bridge/workspace_lease.py": "b2cb53ee97d4e94f79e8f74517f409897343a4869c8687c6fcb2b4dceadc65cc",
+        "data/agents.json": "33f83c646a6d7b52c70365a1a6fc64a5b5d4be6615a98491953c055ebf36d747",
+        "data/plzg-flow-snapshot.json": "f179259bcc650327c00fd14678905d0812f52a153e379ffd981c358a79f89007",
+        "docs/.gdignore": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "docs/README.md": "c8e74d1d0a193670242cccb2ae005ec33a84a122549c30aab5b20c040dd8488a",
+        "docs/agent-directory.md": "c6df18743033a96fc8d709d96ec529dceea9f049d87e72d6fb0f312c9ca44e58",
+        "docs/assets/Agile Explained - The Untold Story of the Story/agile-explained.pptx": "362679ffe6f747ef52f09c91abf5d3b9a8d81fef92e7482342e34c30baa97d4a",
+        "docs/assets/Agile Explained - The Untold Story of the Story/agile-interactive-offline.html": "74fed66e183829db060068576acf9f57f16e48adee5b95cf6b766991689fb429",
+        "docs/assets/Agile Explained - The Untold Story of the Story/agile-interactive.html": "dc3ed8ae2ef4c733111f9ca1b0c740da0775b67ae7c6f4e364df34410185c77e",
+        "docs/assets/agile-littles-law.ods": "37e5dde4a47a04ef3deaf663630f6f632641cab1c964bf2cd9ad3955ec52dfcd",
+        "docs/assets/plaza_build_steps.html": "f747fa0e61bcd49bdb32f74f25a5e1824469c3714e5eacb466b0d9461f1b0b48",
+        "docs/assets/plaza_godot_architecture.svg": "17cf97b8f1cab9f226450a1971c0a4a2d27604f00ff43362a0009629fe8e8ef7",
+        "docs/cc-statusline-protocol.md": "ab0ac20e798e74c60349796f1f7b68ef5474a529b675d194b90bd419fde5cd2b",
+        "docs/delivery-coordinates.md": "3d29b3b186ca41b565cf2acf3245e651d002cbc65a31eafaee1385c3e93f71c9",
+        "docs/designs/2.5D-RPG-Prototype.md": "af1527d01bebf9d1a666fec8c09e66f8d8c56f065461da0d214a75db174f0d9b",
+        "docs/designs/platform-decisions.md": "ddad007c3ebbdc7e8da0c43e9ac41e3c3d995cc12ac660b7eb6acba34e347061",
+        "docs/devops-setup.md": "87ebb5a4720c8418abdcfca4f90250a9032c57d89f04cca783d81ccd62467708",
+        "docs/quick-reference.md": "cba6ee3f1d9bf9cd6b5d9d9dcc078b33fb38b2077b68258cb4e1ae9967759d07",
+        "docs/reference/agile/Agile_Expaiined.md": "0fb1902ec53d22e2f74d91411100632532aa5f3a27eb12dbb016964c4962ba64",
+        "docs/reference/agile/Agile_like_im_5.md": "f84809132c9a852bb97f955aeb23276f9e1006f3b3d591c14c0cf71600419246",
+        "docs/reference/meta_spec_governance_tree.md": "545075fdf1be244f071ac48ce14d8ef56dfa4367b58b1729a4652028ac0fb1f1",
+        "docs/reference/using_agents_sdk_with_claude_code.md": "34629a00878199c3c2eb9949de6f53a0b993a3b332ab4131f2f80b5879801a7a",
+        "docs/storyboard-week1.md": "6bd78f5d32ba94df9b8a776ad6c9c4a8dcd76923fcbd7ca723b6b4dd7e240bad",
+        "docs/superpowers/plans/2026-08-12-bridge-domain-architecture.md": "c3951f2987a6fcc40718551742b7fe9ddacf4a8c6182ef3da78eeb3cc8639e93",
+        "docs/superpowers/plans/2026-08-13-cc-tui-statusline.md": "e623945cffbdd44b08cfcc3be33da8b26ad23332b3be814da3fb3be6821e7688",
+        "docs/superpowers/plans/2026-10-18-m10-config-observability.md": "2192d9a51b41af7217aa703aaaafa9ae632bea935b98e4bd703af400aa8bf845",
+        "docs/superpowers/plans/2026-10-18-m11-npc-conversations.md": "0e8e749db625fcede3fc1a1c644a4366f41aefa545c3dddb7e8d7d74df6f7d15",
+        "docs/superpowers/plans/2026-10-18-npc-sdk-execution.md": "20c237497b734e5020fe587ddffadf9b6206f3d3f1acf958601178fa18eb50fc",
+        "docs/superpowers/plans/2026-10-21-m12-project-execution.md": "9754879ef6f14b33aa224710d0a85fe78c5ab1704e9c6badd94fb0f7eb065a77",
+        "docs/superpowers/plans/2026-10-22-m12-character-domains.md": "8776abff7d9d2b43e5d2fef03eca14649b4f6ca331ac9ca033e9eea23b3a5a0a",
+        "docs/superpowers/specs/2026-08-12-bridge-domain-architecture-design.md": "118025e3c83b5da9bbc33797b95b67a7a61f7169605853cca9ef4de15e6dcfc9",
+        "docs/superpowers/specs/2026-08-13-cc-tui-statusline-design.md": "4b81a836fef0f5a7e50ed9bb0276eab454b6488c2ac0e872b6dec85e9cb54d8a",
+        "docs/superpowers/specs/2026-10-18-bridge-first-platform-design.md": "a1d7233605550c747ee9355883b77d716ac7e356b4aa3ec3dfd236acd270ab65",
+        "docs/superpowers/specs/2026-10-21-m12-domain-execution-design.md": "42eacd94e1b57b7d5bf5989747ff4735b2828380b0c034c4571e16bac963dc55",
+        "docs/superpowers/specs/2026-10-22-m12-character-domain-amendment.md": "e10c4d5ba5a672b3d210e92e854cf8a5575f1d5ec649b179552c5ed69891a8ea",
+        "generate_report.py": "2907f52b69764217c6a3fcfa515cb524c4bb15ddc2df7dc85d607f920c4bc07a",
+        "icon.svg": "1f1ce3683b012a2e81c18d4df736bb7a0d3069a0e127dea6921c6b0adb4da7d1",
+        "icon.svg.import": "1135b102818c1a0c0e0cf7305febbdaf59005187707cb6e3e59c0f906a606875",
+        "package.json": "00a885455d2a2842d7ec6065403555021f453d50d578c7558ab94f6ff520ffbd",
+        "post_to_confluence.py": "6bcfb70e0d8797c57ffe27b755bc3d094df05c4737210af30b41f4b5eca64c3f",
+        "project.godot": "b124d7084c60355db12572711b03918834bd812af44905a3f8a10e3a32f7b902",
+        "release-please-config.json": "eb6137cb81481266397364a1a417f199727aeb6e7cc200488501931f544b8d10",
+        "requirements.txt": "d61902f5509002cfcb3571cb5ff4651e7936cb46c1cc0968c0bf3362b2e2d8d6",
+        "scenes/bridge/conversation_store.gd": "1740c3db317642df12e68438f901f7426c23c912c37edcae909089c092709e6a",
+        "scenes/bridge/conversation_store.gd.uid": "2b643ee3943543b129245d17d5f0baf31389252203a11e140cddbf4642e363c7",
+        "scenes/bridge/domain_store.gd": "50a62c1d2387966efcfd2c2498c95ca3ec20f1c74e9ee4c71c25f48ab097d581",
+        "scenes/bridge/domain_store.gd.uid": "852a7b7c2b8c9a124b6545dc0aa6d57ae3d448bdb5e37b6bf5269b58c1c20972",
+        "scenes/bridge/domain_surface.gd": "986c514f592b82deb02c4f454584041e2d9bcf1f118bb2a5f0a460b481c7257e",
+        "scenes/bridge/domain_surface.gd.uid": "4d284ff77695af0048ea0b479a3898b2ee49b2e14be047326de6887480ca6e78",
+        "scenes/bridge/ws_client.gd": "f14cd5b4df4c3e0f501aa94ff0ed29ca7855fe200b3b8b5d92b29e470eaf30b3",
+        "scenes/bridge/ws_client.gd.uid": "dd5413e68240d797025f50c075f697bed9a98ea9c50000417b882bc5561d17b3",
+        "scenes/hud/dialogue_geometry.gd": "75a1c13d30de69b114d282156cd1c47813f80ecb3c749499012bd4a4c028f1de",
+        "scenes/hud/dialogue_geometry.gd.uid": "287a9ba869b4b360adb4f8509b4975043f9fe8dd32f9802e9ca1c7fd7691722a",
+        "scenes/hud/dialogue_panel.gd": "7717c618dab2675a8ff907728e8a85fb4ea609b7fc06ee1cf26914650059183a",
+        "scenes/hud/dialogue_panel.gd.uid": "538f0cf638edb79fb6f778073d9202486a900952f8fbbe4592ccbfb1c848ebce",
+        "scenes/hud/dialogue_panel.tscn": "ff7268e6d1b4342a20de545682acd5157cc283f14f08b902191496f29e703043",
+        "scenes/hud/domain_panel.gd": "dcd4b29d2575be3f4dbbab3fc7f464656e956f3f371e711cdb1b08a44f2c9f37",
+        "scenes/hud/domain_panel.gd.uid": "c5dca0df245f7dbbc8690619a0a55d00dde2171f1b9ec4636c6e32c748746905",
+        "scenes/hud/domain_panel.tscn": "68381f7e732004bfa9a768b947dcecdb8d4f706bb2e4268dcfd47d1da707daa9",
+        "scenes/main.tscn": "d785b9e54c3245c4b97dc54f0384b76fb12e1d32d4ed1c03099a5cbfb184f21e",
+        "scenes/npc/agent_npc.gd": "cc8e5cb29b928456f1125c5992cb1ca7d1f37dc42a1c8903e809e983fbe8404b",
+        "scenes/npc/agent_npc.gd.uid": "9a8d9fed94b6e920aef053219fe4d23502ed290fe0670589c2cddc571ce5d554",
+        "scenes/npc/agent_npc.tscn": "5f014ae6aaa3155da4c32987048669791976d8bf156a2cfa9d6e3ac13d89f7e3",
+        "scenes/player/player.gd": "05b8d34f3245f52f764b2a22434b6e246a8c528d9ebe76c13454b81b2531d0a4",
+        "scenes/player/player.gd.uid": "a37053018795fd6dd048dc1fcb96857b820f3baf2f072787f9f2285739f74b5a",
+        "scenes/player/player.tscn": "049d61dca14dea64bbfdf938422dc8834398b9114f7ff0f76a47b4ed47a387ce",
+        "scenes/world/office.gd": "1cdaff7575fb28916751ba906351b7a112c0c6776347d05df20898e18493d9d8",
+        "scenes/world/office.gd.uid": "ae3c74dc2ecc23095a61e467797ab4f2403dab62bf859f6d08de8f3818a531b8",
+        "scenes/world/office.tscn": "e9d64f30f3e547d896bee09bc148e2e6e1c71501c58ca71dde64226600fb0217",
+        "scripts/ANTHROPIC_MODEL_ROUTER_(Template).py": "7c5acfad2ab2bf302ca29aa2e10a35516062eb0d0547ef841a59dd930a16b927",
+        "scripts/ANTHROPIC_MODEL_ROUTER_HOOKSANDLOGGING.py": "932f0412d8d14fed2780c3ac1116308c38421f82eb5f68e75612900d257f52f4",
+        "scripts/check_sync.sh": "99dbc3b7e8893c6ad92dbe62c62ac5845aebb4d90139d72536e9105818ea269e",
+        "scripts/evidence_output.py": "83d1e4a98bb91ca417625bb985b9744adc95c6a35f975ac5d0fa69ec5f80db51",
+        "scripts/generate_agents_json.py": "726a176b31cd7af043551914bbd9de14519e72042fa52c87e2fd2fe5667b589e",
+        "scripts/m12_live.py": "9658d4d23140d50432182ce9f483f7284b2a640258bcef12f194f51f1d38a67e",
+        "scripts/m12_stages.py": "2c283a24a7717f7fd2a1d01eba6cbf22bf5c9d5bb69fa7f6d80740df7eba79b8",
+        "scripts/m12_tool_guard_probe.py": "157a5d6008359a97143c7a6153126f8eb0e3c06a688cac8f7735c404c5b7f584",
+        "scripts/pm/_atlassian_guard.py": "afcccd53722052f4fb468a1452f558913e7660bb023b1abf48d907a39e1d3045",
+        "scripts/pm/_canonical_pm_files.py": "452c90084fe2fe0e1a410ec671dd1e3b119b27392077fc554c059891d9ea5fed",
+        "scripts/pm/_confluence_format.py": "cc8f554460fe5ca250513b2def092956185fe2e1c65dbb4ebba4e5f45e054584",
+        "scripts/pm/_jira_projects.py": "5600dca4c72123dbfb15f9233245822b255ad869d46308f16063dc85844ca540",
+        "scripts/pm/_watcher_lock.py": "7dfb8be61c545862b7e82c5d1636d1b4da58c19ce0c7685984bf2a2078dbe44a",
+        "scripts/pm/publish_session_log.py": "9d9578d94a255fc5c136fb4a96c2d1834ac7cdada43488c26f825412fd2376bc",
+        "scripts/pm/requirements.txt": "97f71350c86ac1ab5a13b168061cde450ca8ed50d432ae7bf22fe8d181c29712",
+        "scripts/pm/run_pm_script.sh": "169a566b5625bd1692cf64b655243aa6f0b12514104899db1a15ba1c6aceb31f",
+        "scripts/pm/transcript_digest.py": "2e2eafb41ba37cfff64ca56d5b32127125080a69cd6b2ff6f0fe4b6499a9edd3",
+        "scripts/run_headless.py": "73d94f9b1eafc779b3b841402b8514637d9dac3e9e5a6057a96cacd9913c438e",
+        "scripts/sprint_5_gate.py": "0ea27b5953f2cb58d005a398e6b70d9cd15b17a4748ad8fa823f39771c7e5b8d",
+        "scripts/sprint_6_gate.py": "b973246d59b92ad61d7064f530e4a51493ad911264da8e39af24d4ca38d01d28",
+        "scripts/sprint_6_live.py": "692dd1e72d5b1ef567bd5b5ae4724207ff2099f9751210f2ea173fb26f8eb1a2",
+        "scripts/tui/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "scripts/tui/cc_session.py": "a83b368c10a3924c59c0d692214005cfb773e6126db4ba75a4779f3f11a90139",
+        "scripts/tui/statusline-schema.json": "84e87cff17b8901a55031119ebbf160788e0af69d23e68dc72ae9cf496c8f0b8",
+        "scripts/tui/statusline.py": "487d88731b1999c88c17f2add1fd1a18a0a30510cc88a0109dd0ea7326eb9d2d",
+        "scripts/tui/subagent_statusline.py": "ed264ae44c01489cf0c351435a163d7162304cebdfe32e64f19da40a145d4119",
+        "scripts/validate_delivery_coordinates.py": "c414841fafdd52c34915d3c8a5eba80d4cdf119b609cef071436cc0ad307beac",
+        "scripts/validate_specs.py": "9dda252336bf393730ec7a93831f4bc8da1b9bc5cba6d0e27e621c483309a2cb",
+        "specs/README.md": "38bb9da1b94c0d1abd94564cc796a2da31818205bbf5a07f440f6f8f72d79ede",
+        "specs/aligned-spec-v0.2.5.md": "0f72af75efbe918ff41aee789c1d5cf36e5714e6c908aa4b9f29fede75efa43a",
+        "specs/branching-strategy.md": "36d1cb729c29357eca7d6757798aa9f0a0d2f8fbd7effee33f7c0bd7df6265c5",
+        "specs/evidence/m12-character-guard-attempts-2026-10-22.json": "705c8fdf5ab081402247474aadd6ee6f307d9acf7faa8a9726d63f5909b4c0a0",
+        "specs/evidence/m12-character-guard-bypassPermissions-2026-10-22-final.json": "715011b151daeeb6c718800db7005fec73c0aee88071c3ca661816e1797564de",
+        "specs/evidence/m12-character-guard-bypassPermissions-2026-10-22.json": "f01dfca54113370860cad544657f536856358696305756c53b11383ad86ec97a",
+        "specs/evidence/m12-character-guard-dontAsk-2026-10-22-attempt1.json": "9293cef6eafbec226c21fd457900c4f35346edebe8e03c9225793e74d430d2eb",
+        "specs/evidence/m12-character-guard-dontAsk-2026-10-22-final.json": "6462dd51b83401a67570b80086c9be827fb73173b39137f6b544d27e1cd098ca",
+        "specs/evidence/m12-character-guard-dontAsk-2026-10-22.json": "c289785acee197c45ed7d47af341389e4cd2501965852a5091f734b4df0267ee",
+        "specs/evidence/m12-character-live-attempts-2026-10-22.json": "a69552be9d86b1446c4bf8ea2a864f837f6b4fe86b7ec38a1108bba5c55be7b6",
+        "specs/evidence/m12-character-live-dontAsk-2026-10-22-attempt1.json": "45fe855d1823b13ebc827775b79d9be2f4aeacdef8dc7d97b343fcacee874e25",
+        "specs/evidence/m12-character-offline-2026-10-22.json": "7df8d8d309c03a93f5b684678844790dc822dfef3c134f850bc993c214fa2ac7",
+        "specs/evidence/m12-guard-2026-10-21.json": "4c4fed8833c5dfa0c7efcead8e09ddea9b1ec99f696dc34e5638df57c08b28b6",
+        "specs/evidence/m12-guard-final-2026-10-21-attempt1.json": "35fb684d6f964fc70146be78d0376694af61fcb4e1ea326dfab4e54172f564b4",
+        "specs/evidence/m12-guard-final-2026-10-21.json": "6611fd8369418f2f57aabaa14f1545af36dc55df41acc39bbe449460e6439552",
+        "specs/evidence/m12-guard-final-attempts-2026-10-21.json": "cc61ca0540f0d9e87e20352c050cf83cbb3399e6ccc3cb145d2538db29b1a25c",
+        "specs/evidence/m12-live-2026-10-21-attempt1.json": "51a68bbabb6d91cee630d7314b4f6f3643fdfb8098ddfc3d46822e0321654a08",
+        "specs/evidence/m12-live-2026-10-21-attempt2.json": "9d9c464017e1b8a556d169825eaa23ace4ab8d6b92ef42131e8bae5c2806b754",
+        "specs/evidence/m12-live-2026-10-21-attempt3.json": "ef0f66c5d6d4b3dfb5bb1d7c7d48562f63d1bf65962be0201977abede889f235",
+        "specs/evidence/m12-live-2026-10-21-attempt4.json": "33fd333589dd2a5209abcc0e2eecec711e79ef7b17c2f4f9e0c1a7dfc18d37c3",
+        "specs/evidence/m12-live-2026-10-21.json": "2e2a34e7ae02ed15565708c9aa3c3697ef9a2f45eec653e7aee369d102ba5430",
+        "specs/evidence/m12-live-attempts-2026-10-21.json": "40ac55f47c16b36840ce9ced58acd7dc798e8e2efd4eedab2a795bb825bd4e26",
+        "specs/evidence/npc-sdk-live-2026-10-18.json": "807a1c0122801d979dbf7eaea24f0e7b0ce9d0def2888162298a7519241a4bde",
+        "specs/evidence/sprint-5-doc-crosscheck.json": "cd75e323f164379cb1825375d18d957cda771edc887fa1c6a3f2c8be1e5904e9",
+        "specs/evidence/sprint-5-triage.json": "6256fdc0f2054162695d5ee02ca3b3defc642e0470952df6e50725050a26e332",
+        "specs/evidence/sprint-6-live-transcript.json": "525cb476768fb676494ab29a7ac5cc033411244e6cc861687541c6d70ba3b7d4",
+        "specs/meta/META-SPEC.md": "2f5f338e4d681523b9e18972d586f2319b5ca542dc4ed6aa925df1db3ed29085",
+        "specs/meta/README.md": "396f282975602c2e3328bba748ed9103dfd15d1ab51c460c3795a0d8c6a65bb9",
+        "specs/meta/concept-driver.md": "832b45e14211c4109b3d8bbba3155c6a2d9c234f44d104509a3c99195413943a",
+        "specs/meta/decision-register.md": "dad2d87dece1c863b8d3ad8834855b36f86434594ef8f8579a3e71ee245e9a86",
+        "specs/meta/doc-registry.json": "10c92762ab3d758dc2a15c5af84bb3654a37f30d09bcbd81fffb39849a61ecba",
+        "specs/meta/spec-drivers-v0.2.5.md": "7af742555676e07bb6f63009062e40c7899beb2464fff01342149190b5c3c86d",
+        "specs/meta/spec-frontmatter.schema.json": "944f2401ed85623303ec0ec0faabd07f91ab37dc92ab64d8fda7c101c68f0073",
+        "specs/roadmap.md": "05c00c34a8869d117953e9325384fc0eb9f771b4cdfe9dfbad2b5f24f5516d14",
+        "specs/sprint-2-charter.md": "d1aaf63f7ad2442bbeebbb5f98a3dd5453eb0a4e003e95489287c028b63d38bd",
+        "specs/sprint-2-loop-plan.json": "891d8e1283aebab72ea23987855ab1a888f0e755ad5f925b245284b514df0e26",
+        "specs/sprint-3-charter.md": "94c9e836d7438619b6c9674f660f768e542243454af8a6f583dfe87efed2825b",
+        "specs/sprint-3-loop-plan.json": "d4cbed744e96e7bfce9c3e2839ac55c3172a6e312e7addd81f00a830d969b3d8",
+        "specs/sprint-4-charter.md": "785c46cedce84fb28fabd92bbd9dbc9544ad29d48a5ff76be2309771f1001d13",
+        "specs/sprint-4-loop-plan.json": "b1c5c8401373659c674056f40adc15fd18319fb400aaa6782a3546ce787b1986",
+        "specs/sprint-5-charter.md": "be3efd0300121077d9d96378483a36b7520da5acc9c021c1aa6d0d7e9b8ae2e2",
+        "specs/sprint-5-loop-plan.json": "4654f5f1d5ba1508f73ba428f28578ee20d7393147253b2325be8e83c066e2e8",
+        "specs/sprint-6-charter.md": "3e45c37ebc48aa4d3d76227225e045025ddde00014dce7360f595b3336e97918",
+        "specs/sprint-6-loop-plan.json": "95f5bde77b8b77bed01b0e43c53191a7fbda50ede1849fc30974dfec90add81a",
+        "specs/task-tracker.md": "bf480f28e640d462a78017300d3a8c8a4a65853a30128f4d72c70350204ac07b",
+        "tests/character_domain_test.gd": "d5d45c0670c4fa2c7e22f73125f11c94777e57ebbd73b5008849edf2bb3ef9eb",
+        "tests/character_domain_test.gd.uid": "245de4013af75d822424431831a93a1dcf56f7175e5d7bb98e8007950d6038fc",
+        "tests/character_domain_test.tscn": "0a273e50ecc120174c662bf43df134f33da0ded20b79b60fb0e02c5910161d75",
+        "tests/character_fixture.gd": "be6f843c1eecdba3c8ae57993ff90e8e8102b43261baeac49c212edf858eb0f3",
+        "tests/character_fixture.gd.uid": "a1be9cc20898ced825c4052ab8b08830fc95d8e61641d37b495e76234521add2",
+        "tests/check_sync_matrix.sh": "e88333f9fa170ce8c92a8941dc7b80d56993939660e92bd58301c5e0c356e89c",
+        "tests/conversation_store_test.gd": "13037590185e1ebe101c29618eee5658cce2784157b62897b36bc6588df44141",
+        "tests/conversation_store_test.gd.uid": "9aea8f95d86684c62e950e8675c90485b8a92401afd738c7cc9dd9aa9cd6df25",
+        "tests/conversation_store_test.tscn": "aa377936ee8ef027899af65de7de082c9bcbf9ab3b7a61a92a12fea45c8d7c3c",
+        "tests/dialogue_panel_test.gd": "54df9e8e1c5d1bcf09344cd506b661afaa5d487692fa4c3c03c681704a69196a",
+        "tests/dialogue_panel_test.gd.uid": "e5133428da1b33ea9cb527253cbe9ac3183780edd476d8096fba6d14fad74987",
+        "tests/dialogue_panel_test.tscn": "6de806c0c16f097b703d1ee685cef14cb02273952fc6edf6bddef833fc8ebbe0",
+        "tests/domain_panel_test.gd": "54986f12e421b88f6926d0134cb2a6e84371928b950f752c2a176b35500ecbd4",
+        "tests/domain_panel_test.gd.uid": "f5cb6eb9b8f99982f6c79f4e3a83bcc2c1dd482f13fc2d47a26a51443a1abb64",
+        "tests/domain_panel_test.tscn": "5368ffe9476c71f2785e8d3f29d7d6887d58cccaab6fa9d2b869ff1305fde1ba",
+        "tests/domain_store_test.gd": "fd29df177a7581ef6085b63857078f28c4177b5d6878c7c4c4995759cbe0c993",
+        "tests/domain_store_test.gd.uid": "ad1984afc21a10880130389028090278a3ff90c9159639aeba2fdaf0f310e08e",
+        "tests/domain_store_test.tscn": "f1d718c09cc773645720ffc6ce80d8c1a5fd9f4ff3a3b2a271156b3d25e18b58",
+        "tests/domain_transport_fixture.gd": "25194ca2164e21dbe1909411b5df690e86ed58c9dca9cb34773ea2fe52f1bf46",
+        "tests/domain_transport_fixture.gd.uid": "726161bd028699731a76c432f91ed300843c84db81c80e02ee5db0e07d3ebb44",
+        "tests/domain_transport_test.gd": "aa75fea2281dd7c49051487ee085fc348423c542db47a1117d97858f90736d66",
+        "tests/domain_transport_test.gd.uid": "ef6983efe0760a0e22c93b231382be2c2953702cdb7d31aebf240c8bcd63c929",
+        "tests/domain_transport_test.tscn": "59889f91694a3def1b1f7fdd2bd3c13b7738095f9da1e38c11a8d5cc5773d576",
+        "tests/godot_bridge_integration.gd": "95b30ade4d59ed386024d9250d43536dd8fe7183bb8ba6bd1f2248375dfc5b0b",
+        "tests/godot_bridge_integration.gd.uid": "04f05e5d3b87be787116ddf94bd8da2734191d4bc238eea14559fdd63a8145f9",
+        "tests/godot_bridge_integration.tscn": "84d730ba01c7cc6e6600d002ca8880f9be3d9c6a320ff99cf5a1db027e967187",
+        "tests/godot_domain_integration.gd": "0bcf008f5d96fe6271410fb0a91baf84d1ade5b0073a086abb595d45cb13d8e5",
+        "tests/godot_domain_integration.gd.uid": "08b74e79e304fb556ba7f924ef7e2606d2069293de8c9ba3c13ada3c3359695c",
+        "tests/godot_domain_integration.tscn": "e1147e59b66811384f743b2935a81613f68b0374fff18be60412d9ba3617d624",
+        "tests/legacy_character_status_test.gd": "399c0fce212f7b6d9ef78401cc9c2d0bebdd6678781676f61cf5c5a90e15878f",
+        "tests/legacy_character_status_test.gd.uid": "ffed15c0006825da8aa9ce797b2abdebf41213e50940dd2e7bae35e0aa1832ae",
+        "tests/legacy_character_status_test.tscn": "b8a3743a04929ecc87988faf341c31ae3c8f4e9ac5f3e1ef4a2d276d65511452",
+        "tests/live_conversation.gd": "bb17c03896291133c4a5b21d8c9614f8956d8cf3dee12d742bf1f02b5fa947d7",
+        "tests/live_conversation.gd.uid": "72f159a8bb4dca368da2706a5839b99300ec81c0c54183bef1ace2dfeccf0d51",
+        "tests/live_conversation.tscn": "3e9d99ee746cfdb565514f763547522b034b097db062ffbc0c1e19691a3a1813",
+        "tests/m12_live_fixture.py": "3bf0b6c5af5bfb2ef4e4b05006de5d52801a71abaf07bebdbf40c83e403a6a14",
+        "tests/room_probe.gd": "ea44ccf379ea9ae454c2415882bb1520ab25860f9fb2d0654aa28b6946ebf0c0",
+        "tests/room_probe.gd.uid": "ca935b61397eb5e2acb5a2f7640807e143b4226b8331bf10f22f38da9aba8075",
+        "tests/room_probe.tscn": "a34b9b76f0e696c313a6ded649df03b2dc7a6960aacda1b2a017eb5e6a5e181c",
+        "tests/smoke_test.gd": "99bcbca5d7aa6a158da0803562b4c072118913fe74fa2469631adf9994a899a6",
+        "tests/smoke_test.gd.uid": "62bd3e0b69c8d881c3344a157cf9fed08c76d252e5688796d213c34eda7be473",
+        "tests/smoke_test.tscn": "31253985ee2cef19efafaecf54142fe7e0714fe6a7bbb1e8845f3b6d86e4c65f",
+        "tests/spec_enforcement_matrix.sh": "cefcdf1aca3b9d8178d880083eda43738db3d2fc1aea4b3963a4cda97697f9d3",
+        "tests/test_claude_review_scope.py": "518d0c090156da8e7f0a218066fd76d88aebb2a78039acb529a83515322cf551",
+        "tests/test_evidence_output.py": "8c623f11fea9307748ac9c16db1bbb8d4174c0c40e503c309f4500ee78a75250",
+        "tests/test_m12_live.py": "491afc51ab48bc9b1bdc1395bc39319691b1056aeaced95805cec5c56aef208c",
+        "tests/test_m12_tool_guard_probe.py": "4ecf3f913dd8e492e0551c8cc87f04444c086ac056cf720bfd727d85371c3887",
+        "tests/test_pr_merge_guard.py": "b28db1426fb1ebb60dbd4ed945d2769fce3db1218a5db9e921098af552ff6206",
+        "tests/test_run_headless.py": "2b3951ce5154e8dd23e8013cb1a1ec492a47c36fb50e30afd0aa568738c999b3",
+        "tests/test_sprint_5_gate.py": "eb68f9059122a9d657b64aafd9c9aebcd35f9217d01fc900816a0c5306b6391e",
+        "tests/test_sprint_6_gate.py": "006544991a04cb100720c8b6c1f4e1ed85cde791c8dde5ba806be1f4ecbcd744",
+        "tests/test_sprint_6_live.py": "116fdd4b4fe2c8b2a2ebdec96031820623392d2254a401b7d78f6ab91b74d50f",
+        "tests/transport_client_fixture.gd": "340d910273d355663ba9fa385b912a405475e88a9c2fe9fd416cfd68e1dd8ac2",
+        "tests/transport_client_fixture.gd.uid": "4b1407762c560cc86a7c5775099f62ee8969ac344fb25caad59d5ca835e24b45",
+        "tests/transport_client_test.gd": "5d7c8b0397021c7b166e75d0de82dd25952d47d1e5768df63508612a4373d867",
+        "tests/transport_client_test.gd.uid": "b2e99d40302e63efeb7add6064efb490ff43a25152fbd8c8f6764cd124ddc464",
+        "tests/transport_client_test.tscn": "c3a9411788d331c3f2812010cc852873463a4443ae87d788ca54e8876593dceb"
+      }
+    },
+    "runtime_after": {
+      "head": "a582f114faadf2cb2b9b767fc10a695171446aca",
+      "status": "",
+      "tracked_sha256": {
+        ".claude/README.md": "f8bfb6b4d3d8815858d34f124b65c33f446ca19140b1876bd3114cf0f86af1ab",
+        ".claude/gbrain.md": "d5f5d39fc57f97028ac16edcd2f8c23dde7f7aadac77401516f6b08a291fb26c",
+        ".claude/godot-conventions.md": "5d8d5ff1f4a88f2f808439cf21d2d7be5c1208b2160874e6726f0bc50831fa54",
+        ".claude/hooks/lib/pm-snapshot.sh": "e79552d7b37749d72a53ec507ff7510f78536874deed25b4d517ab48b8bbf883",
+        ".claude/hooks/precompact-session-log.sh": "dd94304b0a78063f4bedfda72c7c11587ae503fa3be0be79ae6826728de0f15c",
+        ".claude/hooks/pretooluse-pr-review-nudge.sh": "e321eff2e5f86714fd658fb968901f578c4129295e79552fae18298d2cbe7509",
+        ".claude/hooks/sessionend-session-log.sh": "4ef9adccaa7df73f9fd9d3c1a20b92c406194162e60c60ad9b9d0e31fcc37cd1",
+        ".claude/hooks/sessionstart-pm-briefing.sh": "24dddffacd793d67a30fa793706d159df98ad5954256da2c9c3e85bb05bf3332",
+        ".claude/pr-workflow.md": "0db7d942e0d508a25c1722b36e00637e1cdb8aca5d9ecdd51d7d4bd2963f84a8",
+        ".claude/routines/daily-issue-triage.md": "9f584bc4e6e06c5afbe9557b2a7a429aed51bc89c024ab3062753bead56de795",
+        ".claude/routines/weekly-doc-scan.md": "f679490bc7091781bdb72d7b5eb8f42eac9abbc0edef367bf788c392fbcaecbf",
+        ".claude/routines/weekly-submodule-check.md": "00a19b2017edaa4c8f85ad1701362b0bf2b1f540c2a8760f2e2d4b4f7970f481",
+        ".claude/settings.json": "f84dbd232dc15fff649e29d7fc7eb529b3b106b6760b5adb1f8ea79748820250",
+        ".claude/skills/grill-with-specs/SKILL.md": "ea6f6172470efc62c109ab6be7c3906c6737f3bd650c1465aafae637a9c40ad4",
+        ".claude/skills/review-specs/SKILL.md": "153f6b92efb418896c187c09b40fcef7b5863fecc485b44a23b29936129b1a90",
+        ".directory": "bbe4716dc9073b48f0acfbddc0d194fb5113a43394327d7e0b091493c4964eff",
+        ".env.example": "ff0e304ed50e776a492e084ef635c4a056959711369ddaf41885f148eca12fbc",
+        ".envrc": "7b2a941f848724dafa6a139897122e9d3af85e29c4f19e5a8d62ddacadebd03f",
+        ".github/workflows/ci.yml": "a35d94ab7ca494f673e22cc004400c0a1131fd46359b563531c545a732ca5a46",
+        ".github/workflows/claude-review.yml": "b8c2b5c7c4765da7197e0c60a1071c17458dd07d43d05f4bd8de4b003bea84cc",
+        ".github/workflows/daily-repo-status.yml": "6bd374c8f66ba50a718ab298def080c45c25a901b8816798f8a927b3d3079506",
+        ".github/workflows/issue-arborist.yml": "92d9e4d1726690c1edab5a829537eaf0063d7921316e52e2dbf2de2c5865d1d5",
+        ".github/workflows/issue-triage.yml": "446a8765109a038a59f4e64354c0bcc31a4376167d6e2aea55ab7ee1453334b0",
+        ".github/workflows/jira-auto-transition.yml": "c9a5ef8fa466beae4e987eb1aad52aa4967a733a4e352f8e14f01de60c6990e1",
+        ".github/workflows/release-please.yml": "5d15e0d823fb4dd88ce0972ba6b0b218db1db2db31ec0382b8b28e464e614e77",
+        ".gitignore": "561d54d6458a76662d45c2e22f260ab9e7315c2894be94d0c98b202d0103ec96",
+        ".gitmodules": "b6f6dcc84561fd7959c236fba9c8958b68d7ff360dd1d8ce9e7744bb5bd45dd9",
+        ".gstack/tmp/codex-review-output.txt": "8432466a80b88ebd756eb1317afcfe7d4ff9c040ccb5e2592dd5c217a8c3e354",
+        ".gstack/tmp/codex-review-output2.txt": "923cb2f79369c23420729fe460ea41fdac7dd19b19966ae0144068f02ae2d985",
+        ".gstack/tmp/pr19-review.json": "0dc72eb4c4220780cdeb508cbed8d8af82c7bd6905b24c4e5fdc2f6c471a9008",
+        ".release-please-manifest.json": "ddb4a22cda08b2769f37b1f1f341370248bf3bd44f5b729ddc1e6140f47edadf",
+        "CHANGELOG.md": "ddaffb4db2c51aacdc616d4f694a30a6f2e4b9e626421ef82122983d69a3be96",
+        "CLAUDE.md": "fe25846661836843db59f39dfe4b2dbc3f431e7fad215654b3570e2dc40668e8",
+        "CONTRIBUTING.md": "5bdd647ce473d9f783fe9980fc8a497cebc0eede050f07686fad0263cc018da4",
+        "Docs/files/README.md": "192d9e028abe05a903f5d4063da5d5f419df1352e0214ef64feda9cd68a32ccd",
+        "LICENSE": "9cf9cf624f4cfbc925d1507f47eef68a16e416241184d71826df7b7817a51248",
+        "QUICKSTART.md": "99e4a95f32ecc2681624616b74732620bc1fc63d94dd7823824b71b5b96a8667",
+        "README.md": "f1e06bb8bc99e2e8a2428a4f375515c60c0c91e82b1848828077b7ef6fb17fb1",
+        "Soundtrack/retro_midi_loops_222/looped_track_01.wav": "aee4f6684310774ff175705f21c385b550c626d0d4e1d03d36a7ac44c0197d22",
+        "Soundtrack/retro_midi_loops_222/looped_track_02.wav": "80b54eed12f89a464e01632c49091cb5eb27b828e7f62a29ac912d17aa0a4c1f",
+        "Soundtrack/retro_midi_loops_222/looped_track_04.wav": "e40be75314331b6216ed4f6be379e98c082b7ab81f6398f27d16cb739a9117f0",
+        "Soundtrack/retro_midi_loops_222/looped_track_05.wav": "d88eae1bc6b6caca84cdd64f410e776f98424078a76c7ec5325b620d2b92338b",
+        "Soundtrack/retro_midi_loops_222/looped_track_10.wav": "63ec214ae29f4108d3c0ec0f939aeadb5deefc16d5e6364cfc8f5166e1164630",
+        "Soundtrack/retro_midi_loops_222/looped_track_14.wav": "a4643e161a95dfac0efaeff66dd5a8c06669acdf23e01371ad2fd274f0293c1a",
+        "Soundtrack/retro_midi_loops_222/segment_intro-b.wav": "ad664a14d51c8d8c91591adf94e56af3aeb8465a10e4de28ef71d55b1b870791",
+        "Soundtrack/retro_midi_loops_222/segment_intro.wav": "b4697ef39624b5261598db74cff2a5e63d640e3ef1a0e939983148b0ef744817",
+        "Soundtrack/retro_midi_loops_222/segment_verse_b.wav": "53ba1a94fef0311b6ba2b6ec511c10f39d50694a7e62d1cca832e7decfa88b1a",
+        "autoload/AgentRegistry.gd": "1f1edd791c4d6890f246cd4a5a4317154704e31c130bc309697485650779d05b",
+        "autoload/AgentRegistry.gd.uid": "9af1fb85227572e5ac112b57f4bfcaf8fe8c75e2ed02073b789a5e3afc6d7508",
+        "autoload/GameEvents.gd": "73af4fa6ad5a41c67565cee60fa41d91d701f88c2a6b0b4b299d92c119aed9e9",
+        "autoload/GameEvents.gd.uid": "a3da7c734582e77e118a914e06c6f825d4054fea923f64ccc43439112236049d",
+        "autoload/GameState.gd": "91769285985ed1fd2ff9e7d10b6ddfecce6af6f2f358231063e77f791dbbfdfa",
+        "autoload/GameState.gd.uid": "68b7b8fd5b96cefc653e8d18ba43106332356526b85bbb49f23180fbced7621c",
+        "bridge/PROTOCOL.md": "46765715f16449587ff7c327eaa6ed00405379ef2f57c2bd15f20d8cafefefa5",
+        "bridge/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bridge/agent_bindings.json": "87c31c10b036a021b01eaa79a7e66bfb6ec0664c19d3aaa1f100ae605e224319",
+        "bridge/agent_bindings.py": "33143416899711ade931420f6dbe9656e57608c925e0a570928606f0a7a220f8",
+        "bridge/agents.py": "0655ad04e3813a3ae1403ae498f67ac9f27ee813df2bec7e1f497390ef89dc82",
+        "bridge/agents/account-executive.md": "d4ab9e7661521dbd7f0fc971bbbb70dacc4ce9e7a6ebb9f9d69a7a7b5badaeec",
+        "bridge/agents/ai-engineer.md": "f43927d6e1a928ae1eb83b8942381874c61d437e5f2f4ff31933d14972a8c8fa",
+        "bridge/agents/ai-workflow-designer.md": "73db2143a5feed2bc06b8a286079729218298acc04602e064eeea4c5392cd36b",
+        "bridge/agents/analytics-reporter.md": "587089c1f7b43a70478e82bd17c548f7af0b5df66aea694360a7b7ca94fb6f1b",
+        "bridge/agents/api-documenter.md": "9aa72477cf7775504c70bd3b130b56a4b2621d8323f05e6035005a75407a91f8",
+        "bridge/agents/api-tester.md": "8d646a7b34d077fc40f5eac89680d669e3ec83bc3b7edf3db7b71edfa5f53580",
+        "bridge/agents/app-store-optimizer.md": "9dd136cda528af65a8a7c71e391aa0b34f64e1ebd7270e1dc0e37408aa49dc8c",
+        "bridge/agents/architect-review.md": "41dcfb66bc41a66fe36d09aec545eeafdbd241e7daa6fb86b435a7cacea63c2b",
+        "bridge/agents/automation-architect.md": "b5909d1ed198e49f98408c2406ff9611b52fbeafaea7c8847f5ce29f7be769b8",
+        "bridge/agents/backend-architect.md": "dd099e9338c46bae4a5b6692ae5b370cffaebf58a82fa96c2cfec465d9af3c7e",
+        "bridge/agents/backend-reliability-engineer.md": "0ab7d1f1d91f3810b3f97ccf41811a87e0c28417c980420f24588f09f20198f7",
+        "bridge/agents/brand-guardian.md": "53ba97eacbca2002b67822f00cdecb92b79d974e548d46e974f1fa94f3970ea8",
+        "bridge/agents/business-analyst.md": "a40d8ea1fff60d38eae57453b7891848966c7251cc512811ac7166aa4d3a5a0e",
+        "bridge/agents/business-model-analyzer.md": "d9b51c848baf34238e47c13acf5c41ad9aa0996ab47f4a8aac5c66165266ebe5",
+        "bridge/agents/business-strategist.md": "c70ea756da54f586c4f724c57198360ef2d08ff04ac3324a7d0e7902628bc7a0",
+        "bridge/agents/c-pro.md": "4772466d1931987fbe50ea861568fa0de91cc9a32347bacc8b9afc30bac6a8d9",
+        "bridge/agents/cloud-architect.md": "de65d58760de40c5f34dbdf5aef7004a309ece3976f5998eddddabbe30f26bbf",
+        "bridge/agents/code-analyzer-debugger.md": "a0cbc2536788360669a6361b3d6174d59f16a0fd113bc1a3e4c2467fb4b2ff03",
+        "bridge/agents/competitive-intelligence.md": "4d11dbae44b8bb7bc34e220138b0a9b3e13d1c8bdbc064eae0f4453bcde2ae4a",
+        "bridge/agents/compliance-officer.md": "1a82c40dd07e769e26e35f020eeae69d6ba8b9a0902beeb91bc404eff0ab8f26",
+        "bridge/agents/config-safety-reviewer.md": "3b516f7c829dd2d4c51976de5e03ed5f90781ebc19af9a412c56b74460441d04",
+        "bridge/agents/content-creator.md": "061a9c97d233b74701740ba262ffc5efde2359c18bb576c4eedeef82091e8024",
+        "bridge/agents/content-marketer.md": "28b53d58988c402015593639295083d77f6695b21b49f60afbdc55d9f402dbe8",
+        "bridge/agents/content-writer.md": "c6897b0e6a9cdfaf8a4a8020c0fb4ec6759ef2b93f1ce13a48cab28a40bb18be",
+        "bridge/agents/cost-optimizer.md": "3f1010ed779de7709d6b0099772bfdb4bf097544a4b88baa4f2012c96fda0b4b",
+        "bridge/agents/cpp-pro.md": "e1dc62b706fd039db37402f62f3bfb72787f44117ab451fddc1a74f7eaf66f66",
+        "bridge/agents/csharp-pro.md": "1fcb8df1a557592d14f4543508741a5b1dce7a4bf936da29d3c8f3d8817b95b8",
+        "bridge/agents/customer-acquisition.md": "b53687313b267c9d98a1521485ea4b830e02c2d95582b82e545cf470560989ed",
+        "bridge/agents/customer-success-manager.md": "5ffc0704a9336608496baeb5d61b44cf8ae1ea4701ad670c20d0aa19dddc3ff4",
+        "bridge/agents/customer-support.md": "e02a896ccfdaa050cc0b182d3309e3d478158c35200da5a0e20ffb476bcb10c6",
+        "bridge/agents/data-engineer.md": "fa819b0fb73fed6570170d8759fde691b9268f7fddb7f4985ff42f20c797813d",
+        "bridge/agents/data-scientist.md": "8d53b348e5301350429b17c6f8c9b5fa0dacc2829fafd3bb1f7efd4ffb6c5fe6",
+        "bridge/agents/database-admin.md": "953e2061baa203f7f08163abd30429bd0e7cd7f79fc70c668d880b46e9d588e8",
+        "bridge/agents/database-optimizer.md": "950170f94dd48ffad4806aa1cbc3c186c5f36eb241f8c1e0e9f5e356699d2557",
+        "bridge/agents/deep-research-specialist.md": "244c7cf53d56f7a21b1534522323f2be39bc2b4a9a157117e1c2d57fddd1faad",
+        "bridge/agents/deployment-engineer.md": "d2c3f400c7fd44ed5589366980a5f235c3076ca71e6120c43d3a8e2defaed6e3",
+        "bridge/agents/devops-troubleshooter.md": "dcd18debf26e2ea8e8df28abddbcda34574afc1bab5e2af69532ed31cdc10896",
+        "bridge/agents/docs-architect.md": "b1b4ad616182775720c44e1e72df51ed62a65a36a29fda618d7c506324b65a9b",
+        "bridge/agents/docs-writer.md": "e03e865df48f34c13011d397c0cbd04429b4d3e5d6508e9f3240408bd3fb0baf",
+        "bridge/agents/dx-optimizer.md": "576f209a7d595910d605a86868ae680a6e86298748b802c93adee6165804b9f8",
+        "bridge/agents/educational-content-writer.md": "0f67da14c881f89a2a0eabb98d2bb7ef8d578dd04119ae80e94c41e8248b78af",
+        "bridge/agents/elixir-pro.md": "2f37c7965499e7128786cc9a86ec5e61dca0373f62261cef178060bd4f2d86ec",
+        "bridge/agents/error-detective.md": "a02f15843a26c962c8c0e1579292dcb6b80a3413e2b23cc99ede4d65b4227e33",
+        "bridge/agents/experience-analyzer.md": "1476d90665481d51c02846c911320ef39caf9e95019b3802712bb07a2ad17891",
+        "bridge/agents/experiment-tracker.md": "4b5e577823d39b67dd0bb4cd5fd156682e9d375545aae83717b952359625cf88",
+        "bridge/agents/feedback-synthesizer.md": "bcf75ca1477d3683cbf2ef58482cb6774fa8cce5d2234f671de23ae61351cf0f",
+        "bridge/agents/finance-tracker.md": "458ef3b079c07ef4aed2d1ba52566245f04e53e6578b6d851c895eb66e33a2dc",
+        "bridge/agents/financial-analyst.md": "91beb9b04ef69c02a614d8ba3b03b6dc96a04a253f8c87c21c60afa6a5907059",
+        "bridge/agents/flutter-expert.md": "2f5773c60b0da7aa07f05bda9b954eb564bf2798411f09dfc071a0e8c17bb5be",
+        "bridge/agents/frontend-developer.md": "53ef88dcdf22780f9c2e0e4cb9b7d77b2c93b1c1c59e3cdb0ea53c6c50aa3815",
+        "bridge/agents/frontend-ux-specialist.md": "f61bd177f621b93aaacd127ed9cf68456a21f0783e8e3f4ae1d4e6bb16f7c8d6",
+        "bridge/agents/golang-pro.md": "9018d561b856ebe2ade4a66a0a6002aac8f9192d9c2e9b10fd6abf1222f87fb7",
+        "bridge/agents/graphql-architect.md": "2f59177e45a03a17f363d7b05c9dc01c9cd960da090d0a540c0e45e0ef5fafce",
+        "bridge/agents/growth-hacker.md": "96305a528e37b57b6aae25e8fa9279b4da5e4c21eb6df7912baba0d7ce272375",
+        "bridge/agents/incident-responder.md": "5f26682d684ee9cba2fffb1e5f69dfc6725d1ff4f3e746da93e36f75bbe0fb1b",
+        "bridge/agents/infrastructure-maintainer.md": "1d911515dffc3be6e9f39169528b87c1df7106b12ef377dd9b40bb73f68e03bc",
+        "bridge/agents/instagram-curator.md": "3ee8a9c63527ede579d65e3d5255c94cecd5299587deccb0bd2a9a410200c19e",
+        "bridge/agents/integration-specialist.md": "d1a6c65c83677dd08fa9403779c8abc297e8153e5b23e91f6e17e7bacb7545c4",
+        "bridge/agents/investment-analyst.md": "60bd8f5851825d86c70a3dd3936ca3eb2ecd4fe45c4235f9f9551e89bdba2125",
+        "bridge/agents/ios-developer.md": "72fbbd69724b097c812f7ca091b07f2cdcffd85c45ee552d8ba17c156945fd69",
+        "bridge/agents/java-pro.md": "b889e2c2662c1f61de137a845de1fa460e9cebc784ccdd72d9b4f948845e4c97",
+        "bridge/agents/javascript-pro.md": "a0403add3f1cb72da715d85fe18a5c8cb757af90d7fdb3454cba765f6f9c8fa6",
+        "bridge/agents/legacy-modernizer.md": "6ff371320707bb371fc355832288379959f172077149a877a7e6e092868f5ed2",
+        "bridge/agents/legal-advisor.md": "d808c145afe11c58890c92ca647e2b60d5dd9d152d978d42cc123a268a971009",
+        "bridge/agents/legal-compliance-checker.md": "846e1e79d631fe907280f6524f0a535e5dec5bd3909233e2a05071bc24891e9f",
+        "bridge/agents/managed-services-engineer.md": "7b487d3c63ce756140ee1bc400737062f710fda7b0d87264511efc2ca5898814",
+        "bridge/agents/market-research-analyst.md": "5efac3582e0c861dcd6a64e48235094d70fa7065ba70cec926b69d90f41f1524",
+        "bridge/agents/minecraft-bukkit-pro.md": "bc15ef014e25f36b0815f743891d01ab1e5d65abadb7741a350d93af03769cc0",
+        "bridge/agents/ml-engineer.md": "b89525158e3f73ffdac357fbdddfd3b6efaa0ecedabf7a4485444ed0f5d43317",
+        "bridge/agents/mlops-engineer.md": "d14b8fd53145d00dbf1c9c89802e70da2d684235fe3c30a9b4474092c9781d80",
+        "bridge/agents/mobile-developer.md": "9a21115f8c3da2a2af7d191509beed61e45dc3bcedaf9141ace3f1e7a4988e2b",
+        "bridge/agents/network-engineer.md": "187b9909587fc55394eb7ec8105b2593fba32a80ec37692b8f7d573989678370",
+        "bridge/agents/operations-optimizer.md": "09b07ae0f7367bd1cfbe54dc6be670bddb2e896b7c4c6af1e68dcf8d105651a0",
+        "bridge/agents/partnership-strategist.md": "aea37b0807ee684cb7aa1cf36a44e118dcbcd72dcf7b5edf41ad1574a4c7341c",
+        "bridge/agents/payment-integration.md": "14f8bae3053b45f2884f90f5d0107a93a0a90c82adc3a70e5672862436560e98",
+        "bridge/agents/performance-benchmarker.md": "1f3dbdd4c668d14cae6987be45b10a5886950c5faf793f83656f8d055c97cd0c",
+        "bridge/agents/performance-tuner.md": "72fff88b4c0093381ef3d46c0264f35235740e517366058ff3ae800979a79ee0",
+        "bridge/agents/php-pro.md": "51ee53e13d3dd69345b18c19cdeb09dae6b8ce1b47bc168c622cb183b864345e",
+        "bridge/agents/prd-writer.md": "94dc7c3a2cf5845b1cf21eb2c7c4dab3e3c9b17855102e2c018a3ab21503d564",
+        "bridge/agents/pricing-strategist.md": "781eb0fdbe1b1c97d8f18c7bb8e2002cf1c04603d878b0bc8c0afbddd348882e",
+        "bridge/agents/product-engineer.md": "594b3fb04470bc44f3ae82feacc1b4103146dc93a372b1374d6f0561059b15fa",
+        "bridge/agents/product-manager.md": "8728811a26f2da88c1b6b17e05087698a686368ad28de0a26af72f1d1109c301",
+        "bridge/agents/project-shipper.md": "09ac65fc8aa3237cdaa2b4fe8db0485a99e5a71f4502c98f139b4ec7719f818c",
+        "bridge/agents/prompt-engineer-advanced.md": "f60f709391f4005016fcd5d2530e1a76d88f40ebdc6ea54f6e719a8dc3d26ecf",
+        "bridge/agents/prompt-engineer.md": "5d5681c80e926d02b68278a4e7c4228605f65127f40f78f209e348e7096a23a3",
+        "bridge/agents/python-pro.md": "673e9511bdb4bcbdb0e9133162691e44abcd66eb50194586f2777f75e3c5dd43",
+        "bridge/agents/qa-test-engineer.md": "ded517c11969d58efa9226e4b737cf2d4a1cc352e7da6a472d077e8233628546",
+        "bridge/agents/quant-analyst.md": "29f45b1e73ae81d74630291a7edd3e429ff86fa213609bd06922de395c5e6819",
+        "bridge/agents/reddit-community-builder.md": "590123f6ebb1ad6fad715a20946ced125e55dccde0c73566875c2950bf75509d",
+        "bridge/agents/reddit-intelligence.md": "f826015e67fdb074c24e21dca83be85b752983776cb5f76841b9bd2979f274ac",
+        "bridge/agents/refactor-expert.md": "d754c53da6f6d7f6ffb91648471c78347101427bd0e1edb66f7a98a9e68e0334",
+        "bridge/agents/reference-builder.md": "545ee595f40f6b41bc904d6dd0dffe86def41bf3f29f2567e3f8b22b06f85713",
+        "bridge/agents/requirements-generator.md": "afb31c70a0731d8d77fa1957e0789542042b9e53b016ae5fd15ac43b70629c92",
+        "bridge/agents/retention-specialist.md": "74ef6e25514a19f23913b9e8dc5b95ffe22f70988f605777c9d6f123004e9441",
+        "bridge/agents/revenue-analyst.md": "881fb29f99a65e9723b7ce798b9da1479f542a725646d78cac908c101037a26e",
+        "bridge/agents/risk-assessor.md": "de220072401a30994c59397cf304355cd032c68e9ff6422e7cfe7aefbc4fdf0b",
+        "bridge/agents/risk-manager.md": "728107ab66c20dc8864d7b324802fa83f16a97186b347ea3ce4b777dfe0c82ce",
+        "bridge/agents/root-cause-analyzer.md": "f5c7bfc8b76506d5fe32268b35238905ec427ab32ca5a69f16c1029b9ac7feb8",
+        "bridge/agents/ruby-pro.md": "b0d2507012bcfe5bd5f1dd959267c89e240d55a90a6590aea343bc97c72fa827",
+        "bridge/agents/rust-pro.md": "fae3547a57a33cac016fcb0fe9be8db4c4dd1832963971e7a9e0f8c367fa1e45",
+        "bridge/agents/sales-automator.md": "528158ae2ab3a6a141058d8ae953d515643857e07c83178e3627f87fa588d25e",
+        "bridge/agents/sales-engineer.md": "5eff5e460344a24eaa420d4eaa54ea69b71c7b8f457a04aa581004986de37761",
+        "bridge/agents/scala-pro.md": "6f142403ae61bc557f7a5c4d5c6373e992de8dc5bef939a68bfbfde4a6b94af3",
+        "bridge/agents/search-specialist.md": "4462ec3583918181487e02beea912824a5c462fef0f63a6241fb9e9ffced68d4",
+        "bridge/agents/security-auditor.md": "58f573d3191444ed545b315b012a696be3099761c349a905931ae284051cfcbf",
+        "bridge/agents/security-threat-analyst.md": "cf6169b97aad5ee593902ec60c4e8748b9871f4972274a4b4384d10c8d2083e2",
+        "bridge/agents/sprint-prioritizer.md": "f57e11bb27405cb82ce766006ae58de8a4ecd59196af757c2d9d192a4ce33e45",
+        "bridge/agents/sql-pro.md": "6842557027000ef0ebca1592f650bee8bb948ccac3543d3d749f295e1ba37e50",
+        "bridge/agents/studio-producer.md": "a646174673adfc1c1bef3cc1947448fc957fdcbe61aca885517003b26a3cb988",
+        "bridge/agents/support-responder.md": "3e0be48fe29933e3c494ddd7b637ee0483484edcff832d3b56750135026f3cec",
+        "bridge/agents/support-ticket-handler.md": "b02e7fbb105bd12fed773c737f91771c7b364e61c82e34578f66f509a9c33d81",
+        "bridge/agents/systems-architect.md": "fb3c428bbd85a1b7a7d325f2e597100b20ad3db4394aeee1ccb703fac1f1a188",
+        "bridge/agents/tam-market-sizing.md": "f151643ea48ddd7e14cf80ef556e1203864d6b6fb2a2e7a637543d17b9728beb",
+        "bridge/agents/terraform-specialist.md": "b6319689a1d77ab5b14531b6fac0b22e6a559810df442a21cee152fc75b9e3c7",
+        "bridge/agents/test-automator.md": "4eaa8aee6142c3cc429bfeb7c6f0bbb157e5131d9bc81ed3e71676885162f5bd",
+        "bridge/agents/test-engineer.md": "2193f0d004f529b3d3415ffc38ab96d8de479456a4ebe7c001d876eb0eb521f1",
+        "bridge/agents/test-results-analyzer.md": "279068d57c16c97eec61662521d5338fdf7ec1b40d23c6c4f214f58ff599ae57",
+        "bridge/agents/tiktok-strategist.md": "4d2dc0ac18f5d5cd4bfebdb8f54309b199f0a6065e535a526ac0cc360a56072a",
+        "bridge/agents/tool-evaluator.md": "f171db7df7d5ef2379ef50e2b28d72e95c383b0a644ff1749bbce98c081fb3c2",
+        "bridge/agents/trend-researcher.md": "b9038f7f14b9715f0a8cb4339948b042695548ee5837f82d19a7c52eb751759c",
+        "bridge/agents/tutorial-engineer.md": "7665812ebbaa69bcd92783c8bc2d0a333ec08db8b1719b11e8b92c33ed481195",
+        "bridge/agents/twitter-engager.md": "e14456358d292bc9b25d69c4d5c523fc2fed4eeaccfc3252ebc8570457758651",
+        "bridge/agents/typescript-pro.md": "38982e2a4a9cfac9ed94e856be69e16fddb67fb269647b5429a0ff6e04d2ec4e",
+        "bridge/agents/ui-designer.md": "920a6dd8ecde24aa8bcf008b7eb6dab8e21be37c1d75568687235e9a000a10ca",
+        "bridge/agents/ui-ux-analyst.md": "efab4cac5e0088ca57fd0ab41204a9150f1958d1403094051462f9685caba89e",
+        "bridge/agents/ui-ux-designer.md": "2cb96c2d9361d8b2cf46f91cdec65d7ea2374c860cd445126d65e76acf93a99d",
+        "bridge/agents/unity-developer.md": "a4f8c234d4cfa44526f6acf9ddc53a1db2d7ecf7dcac587228a55b818ce4a10c",
+        "bridge/agents/ux-researcher.md": "da81df2b09b96156579fcaec9b00fd5def068ec411083625bd5a2f3136972198",
+        "bridge/agents/visual-storyteller.md": "329be7d45c22c05dc95da8f2fbc533358c5d9dfe8edbe6282debd7e813807955",
+        "bridge/agents/whimsy-injector.md": "e46bf42c0bf8ab5ad7dbf60f16883d88c97935682faea36297480b768560db76",
+        "bridge/agents/workflow-analyst.md": "e2e5bd0520047ef9969a13304ae832d80e47ec60c911082977f733671168e949",
+        "bridge/agents/workflow-optimizer.md": "59976399e8ca6248f570301d346fe78ef13e07c9af09170661a6d0411bb5ff69",
+        "bridge/bridge.py": "ff07b4e81a1c72efbfde230771b1d626f0f4282c810c4d1cc63710af76b834cf",
+        "bridge/config.json": "de993a56804d107efdd5e2348e7f98ee909be97adb393f29fb8fb80b5f8a09de",
+        "bridge/config.py": "5a5e00ac875ed8ef2a8fa224d74073f1786bdd58c95d058bacf7f3d25bfb0d0d",
+        "bridge/connection.py": "2ab242a43316bef2d5a28111430885c1a15c045cbcd12fe864cde7973b2ddd73",
+        "bridge/context.py": "c87ec45183d155a4a01349b16c032d938665c874615701157a523c8ab09a9d56",
+        "bridge/context/GAME_CONTEXT.md": "1639b6f615f368e99921d2a622f3728db33bc155cdf8bb466d229fba87589268",
+        "bridge/context/WORK_CONTEXT.md": "1277434ac38f6c27c7d3cb7d5ea1d64169fa92b91615892c24a01b405a7fcd52",
+        "bridge/conversation.py": "715e9b98cb7c93cf065b1b8115e465aa9246cbb42190c035244b65bb2cae04c7",
+        "bridge/conversation_api.py": "f51becaad26e1c17ed8b366221a055965ead14b3b7628b99d73111475171dae6",
+        "bridge/conversation_backend.py": "21f0034bf8d79b3878bac8411a1aa2db9cd7540c34b3d7cdf424654b857e32ff",
+        "bridge/conversation_sdk.py": "a615eef81998169f9eb3828168f4183cdb0fd88db93e4dc781623f0d91fd3354",
+        "bridge/domain_manager.py": "78da5a5cc3cc1eb5e35cdd0f69cf623b2c6a712d2da361aab9094c65e468f8e2",
+        "bridge/domain_protocol.py": "58f1ed37c0a70100f0d8c7b88f1eaf01a0e58c0b326d07538a972e96619db9cc",
+        "bridge/domain_sdk.py": "eb9fceb935c6819e32113696ff520aa9156ec37628e6870f7dcb2c640f82271c",
+        "bridge/domain_session.py": "f283c486aa60abd6f15cb0cc9b1b2b69c64afcef962671bd2f1682b59dd1de63",
+        "bridge/extras.json": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+        "bridge/guarded_transport.py": "e5d6b4a1af15be7ce031b08d30a9bf232fd963bb143339cb201035d355211c68",
+        "bridge/interaction_protocol.py": "34d4d66e6d39a54640bcf2d24e53f404333210d71569186e073cb7088f5343a6",
+        "bridge/log_storage.py": "1f20a67abf04b2059fe23aa78a1ecc9a9138e94e6db3f549221995c415a4cbe7",
+        "bridge/observability.py": "fc7f3545a0acea5c26cfbe70438845a978ac5e60fb9ee68e3a4230d5ce1fa416",
+        "bridge/project_files.py": "2ecedc0308230381de3b01bd4ce2b578c756d5f58b1a1989a318494f1a28c96f",
+        "bridge/project_memory.py": "401cb11627aaf5c111f4b1e092ae4f7e6f595f7d3d09d2238290864f17ae93ab",
+        "bridge/project_service.py": "7898655708cf245697812f4e8959d78b7e08e3ab0d6edb835de169669d0a4888",
+        "bridge/protocol.py": "db978820fe75e8cd47d7dbecb1106e96a64d8777a848aa8a93a0eec065a86ee7",
+        "bridge/readiness.py": "f95766bf7752e7b69a310089dcfbe9d7a9cc52ded59047398d7977c202af1160",
+        "bridge/repository_setup.py": "acd029ffb788484da1523f0e84fd821fc59a4c466a2c57b0c9e810421a101187",
+        "bridge/server.py": "842e2300824abaf5ec3eaf522a7767c973919c83fb8ee19ed400517bdd1b7869",
+        "bridge/sync.py": "24e014b5379658433936a7ce81a6de086a1e90465ab1a20e5078108a586bf853",
+        "bridge/tests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bridge/tests/conftest.py": "36f81e951510d49fb7c8b22266bf1dc568734fdb29510f6469b6296f109d4e7d",
+        "bridge/tests/domain_fakes.py": "c8900385355812d6468518581e67ef842b50951302c3291557713598802253b3",
+        "bridge/tests/m12_harness.py": "012d94f04b6423d7e0e4de5cddd28ffed6b88b35c9f28d033faadae8e6ce4b8d",
+        "bridge/tests/test_agent_bindings.py": "6d67e0ac9f093fe96f52754d6cb324bcdcb3def378b309e5f318efbedfa742d3",
+        "bridge/tests/test_agents.py": "df77911c06bf3eff270ca2aa47833bcf9f11a0c2503a9940759576c8e8b995d7",
+        "bridge/tests/test_config.py": "542c2e5b2083f9b8a184e2677275c226f90b7f55ea26543112e83b6caf939b4d",
+        "bridge/tests/test_connection.py": "e8ff477d44a68fd22c1c8a48a1ce64f67f10b2c169edd7d400c5f0b16ea28c7f",
+        "bridge/tests/test_context.py": "69bcf288a409d09f2840019658886b1d95b644d5a983632552213609a6612d14",
+        "bridge/tests/test_conversation.py": "95ee914ab6812ae29f9e97241d85762423bb646756e6d523e539a14bcac6ee2c",
+        "bridge/tests/test_conversation_backends.py": "f708c3e8456c8e132b74a3e8a0067413c06ff5363dc7926fe66f9911ff203ea6",
+        "bridge/tests/test_department_workspaces.py": "d3f9093e31cf2c7c7f0e7fee31b426a4b5ed1a76f4b366198246d9abccbdc4a2",
+        "bridge/tests/test_domain_manager.py": "2d3e4fae8c9eaab660023b8ae70e162459f259b9dc0bc89d1daf304620214409",
+        "bridge/tests/test_domain_sdk.py": "6f1b1d04cdf4dd243b3cfd48ffbda7b93a4f63c8b9fbbbb072b0b591116b7950",
+        "bridge/tests/test_domain_session.py": "e4043039930b255b80d702597c1681516730f3fbf48c4ae03990c2e5dfeadadb",
+        "bridge/tests/test_godot_conversation_integration.py": "e7d62cede5d4677ea9108ea1283a94dd9b77c93b94d17a2eb5b813183c85359e",
+        "bridge/tests/test_godot_domain_integration.py": "6a2e58400cebf79748a76c015377b59d312208e5c33e618a214b73034336e057",
+        "bridge/tests/test_guarded_transport.py": "b10f24e39a5965ee32e9b2e15c66713c17e16d40d4bf806c238f46508f6bd67c",
+        "bridge/tests/test_interaction_protocol.py": "0b5f9f454451653cdf5191d7e7e90c0f8f5e9e9b13dafc629d893bc04339fe61",
+        "bridge/tests/test_log_storage.py": "7d1e9cd2d1797a27c477bd97d9842fdfc3f931aedcbeed9063d10b89bc8356f5",
+        "bridge/tests/test_m12_integration.py": "e063306a51fb27829fc88194abef7653178d03ba7e8c73ef2c1de45acd801252",
+        "bridge/tests/test_m12_live_orchestration.py": "c9756eefc52dc9c885c8aa1d9f2c08a171d599463d601ce5aed9473e21d061eb",
+        "bridge/tests/test_observability.py": "c85742d75036178e9b386630a3b3b3f74c5408a343cf55402915a512b929b978",
+        "bridge/tests/test_observability_integration.py": "0b7474b38a72c11adcd5993672f59b6dad26cbda889018f00ff6fcc8f3f5f3a5",
+        "bridge/tests/test_permission_mode.py": "2a96b23f1e4dc99e67024f267e6bddcc437de71cc5d82179c3ac4cf2e19d22cf",
+        "bridge/tests/test_project_memory.py": "9e2619218475a0e070a927591a082f3dbfd6b902f2db4bfc719bd0849553c2c5",
+        "bridge/tests/test_project_service.py": "6462c6c4e4f42fffdc14a0e217c68e7767faf27a84e17bc7c60b440ef617343f",
+        "bridge/tests/test_protocol.py": "c5ce8217c300b9135b50803378facfc6042f47444c42e758d1eb1b888f496754",
+        "bridge/tests/test_readiness.py": "34f0ff0ea3931378a2e0d12d6cd2e5580a0ea5a83e6ffcc71b5bb476faba8c7c",
+        "bridge/tests/test_repository_setup.py": "f2c3778c8bec1162a611557db9772f5b17eeba2bc969c3d38d0531d66966d1b5",
+        "bridge/tests/test_request_correlation.py": "0ce774539d7ee1b6b75110ed8e1069be5a7c6e497bf46c91e0df791c8f9ceab1",
+        "bridge/tests/test_runtime_wiring.py": "2ddfae3ddb158ace47115fd94c445030af6a566e9d7ad4f7e62d4bbcc199dd7e",
+        "bridge/tests/test_server.py": "e4b53c18d592238eb793882145cd2eab1e4a559964bbe2818f1b872e89b3e97c",
+        "bridge/tests/test_short_lock_contention.py": "aae175e17f6063df8d50c41943904ed4e1d94aea9069ab9805c67b13bd139a5b",
+        "bridge/tests/test_workspace.py": "0863f0bdaa2fa6d2cdcd87862ff108d3740ca0f5542e9cdfd27d4e5bd2996a52",
+        "bridge/tests/test_workspace_lease.py": "778f6cff4df33412018756a4c07344426bc39c5ce8d1f28fa638f6a28640bf88",
+        "bridge/tool_guard_acceptance.json": "24cd3b4a7d13192721fb081f58b4ce19a60af5607cd244158bc02c45cd7d85fa",
+        "bridge/tool_guard_evidence.py": "71cac4cf92612ac59957b552baa90895233c50a5e9a8a3c13f8e162c7b8cdc16",
+        "bridge/workspace.py": "ca2d5cc7eb4efc973160b634b7d4615f864acbb30dc2753809d94a2cefafd647",
+        "bridge/workspace_lease.py": "b2cb53ee97d4e94f79e8f74517f409897343a4869c8687c6fcb2b4dceadc65cc",
+        "data/agents.json": "33f83c646a6d7b52c70365a1a6fc64a5b5d4be6615a98491953c055ebf36d747",
+        "data/plzg-flow-snapshot.json": "f179259bcc650327c00fd14678905d0812f52a153e379ffd981c358a79f89007",
+        "docs/.gdignore": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "docs/README.md": "c8e74d1d0a193670242cccb2ae005ec33a84a122549c30aab5b20c040dd8488a",
+        "docs/agent-directory.md": "c6df18743033a96fc8d709d96ec529dceea9f049d87e72d6fb0f312c9ca44e58",
+        "docs/assets/Agile Explained - The Untold Story of the Story/agile-explained.pptx": "362679ffe6f747ef52f09c91abf5d3b9a8d81fef92e7482342e34c30baa97d4a",
+        "docs/assets/Agile Explained - The Untold Story of the Story/agile-interactive-offline.html": "74fed66e183829db060068576acf9f57f16e48adee5b95cf6b766991689fb429",
+        "docs/assets/Agile Explained - The Untold Story of the Story/agile-interactive.html": "dc3ed8ae2ef4c733111f9ca1b0c740da0775b67ae7c6f4e364df34410185c77e",
+        "docs/assets/agile-littles-law.ods": "37e5dde4a47a04ef3deaf663630f6f632641cab1c964bf2cd9ad3955ec52dfcd",
+        "docs/assets/plaza_build_steps.html": "f747fa0e61bcd49bdb32f74f25a5e1824469c3714e5eacb466b0d9461f1b0b48",
+        "docs/assets/plaza_godot_architecture.svg": "17cf97b8f1cab9f226450a1971c0a4a2d27604f00ff43362a0009629fe8e8ef7",
+        "docs/cc-statusline-protocol.md": "ab0ac20e798e74c60349796f1f7b68ef5474a529b675d194b90bd419fde5cd2b",
+        "docs/delivery-coordinates.md": "3d29b3b186ca41b565cf2acf3245e651d002cbc65a31eafaee1385c3e93f71c9",
+        "docs/designs/2.5D-RPG-Prototype.md": "af1527d01bebf9d1a666fec8c09e66f8d8c56f065461da0d214a75db174f0d9b",
+        "docs/designs/platform-decisions.md": "ddad007c3ebbdc7e8da0c43e9ac41e3c3d995cc12ac660b7eb6acba34e347061",
+        "docs/devops-setup.md": "87ebb5a4720c8418abdcfca4f90250a9032c57d89f04cca783d81ccd62467708",
+        "docs/quick-reference.md": "cba6ee3f1d9bf9cd6b5d9d9dcc078b33fb38b2077b68258cb4e1ae9967759d07",
+        "docs/reference/agile/Agile_Expaiined.md": "0fb1902ec53d22e2f74d91411100632532aa5f3a27eb12dbb016964c4962ba64",
+        "docs/reference/agile/Agile_like_im_5.md": "f84809132c9a852bb97f955aeb23276f9e1006f3b3d591c14c0cf71600419246",
+        "docs/reference/meta_spec_governance_tree.md": "545075fdf1be244f071ac48ce14d8ef56dfa4367b58b1729a4652028ac0fb1f1",
+        "docs/reference/using_agents_sdk_with_claude_code.md": "34629a00878199c3c2eb9949de6f53a0b993a3b332ab4131f2f80b5879801a7a",
+        "docs/storyboard-week1.md": "6bd78f5d32ba94df9b8a776ad6c9c4a8dcd76923fcbd7ca723b6b4dd7e240bad",
+        "docs/superpowers/plans/2026-08-12-bridge-domain-architecture.md": "c3951f2987a6fcc40718551742b7fe9ddacf4a8c6182ef3da78eeb3cc8639e93",
+        "docs/superpowers/plans/2026-08-13-cc-tui-statusline.md": "e623945cffbdd44b08cfcc3be33da8b26ad23332b3be814da3fb3be6821e7688",
+        "docs/superpowers/plans/2026-10-18-m10-config-observability.md": "2192d9a51b41af7217aa703aaaafa9ae632bea935b98e4bd703af400aa8bf845",
+        "docs/superpowers/plans/2026-10-18-m11-npc-conversations.md": "0e8e749db625fcede3fc1a1c644a4366f41aefa545c3dddb7e8d7d74df6f7d15",
+        "docs/superpowers/plans/2026-10-18-npc-sdk-execution.md": "20c237497b734e5020fe587ddffadf9b6206f3d3f1acf958601178fa18eb50fc",
+        "docs/superpowers/plans/2026-10-21-m12-project-execution.md": "9754879ef6f14b33aa224710d0a85fe78c5ab1704e9c6badd94fb0f7eb065a77",
+        "docs/superpowers/plans/2026-10-22-m12-character-domains.md": "8776abff7d9d2b43e5d2fef03eca14649b4f6ca331ac9ca033e9eea23b3a5a0a",
+        "docs/superpowers/specs/2026-08-12-bridge-domain-architecture-design.md": "118025e3c83b5da9bbc33797b95b67a7a61f7169605853cca9ef4de15e6dcfc9",
+        "docs/superpowers/specs/2026-08-13-cc-tui-statusline-design.md": "4b81a836fef0f5a7e50ed9bb0276eab454b6488c2ac0e872b6dec85e9cb54d8a",
+        "docs/superpowers/specs/2026-10-18-bridge-first-platform-design.md": "a1d7233605550c747ee9355883b77d716ac7e356b4aa3ec3dfd236acd270ab65",
+        "docs/superpowers/specs/2026-10-21-m12-domain-execution-design.md": "42eacd94e1b57b7d5bf5989747ff4735b2828380b0c034c4571e16bac963dc55",
+        "docs/superpowers/specs/2026-10-22-m12-character-domain-amendment.md": "e10c4d5ba5a672b3d210e92e854cf8a5575f1d5ec649b179552c5ed69891a8ea",
+        "generate_report.py": "2907f52b69764217c6a3fcfa515cb524c4bb15ddc2df7dc85d607f920c4bc07a",
+        "icon.svg": "1f1ce3683b012a2e81c18d4df736bb7a0d3069a0e127dea6921c6b0adb4da7d1",
+        "icon.svg.import": "1135b102818c1a0c0e0cf7305febbdaf59005187707cb6e3e59c0f906a606875",
+        "package.json": "00a885455d2a2842d7ec6065403555021f453d50d578c7558ab94f6ff520ffbd",
+        "post_to_confluence.py": "6bcfb70e0d8797c57ffe27b755bc3d094df05c4737210af30b41f4b5eca64c3f",
+        "project.godot": "b124d7084c60355db12572711b03918834bd812af44905a3f8a10e3a32f7b902",
+        "release-please-config.json": "eb6137cb81481266397364a1a417f199727aeb6e7cc200488501931f544b8d10",
+        "requirements.txt": "d61902f5509002cfcb3571cb5ff4651e7936cb46c1cc0968c0bf3362b2e2d8d6",
+        "scenes/bridge/conversation_store.gd": "1740c3db317642df12e68438f901f7426c23c912c37edcae909089c092709e6a",
+        "scenes/bridge/conversation_store.gd.uid": "2b643ee3943543b129245d17d5f0baf31389252203a11e140cddbf4642e363c7",
+        "scenes/bridge/domain_store.gd": "50a62c1d2387966efcfd2c2498c95ca3ec20f1c74e9ee4c71c25f48ab097d581",
+        "scenes/bridge/domain_store.gd.uid": "852a7b7c2b8c9a124b6545dc0aa6d57ae3d448bdb5e37b6bf5269b58c1c20972",
+        "scenes/bridge/domain_surface.gd": "986c514f592b82deb02c4f454584041e2d9bcf1f118bb2a5f0a460b481c7257e",
+        "scenes/bridge/domain_surface.gd.uid": "4d284ff77695af0048ea0b479a3898b2ee49b2e14be047326de6887480ca6e78",
+        "scenes/bridge/ws_client.gd": "f14cd5b4df4c3e0f501aa94ff0ed29ca7855fe200b3b8b5d92b29e470eaf30b3",
+        "scenes/bridge/ws_client.gd.uid": "dd5413e68240d797025f50c075f697bed9a98ea9c50000417b882bc5561d17b3",
+        "scenes/hud/dialogue_geometry.gd": "75a1c13d30de69b114d282156cd1c47813f80ecb3c749499012bd4a4c028f1de",
+        "scenes/hud/dialogue_geometry.gd.uid": "287a9ba869b4b360adb4f8509b4975043f9fe8dd32f9802e9ca1c7fd7691722a",
+        "scenes/hud/dialogue_panel.gd": "7717c618dab2675a8ff907728e8a85fb4ea609b7fc06ee1cf26914650059183a",
+        "scenes/hud/dialogue_panel.gd.uid": "538f0cf638edb79fb6f778073d9202486a900952f8fbbe4592ccbfb1c848ebce",
+        "scenes/hud/dialogue_panel.tscn": "ff7268e6d1b4342a20de545682acd5157cc283f14f08b902191496f29e703043",
+        "scenes/hud/domain_panel.gd": "dcd4b29d2575be3f4dbbab3fc7f464656e956f3f371e711cdb1b08a44f2c9f37",
+        "scenes/hud/domain_panel.gd.uid": "c5dca0df245f7dbbc8690619a0a55d00dde2171f1b9ec4636c6e32c748746905",
+        "scenes/hud/domain_panel.tscn": "68381f7e732004bfa9a768b947dcecdb8d4f706bb2e4268dcfd47d1da707daa9",
+        "scenes/main.tscn": "d785b9e54c3245c4b97dc54f0384b76fb12e1d32d4ed1c03099a5cbfb184f21e",
+        "scenes/npc/agent_npc.gd": "cc8e5cb29b928456f1125c5992cb1ca7d1f37dc42a1c8903e809e983fbe8404b",
+        "scenes/npc/agent_npc.gd.uid": "9a8d9fed94b6e920aef053219fe4d23502ed290fe0670589c2cddc571ce5d554",
+        "scenes/npc/agent_npc.tscn": "5f014ae6aaa3155da4c32987048669791976d8bf156a2cfa9d6e3ac13d89f7e3",
+        "scenes/player/player.gd": "05b8d34f3245f52f764b2a22434b6e246a8c528d9ebe76c13454b81b2531d0a4",
+        "scenes/player/player.gd.uid": "a37053018795fd6dd048dc1fcb96857b820f3baf2f072787f9f2285739f74b5a",
+        "scenes/player/player.tscn": "049d61dca14dea64bbfdf938422dc8834398b9114f7ff0f76a47b4ed47a387ce",
+        "scenes/world/office.gd": "1cdaff7575fb28916751ba906351b7a112c0c6776347d05df20898e18493d9d8",
+        "scenes/world/office.gd.uid": "ae3c74dc2ecc23095a61e467797ab4f2403dab62bf859f6d08de8f3818a531b8",
+        "scenes/world/office.tscn": "e9d64f30f3e547d896bee09bc148e2e6e1c71501c58ca71dde64226600fb0217",
+        "scripts/ANTHROPIC_MODEL_ROUTER_(Template).py": "7c5acfad2ab2bf302ca29aa2e10a35516062eb0d0547ef841a59dd930a16b927",
+        "scripts/ANTHROPIC_MODEL_ROUTER_HOOKSANDLOGGING.py": "932f0412d8d14fed2780c3ac1116308c38421f82eb5f68e75612900d257f52f4",
+        "scripts/check_sync.sh": "99dbc3b7e8893c6ad92dbe62c62ac5845aebb4d90139d72536e9105818ea269e",
+        "scripts/evidence_output.py": "83d1e4a98bb91ca417625bb985b9744adc95c6a35f975ac5d0fa69ec5f80db51",
+        "scripts/generate_agents_json.py": "726a176b31cd7af043551914bbd9de14519e72042fa52c87e2fd2fe5667b589e",
+        "scripts/m12_live.py": "9658d4d23140d50432182ce9f483f7284b2a640258bcef12f194f51f1d38a67e",
+        "scripts/m12_stages.py": "2c283a24a7717f7fd2a1d01eba6cbf22bf5c9d5bb69fa7f6d80740df7eba79b8",
+        "scripts/m12_tool_guard_probe.py": "157a5d6008359a97143c7a6153126f8eb0e3c06a688cac8f7735c404c5b7f584",
+        "scripts/pm/_atlassian_guard.py": "afcccd53722052f4fb468a1452f558913e7660bb023b1abf48d907a39e1d3045",
+        "scripts/pm/_canonical_pm_files.py": "452c90084fe2fe0e1a410ec671dd1e3b119b27392077fc554c059891d9ea5fed",
+        "scripts/pm/_confluence_format.py": "cc8f554460fe5ca250513b2def092956185fe2e1c65dbb4ebba4e5f45e054584",
+        "scripts/pm/_jira_projects.py": "5600dca4c72123dbfb15f9233245822b255ad869d46308f16063dc85844ca540",
+        "scripts/pm/_watcher_lock.py": "7dfb8be61c545862b7e82c5d1636d1b4da58c19ce0c7685984bf2a2078dbe44a",
+        "scripts/pm/publish_session_log.py": "9d9578d94a255fc5c136fb4a96c2d1834ac7cdada43488c26f825412fd2376bc",
+        "scripts/pm/requirements.txt": "97f71350c86ac1ab5a13b168061cde450ca8ed50d432ae7bf22fe8d181c29712",
+        "scripts/pm/run_pm_script.sh": "169a566b5625bd1692cf64b655243aa6f0b12514104899db1a15ba1c6aceb31f",
+        "scripts/pm/transcript_digest.py": "2e2eafb41ba37cfff64ca56d5b32127125080a69cd6b2ff6f0fe4b6499a9edd3",
+        "scripts/run_headless.py": "73d94f9b1eafc779b3b841402b8514637d9dac3e9e5a6057a96cacd9913c438e",
+        "scripts/sprint_5_gate.py": "0ea27b5953f2cb58d005a398e6b70d9cd15b17a4748ad8fa823f39771c7e5b8d",
+        "scripts/sprint_6_gate.py": "b973246d59b92ad61d7064f530e4a51493ad911264da8e39af24d4ca38d01d28",
+        "scripts/sprint_6_live.py": "692dd1e72d5b1ef567bd5b5ae4724207ff2099f9751210f2ea173fb26f8eb1a2",
+        "scripts/tui/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "scripts/tui/cc_session.py": "a83b368c10a3924c59c0d692214005cfb773e6126db4ba75a4779f3f11a90139",
+        "scripts/tui/statusline-schema.json": "84e87cff17b8901a55031119ebbf160788e0af69d23e68dc72ae9cf496c8f0b8",
+        "scripts/tui/statusline.py": "487d88731b1999c88c17f2add1fd1a18a0a30510cc88a0109dd0ea7326eb9d2d",
+        "scripts/tui/subagent_statusline.py": "ed264ae44c01489cf0c351435a163d7162304cebdfe32e64f19da40a145d4119",
+        "scripts/validate_delivery_coordinates.py": "c414841fafdd52c34915d3c8a5eba80d4cdf119b609cef071436cc0ad307beac",
+        "scripts/validate_specs.py": "9dda252336bf393730ec7a93831f4bc8da1b9bc5cba6d0e27e621c483309a2cb",
+        "specs/README.md": "38bb9da1b94c0d1abd94564cc796a2da31818205bbf5a07f440f6f8f72d79ede",
+        "specs/aligned-spec-v0.2.5.md": "0f72af75efbe918ff41aee789c1d5cf36e5714e6c908aa4b9f29fede75efa43a",
+        "specs/branching-strategy.md": "36d1cb729c29357eca7d6757798aa9f0a0d2f8fbd7effee33f7c0bd7df6265c5",
+        "specs/evidence/m12-character-guard-attempts-2026-10-22.json": "705c8fdf5ab081402247474aadd6ee6f307d9acf7faa8a9726d63f5909b4c0a0",
+        "specs/evidence/m12-character-guard-bypassPermissions-2026-10-22-final.json": "715011b151daeeb6c718800db7005fec73c0aee88071c3ca661816e1797564de",
+        "specs/evidence/m12-character-guard-bypassPermissions-2026-10-22.json": "f01dfca54113370860cad544657f536856358696305756c53b11383ad86ec97a",
+        "specs/evidence/m12-character-guard-dontAsk-2026-10-22-attempt1.json": "9293cef6eafbec226c21fd457900c4f35346edebe8e03c9225793e74d430d2eb",
+        "specs/evidence/m12-character-guard-dontAsk-2026-10-22-final.json": "6462dd51b83401a67570b80086c9be827fb73173b39137f6b544d27e1cd098ca",
+        "specs/evidence/m12-character-guard-dontAsk-2026-10-22.json": "c289785acee197c45ed7d47af341389e4cd2501965852a5091f734b4df0267ee",
+        "specs/evidence/m12-character-live-attempts-2026-10-22.json": "a69552be9d86b1446c4bf8ea2a864f837f6b4fe86b7ec38a1108bba5c55be7b6",
+        "specs/evidence/m12-character-live-dontAsk-2026-10-22-attempt1.json": "45fe855d1823b13ebc827775b79d9be2f4aeacdef8dc7d97b343fcacee874e25",
+        "specs/evidence/m12-character-offline-2026-10-22.json": "7df8d8d309c03a93f5b684678844790dc822dfef3c134f850bc993c214fa2ac7",
+        "specs/evidence/m12-guard-2026-10-21.json": "4c4fed8833c5dfa0c7efcead8e09ddea9b1ec99f696dc34e5638df57c08b28b6",
+        "specs/evidence/m12-guard-final-2026-10-21-attempt1.json": "35fb684d6f964fc70146be78d0376694af61fcb4e1ea326dfab4e54172f564b4",
+        "specs/evidence/m12-guard-final-2026-10-21.json": "6611fd8369418f2f57aabaa14f1545af36dc55df41acc39bbe449460e6439552",
+        "specs/evidence/m12-guard-final-attempts-2026-10-21.json": "cc61ca0540f0d9e87e20352c050cf83cbb3399e6ccc3cb145d2538db29b1a25c",
+        "specs/evidence/m12-live-2026-10-21-attempt1.json": "51a68bbabb6d91cee630d7314b4f6f3643fdfb8098ddfc3d46822e0321654a08",
+        "specs/evidence/m12-live-2026-10-21-attempt2.json": "9d9c464017e1b8a556d169825eaa23ace4ab8d6b92ef42131e8bae5c2806b754",
+        "specs/evidence/m12-live-2026-10-21-attempt3.json": "ef0f66c5d6d4b3dfb5bb1d7c7d48562f63d1bf65962be0201977abede889f235",
+        "specs/evidence/m12-live-2026-10-21-attempt4.json": "33fd333589dd2a5209abcc0e2eecec711e79ef7b17c2f4f9e0c1a7dfc18d37c3",
+        "specs/evidence/m12-live-2026-10-21.json": "2e2a34e7ae02ed15565708c9aa3c3697ef9a2f45eec653e7aee369d102ba5430",
+        "specs/evidence/m12-live-attempts-2026-10-21.json": "40ac55f47c16b36840ce9ced58acd7dc798e8e2efd4eedab2a795bb825bd4e26",
+        "specs/evidence/npc-sdk-live-2026-10-18.json": "807a1c0122801d979dbf7eaea24f0e7b0ce9d0def2888162298a7519241a4bde",
+        "specs/evidence/sprint-5-doc-crosscheck.json": "cd75e323f164379cb1825375d18d957cda771edc887fa1c6a3f2c8be1e5904e9",
+        "specs/evidence/sprint-5-triage.json": "6256fdc0f2054162695d5ee02ca3b3defc642e0470952df6e50725050a26e332",
+        "specs/evidence/sprint-6-live-transcript.json": "525cb476768fb676494ab29a7ac5cc033411244e6cc861687541c6d70ba3b7d4",
+        "specs/meta/META-SPEC.md": "2f5f338e4d681523b9e18972d586f2319b5ca542dc4ed6aa925df1db3ed29085",
+        "specs/meta/README.md": "396f282975602c2e3328bba748ed9103dfd15d1ab51c460c3795a0d8c6a65bb9",
+        "specs/meta/concept-driver.md": "832b45e14211c4109b3d8bbba3155c6a2d9c234f44d104509a3c99195413943a",
+        "specs/meta/decision-register.md": "dad2d87dece1c863b8d3ad8834855b36f86434594ef8f8579a3e71ee245e9a86",
+        "specs/meta/doc-registry.json": "10c92762ab3d758dc2a15c5af84bb3654a37f30d09bcbd81fffb39849a61ecba",
+        "specs/meta/spec-drivers-v0.2.5.md": "7af742555676e07bb6f63009062e40c7899beb2464fff01342149190b5c3c86d",
+        "specs/meta/spec-frontmatter.schema.json": "944f2401ed85623303ec0ec0faabd07f91ab37dc92ab64d8fda7c101c68f0073",
+        "specs/roadmap.md": "05c00c34a8869d117953e9325384fc0eb9f771b4cdfe9dfbad2b5f24f5516d14",
+        "specs/sprint-2-charter.md": "d1aaf63f7ad2442bbeebbb5f98a3dd5453eb0a4e003e95489287c028b63d38bd",
+        "specs/sprint-2-loop-plan.json": "891d8e1283aebab72ea23987855ab1a888f0e755ad5f925b245284b514df0e26",
+        "specs/sprint-3-charter.md": "94c9e836d7438619b6c9674f660f768e542243454af8a6f583dfe87efed2825b",
+        "specs/sprint-3-loop-plan.json": "d4cbed744e96e7bfce9c3e2839ac55c3172a6e312e7addd81f00a830d969b3d8",
+        "specs/sprint-4-charter.md": "785c46cedce84fb28fabd92bbd9dbc9544ad29d48a5ff76be2309771f1001d13",
+        "specs/sprint-4-loop-plan.json": "b1c5c8401373659c674056f40adc15fd18319fb400aaa6782a3546ce787b1986",
+        "specs/sprint-5-charter.md": "be3efd0300121077d9d96378483a36b7520da5acc9c021c1aa6d0d7e9b8ae2e2",
+        "specs/sprint-5-loop-plan.json": "4654f5f1d5ba1508f73ba428f28578ee20d7393147253b2325be8e83c066e2e8",
+        "specs/sprint-6-charter.md": "3e45c37ebc48aa4d3d76227225e045025ddde00014dce7360f595b3336e97918",
+        "specs/sprint-6-loop-plan.json": "95f5bde77b8b77bed01b0e43c53191a7fbda50ede1849fc30974dfec90add81a",
+        "specs/task-tracker.md": "bf480f28e640d462a78017300d3a8c8a4a65853a30128f4d72c70350204ac07b",
+        "tests/character_domain_test.gd": "d5d45c0670c4fa2c7e22f73125f11c94777e57ebbd73b5008849edf2bb3ef9eb",
+        "tests/character_domain_test.gd.uid": "245de4013af75d822424431831a93a1dcf56f7175e5d7bb98e8007950d6038fc",
+        "tests/character_domain_test.tscn": "0a273e50ecc120174c662bf43df134f33da0ded20b79b60fb0e02c5910161d75",
+        "tests/character_fixture.gd": "be6f843c1eecdba3c8ae57993ff90e8e8102b43261baeac49c212edf858eb0f3",
+        "tests/character_fixture.gd.uid": "a1be9cc20898ced825c4052ab8b08830fc95d8e61641d37b495e76234521add2",
+        "tests/check_sync_matrix.sh": "e88333f9fa170ce8c92a8941dc7b80d56993939660e92bd58301c5e0c356e89c",
+        "tests/conversation_store_test.gd": "13037590185e1ebe101c29618eee5658cce2784157b62897b36bc6588df44141",
+        "tests/conversation_store_test.gd.uid": "9aea8f95d86684c62e950e8675c90485b8a92401afd738c7cc9dd9aa9cd6df25",
+        "tests/conversation_store_test.tscn": "aa377936ee8ef027899af65de7de082c9bcbf9ab3b7a61a92a12fea45c8d7c3c",
+        "tests/dialogue_panel_test.gd": "54df9e8e1c5d1bcf09344cd506b661afaa5d487692fa4c3c03c681704a69196a",
+        "tests/dialogue_panel_test.gd.uid": "e5133428da1b33ea9cb527253cbe9ac3183780edd476d8096fba6d14fad74987",
+        "tests/dialogue_panel_test.tscn": "6de806c0c16f097b703d1ee685cef14cb02273952fc6edf6bddef833fc8ebbe0",
+        "tests/domain_panel_test.gd": "54986f12e421b88f6926d0134cb2a6e84371928b950f752c2a176b35500ecbd4",
+        "tests/domain_panel_test.gd.uid": "f5cb6eb9b8f99982f6c79f4e3a83bcc2c1dd482f13fc2d47a26a51443a1abb64",
+        "tests/domain_panel_test.tscn": "5368ffe9476c71f2785e8d3f29d7d6887d58cccaab6fa9d2b869ff1305fde1ba",
+        "tests/domain_store_test.gd": "fd29df177a7581ef6085b63857078f28c4177b5d6878c7c4c4995759cbe0c993",
+        "tests/domain_store_test.gd.uid": "ad1984afc21a10880130389028090278a3ff90c9159639aeba2fdaf0f310e08e",
+        "tests/domain_store_test.tscn": "f1d718c09cc773645720ffc6ce80d8c1a5fd9f4ff3a3b2a271156b3d25e18b58",
+        "tests/domain_transport_fixture.gd": "25194ca2164e21dbe1909411b5df690e86ed58c9dca9cb34773ea2fe52f1bf46",
+        "tests/domain_transport_fixture.gd.uid": "726161bd028699731a76c432f91ed300843c84db81c80e02ee5db0e07d3ebb44",
+        "tests/domain_transport_test.gd": "aa75fea2281dd7c49051487ee085fc348423c542db47a1117d97858f90736d66",
+        "tests/domain_transport_test.gd.uid": "ef6983efe0760a0e22c93b231382be2c2953702cdb7d31aebf240c8bcd63c929",
+        "tests/domain_transport_test.tscn": "59889f91694a3def1b1f7fdd2bd3c13b7738095f9da1e38c11a8d5cc5773d576",
+        "tests/godot_bridge_integration.gd": "95b30ade4d59ed386024d9250d43536dd8fe7183bb8ba6bd1f2248375dfc5b0b",
+        "tests/godot_bridge_integration.gd.uid": "04f05e5d3b87be787116ddf94bd8da2734191d4bc238eea14559fdd63a8145f9",
+        "tests/godot_bridge_integration.tscn": "84d730ba01c7cc6e6600d002ca8880f9be3d9c6a320ff99cf5a1db027e967187",
+        "tests/godot_domain_integration.gd": "0bcf008f5d96fe6271410fb0a91baf84d1ade5b0073a086abb595d45cb13d8e5",
+        "tests/godot_domain_integration.gd.uid": "08b74e79e304fb556ba7f924ef7e2606d2069293de8c9ba3c13ada3c3359695c",
+        "tests/godot_domain_integration.tscn": "e1147e59b66811384f743b2935a81613f68b0374fff18be60412d9ba3617d624",
+        "tests/legacy_character_status_test.gd": "399c0fce212f7b6d9ef78401cc9c2d0bebdd6678781676f61cf5c5a90e15878f",
+        "tests/legacy_character_status_test.gd.uid": "ffed15c0006825da8aa9ce797b2abdebf41213e50940dd2e7bae35e0aa1832ae",
+        "tests/legacy_character_status_test.tscn": "b8a3743a04929ecc87988faf341c31ae3c8f4e9ac5f3e1ef4a2d276d65511452",
+        "tests/live_conversation.gd": "bb17c03896291133c4a5b21d8c9614f8956d8cf3dee12d742bf1f02b5fa947d7",
+        "tests/live_conversation.gd.uid": "72f159a8bb4dca368da2706a5839b99300ec81c0c54183bef1ace2dfeccf0d51",
+        "tests/live_conversation.tscn": "3e9d99ee746cfdb565514f763547522b034b097db062ffbc0c1e19691a3a1813",
+        "tests/m12_live_fixture.py": "3bf0b6c5af5bfb2ef4e4b05006de5d52801a71abaf07bebdbf40c83e403a6a14",
+        "tests/room_probe.gd": "ea44ccf379ea9ae454c2415882bb1520ab25860f9fb2d0654aa28b6946ebf0c0",
+        "tests/room_probe.gd.uid": "ca935b61397eb5e2acb5a2f7640807e143b4226b8331bf10f22f38da9aba8075",
+        "tests/room_probe.tscn": "a34b9b76f0e696c313a6ded649df03b2dc7a6960aacda1b2a017eb5e6a5e181c",
+        "tests/smoke_test.gd": "99bcbca5d7aa6a158da0803562b4c072118913fe74fa2469631adf9994a899a6",
+        "tests/smoke_test.gd.uid": "62bd3e0b69c8d881c3344a157cf9fed08c76d252e5688796d213c34eda7be473",
+        "tests/smoke_test.tscn": "31253985ee2cef19efafaecf54142fe7e0714fe6a7bbb1e8845f3b6d86e4c65f",
+        "tests/spec_enforcement_matrix.sh": "cefcdf1aca3b9d8178d880083eda43738db3d2fc1aea4b3963a4cda97697f9d3",
+        "tests/test_claude_review_scope.py": "518d0c090156da8e7f0a218066fd76d88aebb2a78039acb529a83515322cf551",
+        "tests/test_evidence_output.py": "8c623f11fea9307748ac9c16db1bbb8d4174c0c40e503c309f4500ee78a75250",
+        "tests/test_m12_live.py": "491afc51ab48bc9b1bdc1395bc39319691b1056aeaced95805cec5c56aef208c",
+        "tests/test_m12_tool_guard_probe.py": "4ecf3f913dd8e492e0551c8cc87f04444c086ac056cf720bfd727d85371c3887",
+        "tests/test_pr_merge_guard.py": "b28db1426fb1ebb60dbd4ed945d2769fce3db1218a5db9e921098af552ff6206",
+        "tests/test_run_headless.py": "2b3951ce5154e8dd23e8013cb1a1ec492a47c36fb50e30afd0aa568738c999b3",
+        "tests/test_sprint_5_gate.py": "eb68f9059122a9d657b64aafd9c9aebcd35f9217d01fc900816a0c5306b6391e",
+        "tests/test_sprint_6_gate.py": "006544991a04cb100720c8b6c1f4e1ed85cde791c8dde5ba806be1f4ecbcd744",
+        "tests/test_sprint_6_live.py": "116fdd4b4fe2c8b2a2ebdec96031820623392d2254a401b7d78f6ab91b74d50f",
+        "tests/transport_client_fixture.gd": "340d910273d355663ba9fa385b912a405475e88a9c2fe9fd416cfd68e1dd8ac2",
+        "tests/transport_client_fixture.gd.uid": "4b1407762c560cc86a7c5775099f62ee8969ac344fb25caad59d5ca835e24b45",
+        "tests/transport_client_test.gd": "5d7c8b0397021c7b166e75d0de82dd25952d47d1e5768df63508612a4373d867",
+        "tests/transport_client_test.gd.uid": "b2e99d40302e63efeb7add6064efb490ff43a25152fbd8c8f6764cd124ddc464",
+        "tests/transport_client_test.tscn": "c3a9411788d331c3f2812010cc852873463a4443ae87d788ca54e8876593dceb"
+      }
+    }
+  },
+  "artifacts": "/tmp/plaza-m12-live-ygke1o4w",
+  "limits": [
+    "Linux headless acceptance only; laptop binary and desktop acceptance remain open",
+    "cooperative worktree/guard isolation, not a host/network sandbox"
+  ],
+  "cost_category": "paid API-key SDK calls",
+  "caps": {
+    "domain_max_turns": 8,
+    "domain_max_budget_usd": 0.35,
+    "max_domain_queries": 3,
+    "npc_max_turns": 1,
+    "npc_deadline_seconds": 65,
+    "automatic_retries": 0
+  },
+  "initial": {
+    "checks": {
+      "referral_no_review": true,
+      "real_chief_approved": true,
+      "main_seed": true,
+      "three_notes": true,
+      "separate_paths": true,
+      "source_unchanged": true,
+      "runtime_unchanged": true,
+      "absent_before": true,
+      "background_corroborated": true,
+      "npc_corroborated": true,
+      "sdk_only_result": true,
+      "tool_cwd": true,
+      "same_plain_output": true,
+      "one_rendered_result": true,
+      "memory_saved": true,
+      "stop_inactive": true,
+      "lease_released": true
+    },
+    "query_count": 1,
+    "result_count": 1,
+    "rendered_count": 1,
+    "tool_receipts": [
+      {
+        "cwd": "/tmp/plaza-m12-live-ygke1o4w/.plaza-worktrees/project-a-b4ecb256e63cc588/core/execution",
+        "result": "m12-result.txt",
+        "nonce": "m12-d310904bdf0c4921af54c66acfce7a2c",
+        "sha256": "216e7def9c7202536afd57f45055a3f2e88e67edb693587d738d672f7eb30673",
+        "written_utc": "2026-10-22T12:40:07.661325+00:00"
+      }
+    ],
+    "nonce": "m12-d310904bdf0c4921af54c66acfce7a2c",
+    "result_sha256": "216e7def9c7202536afd57f45055a3f2e88e67edb693587d738d672f7eb30673",
+    "worktree_path": "/tmp/plaza-m12-live-ygke1o4w/.plaza-worktrees/project-a-b4ecb256e63cc588/core/execution",
+    "scene_run_id": "c998921d17db40b7b87794dd4f03b496",
+    "released_monotonic": 95584.347310147,
+    "released_utc": "2026-10-22T12:40:02.990252+00:00",
+    "background_monotonic": 95578.116245542,
+    "npc_monotonic": 95584.344157663,
+    "output": "m12-d310904bdf0c4921af54c66acfce7a2c",
+    "terminal_identity": {
+      "project_id": "b4ecb256e63cc588",
+      "workspace_id": "4c388b96-3607-4ddf-a12f-47f7b81306d7",
+      "domain_id": "core",
+      "domain_session_id": "d17d5e4f-d9c8-4d89-8023-bbec424c0a77",
+      "output_id": "1"
+    },
+    "godot_returncode": 0,
+    "workspace": {
+      "project_id": "b4ecb256e63cc588",
+      "workspace_id": "4c388b96-3607-4ddf-a12f-47f7b81306d7",
+      "domain_id": "core",
+      "project_root": "/tmp/plaza-m12-live-ygke1o4w/project-a",
+      "worktree_path": "/tmp/plaza-m12-live-ygke1o4w/.plaza-worktrees/project-a-b4ecb256e63cc588/core/execution",
+      "common_git_dir": "/tmp/plaza-m12-live-ygke1o4w/project-a/.git",
+      "git_dir": "/tmp/plaza-m12-live-ygke1o4w/project-a/.git/worktrees/execution",
+      "branch": "plaza/workspace-b4ecb256e63cc588-core",
+      "initial_commit": "88c13cee24e58fb44143bef61a0505483c47e892"
+    },
+    "start": {
+      "request_id": "2add1dea6282d093f715d03082b3aea5:domain:13",
+      "project_id": "b4ecb256e63cc588",
+      "workspace_id": "4c388b96-3607-4ddf-a12f-47f7b81306d7",
+      "domain_id": "core",
+      "domain_session_id": "d17d5e4f-d9c8-4d89-8023-bbec424c0a77",
+      "query_count": 0
+    },
+    "context": {
+      "project_id": "b4ecb256e63cc588",
+      "workspace_id": "4c388b96-3607-4ddf-a12f-47f7b81306d7",
+      "facts": {
+        "source_root": "/tmp/plaza-m12-live-ygke1o4w/project-a",
+        "agent_id": "systems-architect",
+        "execution_kind": "domain",
+        "domain_id": "core",
+        "tools": [
+          "Read",
+          "Edit",
+          "Bash"
+        ],
+        "permission_mode": "dontAsk",
+        "interaction": "explicit_run",
+        "execution_capacity": 1
+      },
+      "sources": [
+        {
+          "identity": "/workspace/10110TasteslikegoodPlaza/.claude/worktrees/m12-domain-design/bridge/context/GAME_CONTEXT.md",
+          "scope": "shipped",
+          "revision": "1639b6f615f368e99921d2a622f3728db33bc155cdf8bb466d229fba87589268"
+        },
+        {
+          "identity": "/tmp/plaza-m12-live-ygke1o4w/a-initial/context/GAME_CONTEXT.md",
+          "scope": "installation",
+          "revision": null
+        },
+        {
+          "identity": "/workspace/10110TasteslikegoodPlaza/.claude/worktrees/m12-domain-design/bridge/context/WORK_CONTEXT.md",
+          "scope": "shipped",
+          "revision": "1277434ac38f6c27c7d3cb7d5ea1d64169fa92b91615892c24a01b405a7fcd52"
+        },
+        {
+          "identity": "/tmp/plaza-m12-live-ygke1o4w/a-initial/context/WORK_CONTEXT.md",
+          "scope": "installation",
+          "revision": "bd953cca1e28b6e0d8746de624bfbdb36f6beefbe806d4f258b07faf6d58adee"
+        },
+        {
+          "identity": "/tmp/plaza-m12-live-ygke1o4w/project-a/PLAZA_AGENTS.md",
+          "scope": "project",
+          "revision": "48e517b82ce11aff6dc3337e5d9fff629c4d7a1b8f8b0be887a48230e53875f0"
+        },
+        {
+          "identity": "bridge-runtime",
+          "scope": "runtime",
+          "revision": "e9f28d273a0879c57e6180825605e21c9d1e77c6d5bd0216f6c8af40ae5e99b6"
+        }
+      ]
+    },
+    "source_before": {
+      "head": "88c13cee24e58fb44143bef61a0505483c47e892",
+      "status": "",
+      "tracked_sha256": {
+        "PLAZA_AGENTS.md": "48e517b82ce11aff6dc3337e5d9fff629c4d7a1b8f8b0be887a48230e53875f0"
+      }
+    },
+    "source_after": {
+      "head": "88c13cee24e58fb44143bef61a0505483c47e892",
+      "status": "",
+      "tracked_sha256": {
+        "PLAZA_AGENTS.md": "48e517b82ce11aff6dc3337e5d9fff629c4d7a1b8f8b0be887a48230e53875f0"
+      }
+    },
+    "bootstrap_notes": {
+      "revision": 2,
+      "sha256": {
+        "todo": "0513e8af4d14b023b6d5290c71159fd66cfc273690a127f12d6d1ac0d3f35108",
+        "handoff": "39c3a8a3315e7496cbc21fa4701307757d8a8c51e443e8178cdc9e5c0075a658",
+        "progress": "5f2a5093dbdc60d6c29438d47c7920395c7834115629159b06708cdad2aa6eba"
+      }
+    },
+    "notes": {
+      "revision": 9,
+      "sha256": {
+        "todo": "5abb329dfd56e793069eca606f8aeebd9a958740e66d3c0982aab38b1001a508",
+        "handoff": "c3c58597f0330092b21d30b6404621b78f3e8c448c7c861abcec616bf8e1f9fc",
+        "progress": "49e7efb56a75dd02094764980e64ffe447ec8969991310022aa54f4c53361ed6"
+      }
+    },
+    "stages": [
+      {
+        "schema_version": 1,
+        "run_id": "c998921d17db40b7b87794dd4f03b496",
+        "scenario": "a_initial",
+        "producer": "godot",
+        "seq": 1,
+        "stage": "referral_rendered",
+        "receipt_seq": 1,
+        "received_monotonic": 95566.321696866,
+        "received_utc": "2026-10-22T12:39:44.964640+00:00",
+        "payload": {
+          "agent_id": "security-auditor",
+          "assistant": "Talk to the Chief Architect to prepare this project, then come back and we can work on it.",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:character:5"
+        }
+      },
+      {
+        "schema_version": 1,
+        "run_id": "c998921d17db40b7b87794dd4f03b496",
+        "scenario": "a_initial",
+        "producer": "godot",
+        "seq": 2,
+        "stage": "chief_ready",
+        "receipt_seq": 2,
+        "received_monotonic": 95574.687499856,
+        "received_utc": "2026-10-22T12:39:53.330571+00:00",
+        "payload": {
+          "assistant": "Chief Architect approved setup. Project workspace and memory are ready.",
+          "project_id": "b4ecb256e63cc588",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:character:10"
+        }
+      },
+      {
+        "schema_version": 1,
+        "run_id": "c998921d17db40b7b87794dd4f03b496",
+        "scenario": "a_initial",
+        "producer": "godot",
+        "seq": 3,
+        "stage": "domain_running",
+        "receipt_seq": 3,
+        "received_monotonic": 95577.770144456,
+        "received_utc": "2026-10-22T12:39:56.413088+00:00",
+        "payload": {
+          "agent_id": "systems-architect",
+          "domain_id": "core",
+          "domain_session_id": "d17d5e4f-d9c8-4d89-8023-bbec424c0a77",
+          "project_id": "b4ecb256e63cc588",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:domain:16",
+          "workspace_id": "4c388b96-3607-4ddf-a12f-47f7b81306d7"
+        }
+      },
+      {
+        "schema_version": 1,
+        "run_id": "c998921d17db40b7b87794dd4f03b496",
+        "scenario": "a_initial",
+        "producer": "godot",
+        "seq": 4,
+        "stage": "background_ack",
+        "receipt_seq": 4,
+        "received_monotonic": 95578.116245542,
+        "received_utc": "2026-10-22T12:39:56.759188+00:00",
+        "payload": {
+          "distance": 123.0,
+          "domain_id": "core",
+          "domain_session_id": "d17d5e4f-d9c8-4d89-8023-bbec424c0a77",
+          "execution_state": "running",
+          "panel_hidden": true,
+          "project_id": "b4ecb256e63cc588",
+          "radius": 48.0,
+          "request_id": "2add1dea6282d093f715d03082b3aea5:domain:18",
+          "state": "background",
+          "workspace_id": "4c388b96-3607-4ddf-a12f-47f7b81306d7"
+        }
+      },
+      {
+        "schema_version": 1,
+        "run_id": "c998921d17db40b7b87794dd4f03b496",
+        "scenario": "a_initial",
+        "producer": "godot",
+        "seq": 5,
+        "stage": "npc_rendered",
+        "receipt_seq": 5,
+        "received_monotonic": 95584.344157663,
+        "received_utc": "2026-10-22T12:40:02.987228+00:00",
+        "payload": {
+          "agent_id": "fixture-extra-a",
+          "assistant": "Acknowledged: this is an unrelated core conversation, so I'm not treating it as project work.",
+          "domain_id": "core",
+          "domain_session_id": "d17d5e4f-d9c8-4d89-8023-bbec424c0a77",
+          "execution_state": "running",
+          "project_id": "b4ecb256e63cc588",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:1:34",
+          "workspace_id": "4c388b96-3607-4ddf-a12f-47f7b81306d7"
+        }
+      },
+      {
+        "schema_version": 1,
+        "run_id": "c998921d17db40b7b87794dd4f03b496",
+        "scenario": "a_initial",
+        "producer": "godot",
+        "seq": 6,
+        "stage": "domain_rendered",
+        "receipt_seq": 6,
+        "received_monotonic": 95590.667553796,
+        "received_utc": "2026-10-22T12:40:09.310659+00:00",
+        "payload": {
+          "domain_id": "core",
+          "domain_session_id": "d17d5e4f-d9c8-4d89-8023-bbec424c0a77",
+          "output": "m12-d310904bdf0c4921af54c66acfce7a2c",
+          "output_id": "1",
+          "project_id": "b4ecb256e63cc588",
+          "refocus_request_id": "2add1dea6282d093f715d03082b3aea5:domain:39",
+          "rendered_text": "[d17d5e4f-d9c8-4d89-8023-bbec424c0a77 \u00b7 systems-architect \u00b7 output 1 \u00b7 success \u00b7 memory saved]\nRun this exact bounded Bash command once (timeout 100000 ms); do not create the result by any other tool, do not retry it. It waits for an external supervisor. Then return only one JSON object without Markdown fences or surrounding prose, with answer equal to the nonce from M12_RECEIPT, and memory_delta with summary equal to that exact nonce and next_action 'Read prior notes without rerunning completed work'. Command: /workspace/10110TasteslikegoodPlaza/.venv/bin/python -c 'exec('\"'\"'import os,time,pathlib,json,hashlib,datetime\\nrelease=pathlib.Path(\\'\"'\"'/tmp/plaza-m12-live-ygke1o4w/a-initial/control/release\\'\"'\"')\\nresult=pathlib.Path(\\'\"'\"'m12-result.txt\\'\"'\"')\\nassert not result.exists()\\ndeadline=time.monotonic()+90\\nwhile not release.exists():\\n    assert time.monotonic()<deadline, \"release deadline\"\\n    time.sleep(.1)\\nnonce=release.read_text()\\nassert nonce.startswith(\"m12-\")\\nwith result.open(\"x\") as handle: handle.write(nonce)\\nreceipt=dict(cwd=os.getcwd(),result=str(result),nonce=nonce,sha256=hashlib.sha256(result.read_bytes()).hexdigest(),written_utc=datetime.datetime.now(datetime.timezone.utc).isoformat())\\nprint(\"M12_RECEIPT \"+json.dumps(receipt))'\"'\"')'\nm12-d310904bdf0c4921af54c66acfce7a2c",
+          "rendered_unique_results": 1,
+          "request_id": "2add1dea6282d093f715d03082b3aea5:domain:41",
+          "status": "success",
+          "workspace_id": "4c388b96-3607-4ddf-a12f-47f7b81306d7"
+        }
+      },
+      {
+        "schema_version": 1,
+        "run_id": "c998921d17db40b7b87794dd4f03b496",
+        "scenario": "a_initial",
+        "producer": "godot",
+        "seq": 7,
+        "stage": "stop_ack",
+        "receipt_seq": 7,
+        "received_monotonic": 95591.230541974,
+        "received_utc": "2026-10-22T12:40:09.873485+00:00",
+        "payload": {
+          "domain_id": "core",
+          "domain_session_id": "d17d5e4f-d9c8-4d89-8023-bbec424c0a77",
+          "project_id": "b4ecb256e63cc588",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:domain:45",
+          "state": "inactive",
+          "workspace_id": "4c388b96-3607-4ddf-a12f-47f7b81306d7"
+        }
+      }
+    ],
+    "wire": {
+      "commands": [
+        {
+          "request_id": "2add1dea6282d093f715d03082b3aea5:domain:1",
+          "type": "describe_workspace"
+        },
+        {
+          "agent_id": "fixture-extra-a",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:character:2",
+          "type": "agent_status"
+        },
+        {
+          "agent_id": "fixture-extra-b",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:character:3",
+          "type": "agent_status"
+        },
+        {
+          "agent_id": "security-auditor",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:character:4",
+          "type": "agent_status"
+        },
+        {
+          "agent_id": "security-auditor",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:character:5",
+          "type": "project_setup"
+        },
+        {
+          "request_id": "2add1dea6282d093f715d03082b3aea5:domain:6",
+          "type": "describe_workspace"
+        },
+        {
+          "agent_id": "security-auditor",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:character:7",
+          "type": "agent_status"
+        },
+        {
+          "agent_id": "systems-architect",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:character:9",
+          "type": "agent_status"
+        },
+        {
+          "agent_id": "systems-architect",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:character:10",
+          "type": "project_setup"
+        },
+        {
+          "request_id": "2add1dea6282d093f715d03082b3aea5:domain:11",
+          "type": "describe_workspace"
+        },
+        {
+          "agent_id": "systems-architect",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:character:12",
+          "type": "agent_status"
+        },
+        {
+          "domain_id": "core",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:domain:13",
+          "type": "activate_domain"
+        },
+        {
+          "request_id": "2add1dea6282d093f715d03082b3aea5:domain:14",
+          "type": "describe_workspace"
+        },
+        {
+          "agent_id": "security-auditor",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:character:15",
+          "type": "agent_status"
+        },
+        {
+          "agent_id": "systems-architect",
+          "domain_id": "core",
+          "domain_session_id": "d17d5e4f-d9c8-4d89-8023-bbec424c0a77",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:domain:16",
+          "type": "domain_query"
+        },
+        {
+          "agent_id": "systems-architect",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:character:17",
+          "type": "agent_status"
+        },
+        {
+          "domain_id": "core",
+          "domain_session_id": "d17d5e4f-d9c8-4d89-8023-bbec424c0a77",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:domain:18",
+          "type": "background_domain"
+        },
+        {
+          "request_id": "2add1dea6282d093f715d03082b3aea5:domain:19",
+          "type": "describe_workspace"
+        },
+        {
+          "agent_id": "security-auditor",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:character:20",
+          "type": "agent_status"
+        },
+        {
+          "agent_id": "systems-architect",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:character:21",
+          "type": "agent_status"
+        },
+        {
+          "domain_id": "core",
+          "domain_session_id": "d17d5e4f-d9c8-4d89-8023-bbec424c0a77",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:domain:22",
+          "type": "refocus_domain"
+        },
+        {
+          "agent_id": "security-auditor",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:character:23",
+          "type": "agent_status"
+        },
+        {
+          "domain_id": "core",
+          "domain_session_id": "d17d5e4f-d9c8-4d89-8023-bbec424c0a77",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:domain:24",
+          "type": "resume"
+        },
+        {
+          "request_id": "2add1dea6282d093f715d03082b3aea5:domain:25",
+          "type": "describe_workspace"
+        },
+        {
+          "agent_id": "security-auditor",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:character:26",
+          "type": "agent_status"
+        },
+        {
+          "agent_id": "systems-architect",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:character:27",
+          "type": "agent_status"
+        },
+        {
+          "domain_id": "core",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:domain:28",
+          "type": "domain_status"
+        },
+        {
+          "domain_id": "core",
+          "domain_session_id": "d17d5e4f-d9c8-4d89-8023-bbec424c0a77",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:domain:29",
+          "type": "background_domain"
+        },
+        {
+          "request_id": "2add1dea6282d093f715d03082b3aea5:domain:30",
+          "type": "describe_workspace"
+        },
+        {
+          "agent_id": "security-auditor",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:character:31",
+          "type": "agent_status"
+        },
+        {
+          "agent_id": "systems-architect",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:character:32",
+          "type": "agent_status"
+        },
+        {
+          "agent_id": "fixture-extra-a",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:character:33",
+          "type": "agent_status"
+        },
+        {
+          "agent_id": "fixture-extra-a",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:1:34"
+        },
+        {
+          "request_id": "2add1dea6282d093f715d03082b3aea5:domain:35",
+          "type": "describe_workspace"
+        },
+        {
+          "request_id": "2add1dea6282d093f715d03082b3aea5:domain:36",
+          "type": "describe_workspace"
+        },
+        {
+          "agent_id": "security-auditor",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:character:37",
+          "type": "agent_status"
+        },
+        {
+          "agent_id": "systems-architect",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:character:38",
+          "type": "agent_status"
+        },
+        {
+          "domain_id": "core",
+          "domain_session_id": "d17d5e4f-d9c8-4d89-8023-bbec424c0a77",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:domain:39",
+          "type": "refocus_domain"
+        },
+        {
+          "agent_id": "systems-architect",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:character:40",
+          "type": "agent_status"
+        },
+        {
+          "domain_id": "core",
+          "domain_session_id": "d17d5e4f-d9c8-4d89-8023-bbec424c0a77",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:domain:41",
+          "type": "resume"
+        },
+        {
+          "request_id": "2add1dea6282d093f715d03082b3aea5:domain:42",
+          "type": "describe_workspace"
+        },
+        {
+          "agent_id": "security-auditor",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:character:43",
+          "type": "agent_status"
+        },
+        {
+          "agent_id": "systems-architect",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:character:44",
+          "type": "agent_status"
+        },
+        {
+          "type": "domain_status",
+          "request_id": "plain-status",
+          "domain_id": "core"
+        },
+        {
+          "type": "resume",
+          "request_id": "plain-resume",
+          "domain_id": "core",
+          "domain_session_id": "d17d5e4f-d9c8-4d89-8023-bbec424c0a77"
+        },
+        {
+          "domain_id": "core",
+          "domain_session_id": "d17d5e4f-d9c8-4d89-8023-bbec424c0a77",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:domain:45",
+          "type": "deactivate_domain"
+        },
+        {
+          "domain_id": "core",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:domain:46",
+          "type": "domain_status"
+        },
+        {
+          "request_id": "2add1dea6282d093f715d03082b3aea5:domain:47",
+          "type": "describe_workspace"
+        },
+        {
+          "agent_id": "security-auditor",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:character:48",
+          "type": "agent_status"
+        }
+      ],
+      "emitted": [
+        {
+          "type": "workspace_state",
+          "project_id": null,
+          "workspace_id": null,
+          "memory": {
+            "revision": null,
+            "error_type": null
+          },
+          "request_id": "2add1dea6282d093f715d03082b3aea5:domain:1"
+        },
+        {
+          "type": "agent_status",
+          "agent_id": "fixture-extra-a",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:character:2",
+          "execution_kind": "extra",
+          "domain_id": null
+        },
+        {
+          "type": "agent_status",
+          "agent_id": "fixture-extra-b",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:character:3",
+          "execution_kind": "extra",
+          "domain_id": null
+        },
+        {
+          "type": "agent_status",
+          "agent_id": "security-auditor",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:character:4",
+          "execution_kind": "working",
+          "domain_id": "core"
+        },
+        {
+          "type": "project_setup",
+          "agent_id": "security-auditor",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:character:5",
+          "status": "ok",
+          "output": "Talk to the Chief Architect to prepare this project, then come back and we can work on it."
+        },
+        {
+          "type": "workspace_state",
+          "project_id": null,
+          "workspace_id": null,
+          "memory": {
+            "revision": null,
+            "error_type": null
+          },
+          "request_id": "2add1dea6282d093f715d03082b3aea5:domain:6"
+        },
+        {
+          "type": "agent_status",
+          "agent_id": "security-auditor",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:character:7",
+          "execution_kind": "working",
+          "domain_id": "core"
+        },
+        {
+          "type": "agent_status",
+          "agent_id": "systems-architect",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:character:9",
+          "execution_kind": "working",
+          "domain_id": "core"
+        },
+        {
+          "type": "project_setup",
+          "agent_id": "systems-architect",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:character:10",
+          "status": "ok",
+          "output": "Chief Architect approved setup. Project workspace and memory are ready."
+        },
+        {
+          "type": "workspace_state",
+          "project_id": "b4ecb256e63cc588",
+          "workspace_id": null,
+          "memory": {
+            "revision": 2,
+            "error_type": null
+          },
+          "request_id": "2add1dea6282d093f715d03082b3aea5:domain:11"
+        },
+        {
+          "type": "agent_status",
+          "agent_id": "systems-architect",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:character:12",
+          "execution_kind": "working",
+          "domain_id": "core"
+        },
+        {
+          "type": "domain_state",
+          "project_id": "b4ecb256e63cc588",
+          "workspace_id": "4c388b96-3607-4ddf-a12f-47f7b81306d7",
+          "domain_id": "core",
+          "domain_session_id": "d17d5e4f-d9c8-4d89-8023-bbec424c0a77",
+          "state": "activating",
+          "execution_state": "idle",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:domain:13"
+        },
+        {
+          "type": "domain_state",
+          "project_id": "b4ecb256e63cc588",
+          "workspace_id": "4c388b96-3607-4ddf-a12f-47f7b81306d7",
+          "domain_id": "core",
+          "domain_session_id": "d17d5e4f-d9c8-4d89-8023-bbec424c0a77",
+          "state": "active",
+          "execution_state": "idle",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:domain:13"
+        },
+        {
+          "type": "workspace_state",
+          "project_id": "b4ecb256e63cc588",
+          "workspace_id": null,
+          "memory": {
+            "revision": 2,
+            "error_type": null
+          },
+          "request_id": "2add1dea6282d093f715d03082b3aea5:domain:14"
+        },
+        {
+          "type": "agent_status",
+          "agent_id": "security-auditor",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:character:15",
+          "execution_kind": "working",
+          "domain_id": "core"
+        },
+        {
+          "type": "domain_accepted",
+          "project_id": "b4ecb256e63cc588",
+          "workspace_id": "4c388b96-3607-4ddf-a12f-47f7b81306d7",
+          "domain_id": "core",
+          "domain_session_id": "d17d5e4f-d9c8-4d89-8023-bbec424c0a77",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:domain:16",
+          "agent_id": "systems-architect",
+          "execution_state": "running"
+        },
+        {
+          "type": "agent_status",
+          "agent_id": "systems-architect",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:character:17",
+          "execution_kind": "working",
+          "domain_id": "core"
+        },
+        {
+          "type": "domain_state",
+          "project_id": "b4ecb256e63cc588",
+          "workspace_id": "4c388b96-3607-4ddf-a12f-47f7b81306d7",
+          "domain_id": "core",
+          "domain_session_id": "d17d5e4f-d9c8-4d89-8023-bbec424c0a77",
+          "state": "background",
+          "execution_state": "running",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:domain:18"
+        },
+        {
+          "type": "workspace_state",
+          "project_id": "b4ecb256e63cc588",
+          "workspace_id": null,
+          "memory": {
+            "revision": 3,
+            "error_type": null
+          },
+          "request_id": "2add1dea6282d093f715d03082b3aea5:domain:19"
+        },
+        {
+          "type": "agent_status",
+          "agent_id": "security-auditor",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:character:20",
+          "execution_kind": "working",
+          "domain_id": "core"
+        },
+        {
+          "type": "agent_status",
+          "agent_id": "systems-architect",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:character:21",
+          "execution_kind": "working",
+          "domain_id": "core"
+        },
+        {
+          "type": "domain_state",
+          "project_id": "b4ecb256e63cc588",
+          "workspace_id": "4c388b96-3607-4ddf-a12f-47f7b81306d7",
+          "domain_id": "core",
+          "domain_session_id": "d17d5e4f-d9c8-4d89-8023-bbec424c0a77",
+          "state": "active",
+          "execution_state": "running",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:domain:22"
+        },
+        {
+          "type": "resume_complete",
+          "project_id": "b4ecb256e63cc588",
+          "workspace_id": "4c388b96-3607-4ddf-a12f-47f7b81306d7",
+          "domain_id": "core",
+          "domain_session_id": "d17d5e4f-d9c8-4d89-8023-bbec424c0a77",
+          "state": "active",
+          "execution_state": "running",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:domain:24"
+        },
+        {
+          "type": "agent_status",
+          "agent_id": "security-auditor",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:character:23",
+          "execution_kind": "working",
+          "domain_id": "core"
+        },
+        {
+          "type": "workspace_state",
+          "project_id": "b4ecb256e63cc588",
+          "workspace_id": null,
+          "memory": {
+            "revision": 4,
+            "error_type": null
+          },
+          "request_id": "2add1dea6282d093f715d03082b3aea5:domain:25"
+        },
+        {
+          "type": "agent_status",
+          "agent_id": "security-auditor",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:character:26",
+          "execution_kind": "working",
+          "domain_id": "core"
+        },
+        {
+          "type": "agent_status",
+          "agent_id": "systems-architect",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:character:27",
+          "execution_kind": "working",
+          "domain_id": "core"
+        },
+        {
+          "type": "domain_state",
+          "project_id": "b4ecb256e63cc588",
+          "workspace_id": "4c388b96-3607-4ddf-a12f-47f7b81306d7",
+          "domain_id": "core",
+          "domain_session_id": "d17d5e4f-d9c8-4d89-8023-bbec424c0a77",
+          "state": "active",
+          "execution_state": "running",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:domain:28"
+        },
+        {
+          "type": "domain_state",
+          "project_id": "b4ecb256e63cc588",
+          "workspace_id": "4c388b96-3607-4ddf-a12f-47f7b81306d7",
+          "domain_id": "core",
+          "domain_session_id": "d17d5e4f-d9c8-4d89-8023-bbec424c0a77",
+          "state": "background",
+          "execution_state": "running",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:domain:29"
+        },
+        {
+          "type": "workspace_state",
+          "project_id": "b4ecb256e63cc588",
+          "workspace_id": null,
+          "memory": {
+            "revision": 4,
+            "error_type": null
+          },
+          "request_id": "2add1dea6282d093f715d03082b3aea5:domain:30"
+        },
+        {
+          "type": "agent_status",
+          "agent_id": "security-auditor",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:character:31",
+          "execution_kind": "working",
+          "domain_id": "core"
+        },
+        {
+          "type": "agent_status",
+          "agent_id": "systems-architect",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:character:32",
+          "execution_kind": "working",
+          "domain_id": "core"
+        },
+        {
+          "type": "agent_status",
+          "agent_id": "fixture-extra-a",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:character:33",
+          "execution_kind": "extra",
+          "domain_id": null
+        },
+        {
+          "agent_id": "fixture-extra-a",
+          "output": "Acknowledged: this is an unrelated core conversation, so I'm not treating it as project work.",
+          "status": "ok",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:1:34"
+        },
+        {
+          "type": "workspace_state",
+          "project_id": "b4ecb256e63cc588",
+          "workspace_id": null,
+          "memory": {
+            "revision": 7,
+            "error_type": null
+          },
+          "request_id": "2add1dea6282d093f715d03082b3aea5:domain:35"
+        },
+        {
+          "type": "domain_result",
+          "project_id": "b4ecb256e63cc588",
+          "workspace_id": "4c388b96-3607-4ddf-a12f-47f7b81306d7",
+          "domain_id": "core",
+          "domain_session_id": "d17d5e4f-d9c8-4d89-8023-bbec424c0a77",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:domain:16",
+          "agent_id": "systems-architect",
+          "output": "m12-d310904bdf0c4921af54c66acfce7a2c",
+          "output_id": "1",
+          "status": "success",
+          "memory": {
+            "saved": true,
+            "revision": 8,
+            "error_type": null
+          }
+        },
+        {
+          "type": "workspace_state",
+          "project_id": "b4ecb256e63cc588",
+          "workspace_id": null,
+          "memory": {
+            "revision": 8,
+            "error_type": null
+          },
+          "request_id": "2add1dea6282d093f715d03082b3aea5:domain:36"
+        },
+        {
+          "type": "agent_status",
+          "agent_id": "security-auditor",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:character:37",
+          "execution_kind": "working",
+          "domain_id": "core"
+        },
+        {
+          "type": "agent_status",
+          "agent_id": "systems-architect",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:character:38",
+          "execution_kind": "working",
+          "domain_id": "core"
+        },
+        {
+          "type": "domain_state",
+          "project_id": "b4ecb256e63cc588",
+          "workspace_id": "4c388b96-3607-4ddf-a12f-47f7b81306d7",
+          "domain_id": "core",
+          "domain_session_id": "d17d5e4f-d9c8-4d89-8023-bbec424c0a77",
+          "state": "active",
+          "execution_state": "idle",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:domain:39"
+        },
+        {
+          "type": "resume_complete",
+          "project_id": "b4ecb256e63cc588",
+          "workspace_id": "4c388b96-3607-4ddf-a12f-47f7b81306d7",
+          "domain_id": "core",
+          "domain_session_id": "d17d5e4f-d9c8-4d89-8023-bbec424c0a77",
+          "state": "active",
+          "execution_state": "idle",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:domain:41"
+        },
+        {
+          "type": "agent_status",
+          "agent_id": "systems-architect",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:character:40",
+          "execution_kind": "working",
+          "domain_id": "core"
+        },
+        {
+          "type": "workspace_state",
+          "project_id": "b4ecb256e63cc588",
+          "workspace_id": null,
+          "memory": {
+            "revision": 8,
+            "error_type": null
+          },
+          "request_id": "2add1dea6282d093f715d03082b3aea5:domain:42"
+        },
+        {
+          "type": "agent_status",
+          "agent_id": "security-auditor",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:character:43",
+          "execution_kind": "working",
+          "domain_id": "core"
+        },
+        {
+          "type": "domain_state",
+          "project_id": "b4ecb256e63cc588",
+          "workspace_id": "4c388b96-3607-4ddf-a12f-47f7b81306d7",
+          "domain_id": "core",
+          "domain_session_id": "d17d5e4f-d9c8-4d89-8023-bbec424c0a77",
+          "state": "active",
+          "execution_state": "idle",
+          "request_id": "plain-status"
+        },
+        {
+          "type": "domain_result",
+          "project_id": "b4ecb256e63cc588",
+          "workspace_id": "4c388b96-3607-4ddf-a12f-47f7b81306d7",
+          "domain_id": "core",
+          "domain_session_id": "d17d5e4f-d9c8-4d89-8023-bbec424c0a77",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:domain:16",
+          "agent_id": "systems-architect",
+          "output": "m12-d310904bdf0c4921af54c66acfce7a2c",
+          "output_id": "1",
+          "status": "success",
+          "memory": {
+            "saved": true,
+            "revision": 8,
+            "error_type": null
+          }
+        },
+        {
+          "type": "resume_complete",
+          "project_id": "b4ecb256e63cc588",
+          "workspace_id": "4c388b96-3607-4ddf-a12f-47f7b81306d7",
+          "domain_id": "core",
+          "domain_session_id": "d17d5e4f-d9c8-4d89-8023-bbec424c0a77",
+          "state": "active",
+          "execution_state": "idle",
+          "request_id": "plain-resume"
+        },
+        {
+          "type": "agent_status",
+          "agent_id": "systems-architect",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:character:44",
+          "execution_kind": "working",
+          "domain_id": "core"
+        },
+        {
+          "type": "domain_state",
+          "project_id": "b4ecb256e63cc588",
+          "workspace_id": "4c388b96-3607-4ddf-a12f-47f7b81306d7",
+          "domain_id": "core",
+          "domain_session_id": "d17d5e4f-d9c8-4d89-8023-bbec424c0a77",
+          "state": "stopping",
+          "execution_state": "stopping",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:domain:46"
+        },
+        {
+          "type": "domain_state",
+          "project_id": "b4ecb256e63cc588",
+          "workspace_id": "4c388b96-3607-4ddf-a12f-47f7b81306d7",
+          "domain_id": "core",
+          "domain_session_id": "d17d5e4f-d9c8-4d89-8023-bbec424c0a77",
+          "state": "inactive",
+          "execution_state": "idle",
+          "request_id": "2add1dea6282d093f715d03082b3aea5:domain:45"
+        },
+        {
+          "type": "workspace_state",
+          "project_id": "b4ecb256e63cc588",
+          "workspace_id": null,
+          "memory": {
+            "revision": 9,
+            "error_type": null
+          },
+          "request_id": "2add1dea6282d093f715d03082b3aea5:domain:47"
+        }
+      ]
+    },
+    "sdk": {
+      "client_id": "3dbd543b5e0e44ce85588004e0ec6196",
+      "domain": true,
+      "cwd": "/tmp/plaza-m12-live-ygke1o4w/.plaza-worktrees/project-a-b4ecb256e63cc588/core/execution",
+      "model": "claude-haiku-5-5",
+      "permission_mode": "dontAsk",
+      "max_turns": 8,
+      "max_budget_usd": 0.35,
+      "tools": [
+        "Read",
+        "Edit",
+        "Bash"
+      ],
+      "lifecycle": [
+        "connect",
+        "query",
+        "receive"
+      ],
+      "task_ids": [
+        2,
+        2,
+        2
+      ],
+      "query_count": 1,
+      "attempts": [
+        {
+          "name": "Bash",
+          "id": "toolu_01CidvXeEs65Eh8vCPYG5Xn7",
+          "parent": null,
+          "received_utc": "2026-10-22T12:40:07.415627+00:00"
+        }
+      ],
+      "successful_tool_ids": [
+        "toolu_01CidvXeEs65Eh8vCPYG5Xn7"
+      ],
+      "tool_receipts": [
+        {
+          "cwd": "/tmp/plaza-m12-live-ygke1o4w/.plaza-worktrees/project-a-b4ecb256e63cc588/core/execution",
+          "result": "m12-result.txt",
+          "nonce": "m12-d310904bdf0c4921af54c66acfce7a2c",
+          "sha256": "216e7def9c7202536afd57f45055a3f2e88e67edb693587d738d672f7eb30673",
+          "written_utc": "2026-10-22T12:40:07.661325+00:00"
+        }
+      ],
+      "terminals": [
+        {
+          "subtype": "success",
+          "is_error": false,
+          "reason": "completed",
+          "cost_usd": 0.2681655,
+          "permission_denials": 0,
+          "errors": false
+        }
+      ],
+      "provider_session_ids": [
+        "26227083-b8f4-490d-b352-abd53a8b5549"
+      ],
+      "inventory": [
+        "Bash",
+        "Edit",
+        "Read"
+      ]
+    }
+  },
+  "restart": {
+    "checks": {
+      "fresh_owner": true,
+      "same_workspace": true,
+      "same_memory": true,
+      "no_automatic_query": true,
+      "notes_in_query": true,
+      "nonce_not_in_task": true,
+      "notes_readback": true,
+      "result_unchanged": true,
+      "stop_inactive": true
+    },
+    "query_count": 1,
+    "tool_count": 0,
+    "output": "m12-d310904bdf0c4921af54c66acfce7a2c",
+    "workspace": {
+      "project_id": "b4ecb256e63cc588",
+      "workspace_id": "4c388b96-3607-4ddf-a12f-47f7b81306d7",
+      "domain_id": "core",
+      "project_root": "/tmp/plaza-m12-live-ygke1o4w/project-a",
+      "worktree_path": "/tmp/plaza-m12-live-ygke1o4w/.plaza-worktrees/project-a-b4ecb256e63cc588/core/execution",
+      "common_git_dir": "/tmp/plaza-m12-live-ygke1o4w/project-a/.git",
+      "git_dir": "/tmp/plaza-m12-live-ygke1o4w/project-a/.git/worktrees/execution",
+      "branch": "plaza/workspace-b4ecb256e63cc588-core",
+      "initial_commit": "88c13cee24e58fb44143bef61a0505483c47e892"
+    },
+    "start": {
+      "request_id": "readback-start",
+      "project_id": "b4ecb256e63cc588",
+      "workspace_id": "4c388b96-3607-4ddf-a12f-47f7b81306d7",
+      "domain_id": "core",
+      "domain_session_id": "ed5b7e19-868e-4509-b83d-19ef76fcf85e",
+      "query_count": 0
+    },
+    "context": {
+      "project_id": "b4ecb256e63cc588",
+      "workspace_id": "4c388b96-3607-4ddf-a12f-47f7b81306d7",
+      "facts": {
+        "source_root": "/tmp/plaza-m12-live-ygke1o4w/project-a",
+        "agent_id": "systems-architect",
+        "execution_kind": "domain",
+        "domain_id": "core",
+        "tools": [
+          "Read",
+          "Edit",
+          "Bash"
+        ],
+        "permission_mode": "dontAsk",
+        "interaction": "explicit_run",
+        "execution_capacity": 1
+      },
+      "sources": [
+        {
+          "identity": "/workspace/10110TasteslikegoodPlaza/.claude/worktrees/m12-domain-design/bridge/context/GAME_CONTEXT.md",
+          "scope": "shipped",
+          "revision": "1639b6f615f368e99921d2a622f3728db33bc155cdf8bb466d229fba87589268"
+        },
+        {
+          "identity": "/tmp/plaza-m12-live-ygke1o4w/a-restart/context/GAME_CONTEXT.md",
+          "scope": "installation",
+          "revision": null
+        },
+        {
+          "identity": "/workspace/10110TasteslikegoodPlaza/.claude/worktrees/m12-domain-design/bridge/context/WORK_CONTEXT.md",
+          "scope": "shipped",
+          "revision": "1277434ac38f6c27c7d3cb7d5ea1d64169fa92b91615892c24a01b405a7fcd52"
+        },
+        {
+          "identity": "/tmp/plaza-m12-live-ygke1o4w/a-restart/context/WORK_CONTEXT.md",
+          "scope": "installation",
+          "revision": "bd953cca1e28b6e0d8746de624bfbdb36f6beefbe806d4f258b07faf6d58adee"
+        },
+        {
+          "identity": "/tmp/plaza-m12-live-ygke1o4w/project-a/PLAZA_AGENTS.md",
+          "scope": "project",
+          "revision": "48e517b82ce11aff6dc3337e5d9fff629c4d7a1b8f8b0be887a48230e53875f0"
+        },
+        {
+          "identity": "bridge-runtime",
+          "scope": "runtime",
+          "revision": "2db58531778e0599d086ecdeff89686e7a4a384ac1fd52a5471e2cf7bfecb6ef"
+        }
+      ]
+    },
+    "notes_before": {
+      "revision": 9,
+      "sha256": {
+        "todo": "5abb329dfd56e793069eca606f8aeebd9a958740e66d3c0982aab38b1001a508",
+        "handoff": "c3c58597f0330092b21d30b6404621b78f3e8c448c7c861abcec616bf8e1f9fc",
+        "progress": "49e7efb56a75dd02094764980e64ffe447ec8969991310022aa54f4c53361ed6"
+      }
+    },
+    "notes_after": {
+      "revision": 12,
+      "sha256": {
+        "todo": "976cb679ddda5694e93dd40230997df6bd679de3201b008ea26b340fc0d0ff61",
+        "handoff": "40221ac23e0d6468fd0df9dfc9c1afc2ed636b4d8dd13de1d568fa765b2385d5",
+        "progress": "401fd9f34752da1a13dcbfcac5c46302b30e03556da88fd87ffd78bdcc883b05"
+      }
+    },
+    "sdk": {
+      "client_id": "7a86825d1a2c480f8ebfd7acbf6f1c27",
+      "domain": true,
+      "cwd": "/tmp/plaza-m12-live-ygke1o4w/.plaza-worktrees/project-a-b4ecb256e63cc588/core/execution",
+      "model": "claude-haiku-5-5",
+      "permission_mode": "dontAsk",
+      "max_turns": 8,
+      "max_budget_usd": 0.35,
+      "tools": [
+        "Read",
+        "Edit",
+        "Bash"
+      ],
+      "lifecycle": [
+        "connect",
+        "query",
+        "receive"
+      ],
+      "task_ids": [
+        1,
+        1,
+        1
+      ],
+      "query_count": 1,
+      "attempts": [],
+      "successful_tool_ids": [],
+      "tool_receipts": [],
+      "terminals": [
+        {
+          "subtype": "success",
+          "is_error": false,
+          "reason": "completed",
+          "cost_usd": 0.10136150000000001,
+          "permission_denials": 0,
+          "errors": false
+        }
+      ],
+      "provider_session_ids": [
+        "e2913848-314d-4668-a760-079482af659f"
+      ],
+      "inventory": [
+        "Bash",
+        "Edit",
+        "Read"
+      ]
+    }
+  },
+  "isolation": {
+    "checks": {
+      "different_identity": true,
+      "own_three_notes": true,
+      "no_a_notes": true,
+      "no_a_nonce_in_query": true,
+      "isolated_readback": true,
+      "a_unchanged": true,
+      "no_automatic_query": true,
+      "stop_inactive": true
+    },
+    "query_count": 1,
+    "tool_count": 0,
+    "output": "isolated",
+    "workspace": {
+      "project_id": "65244c66c9f453bc",
+      "workspace_id": "b643f263-0f5f-43d9-8cf3-eab851783ace",
+      "domain_id": "core",
+      "project_root": "/tmp/plaza-m12-live-ygke1o4w/project-b",
+      "worktree_path": "/tmp/plaza-m12-live-ygke1o4w/.plaza-worktrees/project-b-65244c66c9f453bc/core/execution",
+      "common_git_dir": "/tmp/plaza-m12-live-ygke1o4w/project-b/.git",
+      "git_dir": "/tmp/plaza-m12-live-ygke1o4w/project-b/.git/worktrees/execution",
+      "branch": "plaza/workspace-65244c66c9f453bc-core",
+      "initial_commit": "87800b106401a63f5022087e3c4cc3852646986c"
+    },
+    "start": {
+      "request_id": "readback-start",
+      "project_id": "65244c66c9f453bc",
+      "workspace_id": "b643f263-0f5f-43d9-8cf3-eab851783ace",
+      "domain_id": "core",
+      "domain_session_id": "2b9de8dd-8c63-45e6-9580-12d37d834fac",
+      "query_count": 0
+    },
+    "context": {
+      "project_id": "65244c66c9f453bc",
+      "workspace_id": "b643f263-0f5f-43d9-8cf3-eab851783ace",
+      "facts": {
+        "source_root": "/tmp/plaza-m12-live-ygke1o4w/project-b",
+        "agent_id": "systems-architect",
+        "execution_kind": "domain",
+        "domain_id": "core",
+        "tools": [
+          "Read",
+          "Edit",
+          "Bash"
+        ],
+        "permission_mode": "dontAsk",
+        "interaction": "explicit_run",
+        "execution_capacity": 1
+      },
+      "sources": [
+        {
+          "identity": "/workspace/10110TasteslikegoodPlaza/.claude/worktrees/m12-domain-design/bridge/context/GAME_CONTEXT.md",
+          "scope": "shipped",
+          "revision": "1639b6f615f368e99921d2a622f3728db33bc155cdf8bb466d229fba87589268"
+        },
+        {
+          "identity": "/tmp/plaza-m12-live-ygke1o4w/b-isolation/context/GAME_CONTEXT.md",
+          "scope": "installation",
+          "revision": null
+        },
+        {
+          "identity": "/workspace/10110TasteslikegoodPlaza/.claude/worktrees/m12-domain-design/bridge/context/WORK_CONTEXT.md",
+          "scope": "shipped",
+          "revision": "1277434ac38f6c27c7d3cb7d5ea1d64169fa92b91615892c24a01b405a7fcd52"
+        },
+        {
+          "identity": "/tmp/plaza-m12-live-ygke1o4w/b-isolation/context/WORK_CONTEXT.md",
+          "scope": "installation",
+          "revision": "bd953cca1e28b6e0d8746de624bfbdb36f6beefbe806d4f258b07faf6d58adee"
+        },
+        {
+          "identity": "/tmp/plaza-m12-live-ygke1o4w/project-b/PLAZA_AGENTS.md",
+          "scope": "project",
+          "revision": "8ee839854ee9a095af6b0b77e3a261c3f4b2396ee72008f384c9cf0140912ad3"
+        },
+        {
+          "identity": "bridge-runtime",
+          "scope": "runtime",
+          "revision": "637824e2db3720d379f056121af8a94b2b765be269195ea955e0eff65633b342"
+        }
+      ]
+    },
+    "notes_before": {
+      "revision": 1,
+      "sha256": {
+        "todo": "1e7aecbc05cf930670c2829b6991a222273b2794a1edf7135e28149aec5f83ef",
+        "handoff": "b267ad874edf285f1a40e49146c99834e00d0c31a03218419bcb6527415bd3c9",
+        "progress": "779629c2ca2055d521a307747d4f2e3b4a0ebddb98d437b59a89e192cf28acfe"
+      }
+    },
+    "notes_after": {
+      "revision": 4,
+      "sha256": {
+        "todo": "6384aa01a913f459115ef5d44de9d49ea389db70bc32f38f36a93a007e28caae",
+        "handoff": "d1d2333a6d32deb7c697dd41b4ef9f559881927df5a528eaa1894ba179f78712",
+        "progress": "ed89c07ee06499bca69ceeeb61311fb860fa8c294be50a90f08ed75ec50c7a81"
+      }
+    },
+    "sdk": {
+      "client_id": "5cef12897b894392a9cf00a8365e6564",
+      "domain": true,
+      "cwd": "/tmp/plaza-m12-live-ygke1o4w/.plaza-worktrees/project-b-65244c66c9f453bc/core/execution",
+      "model": "claude-haiku-5-5",
+      "permission_mode": "dontAsk",
+      "max_turns": 8,
+      "max_budget_usd": 0.35,
+      "tools": [
+        "Read",
+        "Edit",
+        "Bash"
+      ],
+      "lifecycle": [
+        "connect",
+        "query",
+        "receive"
+      ],
+      "task_ids": [
+        1,
+        1,
+        1
+      ],
+      "query_count": 1,
+      "attempts": [],
+      "successful_tool_ids": [],
+      "tool_receipts": [],
+      "terminals": [
+        {
+          "subtype": "success",
+          "is_error": false,
+          "reason": "completed",
+          "cost_usd": 0.07188675,
+          "permission_denials": 0,
+          "errors": false
+        }
+      ],
+      "provider_session_ids": [
+        "ccc52d94-e12f-471b-b9ed-f0768e7706ab"
+      ],
+      "inventory": [
+        "Bash",
+        "Edit",
+        "Read"
+      ]
+    }
+  },
+  "lifetimes": [
+    {
+      "scenario": "a_initial",
+      "run_id": "c998921d17db40b7b87794dd4f03b496",
+      "child_returncode": 0,
+      "forced": false,
+      "closed": true,
+      "ended_at": "2026-10-22T12:40:10.308361+00:00",
+      "memory_marker_before": true,
+      "memory_marker_after": false,
+      "lease_marker_after": false,
+      "reservation_after": null,
+      "owners": [
+        {
+          "clean": true,
+          "worker_done": true,
+          "transport_closed": true,
+          "hook_tasks": 0,
+          "returncode": 0,
+          "lifecycle": [
+            "connect",
+            "query",
+            "receive",
+            "disconnect"
+          ],
+          "task_count": 1
+        }
+      ],
+      "archive_run_id": "480d31d9b7774ee388672c59ae556824",
+      "cli_returncodes": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "scenario": "a_restart",
+      "run_id": "b0d7a5d7719340c7b6df478f2d02f595",
+      "child_returncode": 0,
+      "forced": false,
+      "closed": true,
+      "ended_at": "2026-10-22T12:40:18.488161+00:00",
+      "memory_marker_before": true,
+      "memory_marker_after": false,
+      "lease_marker_after": false,
+      "reservation_after": null,
+      "owners": [
+        {
+          "clean": true,
+          "worker_done": true,
+          "transport_closed": true,
+          "hook_tasks": 0,
+          "returncode": 0,
+          "lifecycle": [
+            "connect",
+            "query",
+            "receive",
+            "disconnect"
+          ],
+          "task_count": 1
+        }
+      ],
+      "archive_run_id": "a96fd5f9864d4ed883242bc45fdd65b6",
+      "cli_returncodes": [
+        0
+      ]
+    },
+    {
+      "scenario": "b_isolation",
+      "run_id": "d5078ebbcf0f43f685e88d353454a395",
+      "child_returncode": 0,
+      "forced": false,
+      "closed": true,
+      "ended_at": "2026-10-22T12:40:25.574419+00:00",
+      "memory_marker_before": true,
+      "memory_marker_after": false,
+      "lease_marker_after": false,
+      "reservation_after": null,
+      "owners": [
+        {
+          "clean": true,
+          "worker_done": true,
+          "transport_closed": true,
+          "hook_tasks": 0,
+          "returncode": 0,
+          "lifecycle": [
+            "connect",
+            "query",
+            "receive",
+            "disconnect"
+          ],
+          "task_count": 1
+        }
+      ],
+      "archive_run_id": "ce7ddf14cd504bdb845a91fc7a31bc65",
+      "cli_returncodes": [
+        0
+      ]
+    }
+  ]
+}

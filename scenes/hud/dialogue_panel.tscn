@@ -56,6 +56,20 @@ theme_override_font_sizes/font_size = 14
 text = "Role · Department"
 clip_text = true
 
+[node name="Clipboard" type="HBoxContainer" parent="Panel/Margin/Rows/Header"]
+size_flags_vertical = 4
+theme_override_constants/separation = 4
+
+[node name="Copy" type="Button" parent="Panel/Margin/Rows/Header/Clipboard"]
+theme_override_font_sizes/font_size = 12
+text = "Copy"
+tooltip_text = "Copy selected transcript text, or all revealed text"
+
+[node name="SelectAll" type="Button" parent="Panel/Margin/Rows/Header/Clipboard"]
+theme_override_font_sizes/font_size = 12
+text = "Select All"
+tooltip_text = "Select the displayed transcript"
+
 [node name="BodyLabel" type="RichTextLabel" parent="Panel/Margin/Rows"]
 size_flags_vertical = 3
 fit_content = false
@@ -73,6 +87,7 @@ theme_override_constants/separation = 8
 size_flags_horizontal = 3
 placeholder_text = "Ask this agent a question..."
 expand_to_text_length = false
+keep_editing_on_text_submit = true
 theme_override_font_sizes/font_size = 14
 
 [node name="StatusLabel" type="Label" parent="Panel/Margin/Rows"]
@@ -83,3 +98,15 @@ autowrap_mode = 3
 max_lines_visible = 2
 text_overrun_behavior = 3
 text = ""
+
+[node name="Actions" type="HBoxContainer" parent="Panel/Margin/Rows"]
+[node name="Prepare" type="Button" parent="Panel/Margin/Rows/Actions"]
+text = "Prepare"
+[node name="Start" type="Button" parent="Panel/Margin/Rows/Actions"]
+text = "Let's work"
+[node name="Send" type="Button" parent="Panel/Margin/Rows/Actions"]
+text = "Send"
+[node name="Stop" type="Button" parent="Panel/Margin/Rows/Actions"]
+text = "Stop"
+[node name="Status" type="Button" parent="Panel/Margin/Rows/Actions"]
+text = "Refresh status"

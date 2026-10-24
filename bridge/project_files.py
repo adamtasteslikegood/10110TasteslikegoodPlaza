@@ -1,6 +1,7 @@
 """Durable project metadata primitives with POSIX, no-follow directory anchors.
 
-Locks are nonblocking and their files are never replaced or removed. Callers
+Locks default to nonblocking; short operations can opt into a bounded wait.
+Their files are never replaced or removed. Callers
 must keep the returned lock alive for the whole protected operation/session.
 """
 
@@ -8,6 +9,7 @@ from contextlib import contextmanager
 import os
 from pathlib import Path
 import stat
+import time
 from uuid import uuid4
 
 
@@ -116,6 +118,36 @@ def durable_unlink(path: Path) -> None:
         os.fsync(parent)
 
 
+# Short metadata operations may serialize; lifetime ownership must stay fail-fast.
+SHORT_LOCK_SECONDS = 1.0
+
+
+def lock_exclusive(fd: int, *, deadline=None, stop_waiting=None) -> None:
+    """Acquire atomically, waiting only for explicitly bounded short contention.
+
+    No lock is held while waiting. Only EWOULDBLOCK is retryable; callers retain
+    their inode/marker validation and own/drain the whole blocking operation.
+    """
+    try:
+        import fcntl
+    except ImportError:
+        raise OSError("OS project locking unavailable") from None
+
+    while True:
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            return
+        except BlockingIOError:
+            if deadline is None or (stop_waiting is not None and stop_waiting()):
+                raise
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise
+            time.sleep(min(0.01, remaining))
+            if time.monotonic() >= deadline:
+                raise
+
+
 class FileLock:
     """An OS lock on a stable inode; descriptor closure releases exclusion."""
 
@@ -124,16 +156,12 @@ class FileLock:
         self._fd = fd
 
     @classmethod
-    def acquire(cls, path: Path) -> "FileLock":
+    def acquire(cls, path: Path, *, deadline=None, stop_waiting=None) -> "FileLock":
         _supported()
-        try:
-            import fcntl
-        except ImportError:
-            raise OSError("OS project locking unavailable") from None
         with directory(path.parent) as parent:
             fd = _open(parent, path.name, os.O_RDWR | os.O_CREAT)
             try:
-                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                lock_exclusive(fd, deadline=deadline, stop_waiting=stop_waiting)
                 os.fsync(parent)
                 result = cls(path, fd)
                 result.validate()

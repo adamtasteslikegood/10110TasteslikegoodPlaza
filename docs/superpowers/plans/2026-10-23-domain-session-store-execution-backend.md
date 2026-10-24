@@ -1,5 +1,13 @@
 # DomainSessionStore + ExecutionBackend plan (A, then A+B, C as end goal)
 
+> **Integration/review checkpoint (PLZG-290 / #373):** this proposal and its
+> recorded owner answers are preserved; no implementation starts in this round.
+> Integration isolation is temporary. The next session reviews
+> [M13 decisions/questions](../../../M13_DECISIONS_AND_QUESTIONS.md), reconciles
+> entitled sources and the contradictory older/later paragraphs below, and then
+> opens the appropriate PR to dev. This merge does not ratify new D-rows, prove
+> remote auth/container feasibility or refresh historical guard evidence.
+
 **Status:** Proposed. Plan only; no code changed. Written 2026-10-23 by systems-architect from
 `docs/research/cloudflare-durable-objects/ANALYSIS.md` and the code at `73f5c03`.
 Owner goal (Adam, 2026-10-23): build A and A+B first, spike-test, then C. The bridge should be able to switch

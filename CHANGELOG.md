@@ -11,11 +11,81 @@ section at release time. PR references in parentheses.
 **Two version axes, deliberately separate.** This file and the tags track the
 **application**: the 3D era was `0.0.x`, and the 2.5D line is `0.1.y`. The
 `doc_set_version:` in every governed document's frontmatter is the **document
-set's** number and is unrelated — it reached `0.2.17` on its own axis. Prose that
+set's** number and is unrelated — it reached `0.2.18` on its own axis. Prose that
 cites `v0.2.7` or `v0.2.8` as software releases is conflating the two; those were
 spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
+
+### Fixed — blocked department chat guidance (PLZG-295)
+
+- Show fixed readiness guidance in both chat transcripts and distinguish project
+  setup from department readiness. Explain workspace inspection, unconfirmed
+  cleanup, reservations and capacity while keeping blocked work controls disabled.
+- Refresh the selected representative's readiness alongside department status;
+  clear stale guidance after observed recovery without starting or retrying work.
+  Provider-free UI checks cover this correction; earlier live/clipboard evidence
+  remains bound to its recorded sources, with laptop acceptance separate.
+
+### Added — transcript clipboard controls (PLZG-293)
+
+- Add compact Copy/Select All buttons and right-click menus to NPC dialogue and
+  domain results, including disconnected history. Preserve selected plain text,
+  Unicode and displayed labels; without a selection, copy the revealed transcript.
+- Clamp explicit transcript Copy paths to revealed text and disable native
+  selected-text drag export. Native PRIMARY selections contain only revealed text.
+  Keep composer editing, reading position, keyboard traversal and explicit work
+  controls; dismiss stale menus on scope changes.
+- Store only revealed text in selectable labels and append plain text as replies
+  advance, so native word/paragraph selection and PRIMARY release cannot access
+  hidden suffixes. Preserve typewriter timing, genuine selection and rendered readback.
+- Exercise actual panel input and add an optional X11/xclip desktop driver with
+  independent clipboard reads and layout captures. Existing runtime acceptance
+  stays bound to its original sources; native laptop checks remain separate.
+
+### Fixed — M12 replies, diagnostics and requested shutdown (PLZG-289)
+
+- Decode supported final answer/memory envelopes conservatively, preserve prose,
+  and teach the real project-memory grammar without accepting unsupported aliases.
+- Preserve partial failed output in enabled transcripts and show readable causes
+  in both Godot panes. Keep operational diagnostics bounded, correlated and free
+  of raw tool bodies; explain managed branch/root-cwd constraints without weaker
+  readiness checks. Give domain command/execution events one owner.
+- Route actual CLI SIGINT/SIGTERM through graceful drain. Retain failed NPC/Chief
+  cleanup across request retirement, reap only captured owned children and keep
+  recording/project ownership unclean when cleanup cannot be confirmed.
+- Record 1,990 Python tests plus 118 subtests, eight Godot gates, fresh twelve-source
+  guards (29/29 per mode at `ec5d236`) and one selected `dontAsk` Linux API-key live
+  pass at clean `eaba12a`, bound to 48 relevant sources with three clean recording
+  closures. CLI signal behavior has separate provider-free process tests. Preserve
+  all historical evidence; owner laptop baseline behavior/latest OAuth are already
+  confirmed, while this correction's laptop and remaining desktop checks stay open.
+
+### Changed — M12 character work and acceptance runners (PLZG-289)
+
+- Implement catalog-agent department routing, lazy per-department worktrees,
+  project-shared memory, typed Chief preparation and shared dialogue/domain-pane
+  controls. Refresh bounded guidance per Run and select strict boolean permission
+  mode while retaining mandatory guards.
+- Update live orchestration and strict evidence checks for explicit Core Start,
+  working dialogue, independent extras, selected mode and context revisions.
+  Offline tests include the runner's real Godot/Git flow with test-only SDK methods.
+  Correct nullable extra-status validation and bounded observation/admission lock
+  contention. Record fresh ten-source guard acceptance (29/29 in each mode at
+  `ba5599b`) and selected `dontAsk` Linux API-key Godot/plain-client acceptance at
+  clean `a582f11`. Preserve the earlier failed live report, historical guards and
+  activation history. Laptop/native OAuth/desktop acceptance remains open.
+
+### Documentation — M12 working-character amendment (PLZG-289)
+
+- Ratify the owner-approved revised specification at `eadb0b4` (2026-10-22,
+  “ok, build it”) in doc set 0.2.18. Scope synchronous conversation to extras and
+  working catalog characters to department domains; adopt one worktree per
+  project/department while retaining shared project notes. Approve contextual
+  Start/Run, fresh bounded game/work guidance and guarded permission control.
+- Reconcile D-033/D-034/D-038, original M12 and roadmap dependencies, resolve
+  conflict §4.15, and register the authorized implementation plan. Preserve D-006
+  as superseded and D-039 as project-scoped. No runtime or new acceptance claimed.
 
 ### Added — M12 bounded acceptance and operations (PLZG-289)
 

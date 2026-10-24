@@ -154,6 +154,45 @@ def test_disabled_transcripts_preserve_lifecycle_and_error_events(tmp_path):
     assert not list(cfg.log_dir.rglob("transcript-*.jsonl"))
 
 
+@pytest.mark.parametrize("enabled", [True, False])
+def test_failure_metadata_is_allowlisted_and_run_correlated(tmp_path, capsys, enabled):
+    cfg = config(tmp_path, transcripts_enabled=enabled)
+    recorder = BridgeRecorder(cfg, "synthetic")
+    assert recorder.event(
+        "request_failed",
+        context(),
+        outcome="failure",
+        terminal_reason="readiness_failed",
+        readiness_category="cwd_mismatch",
+        tool_name="Bash",
+        tool_use_id="a" * 64,
+    )
+    assert recorder.event(
+        "request_failed",
+        context(request_id="req-2"),
+        outcome="failure",
+        terminal_reason="synthetic-sensitive password=not-real",
+        readiness_category="synthetic-sensitive",
+        tool_name="synthetic-sensitive",
+        tool_use_id="synthetic-sensitive",
+    )
+    recorder.message(context(), "error", "synthetic-private-body", "failure")
+    recorder.close()
+    rows = records(cfg, "events-*.jsonl")
+    assert len(rows) == 2 and len({r["run_id"] for r in rows}) == 1
+    assert rows[0]["terminal_reason"] == "readiness_failed"
+    assert rows[0]["readiness_category"] == "cwd_mismatch"
+    assert rows[0]["tool_use_id"] == "a" * 64
+    assert rows[1]["terminal_reason"] == "sdk_error"
+    assert not {"readiness_category", "tool_name", "tool_use_id"} & rows[1].keys()
+    diagnostics = str(rows) + capsys.readouterr().err
+    assert (
+        "synthetic-sensitive" not in diagnostics
+        and "synthetic-private-body" not in diagnostics
+    )
+    assert bool(records(cfg, "transcript-*.jsonl")) is enabled
+
+
 def test_disk_redaction_precedes_fitting_without_mutating_live_content(
     tmp_path, capsys
 ):
@@ -489,3 +528,27 @@ def test_agent_path_redaction_is_stable_distinct_and_preserves_capture(
         )
         <= cfg.log_max_total_bytes
     )
+
+
+def test_context_diagnostics_only_capture_identities_and_revisions(tmp_path):
+    cfg = config(tmp_path)
+    recorder = BridgeRecorder(cfg, "plaza", redactions=("secret",))
+    assert recorder.event(
+        "context_composed",
+        context(),
+        context_sources=[
+            dict(
+                identity="/secret/guidance",
+                scope="project",
+                revision="abc",
+                text="private instruction body",
+                runtime="private runtime",
+            )
+        ],
+    )
+    recorder.close()
+    row = records(cfg)[0]
+    assert row["context_sources"] == [
+        dict(identity="/[REDACTED]/guidance", scope="project", revision="abc")
+    ]
+    assert "private" not in json.dumps(row)

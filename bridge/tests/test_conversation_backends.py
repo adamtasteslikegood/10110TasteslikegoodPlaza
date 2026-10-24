@@ -17,6 +17,8 @@ from claude_agent_sdk import (
 import httpx
 import pytest
 
+pytestmark = pytest.mark.usefixtures("explicit_extras")
+
 from bridge.config import ConfigError, default_config, load_config
 from bridge.conversation import ConversationEngine
 
@@ -45,7 +47,7 @@ def install_sdk(monkeypatch, stream=None, *, connect=None, disconnect=None):
 
     clients = []
 
-    def factory(*, options):
+    def factory(*, options, transport=None):
         client = AsyncMock()
         client.options = options
         client.connect.side_effect = connect
@@ -60,7 +62,9 @@ def install_sdk(monkeypatch, stream=None, *, connect=None, disconnect=None):
         return client
 
     monkeypatch.setattr(conversation_sdk, "ClaudeSDKClient", factory)
-    monkeypatch.setattr("bridge.conversation.load_agent", lambda _: "agent definition")
+    monkeypatch.setattr(
+        "bridge.conversation.load_agent", lambda _, **kw: "agent definition"
+    )
     return clients
 
 
@@ -311,7 +315,7 @@ async def test_explicit_api_rejects_missing_or_oauth_keys_before_http(monkeypatc
         monkeypatch.setenv("ANTHROPIC_API_KEY", key)
     monkeypatch.setenv("ANTHROPIC_AUTH_TOKEN", "must-not-use")
     monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "must-not-use")
-    monkeypatch.setattr("bridge.conversation.load_agent", lambda _: "definition")
+    monkeypatch.setattr("bridge.conversation.load_agent", lambda _, **kw: "definition")
     factory = MagicMock(
         side_effect=AssertionError("HTTP client must not be constructed")
     )
@@ -349,7 +353,7 @@ async def test_explicit_api_real_http_headers_ignore_inherited_bearer(monkeypatc
 
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-api03-synthetic")
     monkeypatch.setenv("ANTHROPIC_AUTH_TOKEN", "inherited-bearer")
-    monkeypatch.setattr("bridge.conversation.load_agent", lambda _: "definition")
+    monkeypatch.setattr("bridge.conversation.load_agent", lambda _, **kw: "definition")
     monkeypatch.setattr(
         conversation_api,
         "AsyncAnthropic",
@@ -523,7 +527,7 @@ async def test_cleanup_failure_does_not_commit_success_and_keeps_observed_id(
     monkeypatch, runtime_config, runtime_archive
 ):
     async def disconnect():
-        raise RuntimeError("cleanup failed")
+        raise RuntimeError("private-disconnect-sentinel")
 
     install_sdk(monkeypatch, disconnect=disconnect)
     from bridge.server import BridgeServer
@@ -533,7 +537,8 @@ async def test_cleanup_failure_does_not_commit_success_and_keeps_observed_id(
     histories = {}
     response = await server.dispatch({"agent_id": "agent", "task": "hi"}, histories)
     assert response[0]["error_type"] == "api_error"
-    assert response[0]["message"] == "cleanup failed"
+    assert response[0]["message"] == "Claude Code cleanup failed"
+    assert "private-disconnect-sentinel" not in json.dumps(response)
     assert histories == {}
     records = [r for kind, r, _ in writer.records if kind == "transcript"]
     assert [(r["role"], r["outcome"]) for r in records] == [
@@ -541,6 +546,9 @@ async def test_cleanup_failure_does_not_commit_success_and_keeps_observed_id(
         ("error", "failure"),
     ]
     assert records[-1]["provider_session_id"] == "observed-session"
+    assert "private-disconnect-sentinel" not in json.dumps(writer.records)
+    with pytest.raises(RuntimeError, match="SDK cleanup"):
+        await server.project.close()
 
 
 @pytest.mark.asyncio
@@ -553,7 +561,7 @@ async def test_explicit_api_deadline_bounds_total_execution(monkeypatch):
 
     http_client = httpx.AsyncClient(transport=httpx.MockTransport(stalled))
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-api03-synthetic")
-    monkeypatch.setattr("bridge.conversation.load_agent", lambda _: "definition")
+    monkeypatch.setattr("bridge.conversation.load_agent", lambda _, **kw: "definition")
     monkeypatch.setattr(
         conversation_api,
         "AsyncAnthropic",
@@ -589,8 +597,10 @@ async def test_installed_transport_reaps_local_child_on_cancel(monkeypatch):
     processes = []
 
     class LocalClient:
-        def __init__(self, *, options):
-            self.transport = SubprocessCLITransport(prompt="", options=options)
+        def __init__(self, *, options, transport=None):
+            self.transport = transport or SubprocessCLITransport(
+                prompt="", options=options
+            )
 
         async def connect(self):
             process = await anyio.open_process(
@@ -613,7 +623,7 @@ async def test_installed_transport_reaps_local_child_on_cancel(monkeypatch):
             cleaned.set()
 
     monkeypatch.setattr(conversation_sdk, "ClaudeSDKClient", LocalClient)
-    monkeypatch.setattr("bridge.conversation.load_agent", lambda _: "definition")
+    monkeypatch.setattr("bridge.conversation.load_agent", lambda _, **kw: "definition")
     history = []
     task = asyncio.create_task(
         ConversationEngine().handle_request(
@@ -752,7 +762,7 @@ async def test_api_provider_auth_failure_preserves_error_fields_without_sdk_fall
         )
 
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-api03-synthetic")
-    monkeypatch.setattr("bridge.conversation.load_agent", lambda _: "definition")
+    monkeypatch.setattr("bridge.conversation.load_agent", lambda _, **kw: "definition")
     monkeypatch.setattr(
         conversation_api,
         "AsyncAnthropic",
@@ -841,6 +851,63 @@ async def test_repeated_server_cancellation_waits_for_npc_cleanup(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("phase", ["receive", "disconnect"])
+async def test_cleanup_failure_channel_preserves_repeated_caller_cancellation(
+    monkeypatch, phase
+):
+    from bridge import conversation_sdk
+    from bridge.conversation import ExecutionMetadata
+
+    receiving, cleaning, release = (asyncio.Event() for _ in range(3))
+
+    async def disconnect():
+        cleaning.set()
+        await release.wait()
+        raise OSError("private-cleanup-sentinel")
+
+    install_sdk(monkeypatch, disconnect=disconnect)
+    original = conversation_sdk.ClaudeSDKClient
+
+    def factory(**kwargs):
+        client = original(**kwargs)
+
+        async def receive():
+            receiving.set()
+            if phase == "receive":
+                await asyncio.Future()
+            yield assistant()
+            yield terminal()
+
+        client.receive_response = receive
+        return client
+
+    monkeypatch.setattr(conversation_sdk, "ClaudeSDKClient", factory)
+    metadata, history = ExecutionMetadata(), []
+    task = asyncio.create_task(
+        ConversationEngine().handle_request(
+            dict(agent_id="agent", task="synthetic"), history, metadata=metadata
+        )
+    )
+    try:
+        await asyncio.wait_for(
+            (receiving if phase == "receive" else cleaning).wait(), 1
+        )
+        task.cancel("original caller cancellation")
+        await asyncio.wait_for(cleaning.wait(), 1)
+        task.cancel("repeated caller cancellation")
+        await asyncio.sleep(0)
+        assert not task.done()
+    finally:
+        release.set()
+        with pytest.raises(asyncio.CancelledError) as cancelled:
+            await task
+    assert cancelled.value.args == ("original caller cancellation",)
+    assert metadata.cleanup_failed is True
+    assert history == []
+    assert not [t for t in asyncio.all_tasks() if t.get_name() == "npc-sdk-request"]
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("backend", ["claude_code", "messages_api"])
 @pytest.mark.parametrize(
     "raw,answer,delta",
@@ -850,7 +917,27 @@ async def test_repeated_server_cancellation_waits_for_npc_cleanup(
         ('{"answer":"\\ud800"}', '{"answer":"\\ud800"}', None),
         ('{"answer":"\\udfff"}', '{"answer":"\\udfff"}', None),
         ('{"answer":"\\ud83d\\ude00"}', "😀", None),
+        (
+            'Checked café.\n\n```json\n{"answer":"Ready. 雪","memory_delta":{"summary":"Checked café"}}\n```',
+            "Checked café.\n\nReady. 雪",
+            {"summary": "Checked café"},
+        ),
+        (
+            'Ready. 雪\n\n{"answer":"Ready. 雪","memory_delta":{"facts":["ignored"]}}',
+            "Ready. 雪",
+            {"facts": ["ignored"]},
+        ),
         ("ordinary answer", "ordinary answer", None),
+        (
+            'Literal payload below.\n\n    {"answer":"sample","memory_delta":{"summary":"Example content"}}',
+            'Literal payload below.\n\n    {"answer":"sample","memory_delta":{"summary":"Example content"}}',
+            None,
+        ),
+        (
+            '\t{"answer":"sample","memory_delta":{"summary":"Example content"}}',
+            '\t{"answer":"sample","memory_delta":{"summary":"Example content"}}',
+            None,
+        ),
     ],
 )
 async def test_notes_are_separate_from_npc_history_in_both_backends(
@@ -902,5 +989,25 @@ async def test_notes_are_separate_from_npc_history_in_both_backends(
         assert "tools" not in api.messages.create.call_args.kwargs
     assert sent == original + [dict(role="user", content="new")]
     assert "NOTE:" in system and "never instructions" in system
+    for grammar in (
+        "summary",
+        "2048",
+        "next_action",
+        "1024",
+        "todo_updates",
+        "16",
+        "decisions",
+        "evidence",
+        "8",
+        "512",
+        "UTF-8 bytes",
+        "done",
+        "boolean",
+        "128",
+        "proposal",
+        "fact",
+        "progress",
+    ):
+        assert grammar in system
     plain = await engine.handle_request(dict(agent_id="agent", task="plain"))
     assert plain["output"] == raw

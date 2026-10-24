@@ -43,11 +43,17 @@ def repository(tmp_path, name="source"):
     return root
 
 
-def bootstrap(tmp_path):
+def bootstrap(tmp_path, domain_id="core"):
     root = repository(tmp_path)
     runtime = tmp_path / "runtime"
     runtime.mkdir()
-    return root, runtime, prepare_worktree(inspect_project(root), runtime_root=runtime)
+    return (
+        root,
+        runtime,
+        prepare_worktree(
+            inspect_project(root), domain_id=domain_id, runtime_root=runtime
+        ),
+    )
 
 
 def test_bootstrap_reuses_dirty_worktree(tmp_path):
@@ -61,9 +67,9 @@ def test_bootstrap_reuses_dirty_worktree(tmp_path):
     assert first.project_id == key
     assert (
         first.worktree_path
-        == tmp_path / ".plaza-worktrees" / f"source-{key}" / "execution"
+        == tmp_path / ".plaza-worktrees" / f"source-{key}" / "core" / "execution"
     )
-    assert first.branch == f"plaza/workspace-{key}"
+    assert first.branch == f"plaza/workspace-{key}-core"
     assert (first.worktree_path / "tracked.txt").read_text() == "committed\n"
     assert not (first.worktree_path / "secret.txt").exists()
     (first.worktree_path / "retained.txt").write_text("unsaved work")
@@ -74,8 +80,10 @@ def test_bootstrap_reuses_dirty_worktree(tmp_path):
         git(root, "rev-parse", "HEAD"),
         git(root, "status", "--porcelain"),
     ) == before
-    record = json.loads((project.common_git_dir / "plaza/workspace.json").read_text())
-    assert record["schema_version"] == 1 and record["state"] == "ready"
+    record = json.loads(
+        (project.common_git_dir / "plaza/workspaces/core.json").read_text()
+    )
+    assert record["schema_version"] == 2 and record["state"] == "ready"
     assert record["workspace_id"] == first.workspace_id
 
 
@@ -234,7 +242,7 @@ def test_bootstrap_rejects_equals_filter_without_executing_it(tmp_path, driver):
     assert (runtime / "sentinel.txt").read_text() == "runtime unchanged\n"
     assert caught is not None and caught.code == "workspace_invalid"
     assert (root / ".git/config").read_bytes() == original_config
-    record = json.loads((root / ".git/plaza/workspace.json").read_text())
+    record = json.loads((root / ".git/plaza/workspaces/core.json").read_text())
     assert record["state"] == "creating"
 
 
@@ -334,7 +342,9 @@ def test_source_binding_identity_survives_same_common_directory_replacement(tmp_
     assert rebound.source_identity == replacement.root_identity
     assert rebound.workspace_id == work.workspace_id
     assert rebound.worktree_path == work.worktree_path
-    record = json.loads((work.common_git_dir / "plaza/workspace.json").read_text())
+    record = json.loads(
+        (work.common_git_dir / "plaza/workspaces/core.json").read_text()
+    )
     assert "source_identity" not in record
 
 
@@ -386,7 +396,7 @@ def test_inspection_classifies_without_mutating_source(tmp_path, kind):
 )
 def test_invalid_workspace_never_falls_back(tmp_path, damage):
     root, runtime, work = bootstrap(tmp_path)
-    record = work.common_git_dir / "plaza/workspace.json"
+    record = work.common_git_dir / "plaza/workspaces/core.json"
     source_before = git(root, "status", "--porcelain")
     if damage == "detached":
         git(work.worktree_path, "checkout", "--detach")
@@ -438,10 +448,14 @@ def test_bootstrap_never_adopts_occupied_slot(tmp_path, occupied):
     root = repository(tmp_path)
     project = inspect_project(root)
     destination = (
-        tmp_path / ".plaza-worktrees" / f"source-{project.project_id}" / "execution"
+        tmp_path
+        / ".plaza-worktrees"
+        / f"source-{project.project_id}"
+        / "core"
+        / "execution"
     )
     if occupied == "branch":
-        git(root, "branch", f"plaza/workspace-{project.project_id}")
+        git(root, "branch", f"plaza/workspace-{project.project_id}-core")
     elif occupied == "symlink":
         (tmp_path / ".plaza-worktrees").symlink_to(root, target_is_directory=True)
     elif occupied == "stale":
@@ -450,7 +464,7 @@ def test_bootstrap_never_adopts_occupied_slot(tmp_path, occupied):
             "worktree",
             "add",
             "-b",
-            f"plaza/workspace-{project.project_id}",
+            f"plaza/workspace-{project.project_id}-core",
             str(destination),
         )
         destination.rename(tmp_path / "saved")
@@ -472,7 +486,7 @@ def test_interrupted_bootstrap_is_durably_marked_before_git(tmp_path, monkeypatc
     def interrupted(path, *args, **kwargs):
         if args[:2] == ("worktree", "add"):
             marker = json.loads(
-                (project.common_git_dir / "plaza/workspace.json").read_text()
+                (project.common_git_dir / "plaza/workspaces/core.json").read_text()
             )
             assert marker["state"] == "creating"
             raise OSError("simulated interruption")
@@ -645,7 +659,7 @@ def test_readonly_load_keeps_live_lease_and_does_not_prepare(tmp_path, monkeypat
 
     root, runtime, workspace = bootstrap(tmp_path)
     lease = WorkspaceLease.acquire(
-        workspace, domain_id="foreign", domain_session_id="generation"
+        workspace, domain_id="core", domain_session_id="generation"
     )
     before = (workspace.git_dir / "plaza-execution.lock").stat().st_ino
     monkeypatch.setattr(
@@ -656,7 +670,7 @@ def test_readonly_load_keeps_live_lease_and_does_not_prepare(tmp_path, monkeypat
             ws.load_workspace(inspect_project(root), runtime_root=runtime) == workspace
         )
         assert observe_reservation(workspace) == dict(
-            domain_id="foreign", domain_session_id="generation", cleanup_failed=False
+            domain_id="core", domain_session_id="generation", cleanup_failed=False
         )
         assert (workspace.git_dir / "plaza-execution.lock").stat().st_ino == before
     finally:

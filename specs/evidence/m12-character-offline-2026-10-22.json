@@ -1,0 +1,126 @@
+{
+  "schema_version": 1,
+  "kind": "offline_verification",
+  "recorded_utc": "2026-10-22T10:47:31.380072+00:00",
+  "status": "DONE_WITH_CONCERNS",
+  "handoff": "READY_FOR_LIVE",
+  "live_accepted": false,
+  "paid_provider_invocations": 0,
+  "source_basis": {
+    "base_commit": "adb825a5c79a9023bec964c087f4e7c47f816191",
+    "working_tree_changes": true,
+    "sha256": {
+      "bridge/config.py": "5a5e00ac875ed8ef2a8fa224d74073f1786bdd58c95d058bacf7f3d25bfb0d0d",
+      "bridge/readiness.py": "f95766bf7752e7b69a310089dcfbe9d7a9cc52ded59047398d7977c202af1160",
+      "bridge/guarded_transport.py": "e5d6b4a1af15be7ce031b08d30a9bf232fd963bb143339cb201035d355211c68",
+      "bridge/domain_sdk.py": "eb9fceb935c6819e32113696ff520aa9156ec37628e6870f7dcb2c640f82271c",
+      "bridge/tool_guard_evidence.py": "cc86a4e146a19316b45142485a95a8479ff1ae6aab60e60c165b41a446ca3f3b",
+      "scripts/m12_tool_guard_probe.py": "7ae6006c171b6c0907cfcd58c5641533df62f69f68d309cc7cb49625c5dd16f3",
+      "scripts/m12_live.py": "64f28de90ba517528ca5746dfb30bbeed074a741872d04c3cdfa8d7514dc91d2",
+      "scripts/m12_stages.py": "2c283a24a7717f7fd2a1d01eba6cbf22bf5c9d5bb69fa7f6d80740df7eba79b8",
+      "tests/godot_domain_integration.gd": "0bcf008f5d96fe6271410fb0a91baf84d1ade5b0073a086abb595d45cb13d8e5",
+      "tests/godot_domain_integration.tscn": "e1147e59b66811384f743b2935a81613f68b0374fff18be60412d9ba3617d624",
+      "tests/character_fixture.gd": "be6f843c1eecdba3c8ae57993ff90e8e8102b43261baeac49c212edf858eb0f3",
+      "bridge/context.py": "101c2f5c87a43391a437d344a72d069a4f0d3662225e07e4bebbaf5dde89c4cf",
+      "bridge/context/GAME_CONTEXT.md": "1639b6f615f368e99921d2a622f3728db33bc155cdf8bb466d229fba87589268",
+      "bridge/context/WORK_CONTEXT.md": "1277434ac38f6c27c7d3cb7d5ea1d64169fa92b91615892c24a01b405a7fcd52",
+      "bridge/agent_bindings.py": "33143416899711ade931420f6dbe9656e57608c925e0a570928606f0a7a220f8",
+      "bridge/agent_bindings.json": "87c31c10b036a021b01eaa79a7e66bfb6ec0664c19d3aaa1f100ae605e224319",
+      "bridge/extras.json": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+      "bridge/server.py": "842e2300824abaf5ec3eaf522a7767c973919c83fb8ee19ed400517bdd1b7869",
+      "bridge/project_service.py": "30f407deabf51897cf2e1c7ec93e63977249bbd2930f611aa19dd74a6feeec29",
+      "bridge/project_memory.py": "ae7cba9664d7b554409aa0d4dc33701b12557ee5a4466936f9cc5d2b22c5a9b3",
+      "bridge/workspace.py": "0549e0c074cda137df116be402ac1e7ded0bb298691ca3c903784bb19f710850",
+      "bridge/workspace_lease.py": "01f0ab867489a27c999aa8913c8a3f1c52e626f4a26992811e34f170e97415e6",
+      "bridge/domain_session.py": "f283c486aa60abd6f15cb0cc9b1b2b69c64afcef962671bd2f1682b59dd1de63",
+      "bridge/domain_manager.py": "78da5a5cc3cc1eb5e35cdd0f69cf623b2c6a712d2da361aab9094c65e468f8e2",
+      "bridge/domain_protocol.py": "58f1ed37c0a70100f0d8c7b88f1eaf01a0e58c0b326d07538a972e96619db9cc",
+      "bridge/interaction_protocol.py": "34d4d66e6d39a54640bcf2d24e53f404333210d71569186e073cb7088f5343a6",
+      "bridge/conversation_backend.py": "21f0034bf8d79b3878bac8411a1aa2db9cd7540c34b3d7cdf424654b857e32ff",
+      "bridge/conversation_sdk.py": "a615eef81998169f9eb3828168f4183cdb0fd88db93e4dc781623f0d91fd3354",
+      "bridge/repository_setup.py": "acd029ffb788484da1523f0e84fd821fc59a4c466a2c57b0c9e810421a101187",
+      "bridge/agents.py": "0655ad04e3813a3ae1403ae498f67ac9f27ee813df2bec7e1f497390ef89dc82",
+      "bridge/agents/systems-architect.md": "fb3c428bbd85a1b7a7d325f2e597100b20ad3db4394aeee1ccb703fac1f1a188",
+      "scenes/bridge/ws_client.gd": "04aa3ed1a516c607db93c1489c8dc7d2050ee49b5f4ea345ac65ffe606822bfc",
+      "scenes/bridge/domain_store.gd": "50a62c1d2387966efcfd2c2498c95ca3ec20f1c74e9ee4c71c25f48ab097d581",
+      "scenes/bridge/domain_surface.gd": "986c514f592b82deb02c4f454584041e2d9bcf1f118bb2a5f0a460b481c7257e",
+      "scenes/hud/dialogue_panel.gd": "7717c618dab2675a8ff907728e8a85fb4ea609b7fc06ee1cf26914650059183a",
+      "scenes/hud/dialogue_panel.tscn": "ff7268e6d1b4342a20de545682acd5157cc283f14f08b902191496f29e703043",
+      "scenes/hud/domain_panel.gd": "dcd4b29d2575be3f4dbbab3fc7f464656e956f3f371e711cdb1b08a44f2c9f37",
+      "scenes/hud/domain_panel.tscn": "68381f7e732004bfa9a768b947dcecdb8d4f706bb2e4268dcfd47d1da707daa9",
+      "autoload/GameEvents.gd": "73af4fa6ad5a41c67565cee60fa41d91d701f88c2a6b0b4b299d92c119aed9e9",
+      "autoload/AgentRegistry.gd": "1f1edd791c4d6890f246cd4a5a4317154704e31c130bc309697485650779d05b",
+      "scenes/main.tscn": "d785b9e54c3245c4b97dc54f0384b76fb12e1d32d4ed1c03099a5cbfb184f21e",
+      "project.godot": "b124d7084c60355db12572711b03918834bd812af44905a3f8a10e3a32f7b902",
+      "data/agents.json": "33f83c646a6d7b52c70365a1a6fc64a5b5d4be6615a98491953c055ebf36d747",
+      "tests/test_m12_live.py": "9c063a03ae064a7871d4deb3cde0b9b705fe48f087f47a09c11c90d36d9e5515",
+      "tests/m12_live_fixture.py": "3bf0b6c5af5bfb2ef4e4b05006de5d52801a71abaf07bebdbf40c83e403a6a14",
+      "bridge/tests/test_m12_live_orchestration.py": "c14a6eb26be7f2c6b8440fe7629b13e9165a88bf995e934583b55b70b1e107f2",
+      "bridge/tests/test_config.py": "542c2e5b2083f9b8a184e2677275c226f90b7f55ea26543112e83b6caf939b4d",
+      "bridge/tests/test_domain_sdk.py": "5b1789bf6519eb24a533514086b11605c69b0277e038279ba84ff3d67c0586b5"
+    }
+  },
+  "environment": {
+    "python": "3.12.14",
+    "sdk": "0.2.136",
+    "anyio": "4.14.2",
+    "cli": "2.1.228 (Claude Code)",
+    "cli_sha256": "d535985e6941a3eb00179ccd7f52ceb0c6623a0305a518ebc4e6514f84a94c99",
+    "godot": "4.7.1.stable.official.a13da4feb",
+    "git": "2.52.0",
+    "platform": "Linux"
+  },
+  "results": {
+    "python": {
+      "passed": 1810,
+      "subtests_passed": 118,
+      "skipped": 0,
+      "seconds": 143.5,
+      "godot_required": true
+    },
+    "focused": {
+      "passed": 314,
+      "seconds": 26.93
+    },
+    "physical": {
+      "passed": 41,
+      "seconds": 30.06
+    },
+    "headless": {
+      "smoke_agents": 132,
+      "conversation_store": 578,
+      "transport_client": 154,
+      "dialogue_panel": 220,
+      "domain_store": 136,
+      "domain_transport": 69,
+      "domain_panel": 111,
+      "character_domain": 48
+    },
+    "black_files": 101,
+    "fatal_flake8": 0,
+    "advisory_flake8": 126,
+    "canonical_agents": 132,
+    "governed_documents": 23,
+    "doc_set_version": "0.2.18",
+    "delivery_validator": "passed",
+    "godot_import": "passed"
+  },
+  "production_guard": {
+    "changed": false,
+    "sha256": "6611fd8369418f2f57aabaa14f1545af36dc55df41acc39bbe449460e6439552",
+    "dontAsk": "Tool guard acceptance is missing, invalid or stale",
+    "bypassPermissions": "Tool guard acceptance is missing, invalid or stale"
+  },
+  "prior_failure": {
+    "python_failed": 3,
+    "python_errors": 18,
+    "python_passed": 1789,
+    "reason": "Test fixtures inherited PLAZA_REQUIRE_GODOT as a production override; fixture isolation fixed, full rerun passed."
+  },
+  "limits": [
+    "Offline SDK methods and synthetic validator fixtures are not live provider evidence.",
+    "Controller queued legacy-migration Start reachability and post-Stop capability refresh corrections after this snapshot; review and validate them before source freeze.",
+    "Fresh real guard reports in both modes and live Godot/plain-client acceptance await final source and repository review.",
+    "Owner laptop/OAuth/subscription/desktop acceptance remains separate and open."
+  ]
+}

@@ -74,6 +74,15 @@ func _ready() -> void:
 		var at_arrival := visible_in_span(body, span)
 		for _frame in 5:
 			await get_tree().process_frame
+		var after_frames := visible_in_span(body, span)
+		var reveal_error := await wait_for_reveal(hud, body, span)
+		if not reveal_error.is_empty():
+			_abort(reveal_error.error_type, reveal_error.message, index + 1)
+			return
+		if _failure != null:
+			_abort(_failure["error_type"], _failure["message"], index + 1)
+			return
+		var received := read_rendered_reply(body, span)
 		print(
 			(
 				"LIVE %s"
@@ -81,10 +90,10 @@ func _ready() -> void:
 					{
 						"turn": index + 1,
 						"sent": str(turns[index]),
-						"received": read_rendered_reply(body, span),
-						"label_holds_reply": read_rendered_reply(body, span) == str(_reply),
+						"received": received,
+						"label_holds_reply": received == str(_reply),
 						"typewriter_started_at": at_arrival,
-						"typewriter_after_frames": visible_in_span(body, span),
+						"typewriter_after_frames": after_frames,
 					}
 				)
 			)
@@ -101,12 +110,28 @@ func _abort(kind: String, message: String, turn: int = 0) -> void:
 	get_tree().quit(1)
 
 
+## Final evidence comes from the current native label after natural reveal.
+## Keep this bounded: a stopped animation or changed reply cannot become a
+## successful final record, and the transport payload never supplies readback.
+static func wait_for_reveal(hud: Node, body: RichTextLabel, span: Dictionary, timeout: float = TURN_TIMEOUT) -> Dictionary:
+	var deadline := Time.get_ticks_msec() + int(timeout * 1000)
+	while true:
+		if span.get("request_id", "").is_empty() or hud.current_assistant_span() != span or not body.is_visible_in_tree():
+			return {"error_type": "reveal_changed", "message": "current assistant display changed before reveal completed"}
+		if visible_in_span(body, span) == int(span.length) and body.get_parsed_text().length() >= int(span.start) + int(span.length):
+			return {}
+		if Time.get_ticks_msec() >= deadline:
+			return {"error_type": "reveal_timeout", "message": "assistant display did not finish revealing in %.2fs" % timeout}
+		await body.get_tree().process_frame
+	return {}
+
+
 ## Shared with the deterministic wrong-turn-two regression. The nonce from the
 ## first user message must never count as a model recall in a later reply.
 static func read_rendered_reply(body: RichTextLabel, span: Dictionary) -> String:
-	return body.text.substr(int(span.start), int(span.length))
+	return body.get_parsed_text().substr(int(span.start), int(span.length))
 
 
 static func visible_in_span(body: RichTextLabel, span: Dictionary) -> int:
-	var visible := body.text.length() if body.visible_characters < 0 else body.visible_characters
+	var visible := body.get_parsed_text().length() if body.visible_characters < 0 else body.visible_characters
 	return clampi(visible - int(span.start), 0, int(span.length))

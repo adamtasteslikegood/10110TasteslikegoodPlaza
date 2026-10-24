@@ -1,80 +1,55 @@
-"""Seed or upgrade the bridge agent store from the submodule.
+"""Synchronize committed bindings and curated definitions from the canonical generator.
 
-D-029: the bridge maintains its own committed copy of agent definitions,
-decoupled from the submodule at runtime. bridge/agents/ is checked into
-git — the bridge works without the submodule and without running this
-script. This script is for:
-
-  1. Seeding v0.0.1: one-time copy from the submodule to create the
-     initial bridge/agents/ contents.
-  2. Upgrading: refreshing bridge/agents/ when the submodule gets new
-     or updated agents.
-
-After running, review the diff and commit. The committed files are the
-bridge's own copy and may be adjusted to fit the bridge context.
+Development only: runtime consumes the committed bridge store (D-029).
+Run python -m bridge.sync [--check], or the presentation generator.
 """
 
-import os
-import shutil
-import sys
+import argparse
+from pathlib import Path
 
-SUBMODULE_DIR = os.path.join(
-    os.path.dirname(os.path.dirname(__file__)), "claude-code-tresor", "subagents"
-)
-STORE_DIR = os.path.join(os.path.dirname(__file__), "agents")
+from scripts import generate_agents_json as generator
+from bridge.agent_bindings import BindingRegistry
+
+STORE_DIR = Path(__file__).resolve().parent / "agents"
+BINDINGS = Path(__file__).resolve().parent / "agent_bindings.json"
 
 
-def seed(source=None, dest=None):
-    """Copy agent.md files from the submodule into the bridge store.
-
-    Each agent directory (e.g. core/systems-architect/) contains an
-    agent.md. The parent directory name becomes the slug filename in
-    the store (e.g. bridge/agents/systems-architect.md).
-
-    Returns the count of files copied.
-    """
-    source = source or SUBMODULE_DIR
-    dest = dest or STORE_DIR
-
-    if not os.path.isdir(source):
-        print(
-            f"seed: source directory not found: {source}\n"
-            "  Hint: run 'git submodule update --init --recursive'",
-            file=sys.stderr,
+def synchronize(registry, *, check=False, dest=None, metadata=None):
+    dest = Path(dest) if dest is not None else STORE_DIR
+    metadata = Path(metadata) if metadata is not None else BINDINGS
+    bindings = {
+        agent: {"execution_kind": "working", "domain_id": entry["dept"]}
+        for agent, entry in registry.items()
+    }
+    BindingRegistry(metadata=bindings, catalog=registry)
+    expected = {
+        dest
+        / f"{agent}.md": (generator.REPO_ROOT / entry["source"]).read_text(
+            encoding="utf-8"
         )
-        return 0
+        for agent, entry in registry.items()
+    }
+    expected[metadata] = generator.render(bindings)
+    stale = set(dest.glob("*.md")) - {dest / f"{agent}.md" for agent in registry}
+    drift = bool(stale)
+    for path, text in expected.items():
+        if not path.is_file() or path.read_text(encoding="utf-8") != text:
+            drift = True
+            if not check:
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(text, encoding="utf-8")
+    if not check:
+        for path in stale:
+            path.unlink()
+    return not drift if check else True
 
-    agent_files = []
-    for root, _dirs, files in os.walk(source):
-        if "agent.md" in files:
-            agent_files.append(os.path.join(root, "agent.md"))
 
-    if not agent_files:
-        print(f"seed: no agent.md files found in {source}", file=sys.stderr)
-        return 0
-
-    os.makedirs(dest, exist_ok=True)
-
-    copied = 0
-    seen_slugs = {}
-    for src_path in sorted(agent_files):
-        slug = os.path.basename(os.path.dirname(src_path))
-        if slug in seen_slugs:
-            print(
-                f"seed: collision on '{slug}' — "
-                f"{seen_slugs[slug]} vs {src_path}, skipping duplicate",
-                file=sys.stderr,
-            )
-            continue
-        seen_slugs[slug] = src_path
-        dest_path = os.path.join(dest, f"{slug}.md")
-        shutil.copy2(src_path, dest_path)
-        copied += 1
-
-    print(f"seed: copied {copied} agent definitions to {dest}", file=sys.stderr)
-    return copied
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--check", action="store_true")
+    args = parser.parse_args()
+    return 0 if synchronize(generator.build_registry(), check=args.check) else 1
 
 
 if __name__ == "__main__":
-    count = seed()
-    sys.exit(0 if count > 0 else 1)
+    raise SystemExit(main())

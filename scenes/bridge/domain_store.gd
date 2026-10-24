@@ -10,6 +10,8 @@ const MAX_DOMAINS := 10
 const STATES := ["inactive", "activating", "active", "background", "stopping", "cleanup_failed"]
 const EXECUTION := ["idle", "running", "stopping", "cleanup_failed"]
 const COMMANDS := ["describe_workspace", "domain_status", "activate_domain", "domain_query", "background_domain", "refocus_domain", "deactivate_domain", "resume"]
+const TERMINAL_REASONS := ["sdk_error", "assistant_error", "permission_denied", "readiness_failed", "max_turns", "max_budget_usd", "max_tokens", "output_limit", "missing_terminal", "transport_error", "deferred_tool_use", "completed", "stopped", "not_executed"]
+const READINESS_CATEGORIES := ["cwd_mismatch", "branch_changed", "workspace_invalid", "lease_invalid", "memory_unavailable", "tool_correlation_invalid", "readiness_timeout", "readiness_error", "readiness_cancelled", "workspace_not_ready", "workspace_busy", "cleanup_failed", "context_unavailable"]
 
 var _project_id := ""
 var _workspace: Dictionary = {}
@@ -228,12 +230,16 @@ func admit_command(packet: Dictionary) -> bool:
 	var c := packet.duplicate(true)
 	c.epoch = _epoch
 	c.version = d.version
+	if kind != "domain_status": d.version += 1
 	_commands[id] = c
 	if kind == "domain_query":
 		d.pending_query = packet.duplicate(true)
 	elif kind != "domain_status":
 		d.pending_control = packet.duplicate(true)
-	d.error = {}
+	# Status observes lifecycle; even a healthy owner does not prove that the
+	# failed task's readiness cause has been repaired. Keep its actionable notice
+	# through automatic status refresh until another explicit work/control action.
+	if kind != "domain_status": d.error = {}
 	_trim(d)
 	return true
 
@@ -288,6 +294,10 @@ func apply_packet(packet: Dictionary) -> Dictionary:
 		if not _valid_error(packet):
 			return {}
 		d.error = {"error_type": packet.error_type, "message": packet.message}
+		if packet.get("terminal_reason") is String and packet.terminal_reason in TERMINAL_REASONS:
+			d.error.terminal_reason = packet.terminal_reason
+		if packet.get("readiness_category") is String and packet.readiness_category in READINESS_CATEGORIES:
+			d.error.readiness_category = packet.readiness_category
 		if d.pending_query.get("request_id") == id:
 			d.pending_query = {}
 			d.query_uncertain = false
@@ -559,3 +569,44 @@ func _trim(d: Dictionary) -> void:
 
 func _change(scope: String, domain: String, reason: String, id: String, settled: bool = true, changed: bool = false) -> Dictionary:
 	return {"scope": scope, "domain_id": domain, "reason": reason, "request_id": id, "settled": settled, "project_changed": changed}
+
+
+## Discovery captures all existing versions because the binding is not known yet.
+func observation_fence() -> Dictionary:
+	var versions := {}
+	for id in _domains: versions[id] = _domains[id].version
+	return {"epoch": _epoch, "project_id": _project_id, "versions": versions}
+
+func observation_current(fence: Dictionary) -> bool:
+	return fence.get("epoch") == _epoch and fence.get("project_id") == _project_id
+
+func observe_project(project: Dictionary) -> Dictionary:
+	var packet := project.duplicate(true)
+	packet.request_id = ""
+	return _apply_workspace(packet, {"type": "describe_workspace"})
+
+func observe_domain(packet: Dictionary, fence: Dictionary) -> bool:
+	if fence.get("epoch") != _epoch or not valid_domain(packet.get("domain_id")) or not _valid_state(packet): return false
+	if packet.get("project_id", "") != _project_id and not (_project_id == "" and packet.get("project_id") == null): return false
+	var d := _domain(packet.domain_id)
+	if d.is_empty() or d.version != fence.get("versions", {}).get(packet.domain_id, 0): return false
+	if not d.pending_control.is_empty() or not d.pending_query.is_empty(): return false
+	var generation: Variant = packet.get("domain_session_id")
+	if generation != null and not valid_id(generation): return false
+	if packet.get("workspace_id") != null and not valid_id(packet.workspace_id): return false
+	if d.buckets.has(generation) and d.buckets[generation].get("workspace_id") != packet.get("workspace_id"): return false
+	if generation == null: generation = ""
+	if generation != d.domain_session_id: _switch_generation(d, generation)
+	d.workspace_id = packet.get("workspace_id")
+	if d.buckets.has(generation): d.buckets[generation].workspace_id = packet.get("workspace_id")
+	d.state = packet.state
+	d.execution_state = packet.execution_state
+	d.lifecycle_uncertain = false
+	d.cleanup_confirmed = packet.state == "inactive" and packet.execution_state == "idle"
+	d.version += 1
+	_refresh_uncertainty(d)
+	return true
+
+func save_view(domain_id: String, scroll: float, follow: bool, anchor: Dictionary) -> void:
+	var d := _domain(domain_id)
+	if not d.is_empty(): d.view = {"scroll": scroll, "follow": follow, "anchor": anchor.duplicate(true)}

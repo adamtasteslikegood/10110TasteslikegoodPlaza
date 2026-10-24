@@ -22,11 +22,14 @@ GENERATION_COMMANDS = COMMANDS - {
     "activate_domain",
 }
 ERROR_MESSAGES = {
+    "invalid_binding": "The selected agent does not belong to this domain.",
     "workspace_unconfigured": "Configure a project before starting domain work.",
     "workspace_invalid": "The configured workspace needs inspection.",
+    "capacity_limit": "Execution capacity is reserved by another session.",
     "workspace_busy": "The workspace is reserved by another domain.",
     "domain_busy": "The domain is busy; wait for its current operation.",
     "workspace_not_ready": "Talk to the Chief Architect to prepare this project.",
+    "context_unavailable": "Current game or project guidance is unavailable.",
     "memory_unavailable": "Project memory is unavailable or was not saved.",
     "session_unavailable": "The requested domain generation is unavailable.",
     "invalid_request": "The domain command or its identifiers are invalid.",

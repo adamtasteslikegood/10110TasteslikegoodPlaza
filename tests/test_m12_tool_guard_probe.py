@@ -12,6 +12,70 @@ def module():
     return importlib.import_module("scripts.m12_tool_guard_probe")
 
 
+@pytest.mark.asyncio
+async def test_real_probe_fixture_prepares_bound_turn_and_cleans_up(
+    tmp_path, monkeypatch
+):
+    from dataclasses import replace
+    from bridge.readiness import ReadinessService
+    from bridge.workspace import WorkspaceError
+    from bridge.workspace_lease import WorkspaceLease, observe_reservation
+
+    probe = module()
+
+    def unexpected_provider(*args, **kwargs):
+        raise AssertionError("Fixture setup must not construct an SDK owner/client")
+
+    monkeypatch.setattr(probe, "DomainSDKOwner", unexpected_provider)
+    monkeypatch.setattr(probe, "ClaudeSDKClient", unexpected_provider)
+    workspace, memory, lease, runtime, token = probe.fixture(tmp_path)
+    turn = None
+    prepared = False
+    try:
+        assert workspace.domain_id == lease.domain_id == "core"
+        lease.validate()
+        assert (workspace.worktree_path / "read.txt").read_text() == token
+        assert (workspace.worktree_path / "edit.txt").read_text() == "BEFORE\n"
+        turn = probe.probe_turn("read_ready", workspace, lease)
+        assert turn.domain_id == workspace.domain_id
+        assert turn.workspace_id == workspace.workspace_id
+        assert turn.domain_session_id == lease.domain_session_id
+        service = ReadinessService(workspace, runtime, memory)
+        previous = memory.load()
+        snapshot = await service.prepare_turn(turn)
+        prepared = True
+        assert snapshot.revision > previous.revision
+        assert (
+            await service.check_tool(
+                lease,
+                cwd=str(workspace.worktree_path),
+                tool_name="Read",
+                tool_use_id="local",
+            )
+            == snapshot
+        )
+        with pytest.raises(WorkspaceError, match="Turn workspace binding changed"):
+            await service.prepare_turn(replace(turn, domain_id="probe"))
+        with pytest.raises(WorkspaceError, match="Invalid domain reservation"):
+            WorkspaceLease.acquire(
+                workspace, domain_id="probe", domain_session_id="wrong-domain"
+            )
+    finally:
+        if prepared:
+            saved = memory.finish_turn(
+                turn.turn_id,
+                outcome="cancelled",
+                output="Offline fixture check",
+                delta=None,
+            )
+        memory.detach_run("probe-run")
+        lease.release(cleanup_confirmed=True)
+    assert not lease.held
+    assert saved.saved
+    assert observe_reservation(workspace) is None
+    assert not (workspace.git_dir / "plaza-unclean.json").exists()
+
+
 def complete_case(name="bash_deny"):
     lifecycle = name in {"stop_connect", "stop_idle", "stop_query", "repeated_cancel"}
     ready = name.endswith("_ready")
@@ -100,6 +164,7 @@ def complete_evidence():
     mod = module()
     root = Path(mod.__file__).resolve().parents[1]
     return dict(
+        permission_mode="dontAsk",
         versions=mod.VERSIONS,
         production_tools=list(mod.DOMAIN_TOOLS),
         model=mod.MODEL,
@@ -406,13 +471,13 @@ async def test_guard_rejects_invalid_output_before_case(
         output.symlink_to(tmp_path / "missing-target")
     entered = []
 
-    async def run_case(name, cli):
+    async def run_case(name, cli, permission_mode):
         entered.append(name)
         return complete_case(name)
 
     monkeypatch.setattr(mod, "run_case", run_case)
     with pytest.raises((OSError, ValueError)):
-        await mod.main(output)
+        await mod.main(output, "dontAsk")
     assert not entered
     if destination == "existing":
         assert output.read_bytes() == b"prior evidence"
@@ -427,13 +492,13 @@ async def test_guard_preserves_incomplete_report_after_case_exception(
     mod = module()
     entered = []
 
-    async def run_case(name, cli):
+    async def run_case(name, cli, permission_mode):
         entered.append(name)
         raise RuntimeError("private case diagnostic")
 
     monkeypatch.setattr(mod, "run_case", run_case)
     output = tmp_path / "failed.json"
-    assert await mod.main(output) == 1
+    assert await mod.main(output, "dontAsk") == 1
     report = json.loads(output.read_bytes())
     assert entered == ["read_ready"] and report["accepted"] is False
     assert report["cases"] == [] and report["errors"]
@@ -447,7 +512,7 @@ async def test_guard_stages_completed_case_before_entering_next(tmp_path, monkey
     mod = module()
     entered, snapshots = [], []
 
-    async def run_case(name, cli):
+    async def run_case(name, cli, permission_mode):
         entered.append(name)
         if len(entered) == 2:
             staged = list(tmp_path.glob(".report.json.*.tmp"))
@@ -460,7 +525,7 @@ async def test_guard_stages_completed_case_before_entering_next(tmp_path, monkey
 
     monkeypatch.setattr(mod, "run_case", run_case)
     output = tmp_path / "report.json"
-    assert await mod.main(output) == 1
+    assert await mod.main(output, "dontAsk") == 1
     assert (
         snapshots and snapshots[0]
     ), "completed paid-case observations must be staged before the next case"
@@ -471,3 +536,83 @@ async def test_guard_stages_completed_case_before_entering_next(tmp_path, monkey
         "read_ready",
         "read_deny",
     ]
+
+
+def test_evidence_requires_explicit_matching_permission_mode():
+    evidence = complete_evidence()
+    evidence.pop("permission_mode", None)
+    assert module().validate_evidence(evidence)
+    evidence["permission_mode"] = "bypassPermissions"
+    assert module().validate_evidence(evidence, permission_mode="dontAsk")
+
+
+def test_acceptance_envelope_retains_independent_modes():
+    from bridge.tool_guard_evidence import acceptance_envelope
+    from bridge.domain_sdk import check_acceptance
+
+    records = []
+    for mode in ("dontAsk", "bypassPermissions"):
+        record = complete_evidence()
+        record.update(permission_mode=mode, accepted=True, errors=[])
+        records.append(record)
+    envelope = acceptance_envelope(records)
+    for mode in ("dontAsk", "bypassPermissions"):
+        assert check_acceptance(envelope, None, mode)["permission_mode"] == mode
+    changed = deepcopy(envelope)
+    changed["records"]["bypassPermissions"]["cases"][1]["sentinel_executed"] = True
+    with pytest.raises(RuntimeError):
+        check_acceptance(changed, None, "bypassPermissions")
+    with pytest.raises(ValueError):
+        acceptance_envelope([records[0], records[0]])
+    with pytest.raises(ValueError):
+        acceptance_envelope(records[:1])
+
+
+@pytest.mark.parametrize("mode", ["dontAsk", "bypassPermissions"])
+def test_probe_mode_ignores_inherited_configuration(monkeypatch, mode):
+    monkeypatch.setenv("BRIDGE_CONFIG_PATH", "/nonexistent/operator-config.json")
+    monkeypatch.setenv("PLAZA_DOMAIN_DANGEROUSLY_SKIP_PERMISSIONS", "invalid")
+    assert module().probe_config(mode).domain_permission_mode == mode
+    with pytest.raises(ValueError):
+        module().probe_config(None)
+
+
+def test_probe_cli_requires_mode_before_any_work(tmp_path):
+    import subprocess
+    import sys
+
+    result = subprocess.run(
+        [sys.executable, module().__file__, "--output", str(tmp_path / "unused.json")],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 2
+    assert "--permission-mode" in result.stderr
+    assert not list(tmp_path.iterdir())
+
+
+@pytest.mark.parametrize("damage", ["mode", "missing", "version", "stale", "runtime"])
+def test_envelope_rejects_wrong_missing_stale_or_unverified_record(damage):
+    from bridge.tool_guard_evidence import acceptance_envelope
+    from bridge.domain_sdk import check_acceptance
+
+    records = []
+    for mode in ("dontAsk", "bypassPermissions"):
+        record = complete_evidence()
+        record.update(permission_mode=mode, accepted=True, errors=[])
+        records.append(record)
+    envelope = acceptance_envelope(records)
+    if damage == "mode":
+        envelope["records"]["bypassPermissions"]["permission_mode"] = "dontAsk"
+    elif damage == "missing":
+        del envelope["records"]["bypassPermissions"]
+    elif damage == "version":
+        envelope["schema_version"] = True
+    elif damage == "stale":
+        envelope["records"]["bypassPermissions"]["source_sha256"][
+            "bridge/config.py"
+        ] = ("0" * 64)
+    else:
+        envelope["records"]["bypassPermissions"]["versions"] = {}
+    with pytest.raises(RuntimeError):
+        check_acceptance(envelope, None, "bypassPermissions")

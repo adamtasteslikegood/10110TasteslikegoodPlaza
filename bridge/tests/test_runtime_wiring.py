@@ -9,6 +9,8 @@ from unittest.mock import AsyncMock, MagicMock
 import uuid
 
 import pytest
+
+pytestmark = pytest.mark.usefixtures("explicit_extras")
 import pytest_asyncio
 
 from bridge.domain_sdk import SDKOutcome, domain_options
@@ -686,7 +688,7 @@ async def test_shutdown_attempts_all_domains_and_records_before_close_after_disc
     extra_root.mkdir()
     extra = FakeProjectService(extra_root)
     second_session = DomainSession(
-        "second",
+        "core",
         "second-generation",
         config=server._config,
         project_service=extra,
@@ -694,7 +696,7 @@ async def test_shutdown_attempts_all_domains_and_records_before_close_after_disc
     )
     await second_session.start()
     second = second_session._owner
-    server.domains._sessions["second"] = [second_session]
+    server.domains._sessions["core"] = [second_session]
     first.execute_gate = second.execute_gate = asyncio.Event()
     first.clean = False
     packets = []
@@ -705,7 +707,14 @@ async def test_shutdown_attempts_all_domains_and_records_before_close_after_disc
     for session in (first_session, second_session):
         await session.admit_query(
             query(
-                "origin-request", session.domain_session_id, domain_id=session.domain_id
+                "origin-request",
+                session.domain_session_id,
+                domain_id=session.domain_id,
+                agent_id=(
+                    "systems-architect"
+                    if session.domain_id == "core"
+                    else "backend-architect"
+                ),
             ),
             context=origin(session),
             emit=sink,
@@ -729,9 +738,9 @@ async def test_shutdown_attempts_all_domains_and_records_before_close_after_disc
         assert sorted((r["domain_id"], r["outcome"]) for r in close_snapshot) == sorted(
             [
                 ("engineering", "input"),
-                ("second", "input"),
+                ("core", "input"),
                 ("engineering", "cancelled"),
-                ("second", "cancelled"),
+                ("core", "cancelled"),
             ]
         )
         assert writer.closed == [False]
@@ -938,5 +947,164 @@ async def test_emitted_domain_rejection_records_failure_without_duplicate_delive
     assert packets[0]["error_type"] == "workspace_unconfigured"
     failures = events(writer, "request_failed")
     assert len(failures) == 1 and failures[0]["request_id"] == "rejected-start"
+    assert failures[0]["connection_id"] == "connection"
+    assert failures[0]["domain_id"] == "engineering"
+    assert failures[0]["terminal_reason"] == "sdk_error"
+    assert failures[0]["duration_ms"] >= 0
+    assert not events(writer, "request_accepted")
     assert not events(writer, "request_completed")
     await server._shutdown_domains()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("stage", ["startup", "preflight", "binding"])
+@pytest.mark.parametrize("emitted", [False, True])
+async def test_dispatch_domain_rejection_has_one_correlated_safe_terminal(
+    tmp_path, runtime_config, runtime_archive, monkeypatch, stage, emitted
+):
+    from bridge.tests.test_workspace import git
+    from bridge.workspace import WorkspaceError
+
+    recorder, writer = runtime_archive
+    service = FakeProjectService(tmp_path)
+    owners = []
+
+    def factory(*args):
+        owner = FakeOwner(*args)
+        owners.append(owner)
+        return owner
+
+    async def reject_start(owner):
+        raise WorkspaceError(
+            "workspace_invalid",
+            "synthetic-sensitive",
+            readiness_category="branch_changed",
+        )
+
+    monkeypatch.setattr("bridge.domain_session.DomainSDKOwner", factory)
+    monkeypatch.setattr("bridge.domain_session.load_agent", lambda _: "definition")
+    server = BridgeServer(config=runtime_config, recorder=recorder)
+    server.project = service
+    server.domains = DomainManager(runtime_config, service, recorder=recorder)
+    packets = []
+
+    async def emit(packet):
+        packets.append(packet)
+
+    try:
+        if stage == "startup":
+            monkeypatch.setattr(FakeOwner, "start", reject_start)
+            command = dict(
+                type="activate_domain", domain_id="engineering", request_id="rejected"
+            )
+        else:
+            await server.dispatch(
+                dict(
+                    type="activate_domain",
+                    domain_id="engineering",
+                    request_id="setup-start",
+                ),
+                connection_id="setup",
+            )
+            session = server.domains._sessions["engineering"][-1]
+            if stage == "preflight":
+                git(service.workspace.worktree_path, "checkout", "--detach")
+            command = query(
+                "rejected",
+                generation=session.domain_session_id,
+                agent_id=(
+                    "systems-architect" if stage == "binding" else "backend-architect"
+                ),
+            )
+        result = await server.dispatch(
+            command, connection_id="origin", emit=emit if emitted else None
+        )
+        assert result == [] if emitted else not packets
+        observed = packets if emitted else result
+        errors = [p for p in observed if p["type"] == "domain_error"]
+        assert len(errors) == 1
+        failures = [
+            r for r in events(writer, "request_failed") if r["request_id"] == "rejected"
+        ]
+        assert len(failures) == 1
+        assert (
+            failures[0]["connection_id"] == "origin"
+            and failures[0]["domain_id"] == "engineering"
+        )
+        assert failures[0]["duration_ms"] >= 0
+        assert failures[0]["terminal_reason"] == (
+            "sdk_error" if stage == "binding" else "readiness_failed"
+        )
+        if stage != "binding":
+            assert errors[0]["readiness_category"] == "branch_changed"
+            assert failures[0]["readiness_category"] == "branch_changed"
+        assert not [
+            r
+            for name in ("request_accepted", "request_completed")
+            for r in events(writer, name)
+            if r["request_id"] == "rejected"
+        ]
+        assert not owners[0].calls
+        assert "synthetic-sensitive" not in json.dumps(writer.records) + json.dumps(
+            observed
+        )
+    finally:
+        await server._shutdown_domains()
+        service.close()
+
+
+@pytest.mark.asyncio
+async def test_dispatch_accepted_failure_and_resume_have_separate_event_owners(
+    domain_runtime, runtime_config, runtime_archive
+):
+    manager, session, owner, _, _ = domain_runtime
+    recorder, writer = runtime_archive
+    server = BridgeServer(config=runtime_config, recorder=recorder)
+    server.project, server.domains = manager._service, manager
+    owner.outcome = SDKOutcome(
+        "Partial café",
+        "error",
+        "readiness_failed",
+        "provider",
+        None,
+        readiness_category="cwd_mismatch",
+    )
+    owner.execute_gate = asyncio.Event()
+    packets = []
+
+    async def emit(packet):
+        packets.append(packet)
+
+    await server.dispatch(
+        query("accepted", generation=session.domain_session_id),
+        connection_id="origin",
+        emit=emit,
+    )
+    assert len(events(writer, "request_accepted")) == 1
+    assert not events(writer, "request_failed")
+    owner.execute_gate.set()
+    await collect_until(session, packets)
+    assert len(events(writer, "request_accepted")) == 1
+    assert not events(writer, "request_completed")
+    failures = events(writer, "request_failed")
+    assert len(failures) == 1 and failures[0]["request_id"] == "accepted"
+    assert (
+        failures[0]["connection_id"] == "origin"
+        and failures[0]["readiness_category"] == "cwd_mismatch"
+    )
+    replay = await server.dispatch(
+        dict(
+            type="resume",
+            domain_id="engineering",
+            domain_session_id=session.domain_session_id,
+            request_id="replay",
+            cursor="0",
+        ),
+        connection_id="reader",
+    )
+    assert [p["type"] for p in replay] == ["domain_result", "resume_complete"]
+    assert replay[0]["status"] == "error" and replay[0]["reason"] == "readiness_failed"
+    assert events(writer, "request_failed") == failures
+    completed = events(writer, "request_completed")
+    assert len(completed) == 1 and completed[0]["request_id"] == "replay"
+    assert len(owner.calls) == 1

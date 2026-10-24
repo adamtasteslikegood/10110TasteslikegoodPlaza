@@ -15,6 +15,12 @@ var conversations := Store.new(
 	int(ProjectSettings.get_setting("plaza/chat/history_max_bytes", 1048576))
 )
 var domains := DomainState.new()
+const Surface := preload("res://scenes/bridge/domain_surface.gd")
+var surface := Surface.new(self)
+var _character_requests: Dictionary = {}
+var _characters: Dictionary = {}
+var _character_queue: Array[String] = []
+var _setup_request := ""
 # Domain/discovery correlation never shares the NPC request map.
 var _domain_requests: Dictionary = {}
 var _discovery_request := ""
@@ -40,6 +46,7 @@ func _ready() -> void:
 	add_child(_reconnect_timer)
 	_reconnect_timer.one_shot = true
 	_reconnect_timer.timeout.connect(_attempt_connect)
+	GameEvents.domain_changed.connect(surface.changed)
 	_attempt_connect()
 
 
@@ -63,6 +70,7 @@ func _process(delta: float) -> void:
 				conversations.begin_connection()
 				_notify_connection()
 				describe_workspace()
+				for agent_id in _characters: agent_status(agent_id)
 			while _socket.get_available_packet_count() > 0:
 				_on_message(_socket.get_packet().get_string_from_utf8())
 			_workspace_poll += delta
@@ -78,6 +86,14 @@ func _process(delta: float) -> void:
 
 func _on_connection_closed() -> void:
 	_connected = false
+	_character_requests.clear()
+	_character_queue.clear()
+	_setup_request = ""
+	surface.disconnected()
+	for agent_id in _characters:
+		_characters[agent_id].pending = ""
+		_characters[agent_id].error = "Disconnected — refresh status to recover"
+		GameEvents.character_changed.emit(agent_id, "connection", "")
 	_failed_status_domains.clear()
 	domains.disconnect_connection()
 	_domain_requests.clear()
@@ -186,6 +202,9 @@ func _on_message(raw: String) -> void:
 		_protocol_diagnostic("expected a JSON object")
 		return
 	var parsed: Dictionary = json.data
+	if parsed.get("type") in ["agent_status", "project_setup"]:
+		_on_character_packet(parsed)
+		return
 	if parsed.get("type") in ["workspace_state", "domain_state", "domain_accepted", "domain_result", "domain_error", "resume_complete"]:
 		_on_domain_packet(parsed)
 		return
@@ -348,21 +367,7 @@ func _on_domain_packet(packet: Dictionary) -> void:
 		if not query_pending and not control_pending:
 			_domain_requests.erase(id)
 	if change.project_changed:
-		# Commit both stores before presenting the authoritative new binding.
-		_pending_requests.clear()
-		conversations = Store.new(
-			AgentRegistry.has_agent,
-			int(ProjectSettings.get_setting("plaza/chat/history_max_messages", 200)),
-			int(ProjectSettings.get_setting("plaza/chat/history_max_bytes", 1048576))
-		)
-		conversations.begin_connection()
-		_domain_requests.clear()
-		_discovery_request = ""
-		_status_queue.clear()
-		_resume_queue.clear()
-		_recover_domains.clear()
-		_failed_status_domains.clear()
-		_notify_connection()
+		_reset_project_views()
 	if change.scope == "workspace":
 		GameEvents.workspace_changed.emit(change.reason, change.request_id)
 		if change.reason == "workspace_state":
@@ -386,6 +391,11 @@ func _on_domain_packet(packet: Dictionary) -> void:
 				_resume_queue.append(change.domain_id)
 		var settled_control: bool = change.reason == "domain_state" and command.get("type") != "domain_status" and change.settled
 		if change.reason == "domain_result" or failed_control or settled_control:
+			# Lifecycle/capacity changes invalidate every observed working character.
+			# Queue even behind an in-flight status: its fence predates settlement.
+			for agent_id in _characters:
+				if _characters[agent_id].get("execution_kind") == "working" and agent_id not in _character_queue:
+					_character_queue.append(agent_id)
 			describe_workspace()
 	_pump_discovery()
 
@@ -400,9 +410,106 @@ func _pump_discovery() -> void:
 		if _refresh_workspace:
 			_refresh_workspace = false
 			describe_workspace()
+		elif not _character_queue.is_empty():
+			agent_status(_character_queue.pop_front())
 		elif not _status_queue.is_empty():
 			domain_status(_status_queue.pop_front())
 	if not _resume_queue.is_empty():
 		var domain_id: String = _resume_queue[0]
 		if not resume_domain(domain_id).is_empty():
 			_resume_queue.pop_front()
+
+
+func _reset_project_views() -> void:
+	# Commit both stores before presenting the authoritative new binding.
+	_pending_requests.clear()
+	conversations = Store.new(
+		AgentRegistry.has_agent,
+		int(ProjectSettings.get_setting("plaza/chat/history_max_messages", 200)),
+		int(ProjectSettings.get_setting("plaza/chat/history_max_bytes", 1048576))
+	)
+	conversations.begin_connection()
+	_domain_requests.clear()
+	_discovery_request = ""
+	_status_queue.clear()
+	_resume_queue.clear()
+	_recover_domains.clear()
+	_failed_status_domains.clear()
+	_notify_connection()
+	_character_requests.clear()
+	_character_queue.clear()
+	_setup_request = ""
+	_characters.clear()
+	surface.reset()
+
+
+func character_snapshot(agent_id: String) -> Dictionary:
+	return _characters.get(agent_id, {}).duplicate(true)
+
+func agent_status(agent_id: String) -> String:
+	if not AgentRegistry.has_agent(agent_id) or not _connected: return ""
+	if _discovery_request != "":
+		var current: Dictionary = _character_requests.get(_discovery_request, {})
+		if current.get("agent_id") == agent_id: return _discovery_request
+		if agent_id not in _character_queue: _character_queue.append(agent_id)
+		return ""
+	return _send_character({"type": "agent_status", "agent_id": agent_id})
+
+func project_setup(agent_id: String, intent: String) -> String:
+	if not _connected or not AgentRegistry.has_agent(agent_id) or not _setup_request.is_empty() or intent.strip_edges().is_empty() or intent.to_utf8_buffer().size() > 65536: return ""
+	return _send_character({"type": "project_setup", "agent_id": agent_id, "intent": intent})
+
+func _send_character(packet: Dictionary) -> String:
+	_request_counter += 1
+	var id := "%s:character:%d" % [_session_id, _request_counter]
+	packet.request_id = id
+	_character_requests[id] = {"type": packet.type, "agent_id": packet.agent_id, "fence": domains.observation_fence()}
+	if packet.type == "agent_status": _discovery_request = id
+	else: _setup_request = id
+	if not _characters.has(packet.agent_id): _characters[packet.agent_id] = {}
+	_characters[packet.agent_id].pending = packet.type
+	_characters[packet.agent_id].error = ""
+	GameEvents.character_changed.emit(packet.agent_id, "input", id)
+	if _send_text(JSON.stringify(packet)) != OK: _on_connection_closed()
+	return id
+
+func _on_character_packet(packet: Dictionary) -> void:
+	var id: Variant = packet.get("request_id")
+	var request: Dictionary = _character_requests.get(id, {})
+	if not _connected or request.is_empty() or request.type != packet.get("type") or request.agent_id != packet.get("agent_id")  : return
+	if not packet.get("project") is Dictionary: return
+	var current_fence := domains.observation_fence()
+	if request.fence.epoch != current_fence.epoch: return
+	if not domains.observation_current(request.fence):
+		if request.fence.project_id != "" or packet.project.get("project_id") != current_fence.project_id: return
+	var failed: bool = packet.get("status") == "error"
+	if failed or packet.type == "project_setup":
+		if not packet.get("output") is String or packet.get("status") not in ["ok", "error"]: return
+	else:
+		if packet.get("execution_kind") not in ["working", "extra"] or not packet.get("capabilities") is Dictionary: return
+		if packet.execution_kind == "working" and (not DomainState.valid_domain(packet.get("domain_id")) or not packet.get("domain_state") is Dictionary or not packet.get("workspace") is Dictionary): return
+		if packet.execution_kind == "extra" and packet.get("domain_id") != null: return
+		for key in ["can_start", "can_run", "can_prepare_project"]:
+			if not packet.capabilities.get(key) is bool: return
+	var change := domains.observe_project(packet.project)
+	if change.is_empty(): return
+	_character_requests.erase(id)
+	if _discovery_request == id: _discovery_request = ""
+	if _setup_request == id: _setup_request = ""
+	if change.project_changed: _reset_project_views()
+	var data: Dictionary = _characters.get(packet.agent_id, {}).duplicate(true)
+	data.pending = ""
+	data.error = packet.output if failed else ""
+	if packet.type == "project_setup": data.setup_output = packet.output
+	elif not failed:
+		for key in ["execution_kind", "domain_id", "workspace", "capabilities"]: data[key] = packet[key]
+		if packet.execution_kind == "working":
+			if domains.observe_domain(packet.domain_state, request.fence):
+				GameEvents.domain_changed.emit(packet.domain_id, "observation", id)
+	_characters[packet.agent_id] = data
+	GameEvents.workspace_changed.emit("workspace_state", id)
+	GameEvents.character_changed.emit(packet.agent_id, packet.type, id)
+	if packet.type == "project_setup":
+		describe_workspace()
+		agent_status(packet.agent_id)
+	_pump_discovery()

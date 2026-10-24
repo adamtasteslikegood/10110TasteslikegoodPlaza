@@ -66,14 +66,14 @@ def forbid_live_model_transports(monkeypatch):
 
 
 @pytest.fixture
-def offline_clients(monkeypatch):
+def offline_clients(monkeypatch, explicit_extras):
     # NPC SDK seam is separate from the domain SDK seam. Fresh clients record
     # decoded JSON input, and yield real SDK message types for adapter validation.
     conversation = SimpleNamespace(
         reply=MagicMock(return_value="conversation reply"), clients=[]
     )
 
-    def conversation_factory(*, options):
+    def conversation_factory(*, options, transport=None):
         client = AsyncMock()
         client.options = options
         conversation.clients.append(client)
@@ -116,6 +116,37 @@ def offline_clients(monkeypatch):
     sdk.receive_response = receive
     sdk_class = MagicMock(return_value=sdk)
     monkeypatch.setattr("bridge.conversation_sdk.ClaudeSDKClient", conversation.factory)
-    monkeypatch.setattr("bridge.conversation.load_agent", lambda _: "definition")
-    monkeypatch.setattr("bridge.domain_session.load_agent", lambda _: "definition")
+    monkeypatch.setattr("bridge.conversation.load_agent", lambda _, **kw: "definition")
+    monkeypatch.setattr(
+        "bridge.domain_session.load_agent", lambda _, **kw: "definition"
+    )
     return conversation, sdk, sdk_class
+
+
+@pytest.fixture
+def explicit_extras(monkeypatch):
+    """Register only noncatalog story fixtures; never relabel working agents."""
+    from bridge.agent_bindings import BindingRegistry
+
+    original = BindingRegistry.__init__
+    extras = {
+        name: dict(execution_kind="extra", domain_id=None, definition="Story fixture")
+        for name in (
+            "agent",
+            "test",
+            "other",
+            "builder",
+            "alpha",
+            "beta-integration-credential-sentinel",
+            "fixture-extra",
+            "fixture-extra-a",
+            "fixture-extra-b",
+        )
+    }
+
+    def initialize(self, **kwargs):
+        kwargs.setdefault("extras", extras)
+        original(self, **kwargs)
+
+    monkeypatch.setattr(BindingRegistry, "__init__", initialize)
+    return extras

@@ -20,7 +20,7 @@ def ready(tmp_path):
     memory.initialize()
     memory.attach_run("test-run")
     lease = WorkspaceLease.acquire(
-        workspace, domain_id="domain", domain_session_id="generation"
+        workspace, domain_id="core", domain_session_id="generation"
     )
     yield module.ReadinessService(workspace, runtime, memory), lease, root
     lease.release(cleanup_confirmed=True)
@@ -30,7 +30,7 @@ def ready(tmp_path):
 
 def intent():
     return TurnIntent(
-        str(uuid4()), "request", "test-run", "builder", None, None, "work"
+        str(uuid4()), "request", "test-run", "builder", "core", "generation", "work"
     )
 
 
@@ -103,6 +103,76 @@ async def test_hook_checker_failures_deny(ready, monkeypatch, failure):
     result = await service.pre_tool_hook(lease)(hook_input(lease), "tool", {})
     assert result["hookSpecificOutput"]["permissionDecision"] == "deny"
     assert "private" not in str(result)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "invalid,category",
+    [
+        ("root", "cwd_mismatch"),
+        ("subdirectory", "cwd_mismatch"),
+        ("branch", "branch_changed"),
+        ("memory", "memory_unavailable"),
+        ("lease", "lease_invalid"),
+        ("source", "workspace_invalid"),
+        ("input", "tool_correlation_invalid"),
+    ],
+)
+async def test_real_readiness_denial_has_safe_category_and_tool_correlation(
+    ready, invalid, category
+):
+    import hashlib
+
+    service, lease, root = ready
+    data = hook_input(lease)
+    observations = []
+    if invalid == "root":
+        data["cwd"] = str(root)
+    elif invalid == "subdirectory":
+        subdir = lease.workspace.worktree_path / "src"
+        subdir.mkdir()
+        data["cwd"] = str(subdir)
+    elif invalid == "branch":
+        git(lease.workspace.worktree_path, "checkout", "-b", "synthetic-export")
+    elif invalid == "memory":
+        (
+            service.memory.workspace.common_git_dir / "plaza/session-memory/TODO.md"
+        ).write_text("broken")
+    elif invalid == "lease":
+        lease.held = False
+    elif invalid == "source":
+        root.rename(root.with_name("old-source"))
+        root.mkdir()
+    else:
+        data["tool_use_id"] = "mismatched"
+    try:
+        result = await service.pre_tool_hook(lease, on_denied=observations.append)(
+            data, "tool", {}
+        )
+        reason = result["hookSpecificOutput"]["permissionDecisionReason"]
+        assert result["hookSpecificOutput"]["permissionDecision"] == "deny"
+        assert category in reason
+        assert "Stop" in reason
+        assert observations == [
+            dict(
+                readiness_category=category,
+                tool_name="Bash",
+                tool_use_id=hashlib.sha256(b"tool").hexdigest(),
+            )
+        ]
+        if invalid in ("root", "subdirectory"):
+            assert "root cwd" in reason and "subshell" in reason
+        if invalid == "branch":
+            assert "owned branch" in reason and "checkout" in reason
+            assert (
+                git(lease.workspace.worktree_path, "branch", "--show-current")
+                == "synthetic-export"
+            )
+    finally:
+        lease.held = True
+        if invalid == "source":
+            root.rmdir()
+            root.with_name("old-source").rename(root)
 
 
 @pytest.mark.asyncio

@@ -35,19 +35,25 @@ That section adds no implemented fields, commands, or persistence guarantees.
 
 ## Request Types
 
-### Conversation (backward-compatible with M8)
+### Conversation (explicit extras only)
 
 ```json
 {
   "type": "conversation",
-  "agent_id": "security-auditor",
+  "agent_id": "registered-story-extra",
   "task": "What's your take on the new hire?",
   "request_id": "optional-uuid"
 }
 ```
 
 A request **without** a `type` field is treated as `"conversation"` — existing
-clients work without changes.
+extras clients retain the legacy wire shape. The example extra must be explicitly
+registered in the bridge extras store; the shipped extras store is currently empty.
+All catalog members are working agents. Their legacy requests return correlated
+`domain_required`, `binding`, `execution_kind`, `domain_id`, and `required_action`
+(`project_setup` before project readiness, `activate_domain` once ready), before
+any provider, history or memory/checkpoint admission. Missing bindings return
+`invalid_binding`. Unknown typed operations return `invalid_request`.
 
 `request_id` is optional opaque correlation metadata. If supplied as a nonempty,
 non-whitespace string, it is echoed exactly on every conversation success and
@@ -87,6 +93,50 @@ is unchanged and an ID does not establish durable recovery.
   restart forgets live context. There is no stable conversation identity for
   reconnect/restart recovery. Durable session state is planned for M13.
 
+### Character status and explicit setup
+
+These commands require exactly the documented fields. IDs are nonempty UTF-8
+strings of at most 128 bytes; agent IDs use the existing slug grammar. Extra
+fields, missing fields and unknown operations fail explicitly. Errors retain
+valid supplied correlation IDs.
+
+```json
+{"type":"agent_status","agent_id":"systems-architect","request_id":"status-1"}
+{"type":"project_setup","agent_id":"systems-architect","request_id":"setup-1","intent":"Prepare this project"}
+```
+
+`agent_status` returns `type`, `agent_id`, `request_id`, `execution_kind`
+(`working` or `extra`), nullable `domain_id`, `capabilities`, `project`, nullable
+`workspace`, and nullable `domain_state`. Working characters receive their own
+department's workspace and existing generation; extras have null workspace/state.
+Status never creates a worktree, reserves capacity, invokes a provider, runs a
+query, or changes foreground ownership. It refreshes bounded observations of
+already-existing workspaces. Architect and Auditor report the same Core owner.
+
+Capabilities contain `can_start`, `can_run`, `can_prepare_project`, `tools`,
+`execution_capacity` and nullable `reason`. `can_start` means local project,
+workspace and capacity state permits an explicit Start attempt; `can_run` means
+an existing active/background owner is idle, healthy and locally ready. These
+are observations, not guarantees: Start/Run revalidate readiness and the SDK's
+source/runtime-bound live tool-guard acceptance. Status does not run acceptance
+probes. `tools` is `["Read","Edit","Bash"]` only when Run is locally available,
+otherwise `[]`. Locally failed/disconnected/stopped owners report `sdk_error`;
+Stop and explicitly Start a fresh generation to recover. Observing failure leaves
+the existing generation, lease and capacity intact until Stop. Capacity is `{limit:1, available, domain_id, domain_session_id}`;
+the IDs identify the process-local capacity owner, or null when free. No queue
+or concurrent domain execution is implied. Extras can converse while a domain runs.
+
+Setup `intent` is nonempty UTF-8 text, at most 65536 bytes. `project_setup`
+returns `type`, `agent_id`, `request_id`, `status`, `output`, `project`, and
+nullable `architect_decision`; failures also contain `error_type`. Non-Chief
+characters refer to the Chief without invoking a model. Setup activity never
+enters extras history or counts as a domain Run. The explicit intent accompanies
+the inspected proposal as data and cannot enlarge its approved seed allowlist.
+Setup/status validation failures use the same type and valid IDs with
+`status:error`, `error_type`, `output`, `project`, and `architect_decision`.
+A busy connection service slot returns the correlated `service_busy` error;
+status discovery and setup have separate slots from extras and domain controls.
+
 ### Configured project discovery and setup (M12)
 
 One project is frozen from `WORKSPACE_ROOT_DIR` / `PLAZA_WORKSPACE_ROOT_DIR` at
@@ -101,11 +151,9 @@ supply paths or switch projects; restart the bridge to change the binding.
 {
   "type":"workspace_state", "request_id":"discover-1",
   "project_id":"repository-key", "stage":"ready", "reason":null,
-  "architect_decision":null, "workspace_id":"workspace-uuid",
+  "architect_decision":null, "workspace_id":null,
   "project_path":"/projects/example",
-  "worktree_path":"/projects/.plaza-worktrees/example-key/execution",
-  "branch":"plaza/workspace-repository-key",
-  "changed_files":{"total":2,"tracked":1,"untracked":1,"truncated":false},
+  "worktree_path":null, "branch":null, "changed_files":null,
   "reservation":null,
   "memory":{"path":"/projects/example/.git/plaza/session-memory",
             "status":"saved","revision":4,"error_type":null}
@@ -114,7 +162,7 @@ supply paths or switch projects; restart the bridge to change the binding.
 
 Stages are exactly `unconfigured`, `needs_architect`, `preparing`, `reviewing`,
 `initializing`, `ready`, `failed`. Unavailable identity/worktree/status fields are
-null. The listener is available during bootstrap. Discovery observes bounded
+null. The listener is available during bootstrap. Character status observes bounded
 filter-disabled Git status (counts, never contents); `truncated:true` means counts
 are only the observed prefix. It cannot initialize Git or invoke a model.
 An existing healthy external reservation permits observation and NPC memory, but
@@ -124,13 +172,13 @@ are advisory: `cleanup_failed:false` does not prove the foreign owner's teardown
 is healthy. A free lock with an unclean marker requires operator inspection.
 
 Existing Git projects bootstrap automatically. Empty/non-Git/unborn projects
-wait for an actual submitted conversation with `systems-architect` (Chief
-Architect). Other NPCs return a setup referral without a model call. The Chief
+wait for an explicit `project_setup` with `systems-architect` (Chief
+Architect). Other characters return a setup referral without a model call. The Chief
 uses fresh context, configured backend/model/caps and disabled tools to review an
 exact proposal. The bridge accepts only the exact structured approval, then
 initializes `main` with the reviewed seed allowlist. Its approval suffices; there
 is no extra human confirmation. Concurrent submissions report the current review.
-The Chief caller keeps its absolute NPC response deadline. If an in-budget
+The Chief caller keeps its absolute setup response deadline. If an in-budget
 approval has started initialization that is still running at the deadline, the
 reply includes the exact approval and initialization-in-progress status. The
 service retains that single operation; domains remain blocked until memory is
@@ -139,16 +187,19 @@ Declined/failed reviews need a new explicit Chief submission. Initialization and
 setup-memory failures preserve files; a successfully initialized repository is
 never initialized again to retry a failed memory save.
 
-Configured NPC turns checkpoint intent and supply labeled prior project notes
+Configured extras turns checkpoint intent and supply labeled prior project notes
 outside conversation history and instruction authority. The same response may
 provide optional memory updates. Only the visible answer enters successful NPC
-history; invalid optional updates do not erase it. Unconfigured NPC behavior is
-unchanged. `memory.status` is `unavailable`, `saved`, or `unsaved`; a failed save
+history; invalid optional updates do not erase it. Unconfigured extras retain tools-disabled conversation. `memory.status` is `unavailable`, `saved`, or `unsaved`; a failed save
 retains the last confirmed revision. A successful task/history remains successful
 when its memory checkpoint fails. Memory is bounded short-term context, not
 complete history, an automatic task queue or runtime recovery.
 
 ### Domain Start, Run, Stop and observation
+
+Each Run validates that the selected catalog agent belongs to the requested
+domain before memory, history or provider admission; mismatches return
+`invalid_binding`.
 
 Every domain command requires an explicit nonempty `request_id` (at most 128
 UTF-8 bytes). Domain IDs contain ASCII letters, digits, `_` or `-`, at most 128
@@ -158,10 +209,12 @@ stale generations fail with `session_unavailable`. No client identity is an
 authentication or ownership principal.
 
 ```json
-{"type":"activate_domain","domain_id":"engineering","request_id":"start-1"}
-{"type":"domain_status","domain_id":"engineering","request_id":"status-1"}
+{"type":"activate_domain","domain_id":"core","request_id":"start-1"}
+{"type":"domain_status","domain_id":"core","request_id":"status-1"}
 ```
 
+Start lazily prepares/reuses the selected department worktree and may connect an
+SDK owner, but makes zero model queries. Send is an explicit `domain_query`.
 Start emits correlated `domain_state` with `state:"activating"` before connecting,
 then `state:"active"` or `domain_error`. Both packets carry `project_id`,
 `workspace_id`, `domain_id`, `domain_session_id`, and `execution_state`.
@@ -172,10 +225,10 @@ background and completed work. **Stop releases the workspace after confirmed
 cleanup.** Disconnect never releases a domain or cancels admitted work.
 
 ```json
-{"type":"domain_query","domain_id":"engineering","domain_session_id":"generation-uuid","agent_id":"systems-architect","task":"Review the auth middleware","request_id":"run-1"}
-{"type":"background_domain","domain_id":"engineering","domain_session_id":"generation-uuid","request_id":"background-1"}
-{"type":"refocus_domain","domain_id":"engineering","domain_session_id":"generation-uuid","request_id":"focus-1"}
-{"type":"deactivate_domain","domain_id":"engineering","domain_session_id":"generation-uuid","request_id":"stop-1"}
+{"type":"domain_query","domain_id":"core","domain_session_id":"generation-uuid","agent_id":"systems-architect","task":"Review the auth middleware","request_id":"run-1"}
+{"type":"background_domain","domain_id":"core","domain_session_id":"generation-uuid","request_id":"background-1"}
+{"type":"refocus_domain","domain_id":"core","domain_session_id":"generation-uuid","request_id":"focus-1"}
+{"type":"deactivate_domain","domain_id":"core","domain_session_id":"generation-uuid","request_id":"stop-1"}
 ```
 
 A Run is acknowledged by `domain_accepted` only after successful preflight and
@@ -189,7 +242,7 @@ is no hidden query queue. Lifecycle states are `inactive`, `activating`, `active
 ```json
 {
   "type":"domain_result", "project_id":"repository-key", "workspace_id":"workspace-uuid",
-  "domain_id":"engineering", "domain_session_id":"generation-uuid",
+  "domain_id":"core", "domain_session_id":"generation-uuid",
   "request_id":"run-1", "output_id":"1", "agent_id":"systems-architect",
   "task":"Review the auth middleware", "output":"Review complete.",
   "status":"success", "reason":"completed",
@@ -208,7 +261,7 @@ No internal diagnostic UUID is fabricated into a malformed domain command.
 ### Replay and connection admission
 
 ```json
-{"type":"resume","domain_id":"engineering","domain_session_id":"generation-uuid","cursor":"0","request_id":"replay-1"}
+{"type":"resume","domain_id":"core","domain_session_id":"generation-uuid","cursor":"0","request_id":"replay-1"}
 ```
 
 Replay returns results above the ASCII decimal-string cursor (at most 128 UTF-8 bytes) through a captured
@@ -297,8 +350,9 @@ coverage; owner desktop acceptance was recorded for M11; M12 desktop acceptance
 remains outstanding. See the
 [operating guide](../QUICKSTART.md#npc-conversation-history-and-controls-m11).
 The bridge has no UI awareness, and legacy conversation clients may omit request IDs.
-M12 Godot controls and physical background/refocus have deterministic and
-recorded Linux live coverage. Laptop binary and M12 desktop acceptance remain
+The character/domain amendment has deterministic physical Godot coverage. Its
+fresh source/runtime/mode-bound real acceptance remains pending; recorded
+2026-10-21 Linux live evidence is historical. Laptop binary and M12 desktop acceptance remain
 open. Worktree notes survive clean restart, while
 result replay is process-local. See [M12 operations and platform limits](../QUICKSTART.md#project-work-and-domain-controls-m12)
 and [bounded live evidence](../QUICKSTART.md#m12-live-evidence-and-desktop-checks).

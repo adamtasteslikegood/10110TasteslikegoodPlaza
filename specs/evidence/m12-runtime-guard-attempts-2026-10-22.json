@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "milestone": "M12 runtime corrections",
+  "date": "2026-10-22",
+  "auth_category": "API key",
+  "auth_provenance": "Controller execution context and ready cloud binding; raw guard reports do not independently record authentication.",
+  "attempts": [
+    {
+      "permission_mode": "dontAsk",
+      "tested_commit": "ec5d236c5864175ab712050590f3bedb0b350aa9",
+      "artifact": "specs/evidence/m12-runtime-guard-dontAsk-2026-10-22.json",
+      "sha256": "47537b78d858d7c0f6e98b436679f94acbfdd63fb0f8b0b11b562f4ee43efe40",
+      "exit_code": 0,
+      "accepted": true,
+      "observed_cases": 29,
+      "errors": [],
+      "reported_terminal_cost_usd": 0.7837115,
+      "terminal_cost_observations": 24
+    },
+    {
+      "permission_mode": "bypassPermissions",
+      "tested_commit": "ec5d236c5864175ab712050590f3bedb0b350aa9",
+      "artifact": "specs/evidence/m12-runtime-guard-bypassPermissions-2026-10-22.json",
+      "sha256": "cbb51ab5e3031f527e24aded3d92afa2ad8b48fcab53bf8be113b286a5a53a9f",
+      "exit_code": 0,
+      "accepted": true,
+      "observed_cases": 29,
+      "errors": [],
+      "reported_terminal_cost_usd": 0.734316,
+      "terminal_cost_observations": 24
+    }
+  ],
+  "decision": "After clean task, whole-source and hosted source reviews, controller deliberately ran dontAsk once, inspected its accepted unchanged result, then separately ran bypassPermissions once. All 29 cases passed in each mode. No automatic retries, source restamping or case/validator relaxation.",
+  "activation": {
+    "path": "bridge/tool_guard_acceptance.json",
+    "schema_version": 1,
+    "sha256": "b322c3f8e4a2f77c5b2d9971953fc636a3cee65528c71c4ef26263427dc73864",
+    "prior_sha256": "24cd3b4a7d13192721fb081f58b4ce19a60af5607cd244158bc02c45cd7d85fa",
+    "tested_commit": "ec5d236c5864175ab712050590f3bedb0b350aa9",
+    "records": {
+      "dontAsk": "specs/evidence/m12-runtime-guard-dontAsk-2026-10-22.json",
+      "bypassPermissions": "specs/evidence/m12-runtime-guard-bypassPermissions-2026-10-22.json"
+    },
+    "guard_source_count": 12,
+    "validation": "Both unchanged raw reports passed current-source validation and acceptance-envelope checks. Actual installed SDK/AnyIO/CLI versions and bundled binary SHA matched both before atomic publication. Final provider-free _verify_runtime passed both modes."
+  },
+  "versions": {
+    "sdk": "0.2.136",
+    "anyio": "4.14.2",
+    "cli": "2.1.228 (Claude Code)"
+  },
+  "cli_sha256": "d535985e6941a3eb00179ccd7f52ceb0c6623a0305a518ebc4e6514f84a94c99",
+  "preflight_snapshot_sha256": "c3275b2db8922b196c249bd57e04e410eb0a0a409e20bddc1f5e8d70f21d919b",
+  "limits": [
+    "Terminal estimates cover retained terminal observations only, exclude nonterminal cancellation queries and are not billing totals.",
+    "Guard acceptance is not full live UI acceptance. Selected dontAsk/Linux/API-key live proof follows at a clean committed activation head.",
+    "Actual CLI signals have separate provider-free Linux child-process proof. The paid live runner composes BridgeServer directly.",
+    "Owner laptop baseline tools/worktree/memory/latest OAuth are reported confirmed. These cloud observations do not establish new correction-specific native laptop or desktop acceptance.",
+    "Git worktrees and permission controls do not provide host/network/process containment."
+  ]
+}

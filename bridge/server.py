@@ -10,6 +10,7 @@ D-015: ws://localhost:8765.
 
 import asyncio
 from contextlib import asynccontextmanager
+from dataclasses import asdict
 import json
 import os
 from pathlib import Path
@@ -19,15 +20,22 @@ import uuid
 
 import websockets
 
+from bridge.agent_bindings import BindingRegistry, InvalidBinding
+from bridge.interaction_protocol import (
+    COMMANDS as INTERACTIONS,
+    validate_interaction,
+    interaction_error,
+)
 from bridge.config import BridgeConfig, ConfigError, default_config, load_config
 from bridge.observability import BridgeRecorder, RequestContext
+from bridge.context import compose_context, ContextError
 from bridge.conversation import ConversationEngine, ExecutionMetadata
 from bridge.domain_session import _SDK_ENV_PASSTHROUGH
 from bridge.domain_manager import DomainManager
 from bridge.domain_protocol import COMMANDS
 from bridge.domain_session import deliver
 from bridge.connection import ConnectionState
-from bridge.project_service import ProjectService
+from bridge.project_service import ProjectService, REFERRAL
 from bridge.project_memory import TurnIntent
 from bridge.readiness import owned_io
 from bridge.agents import load_agent
@@ -87,11 +95,15 @@ class BridgeServer:
         config: BridgeConfig | None = None,
         recorder: BridgeRecorder | None = None,
         project_service: ProjectService | None = None,
+        bindings=None,
     ):
         self._config = config if config is not None else default_config()
         self._recorder = recorder
         self._closed = False
-        self.conversation = ConversationEngine(config=self._config)
+        self.bindings = bindings if bindings is not None else BindingRegistry()
+        self.conversation = ConversationEngine(
+            config=self._config, registry=self.bindings
+        )
         self.project = project_service or ProjectService(
             self._config,
             runtime_root=Path(__file__).resolve().parent.parent,
@@ -111,6 +123,8 @@ class BridgeServer:
 
     def _context(self, data, connection_id):
         domain = _is_domain_request(data)
+        kind = data.get("type")
+        interaction = isinstance(kind, str) and kind in INTERACTIONS
         request_id = data.get("request_id")
         if not isinstance(request_id, str) or not request_id.strip():
             request_id = str(uuid.uuid4())
@@ -120,7 +134,7 @@ class BridgeServer:
             connection_id,
             request_id,
             agent_id if validate_agent_id(agent_id) else None,
-            "domain" if domain else "conversation",
+            kind if interaction else "domain" if domain else "conversation",
             (
                 self._config.model_for(self._config.domain_tier)
                 if domain
@@ -215,7 +229,24 @@ class BridgeServer:
         return []
 
     def _record_dispatch_outcome(self, data, responses, context, started):
-        error = next((r for r in responses if r.get("status") == "error"), None)
+        # DomainManager/DomainSession own rejected domain commands and actual
+        # execution terminals, including their validated diagnostics. Dispatch
+        # owns admission and successful commands; replayed execution packets do
+        # not change the outcome of the replay command or create new failures.
+        error = next(
+            (
+                r
+                for r in responses
+                if r.get("status") == "error" and r.get("type") != "domain_result"
+            ),
+            None,
+        )
+        if (
+            _is_domain_request(data)
+            and error is not None
+            and error.get("type") == "domain_error"
+        ):
+            return
         if error is not None:
             name = (
                 "request_rejected"
@@ -234,7 +265,132 @@ class BridgeServer:
             duration_ms=(time.monotonic() - started) * 1000,
         )
 
+    async def _interaction(self, data):
+        try:
+            validate_interaction(data)
+            binding = self.bindings.resolve_binding(data["agent_id"])
+        except (ValueError, InvalidBinding) as error:
+            return interaction_error(
+                data, getattr(error, "code", "invalid_request"), self.project.snapshot()
+            )
+        if data["type"] == "project_setup":
+            output = (
+                (
+                    await self.project.interact_setup(
+                        data["agent_id"], data["request_id"], intent=data["intent"]
+                    )
+                )
+                if binding.agent_id == "systems-architect"
+                else REFERRAL
+            )
+            project = self.project.snapshot()
+            status = (
+                "error"
+                if binding.agent_id == "systems-architect"
+                and project["stage"] in ("failed", "unconfigured")
+                else "ok"
+            )
+            packet = dict(
+                type="project_setup",
+                agent_id=binding.agent_id,
+                request_id=data["request_id"],
+                status=status,
+                output=output
+                or (
+                    "Project is ready."
+                    if project["stage"] == "ready"
+                    else "Configure a project root before preparation."
+                ),
+                project=project,
+                architect_decision=project.get("architect_decision"),
+            )
+            if status == "error":
+                packet["error_type"] = project.get("reason") or (
+                    "workspace_unconfigured"
+                    if project["stage"] == "unconfigured"
+                    else "workspace_not_ready"
+                )
+            return packet
+        project = self.project.snapshot()
+        workspace = (
+            await self.project.refresh_snapshot(binding.domain_id)
+            if binding.domain_id
+            else None
+        )
+        state = self.domains.snapshot(binding.domain_id) if binding.domain_id else None
+        capacity = self.project.capacity_snapshot(binding.domain_id)
+        ready = project["stage"] == "ready"
+        active = state is not None and state["state"] in ("active", "background")
+        can_run = bool(
+            ready
+            and active
+            and state["execution_state"] == "idle"
+            and workspace["stage"] == "ready"
+            and self.domains.can_run(binding.domain_id)
+        )
+        can_start = bool(
+            ready
+            and binding.domain_id
+            and capacity["available"]
+            and not active
+            and workspace["stage"] != "failed"
+            and state["state"] == "inactive"
+            and not workspace.get("reservation")
+        )
+        reason = (
+            (
+                project.get("reason")
+                or (
+                    "workspace_unconfigured"
+                    if project["stage"] == "unconfigured"
+                    else "workspace_not_ready"
+                )
+            )
+            if not ready
+            else (
+                workspace.get("reason")
+                if workspace and workspace.get("reason")
+                else (
+                    "capacity_limit"
+                    if binding.domain_id and not capacity["available"] and not active
+                    else (
+                        "workspace_busy"
+                        if workspace and workspace.get("reservation") and not active
+                        else (
+                            "sdk_error"
+                            if active
+                            and not self.domains.owner_healthy(binding.domain_id)
+                            else "domain_busy" if active and not can_run else None
+                        )
+                    )
+                )
+            )
+        )
+        return dict(
+            type="agent_status",
+            agent_id=binding.agent_id,
+            request_id=data["request_id"],
+            execution_kind=binding.execution_kind,
+            domain_id=binding.domain_id,
+            project=project,
+            workspace=workspace,
+            domain_state=state,
+            capabilities=dict(
+                can_start=can_start,
+                can_run=can_run,
+                can_prepare_project=binding.agent_id == "systems-architect"
+                and project["stage"] in ("needs_architect", "failed")
+                and not self.project.initialized,
+                tools=["Read", "Edit", "Bash"] if can_run else [],
+                execution_capacity=capacity,
+                reason=reason,
+            ),
+        )
+
     async def _route(self, data, histories, context, emit):
+        kind = data.get("type", "conversation")
+        if isinstance(kind, str) and kind in INTERACTIONS:
+            return [await self._interaction(data)]
         if _is_domain_request(data):
             immediate = []
             collecting = True
@@ -250,11 +406,63 @@ class BridgeServer:
             finally:
                 collecting = False
             return immediate
+        if kind != "conversation":
+            return [
+                make_error(
+                    data.get("agent_id", ""),
+                    data.get("task", ""),
+                    "invalid_request",
+                    "Unknown typed operation",
+                )
+            ]
         request = parse_request({**data, "request_id": context.request_id})
         error = validate_request(request)
         if error:
             return [
                 make_error(request.agent_id, request.task, "invalid_request", error)
+            ]
+        if not isinstance(request.agent_id, str) or not isinstance(request.task, str):
+            return [
+                make_error(
+                    "", "", "invalid_request", "agent_id and task must be strings"
+                )
+            ]
+        if not validate_agent_id(request.agent_id):
+            return [
+                make_error(
+                    request.agent_id,
+                    request.task,
+                    "invalid_request",
+                    "agent_id contains invalid characters",
+                )
+            ]
+        try:
+            binding = self.bindings.resolve_binding(request.agent_id)
+        except InvalidBinding:
+            return [
+                make_error(
+                    request.agent_id,
+                    request.task,
+                    "invalid_binding",
+                    "Agent binding is unavailable",
+                )
+            ]
+        if binding.execution_kind == "working":
+            return [
+                make_error(
+                    request.agent_id,
+                    request.task,
+                    "domain_required",
+                    "Use the character's domain controls for work.",
+                    binding=asdict(binding),
+                    execution_kind=binding.execution_kind,
+                    domain_id=binding.domain_id,
+                    required_action=(
+                        "activate_domain"
+                        if self.project.snapshot()["stage"] == "ready"
+                        else "project_setup"
+                    ),
+                )
             ]
         self._event("engine_routing", context)
         return [await self._conversation(data, histories, context)]
@@ -281,6 +489,8 @@ class BridgeServer:
             try:
                 resp = await self._call_conversation(data, histories, metadata)
             finally:
+                if metadata.cleanup_failed:
+                    self.project.note_cleanup_failure()
                 self._npc_tasks.discard(operation)
         except asyncio.CancelledError:
             if record:
@@ -299,6 +509,10 @@ class BridgeServer:
                 "success" if success else "failure",
                 metadata,
             )
+        if metadata.context_sources is not None:
+            self._event(
+                "context_composed", context, context_sources=metadata.context_sources
+            )
         return resp
 
     async def _call_conversation(self, data, histories, metadata):
@@ -308,8 +522,28 @@ class BridgeServer:
             if histories is not None and isinstance(agent_id, str)
             else None
         )
-        options = dict(metadata=metadata)
         if self._config.workspace_root_dir is None:
+            try:
+                context_packet = await owned_io(
+                    compose_context,
+                    self._config,
+                    agent_id=agent_id,
+                    execution_kind="extra",
+                    domain_id=None,
+                    project=self.project.snapshot(),
+                    workspace=None,
+                    tools=[],
+                    permission_mode="dontAsk",
+                    interaction="conversation",
+                )
+            except ContextError:
+                return make_error(
+                    agent_id or "",
+                    data.get("task", ""),
+                    "context_unavailable",
+                    "Context is unavailable",
+                )
+            options = dict(metadata=metadata, context_packet=context_packet)
             response = (
                 await self.conversation.handle_request(data, history, **options)
                 if history is not None
@@ -327,7 +561,7 @@ class BridgeServer:
             return make_error(
                 "", "", "invalid_request", "agent_id and task are required"
             )
-        if load_agent(agent) is None:
+        if load_agent(agent, registry=self.bindings) is None:
             return make_error(agent, task, "not_found", "Agent is unavailable")
         deadline = (
             asyncio.get_running_loop().time()
@@ -355,17 +589,28 @@ class BridgeServer:
             async with asyncio.timeout_at(deadline):
                 memory = self.project.require_memory()
                 attempted = True
-                prepared = asyncio.create_task(
-                    self.project.require_readiness().prepare_turn(turn)
-                )
+                prepared = asyncio.create_task(self.project.prepare_memory_turn(turn))
                 snapshot = await asyncio.shield(prepared)
                 self.project.publish_memory(snapshot)
+                context_packet = await owned_io(
+                    compose_context,
+                    self._config,
+                    agent_id=agent,
+                    execution_kind="extra",
+                    domain_id=None,
+                    project=self.project.snapshot(),
+                    workspace=None,
+                    tools=[],
+                    permission_mode="dontAsk",
+                    interaction="conversation",
+                )
                 response = await self.conversation.handle_request(
                     data,
                     history,
                     metadata=metadata,
                     prior_project_notes=snapshot.as_context(),
                     deadline=deadline,
+                    context_packet=context_packet,
                 )
                 outcome = "success" if response.get("status") == "ok" else "error"
                 output = (
@@ -416,7 +661,10 @@ class BridgeServer:
 
     async def _handle_connection(self, websocket):
         connection = ConnectionState(
-            websocket, self.dispatch_raw, project_snapshot=self.project.snapshot
+            websocket,
+            self.dispatch_raw,
+            project_snapshot=self.project.snapshot,
+            workspace_snapshot=self.project.workspace_snapshot,
         )
         self._connections.add(connection)
         context = RequestContext(
@@ -539,7 +787,7 @@ class BridgeServer:
                 self.close(clean=clean)
 
 
-async def serve():
+async def serve(*, stop_event: asyncio.Event | None = None):
     """Process composition root: load once, then construct network clients."""
     try:
         config = load_config()
@@ -555,7 +803,7 @@ async def serve():
     clean = False
     try:
         server = BridgeServer(config=config, recorder=recorder)
-        await server.serve()
+        await server.serve(stop_event=stop_event)
         clean = True
     finally:
         if server is None:
