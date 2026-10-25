@@ -186,9 +186,10 @@ follow-up tickets for deferred work. No dedicated finding-UUID minter or durable
 PR-lifecycle ledger was found in those repo files. Existing project-memory UUIDs
 are not evidence of this tooling being implemented.
 
-**Scope clarification pending:** is this shared tooling for all Adam's projects
-(with Plaza the first consumer), or an initial Plaza-only extension of the repo's
-PR gate? Asked explicitly; do not silently choose the component's ownership/home.
+**Scope confirmed by Adam:** shared tooling for all projects, Plaza first consumer.
+The existing home is `adamtasteslikegood/codex-pr-review-gate-cc`; its issue #29
+already specifies local persisted lifecycle UUIDs first (A), then a DO store
+evaluation (B). This is not a new Plaza-only PR hook or Python/SQLite service.
 This is workflow/tooling state and must not automatically be equated with the
 in-game DomainSessionStore or overwrite its identity/replay contract.
 
@@ -200,3 +201,25 @@ again. Exact schema, UUID version, storage location, concurrency/idempotency,
 reconciliation rules, gate integration and migration need a bounded design once
 component ownership is settled. These are requirements/review notes, not new
 canon, an implementation design approval or a deployed service claim.
+
+### Shared gate handoff
+
+Located and read the existing shared gate repository, its working rules and
+issue [#29](https://github.com/adamtasteslikegood/codex-pr-review-gate-cc/issues/29).
+The issue reproduces unrelated same-ordinal findings in two checkout roots
+adopting the wrong external issue after a lost response. The local increment is
+a random `lifecycleId` persisted in the existing TypeScript plugin record before
+filing, retained across retries and changed on fresh/reset lifecycle; exact
+UUID-bearing filing marks replace ordinal/PR/generation-only adoption. Earlier
+marked issues must not be adopted through title fallback. No new local database
+or generic UUID server is needed for A. B remains the shared authenticated DO
+ledger/driver-lease design, not implemented here.
+
+A bounded local design is committed in the separate gate repo's isolated
+`fix/29-lifecycle-identity` worktree (commit `449c6ce`), at
+`docs/superpowers/specs/2026-10-24-lifecycle-filing-identity-design.md`, pending
+owner design review. No product implementation or gate PR has been made yet.
+Preflight also found the gate's actual plugin-test harness/generated types are
+not provisioned in this cloud checkout; the Plaza SDK CLI does not expose that
+repo's plugin-test command. This is a verification setup issue to solve/report,
+not a passing test result and not a reason to invent a substitute harness.
