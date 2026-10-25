@@ -113,8 +113,10 @@ No open owner decision is resolved or changed by adding this reference.
 ## Cloudflare plan and messaging facts — October 24, 2026
 
 Owner confirms an existing Workers Paid subscription at $5/month plus usage.
-This answers the paid-account prerequisite; it does not prove actual remote
-Claude execution/auth feasibility or authorize deployment. Account subscription
+This records existing budget/account context, not a universal prerequisite:
+free-tier experiments are possible, and some individual products have their own
+plan requirements. It does not prove remote Claude execution/auth feasibility
+or authorize deployment. Account subscription
 and quotas were not independently read from the authenticated dashboard.
 
 Official documentation was rechecked using the Cloudflare docs connector and
@@ -159,3 +161,42 @@ Next owner question under Q02: map existing Stop/cancel behavior versus explicit
 intentional session End onto the recorded stable-session/resume requirement.
 A possible design is Stop current execution while retaining the session, with a
 separate explicit End; that is a recommendation to discuss, not a settled answer.
+
+## Owner clarification and immediate tooling priority — October 24, 2026
+
+Adam confirms the Workers Paid month starts October 24 and the $5 is already
+spent. Do not turn account-plan status or hypothetical overages into a development
+pause. Use actual product-specific usage and included allowances to estimate the
+month-end cost. Check-ins are scheduled for three days and one week from this
+clarification (October 27 and October 31 Pacific). How free allowances are
+accounted for within the paid allocations should be checked against actual
+billing/usage, not invented or assumed to stack. The advertised $0.30/M Worker
+request rate is not a universal price for DO, container, CPU or queue operations.
+
+**Immediate requested work:** a local UUID minter and persistent PR-lifecycle
+issue/finding state, followed by a design for shared Cloudflare DO state analogous
+to relay mode B. The goal is stable identity and continuity across agent sessions
+and after a PR closes, including uniquely identified follow-up issues. Adam hopes
+that shared tooling can exercise a live DO-backed session-state service before
+Plaza's later B/C implementation, supplying operational experience.
+
+Inspection found the checked-in `.claude/hooks/pretooluse-pr-review-nudge.sh`
+queries current GitHub review-thread state; `.claude/pr-workflow.md` requires
+follow-up tickets for deferred work. No dedicated finding-UUID minter or durable
+PR-lifecycle ledger was found in those repo files. Existing project-memory UUIDs
+are not evidence of this tooling being implemented.
+
+**Scope clarification pending:** is this shared tooling for all Adam's projects
+(with Plaza the first consumer), or an initial Plaza-only extension of the repo's
+PR gate? Asked explicitly; do not silently choose the component's ownership/home.
+This is workflow/tooling state and must not automatically be equated with the
+in-game DomainSessionStore or overwrite its identity/replay contract.
+
+Required outcome: mint an identity once for a logical record and retain a durable
+mapping so later sessions reuse it; record originating repo/PR/review evidence,
+state/disposition and linked GitHub/Jira follow-ups; retain records after PR
+closure. A later relay must preserve those identities rather than minting them
+again. Exact schema, UUID version, storage location, concurrency/idempotency,
+reconciliation rules, gate integration and migration need a bounded design once
+component ownership is settled. These are requirements/review notes, not new
+canon, an implementation design approval or a deployed service claim.
