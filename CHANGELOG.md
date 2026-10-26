@@ -17,6 +17,14 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
 
+### Changed — in-memory domain store extraction (PLZG-290, #373)
+
+- Move bounded terminal history behind `DomainSessionStore` and `MemoryStore`.
+  Preserve replay packets, output IDs, UTF-8 output limits and retained duplicate
+  handling while keeping execution/checkpoint ownership in `DomainSession`.
+- Add reusable store contract coverage and real session/store integration tests.
+  This increment retains in-memory history only; persistence remains later work.
+
 ### Fixed — blocked department chat guidance (PLZG-295)
 
 - Show fixed readiness guidance in both chat transcripts and distinguish project

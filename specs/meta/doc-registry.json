@@ -65,7 +65,7 @@
       "tier": 2,
       "authority": "implementation",
       "status": "ACTIVE",
-      "note": "Authoritative for platform and repository decisions that outlive the current frontend: engine, bridge transport, agent data layer, licence, submodule and merge policy, and since v0.2.14 who merges a PR and who moves the board (D-031, D-032; D-030 superseded). Created in v0.2.7 to give the eight decisions PROJECT-OVERVIEW was wrongly named as originating an entitled home (issue #11, conflict 4.8). Doc set 0.2.15 ratifies asynchronous buffered domain execution, centralized non-secret configuration and bounded local JSONL archives/diagnostics (D-034–D-036), owner-approved 2026-10-18. Doc set 0.2.16 ratifies the owner runtime-path correction D-037: default Claude Code/Agent SDK with explicitly selected API-key-only Messages API conversation compatibility and no automatic fallback; the runtime correction is implemented with separate cloud API-key-through-SDK recall evidence, without proving subscription use or desktop acceptance. Doc set 0.2.17 ratifies owner-approved M12 policies D-038/D-039; baseline implementation has deterministic/Linux evidence; desktop acceptance remains open. Current scope amended by owner-approved M12-CHARACTER-DOMAIN-AMENDMENT at eadb0b4, ratified in 0.2.18; correction implementation and acceptance remain pending."
+      "note": "Authoritative for platform and repository decisions that outlive the current frontend: engine, bridge transport, agent data layer, licence, submodule and merge policy, and since v0.2.14 who merges a PR and who moves the board (D-031, D-032; D-030 superseded). Created in v0.2.7 to give the eight decisions PROJECT-OVERVIEW was wrongly named as originating an entitled home (issue #11, conflict 4.8). Doc set 0.2.15 ratifies asynchronous buffered domain execution, centralized non-secret configuration and bounded local JSONL archives/diagnostics (D-034\u2013D-036), owner-approved 2026-10-18. Doc set 0.2.16 ratifies the owner runtime-path correction D-037: default Claude Code/Agent SDK with explicitly selected API-key-only Messages API conversation compatibility and no automatic fallback; the runtime correction is implemented with separate cloud API-key-through-SDK recall evidence, without proving subscription use or desktop acceptance. Doc set 0.2.17 ratifies owner-approved M12 policies D-038/D-039; baseline implementation has deterministic/Linux evidence; desktop acceptance remains open. Current scope amended by owner-approved M12-CHARACTER-DOMAIN-AMENDMENT at eadb0b4, ratified in 0.2.18; correction implementation and acceptance remain pending."
     },
     {
       "doc_id": "PROJECT-OVERVIEW",
@@ -97,7 +97,7 @@
       "tier": 2,
       "authority": "implementation",
       "status": "ACTIVE",
-      "note": "Owner-approved bridge-first design (2026-10-18); M9 complete. M10/M11 implemented with deterministic coverage and accepted on the owner laptop on 2026-10-21 using Claude subscription and API-token authentication. D-033–D-037 preserve scoped NPC/domain execution, central settings, bounded archives and default SDK runtime. Owner moved minimum worktree separation, configured project bootstrap and native three-file project memory into M12; detailed M12 written design approved 2026-10-21; implementation plan approved for subagent-driven execution, and broader persistence/isolation/hosted providers remain future work. Prior cloud SDK recall does not prove M12 execution or graceful shutdown. Current scope amended by owner-approved M12-CHARACTER-DOMAIN-AMENDMENT at eadb0b4, ratified in 0.2.18; correction implementation and acceptance remain pending."
+      "note": "Owner-approved bridge-first design (2026-10-18); M9 complete. M10/M11 implemented with deterministic coverage and accepted on the owner laptop on 2026-10-21 using Claude subscription and API-token authentication. D-033\u2013D-037 preserve scoped NPC/domain execution, central settings, bounded archives and default SDK runtime. Owner moved minimum worktree separation, configured project bootstrap and native three-file project memory into M12; detailed M12 written design approved 2026-10-21; implementation plan approved for subagent-driven execution, and broader persistence/isolation/hosted providers remain future work. Prior cloud SDK recall does not prove M12 execution or graceful shutdown. Current scope amended by owner-approved M12-CHARACTER-DOMAIN-AMENDMENT at eadb0b4, ratified in 0.2.18; correction implementation and acceptance remain pending."
     },
     {
       "doc_id": "M12-DOMAIN-EXECUTION-DESIGN",
@@ -113,7 +113,7 @@
       "tier": 2,
       "authority": "implementation",
       "status": "ACTIVE",
-      "note": "Owner approved revised specification at eadb0b4 on 2026-10-22 with “ok, build it”; ratified in doc set 0.2.18. Catalog agents front canonical department domains; extras use conversation. One worktree per project/department preserves legacy Core, with shared project notes, fresh bounded game/work guidance and guarded permission control. Implementation authorized; completion and acceptance remain pending."
+      "note": "Owner approved revised specification at eadb0b4 on 2026-10-22 with \u201cok, build it\u201d; ratified in doc set 0.2.18. Catalog agents front canonical department domains; extras use conversation. One worktree per project/department preserves legacy Core, with shared project notes, fresh bounded game/work guidance and guarded permission control. Implementation authorized; completion and acceptance remain pending."
     },
     {
       "doc_id": "ROADMAP",
@@ -121,7 +121,7 @@
       "tier": 3,
       "authority": "derived",
       "status": "ACTIVE",
-      "note": "Preserves M1–M8 prototype history and approved M9–M15 direction. M9 complete; M10/M11 locally accepted by owner 2026-10-21. M12 written design approved and implementation plan approved for subagent-driven execution, now including configured project bootstrap, minimum dedicated execution worktree and native three-file project memory. M13/M14 persistence and independent workspace sequencing can change or combine; M15 provider remains unselected. M5/M6 remain deferred frontend milestones. Current scope amended by owner-approved M12-CHARACTER-DOMAIN-AMENDMENT at eadb0b4, ratified in 0.2.18; correction implementation and acceptance remain pending."
+      "note": "Preserves M1\u2013M8 prototype history and approved M9\u2013M15 direction. M9 complete; M10/M11 locally accepted by owner 2026-10-21. M12 written design approved and implementation plan approved for subagent-driven execution, now including configured project bootstrap, minimum dedicated execution worktree and native three-file project memory. M13/M14 persistence and independent workspace sequencing can change or combine; M15 provider remains unselected. M5/M6 remain deferred frontend milestones. Current scope amended by owner-approved M12-CHARACTER-DOMAIN-AMENDMENT at eadb0b4, ratified in 0.2.18; correction implementation and acceptance remain pending."
     },
     {
       "doc_id": "TASK-TRACKER",
@@ -169,7 +169,7 @@
       "tier": 3,
       "authority": "delivery",
       "status": "HISTORICAL",
-      "note": "Executable context for Sprint 5. Board reconciliation (triage the 114 non-Done items on the board at the start of 2026-10-05, clear 7 stale In Progress) and doc consolidation (28 governed docs to ≤19, the nine tier-4 documents). Housekeeping sprint — no code milestones. Acceptance checks live in scripts/sprint_5_gate.py; sprint and board ids are recorded in DELIVERY-COORDINATES (D-026). Closed 2026-10-06 PDT (Jira completeDate 2026-10-06T20:50Z) with both gates green; HISTORICAL since PLZG-255."
+      "note": "Executable context for Sprint 5. Board reconciliation (triage the 114 non-Done items on the board at the start of 2026-10-05, clear 7 stale In Progress) and doc consolidation (28 governed docs to \u226419, the nine tier-4 documents). Housekeeping sprint \u2014 no code milestones. Acceptance checks live in scripts/sprint_5_gate.py; sprint and board ids are recorded in DELIVERY-COORDINATES (D-026). Closed 2026-10-06 PDT (Jira completeDate 2026-10-06T20:50Z) with both gates green; HISTORICAL since PLZG-255."
     },
     {
       "doc_id": "SPRINT-6-CHARTER",
@@ -283,7 +283,147 @@
     },
     {
       "path": "docs/superpowers/plans/2026-10-22-m12-character-domains.md",
-      "reason": "Owner-authorized implementation plan derived from the revised M12-CHARACTER-DOMAIN-AMENDMENT at eadb0b4, approved 2026-10-22 with “ok, build it”. Execution artifact; no new product authority or runtime acceptance."
+      "reason": "Owner-authorized implementation plan derived from the revised M12-CHARACTER-DOMAIN-AMENDMENT at eadb0b4, approved 2026-10-22 with \u201cok, build it\u201d. Execution artifact; no new product authority or runtime acceptance."
+    },
+    {
+      "path": "Docs/files/adams_cp_paste_ingame_agent_notes/2026OCT22/arch_convo_full.md",
+      "reason": "Historical owner-imported selectable in-game UI copy/paste, not a logged runtime transcript or governing specification. Retained as provenance; privacy/publication review remains separate."
+    },
+    {
+      "path": "Docs/files/adams_cp_paste_ingame_agent_notes/2026OCT22/how2zed0rk3yQA-sa.md",
+      "reason": "Historical owner-imported selectable in-game UI copy/paste, not a logged runtime transcript or governing specification. Retained as provenance; privacy/publication review remains separate."
+    },
+    {
+      "path": "Docs/files/cloudflare-durable-objects/raw/01-durable-objects-overview.md",
+      "reason": "Imported external Cloudflare documentation snapshot; preserve vendor response and provenance unchanged. Research input, never Plaza decision authority."
+    },
+    {
+      "path": "Docs/files/cloudflare-durable-objects/raw/02-what-are-durable-objects.md",
+      "reason": "Imported external Cloudflare documentation snapshot; preserve vendor response and provenance unchanged. Research input, never Plaza decision authority."
+    },
+    {
+      "path": "Docs/files/cloudflare-durable-objects/raw/03-storage-best-practices.md",
+      "reason": "Imported external Cloudflare documentation snapshot; preserve vendor response and provenance unchanged. Research input, never Plaza decision authority."
+    },
+    {
+      "path": "Docs/files/cloudflare-durable-objects/raw/04-sqlite-storage-api.md",
+      "reason": "Imported external Cloudflare documentation snapshot; preserve vendor response and provenance unchanged. Research input, never Plaza decision authority."
+    },
+    {
+      "path": "Docs/files/cloudflare-durable-objects/raw/05-limits.md",
+      "reason": "Imported external Cloudflare documentation snapshot; preserve vendor response and provenance unchanged. Research input, never Plaza decision authority."
+    },
+    {
+      "path": "Docs/files/cloudflare-durable-objects/raw/06-pricing.md",
+      "reason": "Imported external Cloudflare documentation snapshot; preserve vendor response and provenance unchanged. Research input, never Plaza decision authority."
+    },
+    {
+      "path": "Docs/files/cloudflare-durable-objects/raw/07-workers-python.md",
+      "reason": "Imported external Cloudflare documentation snapshot; preserve vendor response and provenance unchanged. Research input, never Plaza decision authority."
+    },
+    {
+      "path": "Docs/files/cloudflare-durable-objects/raw/08-workers-overview.md",
+      "reason": "Imported external Cloudflare documentation snapshot; preserve vendor response and provenance unchanged. Research input, never Plaza decision authority."
+    },
+    {
+      "path": "Docs/files/cloudflare-durable-objects/raw/09-agents-sdk.md",
+      "reason": "Imported external Cloudflare documentation snapshot; preserve vendor response and provenance unchanged. Research input, never Plaza decision authority."
+    },
+    {
+      "path": "Docs/files/cloudflare-durable-objects/raw/10-sandbox-sdk.md",
+      "reason": "Imported external Cloudflare documentation snapshot; preserve vendor response and provenance unchanged. Research input, never Plaza decision authority."
+    },
+    {
+      "path": "Docs/files/cloudflare-durable-objects/raw/11-containers.md",
+      "reason": "Imported external Cloudflare documentation snapshot; preserve vendor response and provenance unchanged. Research input, never Plaza decision authority."
+    },
+    {
+      "path": "Docs/files/durable-agent-microvm-sandbox/Durable_Runtime_Sanbox_worktree.md",
+      "reason": "Imported agent runtime/sandbox research note, not an approved Plaza design or product decision. Retained with original content as non-authoritative research input."
+    },
+    {
+      "path": "Docs/files/durable-agent-microvm-sandbox/MicroVM and Sandbox Options for Agent Sessions.md",
+      "reason": "Imported agent runtime/sandbox research note, not an approved Plaza design or product decision. Retained with original content as non-authoritative research input."
+    },
+    {
+      "path": "Docs/files/durable-agent-microvm-sandbox/Session State for Claude Agents.md",
+      "reason": "Imported agent runtime/sandbox research note, not an approved Plaza design or product decision. Retained with original content as non-authoritative research input."
+    },
+    {
+      "path": "docs/research/cloudflare-durable-objects/ANALYSIS.md",
+      "reason": "Cloudflare runtime research analysis/index; historical baseline and proposed options, not an approved implementation specification or product decision."
+    },
+    {
+      "path": "docs/research/cloudflare-durable-objects/README.md",
+      "reason": "Cloudflare runtime research analysis/index; historical baseline and proposed options, not an approved implementation specification or product decision."
+    },
+    {
+      "path": "docs/research/cloudflare-durable-objects/raw/01-durable-objects-overview.md",
+      "reason": "External Cloudflare documentation snapshot, preserved verbatim as non-authoritative research evidence. No Plaza decision authority."
+    },
+    {
+      "path": "docs/research/cloudflare-durable-objects/raw/02-what-are-durable-objects.md",
+      "reason": "External Cloudflare documentation snapshot, preserved verbatim as non-authoritative research evidence. No Plaza decision authority."
+    },
+    {
+      "path": "docs/research/cloudflare-durable-objects/raw/03-storage-best-practices.md",
+      "reason": "External Cloudflare documentation snapshot, preserved verbatim as non-authoritative research evidence. No Plaza decision authority."
+    },
+    {
+      "path": "docs/research/cloudflare-durable-objects/raw/04-sqlite-storage-api.md",
+      "reason": "External Cloudflare documentation snapshot, preserved verbatim as non-authoritative research evidence. No Plaza decision authority."
+    },
+    {
+      "path": "docs/research/cloudflare-durable-objects/raw/05-limits.md",
+      "reason": "External Cloudflare documentation snapshot, preserved verbatim as non-authoritative research evidence. No Plaza decision authority."
+    },
+    {
+      "path": "docs/research/cloudflare-durable-objects/raw/06-pricing.md",
+      "reason": "External Cloudflare documentation snapshot, preserved verbatim as non-authoritative research evidence. No Plaza decision authority."
+    },
+    {
+      "path": "docs/research/cloudflare-durable-objects/raw/07-workers-python.md",
+      "reason": "External Cloudflare documentation snapshot, preserved verbatim as non-authoritative research evidence. No Plaza decision authority."
+    },
+    {
+      "path": "docs/research/cloudflare-durable-objects/raw/08-workers-overview.md",
+      "reason": "External Cloudflare documentation snapshot, preserved verbatim as non-authoritative research evidence. No Plaza decision authority."
+    },
+    {
+      "path": "docs/research/cloudflare-durable-objects/raw/09-agents-sdk.md",
+      "reason": "External Cloudflare documentation snapshot, preserved verbatim as non-authoritative research evidence. No Plaza decision authority."
+    },
+    {
+      "path": "docs/research/cloudflare-durable-objects/raw/10-sandbox-sdk.md",
+      "reason": "External Cloudflare documentation snapshot, preserved verbatim as non-authoritative research evidence. No Plaza decision authority."
+    },
+    {
+      "path": "docs/research/cloudflare-durable-objects/raw/11-containers.md",
+      "reason": "External Cloudflare documentation snapshot, preserved verbatim as non-authoritative research evidence. No Plaza decision authority."
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-23-domain-session-store-execution-backend.md",
+      "reason": "Proposed post-M12 store/backend plan and branch-recorded owner answers; preserved for reconciliation/review, not ratification, implementation authorization or a new source of product authority. See M13_DECISIONS_AND_QUESTIONS.md."
+    },
+    {
+      "path": "docs/research/cloudflare-durable-objects/brayden-chat-review.md",
+      "reason": "Static source review of an external Workers/DO/React Router chat example at a pinned commit; non-authoritative research only, no product decision or implementation approval."
+    },
+    {
+      "path": "docs/superpowers/specs/2026-10-25-m13-memory-store-extraction-design.md",
+      "reason": "Owner-approved bounded #373 extraction design, derived from existing M12 replay/admission behavior; approval authorizes this extraction, not new persistence or provider decisions."
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-26-m13-memory-store-extraction.md",
+      "reason": "Execution plan derived from the owner-approved bounded #373 design; no new product decisions or authority."
+    },
+    {
+      "path": "docs/confluence-publishing.md",
+      "reason": "Operational setup and recovery guide for the GitHub-to-Confluence source mirrors. Process, not specification; delivery coordinates remain authoritative for destination identities."
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-25-confluence-publisher.md",
+      "reason": "Implementation plan for the owner-selected GitHub Actions publisher. Execution artifact, not a new source of product or document authority."
     }
   ]
 }

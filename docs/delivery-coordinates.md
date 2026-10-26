@@ -144,6 +144,71 @@ silently writes into another product's space is exactly how the reports ended up
 there. If the parent page is unreachable the script exits 1, and that is the
 correct behaviour.
 
+### GitHub documentation mirrors
+
+The documentation publisher reads this bootstrap map; page identities are recorded
+here under D-026 rather than hardcoded in the script. It adopts these existing
+imports instead of creating duplicates. Subsequent generated identities live in the
+home page's `plaza-doc-mirrors` content property as deployment state. That property
+is not another source of product or document authority; membership and status still
+come from `specs/meta/doc-registry.json` in the committed `dev` tree.
+
+<!-- confluence-doc-mirrors:start -->
+Space id: `11075586`
+Home id: `11075756`
+
+| GitHub source path | Content id | Mode |
+|---|---|---|
+| `specs/meta/META-SPEC.md` | `104661026` | live_doc |
+| `specs/meta/concept-driver.md` | `104628276` | live_doc |
+| `specs/meta/decision-register.md` | `104726529` | live_doc |
+| `specs/meta/spec-drivers-v0.2.5.md` | `104759297` | live_doc |
+| `specs/meta/README.md` | `104660993` | live_doc |
+| `docs/storyboard-week1.md` | `104792065` | live_doc |
+| `docs/designs/2.5D-RPG-Prototype.md` | `104824833` | live_doc |
+| `docs/designs/platform-decisions.md` | `104497207` | live_doc |
+| `README.md` | `104693761` | live_doc |
+| `docs/agent-directory.md` | `104661067` | live_doc |
+| `docs/delivery-coordinates.md` | `104595458` | live_doc |
+| `docs/superpowers/specs/2026-10-18-bridge-first-platform-design.md` | `104857601` | live_doc |
+| `docs/superpowers/specs/2026-10-21-m12-domain-execution-design.md` | `104824858` | live_doc |
+| `docs/superpowers/specs/2026-10-22-m12-character-domain-amendment.md` | `104693802` | live_doc |
+| `specs/roadmap.md` | `104497258` | live_doc |
+| `specs/task-tracker.md` | `104595481` | live_doc |
+| `specs/branching-strategy.md` | `104890369` | live_doc |
+| `specs/sprint-2-charter.md` | `104759352` | live_doc |
+| `specs/sprint-3-charter.md` | `104595514` | live_doc |
+| `specs/sprint-4-charter.md` | `104792107` | live_doc |
+| `specs/sprint-5-charter.md` | `104890404` | live_doc |
+| `specs/sprint-6-charter.md` | `104497307` | live_doc |
+| `docs/devops-setup.md` | `104661132` | live_doc |
+| `CLAUDE.md` | `104661153` | page |
+| `CONTRIBUTING.md` | `104693831` | page |
+| `QUICKSTART.md` | `104726581` | page |
+| `CHANGELOG.md` | `104497332` | page |
+| `docs/reference/using_agents_sdk_with_claude_code.md` | `104890427` | page |
+| `docs/superpowers/plans/2026-08-12-bridge-domain-architecture.md` | `104726676` | page |
+| `docs/superpowers/plans/2026-10-18-m10-config-observability.md` | `104726699` | page |
+| `docs/superpowers/specs/2026-08-12-bridge-domain-architecture-design.md` | `104693880` | page |
+| `docs/superpowers/specs/2026-08-13-cc-tui-statusline-design.md` | `104497362` | page |
+| `docs/superpowers/plans/2026-08-13-cc-tui-statusline.md` | `104792130` | page |
+| `docs/quick-reference.md` | `104792151` | page |
+| `docs/README.md` | `104497154` | live_doc |
+| `specs/README.md` | `104628225` | live_doc |
+| `specs/aligned-spec-v0.2.5.md` | `104726726` | page |
+| `Docs/files/README.md` | `104726755` | page |
+| `docs/reference/meta_spec_governance_tree.md` | `104595539` | page |
+| `docs/reference/agile/Agile_Expaiined.md` | `104693909` | page |
+| `docs/reference/agile/Agile_like_im_5.md` | `104857662` | page |
+| `docs/cc-statusline-protocol.md` | `104857684` | page |
+| `docs/superpowers/plans/2026-10-18-m11-npc-conversations.md` | `104595562` | page |
+| `docs/superpowers/plans/2026-10-18-npc-sdk-execution.md` | `104824891` | page |
+| `docs/superpowers/plans/2026-10-21-m12-project-execution.md` | `104628305` | page |
+| `docs/superpowers/plans/2026-10-22-m12-character-domains.md` | `104693932` | page |
+| `specs/meta/doc-registry.json` | `104792086` | live_doc |
+| `specs/meta/spec-frontmatter.schema.json` | `104726560` | live_doc |
+<!-- confluence-doc-mirrors:end -->
+
 ## Keys that are not this repo's
 
 Real projects on the same Atlassian site, belonging to the owner's **other**
