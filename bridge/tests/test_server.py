@@ -35,8 +35,8 @@ def mock_engines(monkeypatch):
     async def handle(command, *, context, emit):
         try:
             validate_domain_command(command)
-        except DomainCommandError:
-            await deliver(emit, error_packet(command, "invalid_request"), None, context)
+        except DomainCommandError as error:
+            await deliver(emit, error_packet(command, error.code), None, context)
             return
         for packet in domain_mgr.replies:
             await deliver(emit, packet, None, context)
@@ -70,6 +70,8 @@ class TestBridgeServerDispatch:
         resp = await server.dispatch(
             {
                 "type": "domain_query",
+                "protocol_version": 2,
+                "execution_id": "execution",
                 "domain_id": "engineering",
                 "agent_id": "systems-architect",
                 "task": "review",
@@ -98,6 +100,7 @@ class TestBridgeServerDispatch:
         resp = await server.dispatch(
             {
                 "type": "resume",
+                "protocol_version": 2,
                 "domain_id": "engineering",
                 "domain_session_id": "generation",
                 "request_id": "resume",
@@ -116,6 +119,7 @@ class TestBridgeServerDispatch:
         await server.dispatch(
             dict(
                 type="resume",
+                protocol_version=2,
                 domain_id="engineering",
                 domain_session_id="generation",
                 request_id="resume",
@@ -129,7 +133,13 @@ class TestBridgeServerDispatch:
         _, domain_mgr = mock_engines
         server = BridgeServer()
         resp = await server.dispatch(
-            {"type": "activate_domain", "domain_id": "engineering"}
+            {
+                "type": "activate_domain",
+                "protocol_version": 2,
+                "expected_domain_revision": "0",
+                "domain_id": "engineering",
+                "request_id": "start",
+            }
         )
         domain_mgr.handle.assert_awaited_once()
         assert domain_mgr.handle.call_args.args[0]["type"] == "activate_domain"
@@ -138,7 +148,14 @@ class TestBridgeServerDispatch:
         _, domain_mgr = mock_engines
         server = BridgeServer()
         resp = await server.dispatch(
-            {"type": "background_domain", "domain_id": "engineering"}
+            {
+                "type": "background_domain",
+                "protocol_version": 2,
+                "execution_id": "execution",
+                "domain_session_id": "generation",
+                "request_id": "control",
+                "domain_id": "engineering",
+            }
         )
         domain_mgr.handle.assert_awaited_once()
         assert domain_mgr.handle.call_args.args[0]["type"] == "background_domain"
@@ -147,7 +164,14 @@ class TestBridgeServerDispatch:
         _, domain_mgr = mock_engines
         server = BridgeServer()
         resp = await server.dispatch(
-            {"type": "refocus_domain", "domain_id": "engineering"}
+            {
+                "type": "refocus_domain",
+                "protocol_version": 2,
+                "execution_id": "execution",
+                "domain_session_id": "generation",
+                "request_id": "control",
+                "domain_id": "engineering",
+            }
         )
         domain_mgr.handle.assert_awaited_once()
         assert domain_mgr.handle.call_args.args[0]["type"] == "refocus_domain"
@@ -161,7 +185,14 @@ class TestBridgeServerDispatch:
     async def test_validation_error_returns_error(self, mock_engines):
         server = BridgeServer()
         resp = await server.dispatch(
-            {"type": "domain_query", "domain_id": "", "agent_id": "", "task": ""}
+            {
+                "type": "domain_query",
+                "protocol_version": 2,
+                "execution_id": "execution",
+                "domain_id": "",
+                "agent_id": "",
+                "task": "",
+            }
         )
         assert len(resp) == 1
         assert resp[0]["status"] == "error"
@@ -299,7 +330,11 @@ async def test_domain_activation_survives_peer_close(
         await socket.send(
             json.dumps(
                 dict(
-                    type="activate_domain", domain_id="engineering", request_id="start"
+                    type="activate_domain",
+                    protocol_version=2,
+                    expected_domain_revision="0",
+                    domain_id="engineering",
+                    request_id="start",
                 )
             )
         )

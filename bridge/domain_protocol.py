@@ -14,14 +14,23 @@ COMMANDS = frozenset(
         "refocus_domain",
         "deactivate_domain",
         "resume",
+        "end_domain_session",
     }
 )
-GENERATION_COMMANDS = COMMANDS - {
-    "describe_workspace",
-    "domain_status",
-    "activate_domain",
-}
+EXECUTION_COMMANDS = frozenset(
+    {"domain_query", "background_domain", "refocus_domain", "deactivate_domain"}
+)
+GENERATION_COMMANDS = EXECUTION_COMMANDS | {"resume", "end_domain_session"}
 ERROR_MESSAGES = {
+    "upgrade_required": "Upgrade the client to domain protocol version 2.",
+    "stale_execution": "This execution is no longer current; refresh domain status.",
+    "stale_domain_revision": "Domain state changed; refresh status before retrying.",
+    "state_store_busy": "Application state is busy or has unfinished work.",
+    "state_store_invalid": "Application state needs inspection.",
+    "state_store_unsupported": "Application state requires a supported runtime.",
+    "state_store_quota": "Application state reached its storage limit.",
+    "state_store_failed": "Application state could not be saved.",
+    "state_store_uncertain": "Application state durability requires inspection.",
     "invalid_binding": "The selected agent does not belong to this domain.",
     "workspace_unconfigured": "Configure a project before starting domain work.",
     "workspace_invalid": "The configured workspace needs inspection.",
@@ -62,10 +71,19 @@ def valid_domain(value):
 def validate_domain_command(payload: object) -> dict[str, object]:
     if not isinstance(payload, dict):
         raise DomainCommandError()
+    if (
+        type(payload.get("protocol_version")) is not int
+        or payload["protocol_version"] != 2
+    ):
+        raise DomainCommandError("upgrade_required")
     kind = payload.get("type")
     if not isinstance(kind, str) or kind not in COMMANDS:
         raise DomainCommandError()
-    fields = {"type", "request_id"}
+    fields = {"type", "request_id", "protocol_version"}
+    if kind in EXECUTION_COMMANDS:
+        fields.add("execution_id")
+    if kind in {"activate_domain", "end_domain_session"}:
+        fields.add("expected_domain_revision")
     if kind != "describe_workspace":
         fields.add("domain_id")
     if kind in GENERATION_COMMANDS:
@@ -80,6 +98,8 @@ def validate_domain_command(payload: object) -> dict[str, object]:
         raise DomainCommandError()
     if "domain_session_id" in fields and not valid_text(payload["domain_session_id"]):
         raise DomainCommandError()
+    if "execution_id" in fields and not valid_text(payload["execution_id"]):
+        raise DomainCommandError()
     if kind == "domain_query" and (
         not valid_text(payload["agent_id"])
         or not validate_agent_id(payload["agent_id"])
@@ -87,6 +107,15 @@ def validate_domain_command(payload: object) -> dict[str, object]:
     ):
         raise DomainCommandError()
     result = dict(payload)
+    if "expected_domain_revision" in fields:
+        value = payload["expected_domain_revision"]
+        if (
+            not valid_text(value, 19)
+            or re.fullmatch(r"[0-9]+", value) is None
+            or int(value) > 9223372036854775807
+        ):
+            raise DomainCommandError()
+        result["expected_domain_revision"] = int(value)
     if kind == "resume":
         cursor = payload["cursor"]
         if not valid_text(cursor) or re.fullmatch(r"[0-9]+", cursor) is None:
@@ -102,6 +131,7 @@ def error_packet(command, code, *, project_id=None, workspace_id=None):
     code = code if code in ERROR_MESSAGES else "sdk_error"
     packet = dict(
         type="domain_error",
+        protocol_version=2,
         status="error",
         error_type=code,
         message=ERROR_MESSAGES[code],
@@ -110,7 +140,7 @@ def error_packet(command, code, *, project_id=None, workspace_id=None):
     if workspace_id is not None:
         packet["workspace_id"] = workspace_id
     if isinstance(command, dict):
-        for key in ("request_id", "domain_session_id"):
+        for key in ("request_id", "domain_session_id", "execution_id"):
             if valid_text(command.get(key)):
                 packet[key] = command[key]
         if valid_domain(command.get("domain_id")):

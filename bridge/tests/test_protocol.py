@@ -171,6 +171,8 @@ class TestStrictDomainCommands:
     def test_rejects_invalid_scalars_and_byte_bounds(self, field, value):
         payload = dict(
             type="domain_query",
+            protocol_version=2,
+            execution_id="execution",
             request_id="r",
             domain_id="d",
             domain_session_id="s",
@@ -189,6 +191,7 @@ class TestStrictDomainCommands:
             self.validate(
                 dict(
                     type="resume",
+                    protocol_version=2,
                     request_id="r",
                     domain_id="d",
                     domain_session_id="s",
@@ -200,6 +203,7 @@ class TestStrictDomainCommands:
     def test_replay_cursor_identifier_byte_boundary(self, size):
         payload = dict(
             type="resume",
+            protocol_version=2,
             request_id="r",
             domain_id="d",
             domain_session_id="s",
@@ -214,6 +218,8 @@ class TestStrictDomainCommands:
     def test_inclusive_limits_and_parsed_cursor(self):
         payload = dict(
             type="domain_query",
+            protocol_version=2,
+            execution_id="execution",
             request_id="é" * 64,
             domain_id="d" * 128,
             domain_session_id="s" * 128,
@@ -225,6 +231,7 @@ class TestStrictDomainCommands:
             self.validate(
                 dict(
                     type="resume",
+                    protocol_version=2,
                     request_id="r",
                     domain_id="d",
                     domain_session_id="s",
@@ -246,12 +253,39 @@ class TestStrictDomainCommands:
     )
     def test_requires_generation(self, action):
         with pytest.raises(ValueError):
-            self.validate(dict(type=action, request_id="r", domain_id="d"))
+            self.validate(
+                dict(type=action, protocol_version=2, request_id="r", domain_id="d")
+            )
 
     def test_rejects_client_paths_and_unknown_commands(self):
         with pytest.raises(ValueError):
             self.validate(
-                dict(type="activate_domain", request_id="r", domain_id="d", cwd="/tmp")
+                dict(
+                    type="activate_domain",
+                    protocol_version=2,
+                    expected_domain_revision="0",
+                    request_id="r",
+                    domain_id="d",
+                    cwd="/tmp",
+                )
             )
         with pytest.raises(ValueError):
-            self.validate(dict(type="bogus", request_id="r"))
+            self.validate(dict(type="bogus", protocol_version=2, request_id="r"))
+
+
+@pytest.mark.parametrize(
+    "value", [True, False, 0, -1, "-1", "١", "1.0", "", "9" * 20, "9223372036854775808"]
+)
+def test_lifecycle_revision_requires_bounded_ascii_decimal(value):
+    from bridge.domain_protocol import validate_domain_command
+
+    with pytest.raises(ValueError):
+        validate_domain_command(
+            dict(
+                type="activate_domain",
+                protocol_version=2,
+                request_id="r",
+                domain_id="d",
+                expected_domain_revision=value,
+            )
+        )

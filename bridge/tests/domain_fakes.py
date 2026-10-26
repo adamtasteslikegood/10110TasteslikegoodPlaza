@@ -168,6 +168,8 @@ def context(request="run", connection="origin", agent="backend-architect"):
 def query(request="run", generation="generation", **changes):
     values = dict(
         type="domain_query",
+        protocol_version=2,
+        execution_id="execution",
         domain_id="engineering",
         domain_session_id=generation,
         request_id=request,

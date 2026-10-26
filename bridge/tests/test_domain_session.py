@@ -37,7 +37,11 @@ async def setup(tmp_path, monkeypatch):
         lambda agent: "definition" if agent == "backend-architect" else None,
     )
     session = DomainSession(
-        "engineering", "generation", config=default_config(), project_service=service
+        "engineering",
+        "generation",
+        execution_id="execution",
+        config=default_config(),
+        project_service=service,
     )
     yield session, service, owners
     if owners:
@@ -931,7 +935,32 @@ async def test_status_observes_dead_idle_owner_without_mutating_ownership(
     from bridge.server import BridgeServer
 
     session, service, owner, clients, writer = real_owner_session
-    server = BridgeServer(config=session._config, project_service=service)
+    from bridge.application_state import StateCommand
+    from bridge.state_coordinator import StateCoordinator, VolatileStateRepository
+    from uuid import uuid4
+
+    coordinator = StateCoordinator(
+        lambda: VolatileStateRepository(service.workspace.project_id)
+    )
+    await coordinator.open()
+    session.execution_id = str(uuid4())
+    commit = await coordinator.commit(
+        StateCommand(
+            "start",
+            dict(
+                domain_id=session.domain_id,
+                expected_domain_revision=0,
+                boot_id=str(uuid4()),
+                execution_id=session.execution_id,
+                timestamp="2026-10-26T00:00:00Z",
+            ),
+        )
+    )
+    session.domain_session_id = commit.result["session_id"]
+    session._coordinator = coordinator
+    server = BridgeServer(
+        config=session._config, project_service=service, state_coordinator=coordinator
+    )
     server.domains._sessions[session.domain_id] = [session]
     command = dict(
         type="agent_status", agent_id="backend-architect", request_id="status"
@@ -958,6 +987,8 @@ async def test_status_observes_dead_idle_owner_without_mutating_ownership(
         await server.dispatch(
             dict(
                 type="deactivate_domain",
+                protocol_version=2,
+                execution_id=session.execution_id,
                 domain_id=session.domain_id,
                 domain_session_id=session.domain_session_id,
                 request_id="stop",
@@ -966,3 +997,5 @@ async def test_status_observes_dead_idle_owner_without_mutating_ownership(
     )[-1]
     assert stopped["state"] == "inactive"
     assert service.reservation is None and service.capacity is None
+    await coordinator.close()
+    server.close()

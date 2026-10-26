@@ -18,6 +18,8 @@ from bridge.context import compose_context
 from bridge.agents import load_agent
 from bridge.agent_bindings import require_working_binding, InvalidBinding
 from bridge.config import BridgeConfig
+from bridge.application_state import StateCommand, StateError
+from datetime import datetime, timezone
 from bridge.domain_protocol import DomainCommandError, error_packet
 from bridge.domain_sdk import DomainSDKOwner, SDKOutcome
 from bridge.domain_store import DomainSessionStore, MemoryStore
@@ -28,7 +30,7 @@ from bridge.failure_diagnostics import (
 )
 from bridge.observability import BridgeRecorder, RequestContext
 from bridge.project_memory import MemorySaveResult, TurnIntent
-from bridge.readiness import owned_io
+from bridge.readiness import owned_io, denial
 from bridge.workspace_lease import WorkspaceLease
 
 if TYPE_CHECKING:
@@ -95,6 +97,50 @@ class _Run:
     preparing: bool = False
 
 
+class _ExecutionReadiness:
+    """Gate actual startup/turn/tool readiness against committed-state health."""
+
+    def __init__(self, readiness, check):
+        self._readiness, self._check = readiness, check
+
+    def __getattr__(self, name):
+        return getattr(self._readiness, name)
+
+    async def check_tool(self, *args, **kwargs):
+        self._check()
+        result = await self._readiness.check_tool(*args, **kwargs)
+        self._check()
+        return result
+
+    async def prepare_turn(self, *args, **kwargs):
+        self._check()
+        result = await self._readiness.prepare_turn(*args, **kwargs)
+        self._check()
+        return result
+
+    def pre_tool_hook(self, *args, **kwargs):
+        hook = self._readiness.pre_tool_hook(*args, **kwargs)
+
+        async def guarded(*arguments):
+            try:
+                self._check()
+                result = await hook(*arguments)
+                self._check()
+                return result
+            except (StateError, DomainCommandError):
+                on_denied = kwargs.get("on_denied")
+                if on_denied is not None:
+                    try:
+                        on_denied(dict(readiness_category="readiness_error"))
+                    except Exception:
+                        pass
+                return denial(
+                    "Application state is unavailable; refresh domain status before restarting."
+                )
+
+        return guarded
+
+
 class DomainSession:
     def __init__(
         self,
@@ -105,8 +151,16 @@ class DomainSession:
         project_service: "ProjectService",
         recorder: BridgeRecorder | None = None,
         store: DomainSessionStore | None = None,
+        execution_id: str | None = None,
+        coordinator=None,
+        authority_check=None,
     ):
         self.domain_id, self.domain_session_id = domain_id, domain_session_id
+        self.execution_id = execution_id or str(uuid4())
+        self._coordinator = coordinator
+        self._authority_check = authority_check
+        self._lifecycle_stopped = False
+        self._failure_outcome = None
         self._config, self._service, self._recorder = config, project_service, recorder
         self._state = SessionState.INACTIVE
         self._workspace = None
@@ -150,6 +204,7 @@ class DomainSession:
             self._state in (SessionState.ACTIVE, SessionState.BACKGROUND)
             and self.owner_healthy
             and not (self._stopping or self._inflight is not None)
+            and (self._coordinator is None or self._coordinator.admission_open)
         )
 
     @property
@@ -171,6 +226,7 @@ class DomainSession:
             workspace_id=self._workspace.workspace_id if self._workspace else None,
             domain_id=self.domain_id,
             domain_session_id=self.domain_session_id,
+            execution_id=self.execution_id,
         )
 
     def snapshot(self):
@@ -181,6 +237,7 @@ class DomainSession:
             execution = "running"
         return dict(
             type="domain_state",
+            protocol_version=2,
             **self._identity(),
             state=self._state.value,
             execution_state=execution,
@@ -213,6 +270,10 @@ class DomainSession:
         self._workspace = await self._service.prepare_domain(self.domain_id)
         self._memory = self._service.require_memory()
         self._readiness = self._service.require_readiness(self.domain_id)
+        if self._coordinator is not None:
+            self._readiness = _ExecutionReadiness(
+                self._readiness, self._require_state_ready
+            )
 
         def acquire():
             self._lease = WorkspaceLease.acquire(
@@ -229,14 +290,17 @@ class DomainSession:
         if not self._stopping:
             self._transition(SessionState.ACTIVATING)
 
-    async def _reserve_start(self):
-        """Reserve and register an owned continuation before activation delivery."""
+    def _register_start(self):
         if self._reserve_task is None:
             self._reserve_task = asyncio.create_task(self._reserve())
             self._startup = asyncio.create_task(self._start_owned())
             self._startup.add_done_callback(
                 lambda task: None if task.cancelled() else task.exception()
             )
+
+    async def _reserve_start(self):
+        """Reserve and register an owned continuation before activation delivery."""
+        self._register_start()
         await asyncio.shield(self._reserve_task)
         return self.snapshot()
 
@@ -249,6 +313,7 @@ class DomainSession:
             if not self._stopping:
                 self._transition(SessionState.ACTIVE)
         except Exception:
+            self._failure_outcome = "startup_failed"
             if not self._stopping:
                 await self._cleanup()
             raise
@@ -293,6 +358,15 @@ class DomainSession:
         # No await before installing the single in-flight record.
         started = time.monotonic()
         command = dict(command)
+        try:
+            self._require_state_ready()
+        except (StateError, DomainCommandError) as error:
+            return await self._error(command, error.code, emit, context, started)
+        if (
+            self._authority_check is not None
+            and command.get("execution_id") != self.execution_id
+        ):
+            return await self._error(command, "stale_execution", emit, context, started)
         try:
             require_working_binding(command.get("agent_id"), self.domain_id)
         except InvalidBinding:
@@ -386,7 +460,14 @@ class DomainSession:
             self._service.publish_memory(result)
             return result
 
+    def _require_state_ready(self):
+        if self._coordinator is not None and not self._coordinator.admission_open:
+            raise StateError(self._coordinator.health or "state_store_busy")
+        if self._authority_check is not None:
+            self._authority_check(self)
+
     async def _require_owner_ready(self):
+        self._require_state_ready()
         if self._stopping:
             raise DomainCommandError("session_unavailable")
         try:
@@ -634,6 +715,18 @@ class DomainSession:
                 await asyncio.shield(task)
             if self._memory and self._lease:
                 await self._checkpoint("stop" if clean else "cleanup_failed")
+            if clean and self._coordinator is not None and not self._lifecycle_stopped:
+                await self._coordinator.commit(
+                    StateCommand(
+                        "stop",
+                        dict(
+                            execution_id=self.execution_id,
+                            outcome=self._failure_outcome or "stopped",
+                            timestamp=datetime.now(timezone.utc).isoformat(),
+                        ),
+                    )
+                )
+                self._lifecycle_stopped = True
             if clean and self._lease:
                 await owned_io(self._lease.release, cleanup_confirmed=True)
         except Exception:

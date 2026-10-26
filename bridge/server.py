@@ -121,7 +121,11 @@ class BridgeServer:
             on_ready=self._ensure_application_state,
         )
         self.domains = DomainManager(
-            config=self._config, project_service=self.project, recorder=recorder
+            config=self._config,
+            project_service=self.project,
+            recorder=recorder,
+            state_provider=lambda: self.application_state,
+            state_status=self.application_state_status,
         )
         self._connection_tasks = set()
         self._connections = set()
@@ -392,6 +396,8 @@ class BridgeServer:
         )
         can_start = bool(
             ready
+            and self.application_state is not None
+            and self.application_state.admission_open
             and binding.domain_id
             and capacity["available"]
             and not active
@@ -438,6 +444,8 @@ class BridgeServer:
             workspace=workspace,
             domain_state=state,
             capabilities=dict(
+                protocol_version=2,
+                state_store=self.application_state_status(),
                 can_start=can_start,
                 can_run=can_run,
                 can_prepare_project=binding.agent_id == "systems-architect"
