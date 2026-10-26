@@ -427,7 +427,11 @@
     },
     {
       "path": "docs/superpowers/specs/2026-10-26-m13-sqlite-session-persistence-design.md",
-      "reason": "Proposed bounded SQLite session-persistence design for owner review, with confirmed Stop/End and bounded-recap direction; not implementation approval, ratification or a new product-decision origin."
+      "reason": "Owner-approved bounded SQLite session-persistence design; derived design contract pending implementation, not shipped behavior or a new locked decision origin."
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-26-m13-sqlite-session-persistence.md",
+      "reason": "Derived implementation plan for the owner-approved bounded SQLite design; pending plan/execution review, not runtime acceptance or a new product-decision origin."
     }
   ]
 }

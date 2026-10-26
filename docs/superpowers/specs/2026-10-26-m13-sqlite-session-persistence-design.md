@@ -1,6 +1,7 @@
 # M13 bounded SQLite session persistence
 
-**Status:** proposed for owner review; implementation is not authorized by this document.
+**Status:** approved by Adam October 26, 2026; implementation plan and handoff authorized.
+Execution follows review of the derived plan; no implementation is claimed here.
 **Baseline:** #373 delivered in PR #376 (`a2d340a`); design branch also incorporates
 current dev `1bb3a19`. Earlier runtime/paid evidence keeps its original bindings.
 
@@ -16,7 +17,7 @@ identity survives restart unless intentionally ended; **Stop preserves the sessi
 End session is separate**; and **restore a bounded conversation recap for the
 agent alongside project notes** (October 26 Pacific). Do not ask these again.
 Hetzner-in-B and both auth paths remain recorded later-phase inputs, not cloud
-features delivered here. The user is configuring Confluence's separate Actions token.
+features delivered here. Confluence's separate Actions token is configured and its publisher apply has succeeded.
 
 This increment includes local session/history persistence, accepted-work recovery,
 explicit End, the minimum client changes to discover/replay saved sessions, and
@@ -27,7 +28,8 @@ Three Markdown project notes and M10 diagnostic archives retain separate contrac
 
 ## 2. Approaches and proposed builder choices
 
-These are recommendations for review, **not choices attributed to Adam**.
+The following builder recommendations were included in the written design Adam
+approved October 26. Earlier preference answers alone did not authorize them.
 
 - **Recommended: asynchronous durable worker plus an event-loop memory view.**
   Keep replay/lookups responsive; serialize writes off the event loop and publish
@@ -321,7 +323,7 @@ proof, not only SQLite mocks:
   to the guarded-source inventory and its real evidence campaign; unchanged old
   fingerprints cannot certify a new guard path. Never restamp historical reports.
 
-Next: fresh builder check, owner design review, then the implementation plan.
+Next: review the [implementation plan](../plans/2026-10-26-m13-sqlite-session-persistence.md), then execute using the confirmed method.
 No product implementation, scaffold or new dependency is part of this design work.
 
 

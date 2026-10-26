@@ -449,3 +449,25 @@ The written design is ready for owner review, with the fresh builder check compl
 Do not start implementation from an accepted recap preference alone; approval of
 the full written contract precedes writing-plans. No design PR or runtime change
 has been opened by this design handoff.
+
+
+### October 26 — SQLite design approved; implementation plan handoff
+
+Adam explicitly approved the complete written SQLite design and requested the
+implementation plan and handoff. This supersedes the earlier proposed/review
+status above: Q19/Q20/Q22 now have approved bounded resolutions in that design;
+Q21 remains the confirmed bounded recap. No runtime implementation is claimed.
+
+The [ten-task implementation plan](docs/superpowers/plans/2026-10-26-m13-sqlite-session-persistence.md)
+fixes module boundaries, shared record/command interfaces, initialization/crash
+proof, durable admission/publication, protocol-v2 fencing, Stop/End, recap, both
+Godot work surfaces, maintenance and the actual evidence campaign. Recommended
+execution is subagent-driven with fresh task reviews plus whole-branch review.
+The prior phase-1 native choice was specific to that extraction. Review this plan
+and confirm execution method before implementation, per writing-plans handoff.
+
+Tracking remains GitHub #380 / PLZG-290 In Progress. Confluence publisher activation
+is verified; this design/plan branch has not been published through dev. Fetch dev
+and inspect status before execution; preserve the unrelated work checkout, old
+guard evidence and private laptop logs. No cloud resources or new dependencies
+were created in this planning step.
