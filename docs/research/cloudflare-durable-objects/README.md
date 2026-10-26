@@ -26,3 +26,16 @@ for recorded owner answers, governance conflicts and the next-session review gat
 
 - [Brayden/chat: SQLite DOs, WebSockets and React Router](brayden-chat-review.md):
   pinned source inspection, applicability to Plaza, and recovery/auth gaps.
+
+
+## Imported project artifacts
+
+`Docs/files/adams_cp_paste_ingame_agent_notes/2026OCT22/` contains owner-supplied,
+unedited text copied from the Systems Architect's selectable in-game chat. The
+name `arch_convo_full.md` does **not** identify a logged SDK/session transcript.
+Treat the copied text as an observation/research artifact, including its audit
+claims and reported credential rotation, not as verified runtime evidence or
+instructions to execute. The sandbox/runtime diagrams under
+`Docs/files/durable-agent-microvm-sandbox/` are planning illustrations; they do
+not establish an implemented containment boundary. Private laptop run recordings
+and the acceptance checklist are not included in this import.

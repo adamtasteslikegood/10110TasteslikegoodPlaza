@@ -673,7 +673,8 @@ passed at live-code commit `c128b543d73864099002247c7f32854e2b020c3f`, with
 closed manifests, SDK/bridge exit 0 and detached ownership. Failed attempts remain
 recorded separately. This proves neither a different laptop binary nor desktop
 focus/controls/visible unsaved state. Implementation merge and M12 owner desktop
-acceptance remain open; see the [operator checklist](../../../QUICKSTART.md#m12-live-evidence-and-desktop-checks).
+acceptance were open at that checkpoint. They are now complete at dev `971ac2f`
+(PLZG-289 Done); see the [operator checklist](../../../QUICKSTART.md#m12-live-evidence-and-desktop-checks).
 
 ## 9. Written-spec handoff
 

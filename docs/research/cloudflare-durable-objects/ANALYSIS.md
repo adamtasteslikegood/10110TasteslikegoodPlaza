@@ -8,6 +8,9 @@
 > read with the later recorded owner answers and the
 > [M13 review queue](../../../M13_DECISIONS_AND_QUESTIONS.md).
 > This annotation corrects baseline interpretation; it selects no architecture.
+> Phase 1 is now implemented under its separately approved bounded design;
+> durable identity, replica/writer rules and remote execution remain later work.
+> The historical baseline below is not a current acceptance/status report.
 
 Status: Proposed (analysis only, no decision taken). Evidence: files in `raw/` (fetched 2026-10-22) and the repo
 (`bridge/domain_manager.py`, `workspace_lease.py`, `project_memory.py`, 2026-08-12 domain-architecture spec).
@@ -16,7 +19,7 @@ Items marked UNVERIFIED are not stated in the captured pages.
 ## Question
 Can Cloudflare Durable Objects (DO), Python Workers and the Agents SDK host the bridge's domain-scoped parallel sessions?
 
-## What the bridge does today
+## Historical baseline (captured before the M12 closeout)
 - One local Python process on ws://localhost:8765 (D-015). Godot is the only client.
 - A domain session drives Claude Code through the Agent SDK against a git worktree the domain owns (lease, immutable branch,
   execution_capacity 1, dontAsk permission mode).
@@ -46,7 +49,7 @@ Can Cloudflare Durable Objects (DO), Python Workers and the Agents SDK host the 
 5. **The real blockers are non-technical.** (a) Auth: D-037 makes Claude Code via Agent SDK with subscription-native auth the default. A cloud
    container would need credentials placed in it; whether subscription OAuth is permitted there is UNVERIFIED and needs a policy check. (b) Security:
    today's tool guard is Git-ownership checks, "not filesystem, network or process containment". A remote bridge needs real authn/TLS and moves
-   the threat model from localhost to the internet. (c) D-015 and D-005 assume a local Godot client.
+   the threat model from localhost to the internet. (c) D-015 describes a local endpoint; D-005/D-020 require UI independence. Remote transport/auth is a later boundary design, not a Godot dependency.
 
 ## Options
 | Option | Description | Pros | Cons |
@@ -57,7 +60,7 @@ Can Cloudflare Durable Objects (DO), Python Workers and the Agents SDK host the 
 
 ## Owner goal update (2026-10-23)
 Adam's plan: build A, then A+B, spike-test, and treat C (Workers + Durable Objects + Sandbox) as the real end goal. The bridge
-should be able to switch between A, A+B and C once all exist. A Hetzner VPS is an optional always-on stepping stone. This
+should be able to switch between A, A+B and C once all exist. The later owner answer requires Hetzner as a second execution host in B, built alongside the laptop host. This
 supersedes "do not migrate" as the long-term direction; the near-term sequencing below still holds. The implementation plan is
 `docs/superpowers/plans/2026-10-23-domain-session-store-execution-backend.md`. C feasibility (Claude Code in a Sandbox, cloud
 auth policy, container beta status and cost) remains UNVERIFIED and is the subject of that plan's phase 5 spike.

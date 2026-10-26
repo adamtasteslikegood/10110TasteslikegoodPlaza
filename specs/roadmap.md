@@ -10,7 +10,7 @@ owner: adamtasteslikegood
 derives_from: [PROJECT-OVERVIEW, DESIGN-25D, SPEC-DRIVERS-025, BRIDGE-PLATFORM-DESIGN]
 enforcement: asserted
 gates: [Validate Specs:live, Export Godot 4 Prototype:live]
-weakest_claim: M9 is complete; M10/M11 are implemented and locally accepted by the owner; M12 implementation has deterministic and Linux live evidence; laptop binary and desktop acceptance remain open; M13–M15 remain planned.
+weakest_claim: M9–M12 are complete with owner acceptance; M13 is in progress with the bounded in-memory extraction pending dev delivery; M14–M15 remain planned.
 ---
 
 # 10110 TastesLike Plaza — Bridge-First Platform Roadmap
@@ -31,7 +31,7 @@ remain deferred frontend milestones. M11 improves NPC conversation; it does not
 complete or replace M5 or M6.
 
 The owner approved the written bridge-first design and M10 plan on 2026-10-18.
-M9 is complete; M10/M11 are implemented and locally accepted by the owner; M12 implementation has deterministic and Linux live evidence; laptop binary and desktop acceptance remain open; M13–M15 remain planned.
+M9–M12 are complete with owner acceptance; M13 is in progress with the bounded in-memory extraction pending dev delivery; M14–M15 remain planned.
 M10 acceptance covers offline configuration, archive/lifecycle and loopback service
 tests; it does not establish later UI features or durable application recovery.
 `D-033` supersedes broad `D-006` with scoped synchronous NPC calls; `D-034`
@@ -46,8 +46,8 @@ and its limits separately from the historical direct API proof below.
 | **M9** | Align the design, protocol documentation and roadmap around the bridge-first platform direction; review the written spec | Complete — owner written-spec approval 2026-10-18 |
 | **M10** | Validated central configuration, JSONL run/agent transcripts and standard debug logs with quotas and retention | Implemented and locally accepted by owner 2026-10-21 |
 | **M11** | Godot NPC conversation history, late responses, mouse window resizing and basic keyboard/scroll controls | Implemented and locally accepted by owner 2026-10-21 |
-| **M12** | Configured project/worktree bootstrap, native three-file memory and domain execution through clients | Implementation has deterministic and Linux live evidence; laptop binary and desktop acceptance remain open |
-| **M13** | Durable local user/project/domain application state in SQLite, with explicit restart semantics | Planned after M12 |
+| **M12** | Configured project/worktree bootstrap, native three-file memory and domain execution through clients | Complete; owner checklist, both local guard modes and clean shutdown accepted at dev `971ac2f` |
+| **M13** | Durable local user/project/domain application state in SQLite, with explicit restart semantics | In Progress; bounded #373 extraction implemented, persistence not yet implemented |
 | **M14** | Independent execution workspaces beyond M12's minimum | Planned; sequencing with M13 to be reviewed |
 | **M15** | Authenticated hosted durable state; hosted provider remains unselected | Planned after M14 |
 
@@ -456,7 +456,7 @@ surfaces remain outside that sequence unless a later design schedules them.
 > is ACTIVE, with written approval recorded 2026-10-21. The
 > [implementation plan](../docs/superpowers/plans/2026-10-21-m12-project-execution.md)
 > is owner-approved for subagent-driven execution. M12 implementation has deterministic
-> and Linux live evidence; baseline merged in PR #357; laptop binary and desktop acceptance remain open. M13/M14
+> and Linux live evidence; baseline merged in PR #357, with later corrections through PR #371. Owner laptop/desktop acceptance is complete at dev `971ac2f` (PLZG-289 Done). M13/M14
 > sequencing may change or combine state and isolation; M15's provider remains
 > unselected. See the owner update in `BRIDGE-PLATFORM-DESIGN`.
 
@@ -464,7 +464,7 @@ The following milestones derive from `BRIDGE-PLATFORM-DESIGN` (`ACTIVE`,
 owner-approved 2026-10-18). M9's documentation approval is complete. M10 has
 implemented settings/recording and deterministic acceptance coverage. M11 has
 implemented history/controls and automated coverage, with owner laptop acceptance
-recorded 2026-10-21. M12 has recorded Linux live evidence with desktop acceptance open; M13–M15 describe future verification.
+recorded 2026-10-21. M12 has recorded Linux live evidence and completed owner laptop/desktop acceptance; M13–M15 describe further work and verification.
 Existing M8 conversation behavior remains the regression baseline.
 
 ### Milestone 9 — Align and review the platform direction
@@ -510,7 +510,7 @@ first attempt each, cloud API key inherited by CLI, four distinct observed SDK
 session IDs. [Fresh evidence](evidence/npc-sdk-live-2026-10-18.json) records its
 limits. The owner separately confirmed laptop Claude subscription and API-token
 authentication on 2026-10-21; the output cap was a setting. The runner's open
-manifest remains insufficient graceful-shutdown proof. M12 implementation has deterministic and Linux live evidence; laptop binary and desktop acceptance remain open.
+manifest remains insufficient graceful-shutdown proof. M12 implementation has deterministic and Linux live evidence plus completed owner laptop/desktop acceptance; see the M12 closeout below.
 
 Retain history for each NPC conversation across closing and reopening its panel,
 including responses that arrive after dismissal. Add mouse resizing with the
@@ -547,7 +547,7 @@ instructions. The [2026-10-21 Linux live flow](evidence/m12-live-2026-10-21.json
 and [fresh 29-case guard matrix](evidence/m12-guard-2026-10-21.json) passed;
 [recorded evidence and limits](../QUICKSTART.md#m12-live-evidence-and-desktop-checks)
 keep Linux live proof, laptop-binary verification and desktop checks distinct.
-Baseline implementation merged in PR #357; owner M12 desktop acceptance remains outstanding.
+Baseline implementation merged in PR #357; subsequent runtime, clipboard and readiness corrections merged through PR #371. Owner M12 desktop acceptance is now complete (PLZG-289 Done).
 
 Connect domain lifecycle and execution to the frontend through the UI-agnostic
 bridge contract. Verify the complete path with a live Agent SDK run, including
@@ -576,10 +576,19 @@ coverage: the paid runner composes the server directly; actual CLI signals have
 separate provider-free Linux process tests. Offline coverage at `ec5d236` includes
 1,990 Python tests, 118 subtests and eight Godot gates. Earlier Linux reports
 retain their original baselines and outcomes. The owner has confirmed laptop
-tools/worktree/memory behavior and latest OAuth; this correction's laptop and
-remaining desktop acceptance stay open. Runtime corrections merged in PR #365;
-M12 completion is not claimed. PLZG-293 adds separate clipboard controls and UI
-verification; the earlier live proof excludes the new clipboard code.
+tools/worktree/memory behavior and latest OAuth. Runtime corrections merged in
+PR #365, clipboard controls in PR #368 and readiness guidance in PR #371.
+Earlier live proof excludes those later UI changes and remains historical.
+
+**M12 closeout (owner acceptance, October 23, 2026 Pacific):** PLZG-289 is Done.
+The owner completed the desktop checklist at dev `971ac2f`, verified 29/29 guard
+cases in both `dontAsk` and `bypassPermissions` against the laptop sources and
+runtime (SDK 0.2.136 / AnyIO 4.14.2 / Claude Code 2.1.228), and confirmed clean
+bridge shutdown with exit 0, closed latest manifest and no active ownership or
+unclean markers. Selected live mode was `dontAsk`. Old open manifests were
+historical records, not silently repaired. Raw laptop artifacts remain private;
+[QUICKSTART closeout](../QUICKSTART.md#m12-owner-closeout) records the summary.
+This completes M12, not host sandboxing, parallel departments or SDK recovery.
 
 The M6 second-department unlock additionally requires Engineering execution in
 its own worktree plus earned progression. Preserve SB-08's access/introduction
@@ -596,6 +605,17 @@ interrupted or non-resumable work is represented. Application-state recovery
 must not imply that a prior SDK process continues or resumes automatically.
 JSONL transcripts and debug logs from M10 remain diagnostic records rather than
 the application's state store.
+
+The first bounded increment, [#373](https://github.com/adamtasteslikegood/10110TasteslikegoodPlaza/issues/373),
+is owner-approved and implemented on the integration branch, pending dev delivery:
+extract `DomainSessionStore` / `MemoryStore` while preserving current replay,
+retention and duplicate handling. This increment adds no persistent storage.
+[Its implementation record](../docs/superpowers/plans/2026-10-26-m13-memory-store-extraction.md)
+separates completed verification from later acceptance. SQLite is already the
+recorded local-store direction; exact restart/Stop/End semantics require the next
+bounded design. Stable application identity does not imply a surviving SDK
+process or permission to run tools on reconnect. See the
+[working owner queue](../M13_DECISIONS_AND_QUESTIONS.md) before later phases.
 
 ### Milestone 14 — Independent execution workspaces
 

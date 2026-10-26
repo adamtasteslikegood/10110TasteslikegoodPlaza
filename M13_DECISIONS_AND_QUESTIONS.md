@@ -3,7 +3,7 @@
 **Status: working review queue; not a specification, decision register or implementation approval.**
 Prepared October 23, 2026 (America/Los_Angeles). Tracks reconciliation for [GitHub #373](https://github.com/adamtasteslikegood/10110TasteslikegoodPlaza/issues/373) and PLZG-290. No new D-numbers are assigned here.
 
-## Owner instructions for this round
+## Historical instructions — research reconciliation round (completed)
 
 Reconcile the published docs/research and planning histories with the latest M12 fixes on `origin/dev`. Preserve research and recorded owner answers. Do not implement the store/backends, open a PR, change locked decisions, or invent new planning decisions in this round. Keep explicit questions where governing text or agent-authored absolutes conflict with the direction of the project.
 
@@ -29,7 +29,7 @@ The remote fetch configuration originally selected only dev; the named research/
 
 Before the environment recovered, in the existing isolated cloud worktree, a local branch `docs/PLZG-290-reconcile-notes` was created from the docs tip above. A `--no-commit --no-ff` merge of dev applied without textual conflicts. Before any merge commit/push, the execution environment became unavailable. The existing top-level `work` checkout was not changed. No remote merge, rebase, force-push, PR or implementation was performed at this checkpoint. This working file is being saved directly to the docs branch through the GitHub connector so the review queue survives the environment interruption.
 
-### Current checkpoint — both histories reconciled; owner review next
+### Research-reconciliation checkpoint — both histories reconciled
 
 Adam confirmed `origin/plaza/workspace-integration` as the planning target. The workspace recovered. The interrupted staged merge was saved as a patch, aborted without discarding unrelated work, and rebuilt after incorporating remote checkpoint `421225e` into the local docs history. This docs reconciliation merges dev `971ac2f` without rewriting ancestry. Runtime/config/UI/tests/dependencies now match dev; the old owner-local `bridge/config.json` edits remain in original commit history, but are not the reconciled product defaults. Sixteen imported Markdown files were individually indexed as non-authoritative provenance/research; vendor snapshots and copied notes were not edited.
 
@@ -80,7 +80,7 @@ State vocabulary: **clarify scope** means no new product decision is presumed; *
 | Q17 — integration mechanics | The docs commit changes `bridge/config.json`: owner-local workspace path, permission bypass true and a larger conversation token cap. Those are not research documentation. | Recommended reconciliation: use dev's product defaults in the reconciled tree and preserve owner settings in original commit history/local setup guidance; do not accidentally ship laptop paths or alter execution behavior in a docs-only round. Record the actual choice when applied. Docs reconciliation selects dev defaults; original owner-local settings remain recoverable in commit `f37bff3`. This is a mechanical integration choice, not a new permission or settings policy. |
 | Q18 — validator finding | The conflict-free preliminary docs+dev merge fails `python3 scripts/validate_specs.py` with 16 imported Markdown paths under `Docs/files/` missing from the document registry. | Register each imported non-authoritative snapshot individually with a provenance-based exemption, or add proper frontmatter if it truly belongs in the governed set. Completed: the docs merge indexed 16 paths; the planning merge indexed 14 more. The validator passes without changing authority or the doc-set version. Further research/decision questions remain open. Do not disable the validator, create blanket exemptions, grant imported text decision authority or bump decision versions just to pass. |
 
-## Next-session review and integration checklist
+## Historical research-reconciliation checklist
 
 - [x] Confirm the planning ref with Adam: `origin/plaza/workspace-integration`; fetch all named remote refs explicitly.
 - [x] Preserve and rebuild the interrupted local merge, incorporating remote checkpoint `421225e` before further integration.
@@ -254,3 +254,58 @@ approved durable lifecycle/recovery contract. Q02–Q11 and the broader governan
 alignment queue remain open; the extraction does not settle those questions.
 The shared gate repository's #29 remains independent. Final verification and
 exact tested versions are recorded in the implementation plan.
+
+
+## Current delivery checkpoint — October 25, 2026 Pacific
+
+Adam authorized the next steps after #373 implementation. This supersedes the
+historical research-only hold above for the bounded extraction and its dev PR;
+it does not authorize phase 2 or silently decide the remaining product choices.
+Earlier implementation records dated October 26 use UTC (October 25 Pacific).
+
+Reconciliation for the phase-1 delivery:
+
+- **Q01 clarified:** M12's no-database sentence limits M12. Its two branch-recorded
+  SQLite amendments preserve the already recorded later-store answer. Roadmap
+  M13 already calls for SQLite; D-038/D-039 are not database prohibitions. No
+  locked decision or doc-set version change is needed for an in-memory extraction.
+- **Q04/Q08/Q09/Q10 clarified for this increment:** D-005/D-020 remain UI
+  independence, current packets remain buffered terminals, D-037 remains SDK
+  default with the existing auth paths, and agent definitions/project notes/
+  terminal history remain separate stores. Remote trust and auth remain open.
+- **Q07 verified:** all twelve guarded sources and the acceptance file are
+  unchanged by #373, and both actual runtime activation checks passed. Future
+  changes to guarded sources require appropriately fresh evidence.
+- **Q12 corrected:** analysis baseline is explicitly historical; existing
+  plain-client/background/replay behavior is acknowledged. D-005 is no longer
+  described as assuming a local Godot client.
+- **Q13 reconciled:** the proposal's phase text now reflects recorded SQLite,
+  stable-identity, dual-auth and Hetzner-in-B answers, labels the async interface
+  as a superseded sketch, and points phase 1 to the approved synchronous design.
+  Unapproved WAL/location, DO-key/replica and host/containment details remain
+  proposals for bounded review, not new implementation commitments.
+- **Q14 delivery resumed:** integration isolation was temporary; the next artifact
+  is the PR to dev. #373 remains open until delivery completes; phase 2 waits.
+- **Q15 corrected:** CLAUDE, QUICKSTART, roadmap and M12 design now distinguish
+  completed owner acceptance at `971ac2f` from historical reports that were open
+  at capture. M12 is Done; M13 is In Progress. Historical evidence is untouched.
+- **Q16 reviewed for this PR:** imported UI text, research, diagrams and vendor
+  snapshots remain in their original supplied form. The two copied chat artifacts
+  are selectable UI text, not logged session transcripts. Credential-pattern and
+  assignment scanning of all added text artifacts found no candidates; narrative
+  audit/rotation references are not independent verification or raw key material.
+  This is a bounded privacy review, not proof that arbitrary text cannot be
+  sensitive. No private laptop recordings or acceptance artifacts were added.
+- **Q17/Q18 remain mechanically resolved:** shipped config defaults are dev's;
+  individually indexed research imports do not gain decision authority.
+
+Remaining product decisions: Q02 exact Stop/End/restart execution semantics;
+Q03 stable identity/DO keys/writer/host authority; Q04 remote transport/auth;
+Q05 containment guarantees and sequencing; Q06 stored/mirrored data and retention;
+Q09 remote credential feasibility/policy; Q11 provider and milestone sequencing.
+These need the appropriate future bounded designs. Recorded owner answers are
+not questions to repeat. Their unresolved details do not block phase-1 delivery.
+
+Atlassian reconnection succeeded: PLZG-290 is In Progress with implementation
+and verification comment 11509. This supersedes the earlier connector failure
+as a current blocker; its original failure record remains historical.
