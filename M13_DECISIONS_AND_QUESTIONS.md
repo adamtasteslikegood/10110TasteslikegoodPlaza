@@ -443,3 +443,9 @@ Confluence activation is now verified: protected-dev workflow dispatch
 completed successfully, including publisher verification and the apply job. This
 supersedes the earlier missing-secret blocker. It publishes committed dev; this
 proposed design branch is not included until its own reviewed delivery.
+
+Phase-2 tracking: [GitHub #380](https://github.com/adamtasteslikegood/10110TasteslikegoodPlaza/issues/380).
+The written design is ready for owner review, with the fresh builder check complete.
+Do not start implementation from an accepted recap preference alone; approval of
+the full written contract precedes writing-plans. No design PR or runtime change
+has been opened by this design handoff.
