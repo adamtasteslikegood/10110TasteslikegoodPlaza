@@ -325,6 +325,8 @@ async def test_domain_activation_survives_peer_close(
         listener.close()
         await listener.wait_closed()
         await server._shutdown_domains()
+        if server.application_state is not None:
+            await server.application_state.close()
         service.close()
         server.close()
 

@@ -61,6 +61,27 @@ approval, 2026-10-21. They extend the configuration/workspace and project-state
 contracts; the implementation plan is owner-approved for subagent-driven execution and runtime acceptance is not
 claimed by this ratification.
 
+### Approved M13 successor contract — October 26, 2026
+
+The owner-approved [M13 SQLite design](../superpowers/specs/2026-10-26-m13-sqlite-session-persistence-design.md)
+succeeds M12's process-generation history semantics for the bounded application
+session store. Stop preserves application identity; explicit End closes it;
+restart restores bounded history without starting SDK/model/tools. A fresh explicit
+Start creates a new execution identity. Project-scoped stdlib SQLite images use
+validated common-Git-directory facts, a lifetime writer lock and asynchronous
+durable publication; explicit memory mode advertises discontinuity. Markdown
+project notes and diagnostic archives retain their separate contracts. This is
+approved implementation in progress, not shipped behavior or fresh runtime
+acceptance. Historical M12 requirements/evidence and locked D-005/D-020/D-037/
+D-038/D-039 remain intact; changed execution-authorizing sources require fresh
+source/runtime/mode-bound guard evidence before acceptance.
+
+M13 adds the startup-only `DOMAIN_STATE_BACKEND` key, default `sqlite`, with
+`PLAZA_DOMAIN_STATE_BACKEND` overriding it; only `sqlite` and `memory` are accepted.
+This additive approved extension follows unchanged D-035 validation/precedence
+and preserves all existing defaults. Memory mode neither imports nor modifies
+SQLite history; returning to SQLite resumes its saved project history.
+
 ## 1. Scope — what belongs in this document
 
 | Belongs here | Belongs elsewhere |
@@ -381,8 +402,9 @@ key, unsupported version, wrong type or invalid bound fails startup with a usefu
 setting-specific error. Resolve relative LOG_DIR paths against the selected
 configuration file's directory. Read settings once at startup; restart to reload.
 
-The following is the implemented complete settings set, including the `D-037`
-backend selector; the original M10 settings policy remains unchanged:
+The following records the historical M10 settings with the `D-037` backend
+selector. Later approved D-038 and M13 extensions add keys to this baseline;
+the original M10 settings policy and these existing defaults remain unchanged:
 
 ```json
 {

@@ -108,13 +108,22 @@ async def review_repository(
 
 
 class ProjectService:
-    def __init__(self, config, *, runtime_root: Path, owner_run_id: str, reviewer=None):
+    def __init__(
+        self,
+        config,
+        *,
+        runtime_root: Path,
+        owner_run_id: str,
+        reviewer=None,
+        on_ready=None
+    ):
         self._config, self._runtime_root, self._owner_run_id = (
             config,
             runtime_root,
             owner_run_id,
         )
         self._reviewer = reviewer
+        self._on_ready = on_ready
         self._project = None
         self._project_common_identity = None
         self._workspaces = {}
@@ -221,6 +230,8 @@ class ProjectService:
                 )
                 self._workspace_states[domain_id] = state
         self._snapshot.update(stage="ready", reason=None)
+        if self._on_ready is not None:
+            await self._on_ready()
 
     def _observe_workspace(self, project, domain_id):
         legacy = (
@@ -465,6 +476,17 @@ class ProjectService:
                 "workspace_invalid", "Configured project identity changed"
             )
         return project
+
+    async def application_state_binding(self) -> tuple[Path, str] | None:
+        """Validated common-Git-directory/project identity, never client paths.
+
+        Observing an unprepared project does no filesystem or model work. The
+        returned binding is for application-state storage, not an execution lease.
+        """
+        if self._snapshot["stage"] != "ready" or self._closing:
+            return None
+        project = await owned_io(self._validated_project)
+        return project.common_git_dir, project.project_id
 
     async def prepare_memory_turn(self, turn):
         """Project-only extras admission; never provisions a department worktree."""

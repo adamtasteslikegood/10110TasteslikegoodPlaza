@@ -10,6 +10,7 @@ import hashlib
 import json
 import sqlite3
 from uuid import UUID, uuid4
+from typing import TYPE_CHECKING
 
 from bridge.application_state import (
     COMPLETION_ALLOWANCE_BYTES,
@@ -33,7 +34,9 @@ from bridge.application_state import (
 )
 from bridge.domain_protocol import DomainCommandError, valid_domain
 from bridge.domain_store import ReplayWindow
-from bridge.state_image import StateImage
+
+if TYPE_CHECKING:
+    from bridge.state_image import StateImage
 
 APPLICATION_ID = 0x504C5A41
 SCHEMA_VERSION = 1
@@ -281,7 +284,7 @@ def _stored_packet(packet):
 class SQLiteStateRepository:
     """Use only on the owning worker. The caller retains StateImage ownership."""
 
-    def __init__(self, image: StateImage):
+    def __init__(self, image: "StateImage"):
         self.image = image
         self._connection = None
         candidate = None

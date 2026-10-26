@@ -99,6 +99,14 @@ class FakeProjectService:
     async def refresh_snapshot(self, domain_id=None):
         return self.workspace_snapshot(domain_id) if domain_id else self.snapshot()
 
+    async def application_state_binding(self):
+        from bridge.readiness import owned_io
+        from bridge.workspace import inspect_project
+
+        project = await owned_io(inspect_project, self.workspace.project_root)
+        assert project.project_id == self.workspace.project_id
+        return project.common_git_dir, project.project_id
+
     def close(self):
         try:
             self.memory.detach_run(self.owner_run_id)

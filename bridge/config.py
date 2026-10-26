@@ -27,6 +27,7 @@ _DEFAULTS: dict[str, object] = {
     "CONVERSATION_BACKEND": "claude_code",
     "CONVERSATION_TIER": "haiku",
     "DOMAIN_TIER": "sonnet",
+    "DOMAIN_STATE_BACKEND": "sqlite",
     "CONVERSATION_TIMEOUT_SECONDS": 60,
     "CONVERSATION_MAX_OUTPUT_TOKENS": 4096,
     "CONTEXT_MAX_MESSAGES": 40,
@@ -54,6 +55,7 @@ _TEXT_KEYS = frozenset(
         "CONVERSATION_BACKEND",
         "CONVERSATION_TIER",
         "DOMAIN_TIER",
+        "DOMAIN_STATE_BACKEND",
         "LOG_DIR",
         "LOG_LEVEL",
         "INSTALL_CONTEXT_DIR",
@@ -107,6 +109,7 @@ class BridgeConfig:
     project_guidance_file: str = "PLAZA_AGENTS.md"
 
     domain_dangerously_skip_permissions: bool = False
+    domain_state_backend: str = "sqlite"
 
     @property
     def domain_permission_mode(self) -> str:
@@ -176,6 +179,8 @@ def _build(values: Mapping[str, object], source_path: Path) -> BridgeConfig:
             raise ConfigError(f"{key} must be a boolean")
     if values["CONVERSATION_BACKEND"] not in ("claude_code", "messages_api"):
         raise ConfigError("CONVERSATION_BACKEND must be claude_code or messages_api")
+    if values["DOMAIN_STATE_BACKEND"] not in ("sqlite", "memory"):
+        raise ConfigError("DOMAIN_STATE_BACKEND must be sqlite or memory")
     for key in ("CONVERSATION_TIER", "DOMAIN_TIER"):
         if values[key] not in _TIERS:
             raise ConfigError(f"{key} must be haiku, sonnet, opus or fable")

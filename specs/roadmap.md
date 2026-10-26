@@ -10,7 +10,7 @@ owner: adamtasteslikegood
 derives_from: [PROJECT-OVERVIEW, DESIGN-25D, SPEC-DRIVERS-025, BRIDGE-PLATFORM-DESIGN]
 enforcement: asserted
 gates: [Validate Specs:live, Export Godot 4 Prototype:live]
-weakest_claim: M9–M12 are complete with owner acceptance; M13 is in progress: the bounded in-memory extraction is implemented and durable storage remains to build; M14–M15 remain planned.
+weakest_claim: M9–M12 are complete with owner acceptance; M13 persistence design is approved and implementation is in progress; the bounded in-memory extraction is implemented; M14–M15 remain planned.
 ---
 
 # 10110 TastesLike Plaza — Bridge-First Platform Roadmap
@@ -31,7 +31,7 @@ remain deferred frontend milestones. M11 improves NPC conversation; it does not
 complete or replace M5 or M6.
 
 The owner approved the written bridge-first design and M10 plan on 2026-10-18.
-M9–M12 are complete with owner acceptance; M13 is in progress: the bounded in-memory extraction is implemented and durable storage remains to build; M14–M15 remain planned.
+M9–M12 are complete with owner acceptance; M13 persistence design is approved and implementation is in progress; the bounded in-memory extraction is implemented; M14–M15 remain planned.
 M10 acceptance covers offline configuration, archive/lifecycle and loopback service
 tests; it does not establish later UI features or durable application recovery.
 `D-033` supersedes broad `D-006` with scoped synchronous NPC calls; `D-034`
@@ -47,7 +47,7 @@ and its limits separately from the historical direct API proof below.
 | **M10** | Validated central configuration, JSONL run/agent transcripts and standard debug logs with quotas and retention | Implemented and locally accepted by owner 2026-10-21 |
 | **M11** | Godot NPC conversation history, late responses, mouse window resizing and basic keyboard/scroll controls | Implemented and locally accepted by owner 2026-10-21 |
 | **M12** | Configured project/worktree bootstrap, native three-file memory and domain execution through clients | Complete; owner checklist, both local guard modes and clean shutdown accepted at dev `971ac2f` |
-| **M13** | Durable local user/project/domain application state in SQLite, with explicit restart semantics | In Progress; bounded #373 extraction implemented, persistence not yet implemented |
+| **M13** | Durable local user/project/domain application state in SQLite, with explicit restart semantics | In Progress; SQLite persistence design approved, implementation in progress; not shipped or accepted |
 | **M14** | Independent execution workspaces beyond M12's minimum | Planned; sequencing with M13 to be reviewed |
 | **M15** | Authenticated hosted durable state; hosted provider remains unselected | Planned after M14 |
 
@@ -611,9 +611,10 @@ is owner-approved and implemented; [PR #376](https://github.com/adamtasteslikego
 extract `DomainSessionStore` / `MemoryStore` while preserving current replay,
 retention and duplicate handling. This increment adds no persistent storage.
 [Its implementation record](../docs/superpowers/plans/2026-10-26-m13-memory-store-extraction.md)
-separates completed verification from later acceptance. SQLite is already the
-recorded local-store direction; exact restart/Stop/End semantics require the next
-bounded design. Stable application identity does not imply a surviving SDK
+separates completed verification from later acceptance. The [bounded SQLite persistence design](../docs/superpowers/specs/2026-10-26-m13-sqlite-session-persistence-design.md)
+is owner-approved October 26, 2026; persistence implementation is in progress,
+with Stop preserving application identity, separate explicit End and fresh execution
+identity on each explicit Start. This status does not claim delivery or acceptance. Stable application identity does not imply a surviving SDK
 process or permission to run tools on reconnect. See the
 [working owner queue](../M13_DECISIONS_AND_QUESTIONS.md) before later phases.
 

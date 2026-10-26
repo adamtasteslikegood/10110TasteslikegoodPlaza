@@ -38,6 +38,12 @@ from bridge.connection import ConnectionState
 from bridge.project_service import ProjectService, REFERRAL
 from bridge.project_memory import TurnIntent
 from bridge.readiness import owned_io
+from bridge.application_state import StateError
+from bridge.state_coordinator import (
+    StateCoordinator,
+    LazySQLiteStateRepository,
+    VolatileStateRepository,
+)
 from bridge.agents import load_agent
 from bridge.protocol import (
     validate_agent_id,
@@ -96,10 +102,14 @@ class BridgeServer:
         recorder: BridgeRecorder | None = None,
         project_service: ProjectService | None = None,
         bindings=None,
+        state_coordinator: StateCoordinator | None = None,
     ):
         self._config = config if config is not None else default_config()
         self._recorder = recorder
         self._closed = False
+        self.application_state = state_coordinator
+        self._state_open_task = None
+        self._state_error = None
         self.bindings = bindings if bindings is not None else BindingRegistry()
         self.conversation = ConversationEngine(
             config=self._config, registry=self.bindings
@@ -108,6 +118,7 @@ class BridgeServer:
             self._config,
             runtime_root=Path(__file__).resolve().parent.parent,
             owner_run_id=str(uuid.uuid4()),
+            on_ready=self._ensure_application_state,
         )
         self.domains = DomainManager(
             config=self._config, project_service=self.project, recorder=recorder
@@ -116,6 +127,56 @@ class BridgeServer:
         self._connections = set()
         self._npc_tasks = set()
         self._stopping = False
+
+    def application_state_status(self):
+        """Storage facts for lifecycle/protocol consumers; independent of workspace."""
+        durable = self._config.domain_state_backend == "sqlite"
+        return dict(
+            backend=self._config.domain_state_backend,
+            durable=durable,
+            continuity="project" if durable else "process",
+            error_type=(
+                self.application_state.health
+                if self.application_state is not None
+                else self._state_error
+            ),
+        )
+
+    async def _open_application_state(self):
+        try:
+            binding = await self.project.application_state_binding()
+            if binding is None:
+                return
+            common_git_dir, project_id = binding
+            factory = (
+                (lambda: LazySQLiteStateRepository(common_git_dir, project_id))
+                if self._config.domain_state_backend == "sqlite"
+                else (lambda: VolatileStateRepository(project_id))
+            )
+            self.application_state = StateCoordinator(factory)
+            await self.application_state.open()
+        except StateError as error:
+            self._state_error = error.code
+        except Exception:
+            # Invalidated project facts cannot become guessed storage paths.
+            self._state_error = "state_store_invalid"
+
+    async def _ensure_application_state(self):
+        """Ready callback, also the explicit seam for injected ProjectServices."""
+        if self._stopping:
+            return
+        if self._state_open_task is not None:
+            await asyncio.shield(self._state_open_task)
+            return
+        if self.application_state is not None:
+            return
+        if self.project.snapshot()["stage"] != "ready":
+            return
+        if self._state_open_task is None:
+            self._state_open_task = asyncio.create_task(
+                self._open_application_state(), name="application-state-open"
+            )
+        await asyncio.shield(self._state_open_task)
 
     def _event(self, name, context=None, **metadata):
         if self._recorder is not None:
@@ -190,6 +251,7 @@ class BridgeServer:
         started = time.monotonic()
         self._event("request_received", context)
         try:
+            await self._ensure_application_state()
             responses = await self._route(data, histories, context, emit)
         except asyncio.CancelledError:
             self._event(
@@ -722,6 +784,13 @@ class BridgeServer:
             await _drain(task)
         for task in tuple(self._connection_tasks):
             await _drain(task)
+        if self._state_open_task is not None:
+            await _drain(self._state_open_task)
+        if self.application_state is not None:
+            try:
+                await self.application_state.close()
+            except BaseException as error:
+                failure = failure or error
         try:
             await self.project.close()
         except BaseException as error:

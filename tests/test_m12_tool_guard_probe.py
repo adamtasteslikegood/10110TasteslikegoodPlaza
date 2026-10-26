@@ -616,3 +616,16 @@ def test_envelope_rejects_wrong_missing_stale_or_unverified_record(damage):
         envelope["records"]["bypassPermissions"]["versions"] = {}
     with pytest.raises(RuntimeError):
         check_acceptance(envelope, None, "bypassPermissions")
+
+
+def test_application_state_sources_require_fresh_guard_evidence():
+    from bridge.tool_guard_evidence import GUARD_SOURCES
+
+    assert {
+        "bridge/application_state.py",
+        "bridge/state_image.py",
+        "bridge/sqlite_state.py",
+        "bridge/state_coordinator.py",
+        "bridge/project_service.py",
+        "bridge/server.py",
+    } <= set(GUARD_SOURCES)
