@@ -631,6 +631,68 @@ def test_cleanup_publication_clears_only_matching_released_lease(tmp_path):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("publication", ["release", "reserve", "cleanup_failed"])
+async def test_refresh_preserves_reservation_published_during_observation(
+    tmp_path, monkeypatch, publication
+):
+    import threading
+    from bridge import project_service as module
+    from bridge.workspace_lease import WorkspaceLease, observe_reservation
+
+    root = repository(tmp_path)
+    service = module.ProjectService(
+        replace(default_config(), workspace_root_dir=root),
+        runtime_root=tmp_path / "runtime",
+        owner_run_id="run",
+    )
+    await settled(service)
+    workspace = await service.prepare_domain("core")
+    lease = None
+    if publication != "reserve":
+        lease = WorkspaceLease.acquire(
+            workspace, domain_id="core", domain_session_id="generation"
+        )
+        service.publish_reservation(lease)
+    entered, release = threading.Event(), threading.Event()
+    original = module.git_without_filters
+
+    def paused_status(*args, **kwargs):
+        # refresh already observed the lease before starting Git status.
+        entered.set()
+        assert release.wait(5)
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(module, "git_without_filters", paused_status)
+    refresh = asyncio.create_task(service.refresh_snapshot("core"))
+    try:
+        assert await asyncio.to_thread(entered.wait, 5)
+        if publication == "reserve":
+            lease = WorkspaceLease.acquire(
+                workspace, domain_id="core", domain_session_id="generation"
+            )
+            service.publish_reservation(lease)
+        elif publication == "release":
+            lease.release(cleanup_confirmed=True)
+            service.publish_cleanup(lease, clean=True)
+            assert observe_reservation(workspace) is None
+        else:
+            service.publish_cleanup(lease, clean=False)
+        expected = service.workspace_snapshot("core")["reservation"]
+        release.set()
+        observed = await asyncio.wait_for(refresh, 5)
+        assert observed["reservation"] == expected
+        if publication == "cleanup_failed":
+            assert observed["stage"] == "failed"
+            assert observed["reason"] == "cleanup_failed"
+    finally:
+        release.set()
+        await refresh
+        if lease and lease.held:
+            lease.release(cleanup_confirmed=True)
+        await service.close()
+
+
+@pytest.mark.asyncio
 async def test_chief_deadline_returns_approval_while_owned_initialization_drains(
     tmp_path, monkeypatch
 ):
