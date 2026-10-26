@@ -361,3 +361,55 @@ Installing `scripts/pm/requirements.txt` made all 17 publisher cases pass, witho
 source changes. The complete combined regression is rerun before merge; its final
 result is recorded on PR #376. The historical 2,013-test extraction run remains
 accurate for its original baseline rather than being overwritten with new counts.
+
+## SQLite persistence design started — October 26, 2026 Pacific
+
+Phase 1 is delivered: PR #376 merged as `a2d340a`; #373 is closed. The
+post-merge 90-case acceptance and both runtime verifications passed. Combined
+regression was 2,033 tests plus 118 subtests; historical reports remain bound
+to their original sources. PLZG-290 stays In Progress (comment 11512).
+
+Adam requested the bounded SQLite persistence design. He will configure the
+separate Confluence publisher's Actions token; that activation task does not
+block local design work. No persistence implementation or dependency changes
+are authorized by this design-start checkpoint.
+
+Confirmed inputs: stdlib SQLite; project/repository isolation; persistent
+application identity unless intentionally ended; Stop preserves that identity;
+End is separate; crash/restart does not End; reconnect alone never executes
+agent tools; cleanup uncertainty retains ownership evidence; three Markdown
+project notes remain separate from application state and diagnostic archives.
+
+Reconnaissance against the merged implementation:
+
+- `bridge/domain_store.py` owns synchronous terminal-only append/lookup/replay.
+  IDs and duplicate detection are bounded by retention; a fresh store is empty.
+- `DomainManager._new_session` currently creates a fresh UUID after a clean Stop.
+  `shutdown()` calls Stop, so durable End cannot be inferred from shutdown.
+- Query admission installs `_inflight` before suspension. Existing project-memory
+  preparation precedes acceptance/tools, but accepted-request state is not yet an
+  authoritative SQLite record. Recovery must distinguish interrupted accepted
+  work from terminal results and never silently retry it.
+- Session cleanup waits for owned work, then releases only on confirmed cleanup.
+  SQLite workers must participate in that drain; cancellation cannot leave an
+  unowned write or a falsely clean status.
+- Godot retains its domain buckets during connection uncertainty. Restored server
+  identity/history discovery must support a fresh game process as well as a
+  temporarily disconnected existing client; SQLite alone does not supply that UI.
+- `project_files.py` anchors safe metadata operations and refuses symlinks and
+  hardlinks. SQLite's own database/journal/WAL opening is a separate integration
+  concern; the existing helper is not automatically a safe SQLite filesystem VFS.
+
+Additional design items:
+
+| ID | Design requirement / open detail | Source / disposition |
+|---|---|---|
+| Q19 | Pick the SQLite location, OS writer ownership and database/sidecar safety strategy; define corrupt/unsafe/full/read-only/busy behavior without silent recreation. | Existing `project_files.py`, common-Git metadata, D-038/D-039; technical alternatives not yet selected. |
+| Q20 | Reconcile synchronous replay/admission with durable I/O and commit-before-publish. Treat SQLite and Markdown updates as distinct commits with honest reconciliation rather than claiming a cross-store transaction. | Approved phase-1 design explicitly deferred durable caller/ownership semantics; `domain_session.py` preparation/save/cleanup paths. |
+| Q21 | Decide whether reopening supplies a bounded conversation recap to the fresh SDK runtime, or only restores visible history/identity alongside existing project notes. Any recalled content remains continuity data, not authority or a task queue. | Specific owner question pending in this design conversation. Stable identity does not by itself answer model-context restoration. |
+| Q22 | Define session/history/request retention, schema migration and disk limits separately from replay's 256-entry / 4 MiB output-text window; avoid silently promising lifetime deduplication or unlimited storage. | `MemoryStore` contract and Q06. Quotas/archival details require explicit design rather than inherited assumptions. |
+
+Next: settle the pending model-context question; compare the durable-I/O
+approaches; write the bounded design with lifecycle/schema/failure/acceptance
+contracts; run a fresh builder check; obtain approval before an implementation
+plan or product changes. Existing recorded answers must not be asked again.
