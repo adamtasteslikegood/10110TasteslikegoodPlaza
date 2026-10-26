@@ -24,6 +24,7 @@ from bridge.domain_protocol import DomainCommandError, error_packet
 from bridge.domain_sdk import DomainSDKOwner, SDKOutcome
 from bridge.domain_store import DomainSessionStore, MemoryStore
 from bridge.domain_run_state import DurableRunState, settle_owned
+from bridge.session_recovery import reconcile_memory
 from bridge.failure_diagnostics import (
     diagnostic_fields,
     exception_diagnostics,
@@ -165,6 +166,7 @@ class DomainSession:
         self._authority_check = authority_check
         self._lifecycle_stopped = False
         self._failure_outcome = None
+        self.memory_reconciliation = []
         self._config, self._service, self._recorder = config, project_service, recorder
         self._state = SessionState.INACTIVE
         self._workspace = None
@@ -299,6 +301,26 @@ class DomainSession:
 
         await owned_io(acquire)
         self._service.publish_reservation(self._lease)
+        if self._coordinator is not None:
+            view = self._coordinator.snapshot()
+            terminals = {(t.session_id, t.request_id): t for t in view.terminals}
+            for request in view.requests:
+                key = request.session_id, request.request_id
+                if (
+                    request.session_id == self.domain_session_id
+                    and request.disposition == "recovered"
+                    and key in terminals
+                ):
+                    result = await reconcile_memory(
+                        self._service, request, terminals[key], lease=self._lease
+                    )
+                    self.memory_reconciliation.append(
+                        dict(
+                            request_id=request.request_id,
+                            turn_id=request.turn_id,
+                            **result,
+                        )
+                    )
         self._owner = DomainSDKOwner(
             self._config, self._workspace, self._lease, self._readiness
         )
@@ -834,18 +856,26 @@ class DomainSession:
                 await asyncio.shield(task)
             if self._memory and self._lease:
                 await self._checkpoint("stop" if clean else "cleanup_failed")
+            if self._coordinator is not None:
+                await self._coordinator.drain()
             if clean and self._coordinator is not None and not self._lifecycle_stopped:
-                await self._coordinator.commit(
-                    StateCommand(
-                        "stop",
-                        dict(
-                            execution_id=self.execution_id,
-                            outcome=self._failure_outcome or "stopped",
-                            timestamp=datetime.now(timezone.utc).isoformat(),
-                        ),
+                try:
+                    await self._coordinator.commit(
+                        StateCommand(
+                            "stop",
+                            dict(
+                                execution_id=self.execution_id,
+                                outcome=self._failure_outcome or "stopped",
+                                timestamp=datetime.now(timezone.utc).isoformat(),
+                            ),
+                        )
                     )
-                )
-                self._lifecycle_stopped = True
+                    self._lifecycle_stopped = True
+                except StateError:
+                    # A completed disk failure is not a running SDK or writer.
+                    # Storage remains closed/visible; actual ownership may now
+                    # release. End must still commit its own durable marker.
+                    await self._coordinator.drain()
             if clean and self._lease:
                 await owned_io(self._lease.release, cleanup_confirmed=True)
         except Exception:

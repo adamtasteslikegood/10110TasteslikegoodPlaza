@@ -157,8 +157,13 @@ class BridgeServer:
                 if self._config.domain_state_backend == "sqlite"
                 else (lambda: VolatileStateRepository(project_id))
             )
-            self.application_state = StateCoordinator(factory)
+            self.application_state = StateCoordinator(
+                factory, boot_id=self.domains.boot_id
+            )
             await self.application_state.open()
+            observer = getattr(self.project, "observe_application_state", None)
+            if observer is not None:
+                await observer(self.application_state.snapshot())
         except StateError as error:
             self._state_error = error.code
         except Exception:
@@ -170,17 +175,26 @@ class BridgeServer:
         if self._stopping:
             return
         if self._state_open_task is not None:
-            await asyncio.shield(self._state_open_task)
+            opening = self._state_open_task
+            await asyncio.shield(opening)
+            if (
+                self._state_open_task is opening
+                and self.application_state is None
+                and self._state_error is None
+            ):
+                self._state_open_task = None
             return
         if self.application_state is not None:
-            return
-        if self.project.snapshot()["stage"] != "ready":
             return
         if self._state_open_task is None:
             self._state_open_task = asyncio.create_task(
                 self._open_application_state(), name="application-state-open"
             )
         await asyncio.shield(self._state_open_task)
+        if self.application_state is None and self._state_error is None:
+            # A genuinely unprepared project had no binding. Later bootstrap
+            # may provide one; this is not a retry of a failed storage open.
+            self._state_open_task = None
 
     def _event(self, name, context=None, **metadata):
         if self._recorder is not None:

@@ -8,6 +8,7 @@ retried. Repository construction, reconciliation and final close share one threa
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable
 from uuid import uuid4
@@ -23,6 +24,7 @@ from bridge.application_state import (
 from bridge.domain_protocol import DomainCommandError
 from bridge.domain_store import ReplayWindow
 from bridge.sqlite_state import SQLiteStateRepository, initial_image, replay_session
+from bridge.session_recovery import classify_recovery, classify_owned_orphans
 
 
 class LazySQLiteStateRepository:
@@ -152,8 +154,11 @@ class VolatileStateRepository:
 
 
 class StateCoordinator:
-    def __init__(self, repository_factory: Callable[[], StateRepository]):
+    def __init__(
+        self, repository_factory: Callable[[], StateRepository], *, boot_id=None
+    ):
         self._factory = repository_factory
+        self._boot_id = boot_id
         self._executor = ThreadPoolExecutor(
             max_workers=1, thread_name_prefix="plaza-state"
         )
@@ -167,6 +172,7 @@ class StateCoordinator:
         self._operations = set()
         self._opening = self._closing_task = None
         self._reconciling_task = None
+        self._recovery_task = None
         self._closing = self._closed = False
 
     @property
@@ -176,6 +182,7 @@ class StateCoordinator:
             and self._opening.done()
             and self._health is None
             and (self._reconciling_task is None or self._reconciling_task.done())
+            and (self._recovery_task is None or self._recovery_task.done())
             and not self._closing
         )
 
@@ -210,6 +217,8 @@ class StateCoordinator:
         try:
             self._repository = self._factory()
             self._worker_view = self._repository.load()
+            if self._boot_id is not None and self._worker_view is not None:
+                self._worker_recover(self._boot_id, ())
             return self._worker_view
         except StateError as error:
             self._worker_health = error.code
@@ -231,6 +240,51 @@ class StateCoordinator:
         if self._opening is None:
             self._opening = self._owned(self._open_owned())
         await asyncio.shield(self._opening)
+
+    def _worker_recover(self, boot_id, abandoned_execution_ids):
+        if self._worker_view is None:
+            return None
+        observed_at = datetime.now(timezone.utc).isoformat()
+        commands = classify_recovery(
+            self._worker_view, boot_id, observed_at=observed_at
+        )
+        commands += classify_owned_orphans(
+            self._worker_view, abandoned_execution_ids, observed_at=observed_at
+        )
+        for command in commands:
+            self._worker_commit(command)
+        return self._worker_view
+
+    async def _recover_owned(self, boot_id, execution_ids, pending):
+        if pending:
+            await asyncio.gather(*pending, return_exceptions=True)
+        try:
+            self._view = deepcopy(
+                await self._run(self._worker_recover, boot_id, execution_ids)
+            )
+        except StateError as error:
+            self._health = error.code
+            raise
+
+    async def recover(self, boot_id, *, abandoned_execution_ids=()):
+        """Explicit settlement under retained writer and manager ownership.
+
+        Same-boot IDs must be proven abandoned by this manager's completed
+        Start attempt or confirmed SDK/metadata cleanup; absence is not proof.
+        """
+        if not self.admission_open:
+            raise StateError(self._health or "state_store_busy")
+        pending = tuple(self._operations)
+        self._recovery_task = self._owned(
+            self._recover_owned(boot_id, tuple(abandoned_execution_ids), pending)
+        )
+        await asyncio.shield(self._recovery_task)
+
+    async def drain(self):
+        """Join submitted workers even when their completed outcome is failure."""
+        pending = tuple(self._operations)
+        if pending:
+            await asyncio.shield(asyncio.gather(*pending, return_exceptions=True))
 
     def _worker_commit(self, command):
         if self._worker_health is not None:

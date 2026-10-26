@@ -11,7 +11,7 @@ from bridge.agents import load_agent
 from bridge.agent_bindings import DOMAIN_IDS
 from bridge.conversation import ConversationEngine
 from bridge.conversation_backend import ExecutionMetadata
-from bridge.project_memory import MemorySnapshot, ProjectMemoryStore
+from bridge.project_memory import MemorySnapshot, ProjectMemoryStore, MemoryError
 from bridge.readiness import ReadinessService, owned_io
 from bridge.repository_setup import (
     build_init_proposal,
@@ -197,12 +197,16 @@ class ProjectService:
             await self._prepare(project)
         except Exception as error:
             self._failure(error)
+            # An inspected, prepared Git project may still have readable saved
+            # application history when its independent Markdown store failed.
+            if self._project is not None and self._on_ready is not None:
+                await self._on_ready()
 
     async def _prepare(self, project, setup=None):
         def prepare():
             self._project = project
             self._project_common_identity = _identity(project.common_git_dir)
-            self._memory = ProjectMemoryStore(project)
+            self._memory = ProjectMemoryStore(project, defer_recovery=True)
             self._snapshot["project_id"] = project.project_id
             self._snapshot["memory"]["path"] = str(
                 project.common_git_dir / "plaza/session-memory"
@@ -482,11 +486,41 @@ class ProjectService:
 
         Observing an unprepared project does no filesystem or model work. The
         returned binding is for application-state storage, not an execution lease.
+        A validated prepared project keeps this read-only binding when its
+        independent memory initialization failed; Start still requires ready.
         """
-        if self._snapshot["stage"] != "ready" or self._closing:
+        if self._project is None or self._project.head_commit is None or self._closing:
             return None
         project = await owned_io(self._validated_project)
         return project.common_git_dir, project.project_id
+
+    async def observe_application_state(self, view):
+        """Protect SQL turns from legacy notes recovery after validated open.
+
+        If SQL or notes cannot be validated, blanket recovery remains deferred.
+        This policy grants neither workspace ownership nor execution readiness.
+        """
+        if self._memory is None:
+            return
+
+        def observe():
+            project = self._validated_project()
+            if view is not None and view.project_id != project.project_id:
+                raise WorkspaceError(
+                    "workspace_invalid", "Application state binding changed"
+                )
+            self._memory.set_recovery_exclusions(
+                frozenset(r.turn_id for r in view.requests)
+                if view is not None
+                else frozenset()
+            )
+
+        try:
+            await owned_io(observe)
+        except MemoryError:
+            # Independent unreadable notes cannot hide valid committed history.
+            # The initial fail-closed exclusion policy remains in effect.
+            pass
 
     async def prepare_memory_turn(self, turn):
         """Project-only extras admission; never provisions a department worktree."""

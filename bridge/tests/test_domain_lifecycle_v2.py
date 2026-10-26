@@ -406,14 +406,14 @@ async def test_second_manager_cannot_recover_live_same_boot(lifecycle):
 
 
 @pytest.mark.asyncio
-async def test_stop_state_fault_drains_sdk_retains_lease_and_blocks_start(lifecycle):
+async def test_stop_state_fault_drains_sdk_releases_lease_and_blocks_start(lifecycle):
     manager, _, service, owners, coordinators = lifecycle
     first = await send(manager, "activate_domain")
     coordinators[-1]._health = "state_store_failed"
     try:
         reply = await send(manager, "deactivate_domain")
-        assert reply["state"] == "cleanup_failed"
-        assert owners[0].stopped.is_set() and service.reservation.held
+        assert reply["state"] == "inactive"
+        assert owners[0].stopped.is_set() and service.reservation is None
         assert (await send(manager, "activate_domain"))[
             "error_type"
         ] == "state_store_failed"

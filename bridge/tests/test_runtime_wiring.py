@@ -1207,7 +1207,14 @@ async def test_application_state_opens_when_project_ready_without_start(
         await server.project.start()
         await server.project._bootstrap_task
         assert server.project.snapshot()["stage"] == "ready"
-        assert server.application_state.snapshot() == saved.view
+        recovered = server.application_state.snapshot()
+        assert recovered.sessions == saved.view.sessions
+        assert recovered.requests == saved.view.requests
+        assert recovered.terminals == saved.view.terminals
+        assert recovered.revision == saved.view.revision + 1
+        assert recovered.executions[0].execution_id == saved.result["execution_id"]
+        assert recovered.executions[0].stopped_at
+        assert recovered.executions[0].outcome == "interrupted"
         assert server.domains._sessions == {}
         assert server.application_state_status() == dict(
             backend="sqlite", durable=True, continuity="project", error_type=None

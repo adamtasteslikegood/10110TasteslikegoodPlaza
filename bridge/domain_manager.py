@@ -47,6 +47,11 @@ class DomainManager:
         self._operations = set()
         self._activation_lock = asyncio.Lock()
         self._shutdown_task = None
+        self._unowned_starts = set()
+
+    @property
+    def boot_id(self):
+        return self._boot_id
 
     @property
     def coordinator(self):
@@ -105,7 +110,7 @@ class DomainManager:
         return view, record, saved
 
     def snapshot(self, domain):
-        _, record, saved = self._records(domain)
+        view, record, saved = self._records(domain)
         session = self._current(domain)
         current_id = record.current_session_id if record else None
         live = (
@@ -144,6 +149,25 @@ class DomainManager:
             ],
             state_store=self._storage_status(),
         )
+        observed = {
+            r["request_id"]: r
+            for r in (session.memory_reconciliation if session is not None else [])
+        }
+        packet["memory_reconciliation"] = [
+            observed.get(
+                r.request_id,
+                dict(
+                    request_id=r.request_id,
+                    turn_id=r.turn_id,
+                    saved=False,
+                    revision=None,
+                    note_state=None,
+                    error_type="memory_reconciliation_pending",
+                ),
+            )
+            for r in (view.requests if view else ())
+            if r.session_id == current_id and r.disposition == "recovered"
+        ]
         # Retained wire discovery alias; catalog is no longer two SDK generations.
         packet["available_generations"] = [s.session_id for s in saved]
         return packet
@@ -179,6 +203,19 @@ class DomainManager:
             view, record, _ = self._records(domain)
             revision = command["expected_domain_revision"]
             if view and record and record.current_session_id:
+                owned_orphans = set(self._unowned_starts)
+                owned_orphans.update(
+                    owner.execution_id
+                    for owner in self._sessions.get(domain, [])
+                    if owner.clean_inactive
+                )
+                if owned_orphans:
+                    await coordinator.recover(
+                        self._boot_id, abandoned_execution_ids=owned_orphans
+                    )
+                    self._unowned_starts.difference_update(owned_orphans)
+                    view, record, _ = self._records(domain)
+                    revision = record.domain_revision
                 if any(
                     r.session_id == record.current_session_id
                     and r.disposition in {"accepted", "dispatched"}
@@ -203,18 +240,26 @@ class DomainManager:
                             )
                         )
                         revision = commit.result["domain_revision"]
-            commit = await coordinator.commit(
-                StateCommand(
-                    "start",
-                    dict(
-                        domain_id=domain,
-                        expected_domain_revision=revision,
-                        boot_id=self._boot_id,
-                        execution_id=str(uuid4()),
-                        timestamp=datetime.now(timezone.utc).isoformat(),
-                    ),
+            execution_id = str(uuid4())
+            try:
+                commit = await coordinator.commit(
+                    StateCommand(
+                        "start",
+                        dict(
+                            domain_id=domain,
+                            expected_domain_revision=revision,
+                            boot_id=self._boot_id,
+                            execution_id=execution_id,
+                            timestamp=datetime.now(timezone.utc).isoformat(),
+                        ),
+                    )
                 )
-            )
+            except StateError:
+                # This exact attempt has settled, and no SDK/lease owner was
+                # installed. Only this manager may explicitly settle its orphan
+                # after storage reconciliation confirms the durable image.
+                self._unowned_starts.add(execution_id)
+                raise
             identity = commit.result
             session = DomainSession(
                 domain,
@@ -252,7 +297,11 @@ class DomainManager:
     async def _end(self, command):
         domain = command["domain_id"]
         async with self._controls.setdefault(domain, asyncio.Lock()):
-            coordinator = self._require_state()
+            coordinator = self.coordinator
+            if coordinator is None:
+                raise StateError(
+                    self._storage_status().get("error_type") or "state_store_busy"
+                )
             self._validate_revision(domain, command["expected_domain_revision"])
             _, record, _ = self._records(domain)
             session_id = command["domain_session_id"]
@@ -265,6 +314,19 @@ class DomainManager:
                     raise DomainCommandError("cleanup_failed")
             # The caller CAS was checked before cleanup while holding this same
             # control fence. Only our Stop may have advanced it in this scope.
+            coordinator = self._require_state()
+            if (
+                session is not None
+                and session.domain_session_id == session_id
+                and session.clean_inactive
+                and not session._lifecycle_stopped
+            ):
+                # An explicit End after storage reconciliation may settle only
+                # this owner's already confirmed cleanup, then save its marker.
+                await coordinator.recover(
+                    self._boot_id, abandoned_execution_ids=(session.execution_id,)
+                )
+                session._lifecycle_stopped = True
             revision = int(self.snapshot(domain)["domain_revision"])
             await coordinator.commit(
                 StateCommand(

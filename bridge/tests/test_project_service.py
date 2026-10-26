@@ -320,7 +320,13 @@ async def test_foreign_live_reservation_allows_bootstrap_memory_but_start_is_bus
         assert service.require_memory().load().revision >= 1
         server = BridgeServer(config=service._config, project_service=service)
         result = await server.dispatch(
-            dict(type="activate_domain", domain_id="core", request_id="start")
+            dict(
+                type="activate_domain",
+                protocol_version=2,
+                expected_domain_revision="0",
+                domain_id="core",
+                request_id="start",
+            )
         )
         assert result[-1]["error_type"] == "workspace_busy"
         await server._shutdown_domains()

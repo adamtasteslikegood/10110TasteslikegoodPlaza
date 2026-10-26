@@ -238,7 +238,9 @@ class ProjectMemoryBinding:
 class ProjectMemoryStore:
     """One project binding shared by departments; no Git/provider calls under lock."""
 
-    def __init__(self, workspace: ExecutionWorkspace | ProjectInspection):
+    def __init__(
+        self, workspace: ExecutionWorkspace | ProjectInspection, *, defer_recovery=False
+    ):
         if isinstance(workspace, ProjectInspection):
             workspace = ProjectMemoryBinding(
                 workspace.project_id,
@@ -251,6 +253,21 @@ class ProjectMemoryStore:
         self._base = workspace.common_git_dir / "plaza"
         self._directory = self._base / "session-memory"
         self._runs: dict[str, files.FileLock] = {}
+        # Runtime policy only: SQL-associated turns are settled through exact
+        # owned recovery, never by legacy blanket abandoned-owner reconciliation.
+        self._recovery_exclusions = None if defer_recovery else set()
+        self._protect_domain_turns = defer_recovery
+
+    def set_recovery_exclusions(self, turn_ids):
+        """Install validated SQL identities without modifying canonical notes."""
+        from bridge.application_state import MAX_SESSIONS, MAX_TERMINALS_PER_SESSION
+
+        if len(turn_ids) > MAX_SESSIONS * (MAX_TERMINALS_PER_SESSION + 1):
+            raise _error()
+        for turn_id in turn_ids:
+            _identifier(turn_id)
+        with self._operation():
+            self._recovery_exclusions = set(turn_ids)
 
     @contextmanager
     def _operation(self, *, create=False):
@@ -584,8 +601,16 @@ class ProjectMemoryStore:
             del self._runs[owner_run_id]
 
     def _reconcile(self, state, check, stack):
+        def eligible(item):
+            return (
+                _active(item)
+                and self._recovery_exclusions is not None
+                and item["turn_id"] not in self._recovery_exclusions
+                and not (self._protect_domain_turns and item["domain_id"] is not None)
+            )
+
         abandoned = set()
-        owners = {item["owner_run_id"] for item in state["items"] if _active(item)}
+        owners = {item["owner_run_id"] for item in state["items"] if eligible(item)}
         for owner in owners:
             check()
             if owner in self._runs:
@@ -603,7 +628,7 @@ class ProjectMemoryStore:
             check()
             abandoned.add(owner)
         for item in state["items"]:
-            if _active(item) and item["owner_run_id"] in abandoned:
+            if eligible(item) and item["owner_run_id"] in abandoned:
                 item["state"] = "interrupted"
                 self._entry(
                     state,
@@ -804,6 +829,73 @@ class ProjectMemoryStore:
             return delta
         except (ValueError, TypeError, KeyError):
             return None
+
+    def reconcile_turn(self, request, *, domain_id, workspace_id, outcome, output):
+        """Exact-turn recovery, invoked only by the owned readiness adapter.
+
+        Preserve every completed outcome. An old owner must have a free run
+        lock; acquiring that probe never deletes its existing crash marker.
+        """
+        with self._operation() as (check, stack):
+            state, revision, _, _ = self._read(check)
+            result = dict(saved=False, revision=revision, note_state=None)
+            item = next(
+                (
+                    i
+                    for i in state["items"]
+                    if i["kind"] == "turn" and i["turn_id"] == request.turn_id
+                ),
+                None,
+            )
+            if (
+                item is None
+                or revision < request.memory_revision
+                or item["request_id"] != request.request_id
+                or item["agent_id"] != request.agent_id
+                or item["domain_session_id"] != request.session_id
+                or item["domain_id"] != domain_id
+                or item["workspace_id"] != workspace_id
+                or item["text"] != _excerpt(request.task, 512)
+                or outcome not in {"error", "interrupted"}
+            ):
+                return dict(result, error_type="memory_turn_mismatch")
+            result["note_state"] = item["state"]
+            if item["state"] != "pending":
+                return dict(
+                    result,
+                    saved=item["state"] == outcome,
+                    error_type=(
+                        None
+                        if item["state"] == outcome
+                        else "memory_outcome_discrepancy"
+                    ),
+                )
+            owner = item["owner_run_id"]
+            if owner in self._runs:
+                self._owned(owner)
+            else:
+                path, _ = self._run_paths(owner)
+                self._check_marker(owner, missing=True)
+                try:
+                    probe = files.FileLock.acquire(path)
+                except BlockingIOError:
+                    return dict(result, error_type="memory_owner_active")
+                stack.callback(probe.close)
+            item["state"] = outcome
+            self._entry(
+                state,
+                event="terminal",
+                item=item,
+                outcome=outcome,
+                summary="Bridge recovery fact: " + _excerpt(output, 1024),
+            )
+            snapshot = self._save(state, revision, check)
+            return dict(
+                saved=True,
+                revision=snapshot.revision,
+                note_state=outcome,
+                error_type=None,
+            )
 
     def finish_turn(
         self, turn_id: str, *, outcome: str, output: str, delta: dict | None
