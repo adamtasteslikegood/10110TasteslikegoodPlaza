@@ -67,7 +67,7 @@ the owner to convert/restore existing documents in Confluence rather than creati
 new identities or using private APIs. This preserves links but requires that UI
 step when a source is reactivated or changes mode.
 
-The unchanged flow snapshot fails the delivery-coordinate freshness gate because
+At initial PR preparation, the unchanged flow snapshot failed the delivery-coordinate freshness gate because
 its `as_of` is older than 14 days. This was confirmed with the baseline validator;
 the publisher does not refresh unrelated board evidence. The initial Godot
 integration timeout was resolved by importing the current project cache; the
@@ -75,5 +75,9 @@ isolated integration test then passed without an application-code change.
 
 Final verification: 2,009 Python tests and 118 subtests passed. Black checked all
 108 Python files. The governed validator and credential-free render passed.
-Draft PR #375 contains the prepared publisher; an authenticated apply and the
-pre-existing delivery freshness gate remain pending.
+PR #375 contains the prepared publisher. The owner subsequently authorized
+refreshing the live PLZG flow snapshot and fixing a stale-reservation race exposed
+by the Godot CI integration gate. Both changes are covered by their validators or
+deterministic regression tests. Authenticated publication remains pending token
+setup. Store the secret in the branch-restricted `confluence-publish` environment;
+the integration cannot configure that environment (HTTP 403).

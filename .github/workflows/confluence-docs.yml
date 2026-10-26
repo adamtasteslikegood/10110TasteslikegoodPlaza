@@ -49,10 +49,11 @@ jobs:
 
   publish:
     name: Publish committed dev documents
-    if: github.event_name != 'pull_request'
+    if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main')
     needs: verify
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    environment: confluence-publish
     concurrency:
       # Both trigger branches share one destination set. Never cancel a writer
       # halfway through updating it; a queued run checks out the newest dev.

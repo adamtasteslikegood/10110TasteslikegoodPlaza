@@ -13,26 +13,38 @@ Destination identities come from
 
 ## Activation
 
-1. Configure the repository Actions secret `ATLASSIAN_API_TOKEN_BASE64` with
-   Base64-encoded `email:api-token`. Use a dedicated Atlassian account or token
-   with access to view, create, edit and archive pages in the destination space.
+1. Create a GitHub Environment named `confluence-publish`. Under **Deployment
+   branches and tags**, select **Selected branches and tags** and allow only the
+   `dev` and `main` branches. The environment's branch policy protects the secret
+   even if a different branch modifies the workflow. No required reviewer is
+   needed for automatic publication unless the owner chooses that policy.
+2. In that environment, configure secret `ATLASSIAN_API_TOKEN_BASE64` with
+   Base64-encoded `email:api-token`. Create an Atlassian **API token without scopes**
+   from an account with access to view, create, edit and archive pages in PLZA.
+   This token inherits that account's Confluence permissions; there is no list of
+   granular scopes to select for an unscoped token.
    This client uses Basic authentication against the site URL; use an API token
    supported for that direct-site authentication, rather than an OAuth token or
    a token requiring the `api.atlassian.com/ex/confluence/...` gateway.
-2. Merge the publisher into `dev` through the normal review process. The merge
+3. Merge the publisher into `dev` through the normal review process. The merge
    triggers publication. Until the secret is configured, the apply step fails
    explicitly and leaves the prior imported snapshots in place.
-3. Alternatively, run **Confluence Source Mirrors** manually with `apply=false`
+4. Alternatively, run **Confluence Source Mirrors** manually with `apply=false`
    to produce a credential-free publication plan. Inspect the `confluence-docs-plan`
    artifact, then run with `apply=true` to publish.
-4. Verify the Actions run succeeds and check the source revision and parent index
+5. Verify the Actions run succeeds and check the source revision and parent index
    records in Confluence. Preparing or merging this workflow alone does not prove
    that an authenticated publication succeeded.
 
-Configure the secret in the repository's
-[Actions secrets settings](https://github.com/adamtasteslikegood/10110TasteslikegoodPlaza/settings/secrets/actions).
+Create the token in [Atlassian account security settings](https://id.atlassian.com/manage-profile/security/api-tokens).
+Configure the environment and its secret in the repository's
+[Environments settings](https://github.com/adamtasteslikegood/10110TasteslikegoodPlaza/settings/environments).
+Keep this secret at environment scope rather than repository scope; remove any
+repository-level copy so it cannot bypass the environment's deployment policy.
 Do not put credentials in a document, PR, commit, or chat. This chat's connected
-Atlassian authorization is separate from the Actions API credential.
+Atlassian authorization is separate from the Actions API credential. Atlassian
+documents the different URL requirements for scoped tokens in
+[Scoped API Tokens in Confluence Cloud](https://support.atlassian.com/confluence/kb/scoped-api-tokens-in-confluence-cloud/).
 
 ## What gets published
 
