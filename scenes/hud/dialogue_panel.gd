@@ -530,7 +530,7 @@ func _render_domain(reveal_id: String = "", restore: bool = false) -> void:
 		if not data.get(key, "").is_empty(): messages.append({"role": "setup" if key == "setup_output" else "error", "content": data[key], "status": "notice", "generation": snapshot.domain_session_id, "request_id": key})
 	_rendered_domain_id = _domain_id
 	var presentation := {"messages": messages, "omitted": snapshot.get("omitted_count", 0), "pending": pending, "draft": snapshot.draft, "connected": BridgeClient.is_bridge_connected(), "generation": snapshot.domain_session_id, "read_only": snapshot.get("read_only", false)}
-	_render(presentation, reveal_id, view.get("scroll", 0.0) if restore else _body_label.get_v_scroll_bar().value, not reveal_failed and not restore, view.get("anchor", {}) if restore else _reading_anchor())
+	_render(presentation, reveal_id, view.get("scroll", 0.0) if restore else _body_label.get_v_scroll_bar().value, not reveal_failed and not restore, view.get("anchor", {}) if restore else (_layout_anchor if not _layout_anchor.is_empty() else _reading_anchor()))
 	_status_label.text = "%s · %s / %s · Project %s · Department %s%s" % [_domain_id, snapshot.state, snapshot.execution_state, BridgeClient.workspace_snapshot().get("stage", "unknown"), FailureDisplay.department_status(data), " · Stop to release workspace" if not snapshot.domain_session_id.is_empty() and snapshot.state != "inactive" else ""]
 	if snapshot.get("uncertain", false): _status_label.text += " · Unknown outcome — Refresh status"
 	if not BridgeClient.is_bridge_connected(): _status_label.text += " · Disconnected"

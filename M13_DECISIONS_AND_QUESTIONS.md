@@ -507,3 +507,21 @@ unresolved governing conflict was found; locked decisions, historical contracts
 and paid evidence remain unchanged. Final M13 acceptance remains Task10 work.
 
 Task9 independently reviewed complete through `2e2fffd`: offline lock-respecting export and backup-before-delete of ended sessions, plus aligned operator docs. 200 focused tests pass on Python3.12/3.11. One Minor platform-error wording correction joins the two client minors in Task10/final QA. Continue Task10 full regression/performance/fresh actual evidence; Tasks1–9 are not shipped acceptance.
+
+
+Task10 local implementation/QA handoff: the three deferred client/documentation
+minors are resolved, plus a deterministic Stop/status ordering regression found
+by the full gate. Bounded source/runtime/completeness receipts, representative/
+dense/exact64MiB probes and the [owner runbook](docs/m13-live-acceptance.md) are
+implemented. Final valid-layout Python passes2,419 +118 subtests; sequential
+pinned Godot/npm gates and static/spec checks pass. The
+[synthetic performance record](specs/evidence/m13-state-performance-linux-2026-10-26.json)
+binds actual measured bytes/runtime, made on dirty9e2911a before commit; it is not
+provider or desktop acceptance. Dense peakRSS549,883,904B and max heartbeat
+gap229.61ms are explicit review concerns, with pre-release barrier heartbeat/
+replay progress proven separately. Initial11fail and setup-invalid interrupted
+attempts remain in the private task receipt, not reclassified as passing gates.
+Independent Task10/whole-branch reviews, actual fresh33-case guards in both modes,
+owner laptop/desktop/OAuth observations, reviewed PR/tracking and merge remain
+with the controller/owner. M14/M15 remain planned; no fresh OAuth login exists in
+this cloud runtime and no token request/copy is part of acceptance.

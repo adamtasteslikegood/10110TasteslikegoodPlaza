@@ -172,6 +172,7 @@ func _ready() -> void:
 	diagnostic_command_regressions()
 	persistence_v2_regressions()
 	duplicate_execution_regression()
+	stop_status_order_regression()
 	backend_discontinuity_regression()
 	execution_control_regression()
 	catalog_receipt_bound_regression()
@@ -504,20 +505,22 @@ func persistence_v2_regressions() -> void:
 
 
 func duplicate_execution_regression() -> void:
-	var s = fresh()
-	s.admit_command(command("domain_status", "B-authority"))
-	var current := state("B-authority")
-	current.execution_id = "E-B"
-	current.domain_revision = "3"
-	s.apply_packet(current)
-	var duplicate := command("domain_query", "saved-duplicate")
-	duplicate.execution_id = "E-B"
-	check(s.admit_command(duplicate), "duplicate request uses B execution authority")
-	var retained := result("1", "A", "saved-duplicate")
-	retained.erase("protocol_version")
-	s.apply_packet(retained)
-	var snapshot: Dictionary = s.snapshot("core")
-	check(snapshot.pending_query.is_empty() and snapshot.execution_id == "E-B" and snapshot.execution_state == "idle" and snapshot.state == "active", "retained duplicate settles exact request without altering B authority or lifecycle")
+	for already_received in [false, true]:
+		var s = fresh()
+		var retained := result("1", "A", "saved-duplicate")
+		retained.erase("protocol_version")
+		if already_received: s.apply_packet(retained)
+		s.admit_command(command("domain_status", "B-authority"))
+		var current := state("B-authority")
+		current.execution_id = "E-B"
+		current.domain_revision = "3"
+		s.apply_packet(current)
+		var duplicate := command("domain_query", "saved-duplicate")
+		duplicate.execution_id = "E-B"
+		check(s.admit_command(duplicate), "duplicate request uses B execution authority")
+		s.apply_packet(retained)
+		var snapshot: Dictionary = s.snapshot("core")
+		check(snapshot.pending_query.is_empty() and snapshot.execution_id == "E-B" and snapshot.execution_state == "idle" and snapshot.state == "active" and snapshot.results.size() == 1, "retained duplicate settles exact request once without altering B authority; previously received=" + str(already_received))
 
 
 func backend_discontinuity_regression() -> void:
@@ -744,3 +747,27 @@ func fix_round2_unavailable_owner_regressions() -> void:
 				check(accepted and not observed.authority_unavailable and observed.domain_session_id == "A" and observed.results.size() == 1 and observed.unsaved_results.size() == 1 and observed.received_cursor == "1" and observed.draft == "same project draft", "same A recovery retains saved/unsaved cache and draft")
 			else:
 				check(not accepted and observed.domain_revision == "3" and observed.authority_unavailable and observed.results.size() == 1, "unavailable interval does not relax same-A lower-revision fencing")
+
+
+func stop_status_order_regression() -> void:
+	for replacement in [false, true]:
+		var s = fresh()
+		check(s.admit_command(command("deactivate_domain", "pending-stop")), "Stop admitted before concurrent status")
+		check(s.admit_command(command("domain_status", "stopped-observation")), "status observes pending Stop independently")
+		var stopped := state("stopped-observation", "A", "inactive")
+		stopped.domain_revision = "3"
+		s.apply_packet(stopped)
+		check(s.snapshot("core").execution_id == "" and s.snapshot("core").pending_control.get("request_id") == "pending-stop", "inactive status clears authority but retains exact pending Stop")
+		if replacement:
+			check(s.admit_command(command("domain_status", "replacement")), "new execution observed on separate client")
+			var current := state("replacement")
+			current.execution_id = "E-B"
+			current.domain_revision = "4"
+			s.apply_packet(current)
+		stopped.request_id = "pending-stop"
+		var change: Dictionary = s.apply_packet(stopped)
+		var snapshot: Dictionary = s.snapshot("core")
+		if replacement:
+			check(change.is_empty() and snapshot.execution_id == "E-B" and snapshot.state == "active" and snapshot.domain_revision == "4", "late Stop ack cannot roll back later execution or revision")
+		else:
+			check(change.get("request_id") == "pending-stop" and change.get("reason") == "domain_state" and snapshot.pending_control.is_empty() and snapshot.state == "inactive" and snapshot.execution_id == "" and snapshot.domain_revision == "3", "exact Stop ack settles after trusted inactive status without restoring old authority")

@@ -29,8 +29,15 @@ spec-set versions, and no application release existed before `v0.1.22`.
 - Add offline `scripts/domain_state.py` export and ended-session deletion using
   safe exclusive UTF-8 JSON outputs and a durable backup before compacting commit.
   Document startup backend switching, limits, cleartext content and safe recovery.
-- Final M13 performance, fresh guard/live evidence and acceptance remain pending;
-  historical M12 evidence retains its original source/runtime/mode bindings.
+- Add bounded source/runtime-bound performance and owner-acceptance receipts and a
+  strict 33-case/mode guard campaign covering storage faults and stale executions
+  through the installed callback, including transitions during awaited readiness.
+- Settle retained duplicate Runs independently of rendering and exact Stop replies
+  after a concurrent inactive status. Preserve scrolled result anchors through
+  continuity notices and dialogue/pane handoff.
+- Record full pinned local QA and representative/dense/64 MiB measurements; final
+  independent review, fresh provider guards and owner desktop/OAuth acceptance
+  remain pending. Historical M12 evidence keeps its original bindings.
 
 ### Changed — in-memory domain store extraction (PLZG-290, #373)
 

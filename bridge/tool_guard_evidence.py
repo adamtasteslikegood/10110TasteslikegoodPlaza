@@ -51,6 +51,10 @@ REQUIRED_GUARD_CASES = tuple(
     "stop_idle",
     "stop_query",
     "repeated_cancel",
+    "bash_storage_fault",
+    "bash_stale_execution",
+    "bash_storage_during_readiness",
+    "bash_stale_during_readiness",
 )
 
 
@@ -274,10 +278,41 @@ def case_errors(record):
             errors.append("Missing successful child result/PostToolUse correlation")
     elif record["child_attributed"]:
         errors.append("Unexpected delegated tool path")
-    if name.endswith(("_deny", "_exception", "_timeout")) and (
-        record["normalized_denials"] or record["timeout_denials"]
-    ):
+    if (
+        name.endswith(("_deny", "_exception", "_timeout"))
+        or name
+        in {
+            "bash_storage_fault",
+            "bash_stale_execution",
+            "bash_storage_during_readiness",
+            "bash_stale_during_readiness",
+        }
+    ) and (record["normalized_denials"] or record["timeout_denials"]):
         errors.append("Checker denial was replaced by an adapter failure")
+    if name in {
+        "bash_storage_fault",
+        "bash_stale_execution",
+        "bash_storage_during_readiness",
+        "bash_stale_during_readiness",
+    }:
+        during = "during" in name
+        expected = dict(
+            reason="state_store_failed" if "storage" in name else "stale_execution",
+            timing="during_readiness" if during else "before_hook",
+            installed_callback=True,
+            transition_observed=True,
+            readiness_await_entered=during,
+            transition_before_readiness_return=during,
+        )
+        gate = record.get("application_gate")
+        if not isinstance(gate, dict) or any(
+            type(gate.get(key)) is not type(value) or gate.get(key) != value
+            for key, value in expected.items()
+        ):
+            errors.append(
+                "Missing application storage/execution gate or awaited transition evidence"
+            )
+
     terminal = record.get("terminal")
     if record["terminal_seen"]:
         if (

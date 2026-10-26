@@ -362,7 +362,18 @@ func apply_packet(packet: Dictionary) -> Dictionary:
 	if not namespace_changed and compare(decimal(packet.domain_revision), d.domain_revision) < 0:
 		_settle(d, id)
 		return _change("domain", d.domain_id, "status_stale", id)
-	if c.has("execution_id") and c.execution_id != d.execution_id: return {}
+	if c.has("execution_id") and c.execution_id != d.execution_id:
+		# A concurrent status can observe this exact Stop's committed inactive
+		# revision before its reply arrives. Settle only that pending correlation;
+		# never reapply the older reply's authority, catalog or lifecycle facts.
+		if c.type != "deactivate_domain" or d.pending_control.get("request_id") != id or d.pending_control.get("execution_id") != c.execution_id: return {}
+		if generation != d.domain_session_id or d.state != "inactive" or d.execution_id != "" or packet.state != "inactive" or packet.execution_id != null or decimal(packet.domain_revision) != d.domain_revision: return {}
+		_settle(d, id)
+		d.version += 1
+		_refresh_uncertainty(d)
+		_trim(d)
+		return _change("domain", d.domain_id, kind, id)
+
 	if generation != null and generation != d.domain_session_id:
 		if c.type not in ["activate_domain", "domain_status"]:
 			return {}
@@ -457,7 +468,18 @@ func _apply_result(d: Dictionary, p: Dictionary) -> Dictionary:
 	var n := decimal(p.get("output_id"))
 	if n in ["", "0"]: return {}
 	var b: Dictionary = d.buckets[p.domain_session_id]
-	if compare(n, b.received) <= 0 or b.observed.has(n): return {}
+	var matched_query: bool = p.domain_session_id == d.domain_session_id and d.pending_query.get("request_id") == p.request_id and d.pending_query.get("agent_id") == p.agent_id and d.pending_query.get("task") == p.task
+	if matched_query:
+		d.pending_query = {}
+		_commands.erase(p.request_id)
+		d.query_uncertain = false
+		d.draft = "" if d.draft == p.task else d.draft
+		if current_execution: d.execution_state = "idle"
+	if compare(n, b.received) <= 0 or b.observed.has(n):
+		if not matched_query: return {}
+		d.version += 1
+		_refresh_uncertainty(d)
+		return _change("domain", d.domain_id, "domain_result", p.request_id)
 	var retained := false
 	for r in d.results:
 		if r.domain_session_id == p.domain_session_id and decimal(r.output_id) == n: retained = true
@@ -474,13 +496,6 @@ func _apply_result(d: Dictionary, p: Dictionary) -> Dictionary:
 		var discarded: String = keys.back()
 		b.observed.erase(discarded)
 		_receipt_problem(b, "receipt_capacity", "Receipt history needs replay", discarded)
-	var matched_query: bool = p.domain_session_id == d.domain_session_id and d.pending_query.get("request_id") == p.request_id and d.pending_query.get("agent_id") == p.agent_id and d.pending_query.get("task") == p.task
-	if matched_query:
-		d.pending_query = {}
-		_commands.erase(p.request_id)
-		d.query_uncertain = false
-		d.draft = "" if d.draft == p.task else d.draft
-		if current_execution: d.execution_state = "idle"
 	if current_execution or matched_query: d.version += 1
 	if current_execution: _merge_memory(d.memory, _terminal_memory(p.memory))
 	for i in range(d.unsaved_results.size() - 1, -1, -1):

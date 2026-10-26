@@ -155,6 +155,21 @@ def complete_case(name="bash_deny"):
             cost_usd=0.01,
             permission_denials=0 if ready else 1,
         )
+    if name in {
+        "bash_storage_fault",
+        "bash_stale_execution",
+        "bash_storage_during_readiness",
+        "bash_stale_during_readiness",
+    }:
+        during = "during" in name
+        result["application_gate"] = dict(
+            reason="state_store_failed" if "storage" in name else "stale_execution",
+            timing="during_readiness" if during else "before_hook",
+            installed_callback=True,
+            transition_observed=True,
+            readiness_await_entered=during,
+            transition_before_readiness_return=during,
+        )
     if name == "bash_disconnect":
         result["channel_dropped"] = True
     return result
@@ -171,7 +186,7 @@ def complete_evidence():
         cli_sha256="a" * 64,
         case_deadline_seconds=45,
         case_budget_usd=0.2,
-        max_queries=27,
+        max_queries=31,
         watchdog_seconds=7,
         checker_seconds=5,
         matcher_seconds=10,
@@ -633,3 +648,138 @@ def test_application_state_sources_require_fresh_guard_evidence():
         "bridge/project_service.py",
         "bridge/server.py",
     } <= set(GUARD_SOURCES)
+
+
+@pytest.mark.parametrize(
+    "name,reason,timing",
+    [
+        ("bash_storage_fault", "state_store_failed", "before_hook"),
+        ("bash_stale_execution", "stale_execution", "before_hook"),
+        ("bash_storage_during_readiness", "state_store_failed", "during_readiness"),
+        ("bash_stale_during_readiness", "stale_execution", "during_readiness"),
+    ],
+)
+def test_application_gate_observations_are_required_and_reason_timing_bound(
+    name, reason, timing
+):
+    mod = module()
+    record = complete_case(name)
+    record["application_gate"] = dict(
+        reason=reason,
+        timing=timing,
+        installed_callback=True,
+        transition_observed=True,
+        readiness_await_entered=timing == "during_readiness",
+        transition_before_readiness_return=timing == "during_readiness",
+    )
+    assert mod.case_errors(record) == []
+    for key in record["application_gate"]:
+        incomplete = deepcopy(record)
+        del incomplete["application_gate"][key]
+        assert mod.case_errors(incomplete), key
+    wrong = deepcopy(record)
+    wrong["application_gate"]["reason"] = "other"
+    assert mod.case_errors(wrong)
+    for field in ("normalized_denials", "timeout_denials"):
+        wrong = deepcopy(record)
+        wrong[field] = 1
+        assert mod.case_errors(wrong), field
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "name",
+    [
+        "bash_storage_fault",
+        "bash_stale_execution",
+        "bash_storage_during_readiness",
+        "bash_stale_during_readiness",
+    ],
+)
+async def test_application_campaign_installs_real_session_gate_without_provider(
+    tmp_path, name
+):
+    import asyncio
+    from bridge.domain_sdk import DomainSDKOwner
+    from bridge.readiness import ReadinessService
+    from bridge.workspace_lease import WorkspaceLease
+    from bridge.tests.test_domain_sdk import Client
+
+    mod = module()
+    assert hasattr(mod, "ApplicationGate"), "application campaign fixture missing"
+    workspace, memory, lease, runtime, _ = mod.fixture(tmp_path)
+    gate = mod.ApplicationGate(name, mod.probe_config("dontAsk"), workspace)
+    sdk = None
+    try:
+        await gate.open()
+        lease.release(cleanup_confirmed=True)
+        lease = WorkspaceLease.acquire(
+            workspace,
+            domain_id=workspace.domain_id,
+            domain_session_id=gate.session.domain_session_id,
+        )
+        turn = mod.probe_turn(name, workspace, lease)
+
+        class Ready(ReadinessService):
+            async def check_tool(self, lease, **kwargs):
+                result = await super().check_tool(lease, **kwargs)
+                if kwargs["tool_name"] == "Bash":
+                    await gate.during_readiness()
+                return result
+
+        service = gate.wrap(Ready(workspace, runtime, memory))
+        await service.prepare_turn(turn)
+        clients = []
+
+        def factory(**kwargs):
+            gate.observe_installed(kwargs["options"].hooks["PreToolUse"][0].hooks[0])
+            client = Client(**kwargs)
+            clients.append(client)
+            return client
+
+        gate.observe_installed(lambda: None)
+        assert gate.observations["installed_callback"] is False
+        sdk = DomainSDKOwner(
+            mod.probe_config("dontAsk"),
+            workspace,
+            lease,
+            service,
+            client_factory=factory,
+        )
+        await sdk.start()
+        await gate.before_hook()
+        callback = clients[0].options.hooks["PreToolUse"][0].hooks[0]
+        answer = await asyncio.create_task(
+            callback(
+                dict(
+                    hook_event_name="PreToolUse",
+                    tool_use_id="case-tool",
+                    tool_name="Bash",
+                    cwd=str(workspace.worktree_path),
+                    tool_input={"command": "true"},
+                ),
+                "case-tool",
+                {},
+            )
+        )
+        assert answer["hookSpecificOutput"]["permissionDecision"] == "deny"
+        assert gate.observations["reason"] == (
+            "state_store_failed" if "storage" in name else "stale_execution"
+        )
+        assert gate.observations["transition_observed"] is True
+        assert gate.observations["installed_callback"] is True
+        assert gate.observations["readiness_await_entered"] is ("during" in name)
+    finally:
+        if sdk is not None:
+            assert (await sdk.stop()).clean
+        await gate.close()
+        if "turn" in locals():
+            memory.finish_turn(
+                turn.turn_id,
+                outcome="cancelled",
+                output="Offline gate fixture",
+                delta=None,
+            )
+        memory.detach_run("probe-run")
+        if lease.held:
+            lease.release(cleanup_confirmed=True)

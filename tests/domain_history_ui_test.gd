@@ -102,6 +102,7 @@ func _ready() -> void:
 	GameEvents.npc_approached.emit("systems-architect", AgentRegistry.get_agent("systems-architect"))
 	await frames(20)
 	check(body.get_parsed_text().contains("Unsaved answer auk") and body.get_parsed_text().contains("UNSAVED"), "uncommitted answer explicitly labeled in dialogue")
+	await continuity_anchor_checks(pane, dialogue)
 	storage_error = "state_store_uncertain"
 	BridgeClient.domain_status("core")
 	await frames(25)
@@ -122,6 +123,38 @@ func _ready() -> void:
 	await frames(15)
 	check(BridgeClient.character_snapshot("systems-architect").get("pending") == "", "valid v2 capability negotiation settles")
 	finish()
+
+func continuity_anchor_checks(pane: Node, dialogue: Node) -> void:
+	for i in range(2, 6):
+		var output := terminal("A", "anchor-" + str(i))
+		output.output_id = str(i)
+		output.output = ("Anchor ibis " + str(i) + "\n").repeat(28)
+		peer.send_text(JSON.stringify(output))
+	await frames(20)
+	pane._open_remote()
+	await frames(15)
+	var label: RichTextLabel = pane.get_node("Panel/Scroll/Rows/ResultsLabel")
+	var target: Dictionary = pane._result_spans[2]
+	var actual_start := label.text.find("[A · systems-architect · output 3")
+	check(target.start == actual_start, "continuity notice and separator counted in result span")
+	var y := label.get_line_offset(label.get_character_line(actual_start))
+	label.get_v_scroll_bar().value = y
+	pane._save_result_view(y)
+	var view: Dictionary = BridgeClient.domain_snapshot("core").view
+	check(not view.follow and view.anchor.get("request_id") == "anchor-3" and absf(view.anchor.offset) < 1, "nonfollow pane saves semantic result anchor at visible result")
+	storage_error = "state_store_failed"
+	BridgeClient.domain_status("core")
+	await frames(20)
+	actual_start = label.text.find("[A · systems-architect · output 3")
+	var expected := label.get_line_offset(label.get_character_line(actual_start))
+	check(absf(label.get_v_scroll_bar().value - expected) < 1, "changing persistence notice preserves nonfollow semantic anchor")
+	GameEvents.npc_approached.emit("systems-architect", AgentRegistry.get_agent("systems-architect"))
+	await frames(20)
+	var body: RichTextLabel = dialogue.get_node("Panel/Margin/Rows/BodyLabel")
+	var anchor: Dictionary = dialogue._reading_anchor()
+	check(BridgeClient.surface.owner == "dialogue" and anchor.get("request_id") == "anchor-3", "pane to dialogue handoff preserves nonfollow result identity")
+	check(body.get_v_scroll_bar().value > 0, "handoff restores scrolled history")
+	storage_error = null
 
 func finish() -> void:
 	BridgeClient.set_process(false)

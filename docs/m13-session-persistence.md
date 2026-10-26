@@ -3,8 +3,11 @@
 The [owner-approved M13 design](superpowers/specs/2026-10-26-m13-sqlite-session-persistence-design.md)
 and the [platform successor contract](designs/platform-decisions.md#approved-m13-successor-contract--october-26-2026)
 authorize this local application-session behavior. Implementation is on the M13
-branch; final performance, fresh guard/live evidence and acceptance remain pending.
+branch; local QA/performance are recorded, while independent final review, fresh
+guard/live evidence and owner acceptance remain pending.
 Historical M12 reports keep their original source/runtime/mode bindings.
+The [M13 live acceptance runbook](m13-live-acceptance.md) supplies source-bound
+performance/desktop receipts and reviewed guard-campaign commands.
 
 ## Configure continuity at startup
 
@@ -107,8 +110,10 @@ never prune unrecognized files to make room.
 
 Python 3.11+ must provide stdlib SQLite `serialize`/`deserialize`. Safe storage
 requires POSIX `O_NOFOLLOW`, `O_DIRECTORY`, directory fsync and `fcntl.flock`.
-Missing serialization or POSIX/open primitives produce `state_store_unsupported`;
-other locking/filesystem failures fail closed with storage errors. There is no
+Detected missing SQLite serialization or POSIX/open capabilities produce
+`state_store_unsupported`. An earlier safe-file directory/open primitive failure
+can instead produce `state_store_invalid`; other locking/filesystem failures also
+fail closed with storage errors. There is no
 pathname SQLite, WAL/journal-sidecar or JSONL fallback. Native Windows durability
 is not established. Existing Git/worktree prerequisites still apply. Linux
 Python 3.12 and pinned 3.11 focused tests are recorded in the Task 9 receipt;

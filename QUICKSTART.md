@@ -756,6 +756,12 @@ attempt was deliberately authorized after inspection, with unchanged sources,
 prompts, caps and validator. The failed report remains failed. This refresh does
 not re-date the historical live flow or establish laptop/desktop acceptance.
 
+The M13 branch extends the current guard campaign to **33 cases / at most 31
+queries per permission mode**, adding committed-storage and stale-execution gates.
+Use the [M13 acceptance runbook](docs/m13-live-acceptance.md) for reviewed commands,
+source/runtime binding, pending OAuth/desktop receipt and measured performance.
+The 29-case counts in the M12 evidence descriptions retain their historical scope.
+
 The bounded runners are deliberate paid operations with **no automatic retries**:
 
 ```bash
@@ -779,7 +785,7 @@ manifests fail acceptance. Do not treat a previous output file as a new pass.
 `--help` describes the new runner without starting providers. Legacy bridge and
 Sprint 6 scripts do not implement help parsers; `--help` there may start work.
 
-The probe pins SDK 0.2.136, AnyIO 4.14.2 and bundled CLI 2.1.228. It checks 29
+The probe pins SDK 0.2.136, AnyIO 4.14.2 and bundled CLI 2.1.228. Its original M12 campaign checked 29
 Read/Edit/Bash, MCP, delegated and cancellation cases, at most 27 queries, model
 `claude-haiku-5-5`, 45 seconds and USD 0.20 **per case**, stopping at the first
 failure. MCP/delegation probe coverage does not enable them in product domains;
@@ -790,7 +796,7 @@ exact source hashes, versions and the actual local bundled binary hash.
 Fresh probes are **not automatically activated**. Product activation reads fixed
 `bridge/tool_guard_acceptance.json`, an envelope with `schema_version:1` and
 `records` keyed by `dontAsk` and `bypassPermissions`. Both complete records must
-match all twelve guarded source hashes. Each selected mode also verifies the pinned
+match the complete current `GUARD_SOURCES` inventory. Each selected mode also verifies the pinned
 SDK/AnyIO/CLI version and actual bundled binary SHA; there is no evidence override.
 
 For publication, build `acceptance_envelope(records)` from the two unchanged

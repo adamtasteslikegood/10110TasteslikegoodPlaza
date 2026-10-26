@@ -19,6 +19,7 @@ import sys
 import tempfile
 import threading
 import time
+from types import SimpleNamespace
 from uuid import uuid4
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -42,6 +43,11 @@ from claude_agent_sdk.types import (
 
 from scripts.evidence_output import FreshEvidenceOutput
 
+from bridge.application_state import StateCommand, StateError
+from bridge.domain_manager import DomainManager
+from bridge.domain_protocol import DomainCommandError
+from bridge.domain_session import DomainSession, _ExecutionReadiness
+from bridge.state_coordinator import StateCoordinator, LazySQLiteStateRepository
 from bridge.config import default_config
 from bridge.domain_sdk import (
     DomainSDKOwner,
@@ -119,6 +125,158 @@ def probe_turn(name, workspace, lease):
     )
 
 
+class ApplicationGate:
+    """Disposable actual state owner and manager authority behind installed hooks.
+
+    Failure injection is confined to this image's durable replacement boundary.
+    Both coordinator health and the manager's current execution are production
+    checks; the campaign never substitutes a synthetic permission denial.
+    """
+
+    def __init__(self, name, config, workspace):
+        self.name, self.config, self.workspace = name, config, workspace
+        self.coordinator = StateCoordinator(
+            lambda: LazySQLiteStateRepository(
+                workspace.common_git_dir, workspace.project_id
+            )
+        )
+        self.manager = DomainManager(
+            config,
+            SimpleNamespace(owner_run_id="probe-run"),
+            state_coordinator=self.coordinator,
+        )
+        self.session = None
+        self._transitioned = False
+        self.observations = dict(
+            reason=None,
+            timing="during_readiness" if "during" in name else "before_hook",
+            installed_callback=False,
+            transition_observed=False,
+            readiness_await_entered=False,
+            transition_before_readiness_return=False,
+        )
+
+    async def open(self):
+        await self.coordinator.open()
+        await self._start(0)
+
+    async def _start(self, revision):
+        commit = await self.coordinator.commit(
+            StateCommand(
+                "start",
+                dict(
+                    domain_id=self.workspace.domain_id,
+                    expected_domain_revision=revision,
+                    boot_id=str(uuid4()),
+                    execution_id=str(uuid4()),
+                    timestamp="probe-start",
+                ),
+            )
+        )
+        session = DomainSession(
+            self.workspace.domain_id,
+            commit.result["session_id"],
+            config=self.config,
+            project_service=self.manager._service,
+            execution_id=commit.result["execution_id"],
+            coordinator=self.coordinator,
+            authority_check=self.manager._check_authority,
+        )
+        self.manager._sessions.setdefault(session.domain_id, []).append(session)
+        if self.session is None:
+            self.session = session
+
+    def check(self):
+        try:
+            self.session._require_state_ready()
+        except (StateError, DomainCommandError) as error:
+            self.observations["reason"] = error.code
+            raise
+
+    def wrap(self, readiness):
+        return _ExecutionReadiness(readiness, self.check)
+
+    def observe_installed(self, callback):
+        # The caller captures this from options.hooks before installing the
+        # observation wrapper. No independently recreated readiness callback.
+        self.observations["installed_callback"] = (
+            getattr(callback, "__func__", None) is DomainSDKOwner._pre_tool_hook
+            and isinstance(getattr(callback, "__self__", None), DomainSDKOwner)
+            and isinstance(callback.__self__.readiness, _ExecutionReadiness)
+        )
+
+    async def transition(self):
+        if self._transitioned:
+            return
+        self._transitioned = True
+        before = self.coordinator.snapshot()
+        stop = StateCommand(
+            "stop",
+            dict(
+                execution_id=self.session.execution_id,
+                outcome="stopped",
+                timestamp="probe-stop",
+            ),
+        )
+        if "storage" in self.name:
+            image = self.coordinator._repository._image
+            original = image.replace
+
+            def fail_replace(data):
+                raise StateError("state_store_failed")
+
+            image.replace = fail_replace
+            try:
+                try:
+                    await self.coordinator.commit(stop)
+                except StateError as error:
+                    if error.code != "state_store_failed":
+                        raise
+                else:
+                    raise AssertionError("Expected actual coordinator commit failure")
+            finally:
+                image.replace = original
+            self.observations["transition_observed"] = (
+                not self.coordinator.admission_open
+                and self.coordinator.health == "state_store_failed"
+                and self.coordinator.snapshot() == before
+            )
+        else:
+            stopped = await self.coordinator.commit(stop)
+            revision = next(
+                d.domain_revision
+                for d in stopped.view.domains
+                if d.domain_id == self.session.domain_id
+            )
+            await self._start(revision)
+            current = self.manager._current(self.session.domain_id)
+            self.observations["transition_observed"] = (
+                self.coordinator.admission_open
+                and current is not self.session
+                and current.domain_session_id == self.session.domain_session_id
+                and current.execution_id != self.session.execution_id
+                and any(
+                    e.execution_id == current.execution_id
+                    for e in self.coordinator.snapshot().executions
+                )
+            )
+
+    async def before_hook(self):
+        if "during" not in self.name:
+            await self.transition()
+
+    async def during_readiness(self):
+        if "during" in self.name:
+            self.observations["readiness_await_entered"] = True
+            # Await real worker commits while the original readiness callback
+            # remains on stack, then return its pre-transition ready snapshot.
+            await self.transition()
+            self.observations["transition_before_readiness_return"] = True
+
+    async def close(self):
+        await self.coordinator.close()
+
+
 async def run_case(name, cli, permission_mode):
     config = probe_config(permission_mode)
     started = time.monotonic()
@@ -176,12 +334,16 @@ async def run_case(name, cli, permission_mode):
         owner = None
         clients = []
         target_ids = set()
+        application = None
+        guard = None
 
         class FixtureReadiness(ReadinessService):
             async def check_tool(self, lease, **kwargs):
                 snapshot = await super().check_tool(lease, **kwargs)
                 if kwargs["tool_name"] != target:
                     return snapshot
+                if application is not None:
+                    await application.during_readiness()
                 if mode == "lifecycle_io":
                     await owned_io(blocked_hook_read)
                 if mode == "deny":
@@ -193,7 +355,23 @@ async def run_case(name, cli, permission_mode):
                 return snapshot
 
         service = FixtureReadiness(workspace, runtime, memory)
-        guard = service.pre_tool_hook(lease)
+        if name in {
+            "bash_storage_fault",
+            "bash_stale_execution",
+            "bash_storage_during_readiness",
+            "bash_stale_during_readiness",
+        }:
+            application = ApplicationGate(name, config, workspace)
+            await application.open()
+            await owned_io(lease.release, cleanup_confirmed=True)
+            lease = await owned_io(
+                WorkspaceLease.acquire,
+                workspace,
+                domain_id=workspace.domain_id,
+                domain_session_id=application.session.domain_session_id,
+            )
+            service = application.wrap(service)
+            record["application_gate"] = application.observations
 
         async def pre(data, tool_id, context):
             tool_name = data.get("tool_name")
@@ -233,6 +411,8 @@ async def run_case(name, cli, permission_mode):
                 await owner.transport.inner._stdin_stream.aclose()
                 await owner.transport.inner._stdout_stream.aclose()
                 raise RuntimeError("Disposable pending control channel closed")
+            if application is not None:
+                await application.before_hook()
             answer = await guard(data, tool_id, context)
             record["decision"] = "deny" if answer else "unchanged"
             record["hook_decisions"][tool_id] = record["decision"]
@@ -256,6 +436,10 @@ async def run_case(name, cli, permission_mode):
 
         class ObservedClient:
             def __init__(self, *, options, transport):
+                nonlocal guard
+                guard = options.hooks["PreToolUse"][0].hooks[0]
+                if application is not None:
+                    application.observe_installed(guard)
                 options.cli_path = cli
                 options.model = MODEL
                 options.max_turns = 4
@@ -548,6 +732,8 @@ async def run_case(name, cli, permission_mode):
                     output="Disposable probe observed",
                     delta=None,
                 )
+                if application is not None:
+                    await application.close()
                 await owned_io(memory.detach_run, "probe-run")
                 if cleanup.clean:
                     await owned_io(lease.release, cleanup_confirmed=True)

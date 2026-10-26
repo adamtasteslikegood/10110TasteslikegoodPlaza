@@ -248,7 +248,7 @@ func _refresh() -> void:
 	var continuity := FailureDisplay.persistence(snapshot)
 	if not continuity.is_empty(): lines.append(continuity)
 	var spans: Array[Dictionary] = []
-	var character_offset := 0
+	var character_offset := 0 if continuity.is_empty() else continuity.length() + 2
 	for result in BridgeClient.domains.selected_results(selected_domain_id):
 		var archived: bool = result.domain_session_id != generation
 		var turn_memory: Dictionary = result.memory if result.get("memory") is Dictionary else {}

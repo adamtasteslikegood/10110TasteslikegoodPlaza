@@ -436,6 +436,10 @@
     {
       "path": "docs/m13-session-persistence.md",
       "reason": "Operational summary of the owner-approved M13 SQLite design and platform successor contract; no new authority or locked decision. Final acceptance remains pending."
+    },
+    {
+      "path": "docs/m13-live-acceptance.md",
+      "reason": "Operational acceptance runbook for the approved M13 design; separates source-bound offline probes, reviewed live guard evidence and pending owner desktop/OAuth observations; no new authority."
     }
   ]
 }

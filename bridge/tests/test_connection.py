@@ -103,6 +103,8 @@ async def test_new_connection_cannot_steal_domain_output(tmp_path, monkeypatch):
                 json.dumps(
                     dict(
                         type="activate_domain",
+                        protocol_version=2,
+                        expected_domain_revision="0",
                         domain_id="engineering",
                         request_id="start",
                     )
@@ -113,6 +115,8 @@ async def test_new_connection_cannot_steal_domain_output(tmp_path, monkeypatch):
             generation = active["domain_session_id"]
             command = dict(
                 type="domain_query",
+                protocol_version=2,
+                execution_id=active["execution_id"],
                 domain_id="engineering",
                 domain_session_id=generation,
                 agent_id="backend-architect",
@@ -136,6 +140,8 @@ async def test_new_connection_cannot_steal_domain_output(tmp_path, monkeypatch):
                 assert owners[0].lease.held
         assert owners[0].lease.held and not owners[0].stopped.is_set()
         await server._shutdown_domains()
+        if server.application_state is not None:
+            await server.application_state.close()
     service.close()
 
 
@@ -177,6 +183,8 @@ async def test_stop_and_discovery_preempt_blocked_start_and_npc(tmp_path, monkey
                 json.dumps(
                     dict(
                         type="activate_domain",
+                        protocol_version=2,
+                        expected_domain_revision="0",
                         domain_id="engineering",
                         request_id="start",
                     )
@@ -190,7 +198,13 @@ async def test_stop_and_discovery_preempt_blocked_start_and_npc(tmp_path, monkey
             assert json.loads(await socket.recv())["request_id"] == "observe"
             await socket.send(
                 json.dumps(
-                    dict(type="activate_domain", domain_id="other", request_id="excess")
+                    dict(
+                        type="activate_domain",
+                        protocol_version=2,
+                        expected_domain_revision="0",
+                        domain_id="other",
+                        request_id="excess",
+                    )
                 )
             )
             busy = json.loads(await socket.recv())
@@ -203,6 +217,8 @@ async def test_stop_and_discovery_preempt_blocked_start_and_npc(tmp_path, monkey
                 json.dumps(
                     dict(
                         type="background_domain",
+                        protocol_version=2,
+                        execution_id=activating["execution_id"],
                         domain_id="engineering",
                         domain_session_id=activating["domain_session_id"],
                         request_id="busy-generation",
@@ -219,6 +235,8 @@ async def test_stop_and_discovery_preempt_blocked_start_and_npc(tmp_path, monkey
                 json.dumps(
                     dict(
                         type="deactivate_domain",
+                        protocol_version=2,
+                        execution_id=activating["execution_id"],
                         domain_id="engineering",
                         domain_session_id=activating["domain_session_id"],
                         request_id="stop",
@@ -236,6 +254,8 @@ async def test_stop_and_discovery_preempt_blocked_start_and_npc(tmp_path, monkey
             assert not any(p.get("state") == "active" for p in packets)
             assert owners[0].stopped.is_set() and not owners[0].lease.held
         await server._shutdown_domains()
+        if server.application_state is not None:
+            await server.application_state.close()
     service.close()
 
 
