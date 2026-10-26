@@ -125,7 +125,7 @@ Logical records (exact SQL/index names are builder choices):
 
 | Record | Required data and invariant |
 |---|---|
-| Project metadata | schema version, project_id, monotonically increasing durable revision |
+| Project metadata | schema version, store-instance UUID matching the initialization manifest, project_id, monotonically increasing durable revision |
 | Domain | domain_id, nullable current open session, monotonically increasing domain_revision |
 | Application session | UUID, domain, created_at, nullable ended_at/ended_by (`user` or `bridge`), terminal highwater; one open session per domain |
 | Execution | UUID, application session, boot UUID, start/stop times, execution/cleanup outcome; never authority that an old process is alive |
@@ -317,7 +317,9 @@ proof, not only SQLite mocks:
   prove event-loop heartbeat/replay remain responsive during slow durable I/O.
 - Complete existing Python, pinned Godot, formatting, spec and protocol gates.
   Identify changed guarded sources and collect genuinely fresh runtime/mode/live
-  evidence where required. Never restamp historical fingerprints/reports.
+  evidence where required. Add any new component that authorizes tool execution
+  to the guarded-source inventory and its real evidence campaign; unchanged old
+  fingerprints cannot certify a new guard path. Never restamp historical reports.
 
 Next: fresh builder check, owner design review, then the implementation plan.
 No product implementation, scaffold or new dependency is part of this design work.
