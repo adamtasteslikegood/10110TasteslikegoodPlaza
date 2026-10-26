@@ -406,6 +406,46 @@ def test_load_rejects_huge_highwater_without_materializing_range(
     error("state_store_invalid", lambda: api.SQLiteStateRepository(repo.image))
 
 
+@pytest.mark.parametrize("character", ["x", "é"])
+def test_load_rejects_oversized_packet_before_json_decode(
+    repo, api, monkeypatch, character
+):
+    active = start(repo)
+    complete(repo, active)
+    before = repo.load()
+    oversized = json.dumps(
+        dict(
+            before.terminals[0].packet,
+            metadata=character
+            * (api.MAX_TERMINAL_PACKET_BYTES // len(character.encode())),
+        ),
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
+    assert len(oversized.encode()) > api.MAX_TERMINAL_PACKET_BYTES
+    if character == "é":
+        assert len(oversized) < api.MAX_TERMINAL_PACKET_BYTES
+    connection = sqlite3.connect(":memory:")
+    connection.deserialize(repo.image.read())
+    connection.execute("UPDATE terminals SET packet=?", (oversized,))
+    connection.commit()
+    data = connection.serialize()
+    connection.close()
+    repo.image.replace(data)
+    original_loads = json.loads
+
+    def guarded_loads(value, *args, **kwargs):
+        if isinstance(value, str):
+            assert (
+                len(value.encode()) <= api.MAX_TERMINAL_PACKET_BYTES
+            ), "oversized stored packet reached JSON decoder"
+        return original_loads(value, *args, **kwargs)
+
+    monkeypatch.setattr(api.json, "loads", guarded_loads)
+    error("state_store_invalid", lambda: api.SQLiteStateRepository(repo.image))
+    assert repo.image.read() == data and repo.load() == before
+
+
 @pytest.mark.parametrize(
     "table,column", [("metadata", "revision"), ("domains", "domain_revision")]
 )

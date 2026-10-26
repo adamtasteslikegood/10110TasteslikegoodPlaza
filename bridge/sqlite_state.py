@@ -266,6 +266,18 @@ def _packet(record, packet, output_id):
     return result, encoded, len(result["output"].encode("utf-8"))
 
 
+def _stored_packet(packet):
+    # Bound persisted text before the decoder and TerminalRecord's deep copy.
+    # The character check also bounds the temporary UTF-8 encoding allocation.
+    if (
+        not isinstance(packet, str)
+        or len(packet) > MAX_TERMINAL_PACKET_BYTES
+        or len(packet.encode("utf-8")) > MAX_TERMINAL_PACKET_BYTES
+    ):
+        _invalid()
+    return json.loads(packet)
+
+
 class SQLiteStateRepository:
     """Use only on the owning worker. The caller retains StateImage ownership."""
 
@@ -315,7 +327,7 @@ class SQLiteStateRepository:
             )
         )
         terminals = tuple(
-            TerminalRecord(sid, rid, oid, json.loads(packet), size)
+            TerminalRecord(sid, rid, oid, _stored_packet(packet), size)
             for sid, rid, oid, packet, size in connection.execute(
                 "SELECT * FROM terminals ORDER BY session_id,output_id"
             )
