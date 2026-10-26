@@ -416,6 +416,14 @@
     {
       "path": "docs/superpowers/plans/2026-10-26-m13-memory-store-extraction.md",
       "reason": "Execution plan derived from the owner-approved bounded #373 design; no new product decisions or authority."
+    },
+    {
+      "path": "docs/confluence-publishing.md",
+      "reason": "Operational setup and recovery guide for the GitHub-to-Confluence source mirrors. Process, not specification; delivery coordinates remain authoritative for destination identities."
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-25-confluence-publisher.md",
+      "reason": "Implementation plan for the owner-selected GitHub Actions publisher. Execution artifact, not a new source of product or document authority."
     }
   ]
 }

@@ -4,7 +4,7 @@
   "project": "PLZG",
   "as_of": "2026-10-25T23:27:56-07:00",
   "source": "Atlassian current connector: project = PLZG ORDER BY key ASC; three complete pages (100/100/67), unique keys, exact counts from statusCategory. Board 169 active-sprint listing returned zero active sprints.",
-  "regenerate": "project = PLZG (total) / statusCategory = Done (done) / statusCategory = \"In Progress\" (wip), then recompute work_item_age from each WIP item's created date",
+  "regenerate": "Re-query every PLZG issue with pagination, count Done and In Progress status categories, recompute each WIP age from created to as_of, and read board 169 active sprint state. Do not refresh only the timestamp.",
   "counts": {
     "total": 267,
     "done": 184,
