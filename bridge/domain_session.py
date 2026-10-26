@@ -555,14 +555,21 @@ class DomainSession:
             )
             # The owner may have failed while checkpoint IO was awaiting.
             await self._require_owner_ready()
+            cancelled = False
             if self._run_state is not None:
                 _, cancelled = await self._run_state.accept(
                     run.intent, run.memory_revision
                 )
-                run.accepted = True
                 run.disposition = "accepted"
-                if cancelled or self._stopping:
-                    raise asyncio.CancelledError()
+            run.accepted = True
+            # Acceptance may commit after Stop cancelled its await. Archive the
+            # originating input before either accepted path can finish the Run.
+            if self._recorder:
+                self._recorder.message(
+                    run.context, "user", run.command["task"], "input"
+                )
+            if cancelled or self._stopping:
+                raise asyncio.CancelledError()
             run.preparing = False
         except (Exception, asyncio.CancelledError) as error:
             run.preparing = False
@@ -613,7 +620,6 @@ class DomainSession:
             await settle_owned(deliver(run.emit, packet, self._recorder, run.context))
             run.admitted.set_result(packet)
             return
-        run.accepted = True
         packet = dict(
             type="domain_accepted",
             **self._identity(),
@@ -630,8 +636,6 @@ class DomainSession:
         )
         run.admitted.set_result(packet)
         run.preparing = False
-        if self._recorder:
-            self._recorder.message(run.context, "user", run.command["task"], "input")
         if cancelled:
             await self._finish_run(
                 run, SDKOutcome("", "cancelled", "stopped", None, None), started

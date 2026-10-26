@@ -169,10 +169,12 @@ async def test_notes_before_terminal_before_delivery(durable, monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_accept_failure_never_executes(durable):
+async def test_accept_failure_never_executes(durable, runtime_archive):
     manager, session, service, owner, coordinator, controls, packets, emit, command = (
         durable
     )
+    recorder, writer = runtime_archive
+    session._recorder = recorder
     controls["fail"] = "accept"
     await manager.handle(command, context=context(), emit=emit)
     assert packets[-1]["error_type"] == "state_store_failed"
@@ -180,6 +182,7 @@ async def test_accept_failure_never_executes(durable):
     assert session._inflight is None and not coordinator.admission_open
     assert "pending" not in service.memory.load().todo
     assert not coordinator.snapshot().requests
+    assert not [record for kind, record, _ in writer.records if kind == "transcript"]
 
 
 @pytest.mark.asyncio
@@ -747,3 +750,69 @@ async def test_owner_readiness_failure_after_notes_never_accepts(durable):
     assert not owner.calls and not coordinator.snapshot().requests
     assert "pending" not in service.memory.load().todo
     assert session._inflight is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("phase", ["block", "block_after"], ids=["before", "after"])
+async def test_stop_during_acceptance_archives_input_and_outcome_once(
+    durable, runtime_archive, phase
+):
+    manager, session, service, owner, coordinator, controls, packets, emit, command = (
+        durable
+    )
+    recorder, writer = runtime_archive
+    session._recorder = recorder
+    controls[phase] = "accept"
+    origin = context(command["request_id"], "original-connection")
+    caller = asyncio.create_task(manager.handle(command, context=origin, emit=emit))
+    try:
+        await wait_for(controls["entered"].is_set)
+        stopping = asyncio.create_task(session.stop())
+        await wait_for(owner.stopped.is_set)
+        assert not stopping.done() and service.reservation.held
+        assert not [
+            record for kind, record, _ in writer.records if kind == "transcript"
+        ]
+    finally:
+        controls["release"].set()
+    await caller
+    await stopping
+
+    terminal = coordinator.replay(session.domain_session_id, 0).entries
+    assert len(terminal) == 1
+    assert terminal[0]["status"] == "cancelled" and terminal[0]["output_id"] == "1"
+    assert packets == terminal and not owner.calls and session.clean_inactive
+    assert (
+        controls["events"].count("accept") == controls["events"].count("terminal") == 1
+    )
+    records = [record for kind, record, _ in writer.records if kind == "transcript"]
+    assert [(record["role"], record["outcome"]) for record in records] == [
+        ("user", "input"),
+        ("error", "cancelled"),
+    ]
+    assert records[0]["content"] == command["task"]
+    assert all(
+        record["request_id"] == command["request_id"]
+        and record["connection_id"] == "original-connection"
+        and record["agent_id"] == command["agent_id"]
+        for record in records
+    )
+    await manager.handle(
+        dict(
+            type="resume",
+            protocol_version=2,
+            domain_id=session.domain_id,
+            domain_session_id=session.domain_session_id,
+            request_id="replay",
+            cursor="0",
+        ),
+        context=context("replay", "reconnected"),
+        emit=emit,
+    )
+    assert [
+        record for kind, record, _ in writer.records if kind == "transcript"
+    ] == records
+    assert (
+        not owner.calls
+        and coordinator.replay(session.domain_session_id, 0).entries == terminal
+    )
