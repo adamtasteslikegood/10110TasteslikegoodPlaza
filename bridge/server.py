@@ -139,6 +139,11 @@ class BridgeServer:
             backend=self._config.domain_state_backend,
             durable=durable,
             continuity="project" if durable else "process",
+            continuity_id=(
+                (self.application_state.instance_id if self.application_state else None)
+                if durable
+                else self.domains.boot_id
+            ),
             error_type=(
                 self.application_state.health
                 if self.application_state is not None

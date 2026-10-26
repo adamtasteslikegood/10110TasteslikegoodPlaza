@@ -62,6 +62,8 @@ static func notice(error: Dictionary, include_related: bool = true) -> String:
 	var text: String = error.get("message", "The command could not complete.")
 	if error.has("readiness_category"):
 		text += "\n" + cause({"status": "error", "reason": "readiness_failed", "readiness_category": error.readiness_category})
+	if error.get("unresolved_queries_omitted", 0) > 0:
+		text += "\n%d earlier unknown Run inputs were omitted to keep history bounded; their outcomes remain unknown." % error.unresolved_queries_omitted
 	if not include_related: return text
 	var command_error: Dictionary = error.get("command_error", {})
 	if not command_error.is_empty(): text += "\n" + notice(command_error)

@@ -8,6 +8,7 @@ acceptance. Internal --child mode composes the real serve(stop_event) lifecycle.
 import argparse
 import asyncio
 from contextlib import AbstractContextManager
+from copy import deepcopy
 from datetime import datetime, timezone
 import hashlib
 import importlib.metadata
@@ -637,6 +638,19 @@ async def inspect_observation(service, owners, observer):
                 await asyncio.sleep(0.025)
 
 
+async def capture_observation(
+    service, owners, observer, *, commands, emitted, starts, contexts
+):
+    # Corroborating wire facts must precede the physical ownership inspection.
+    # A later Stop cannot be attached to an earlier, still-reserved snapshot.
+    wire = deepcopy(
+        dict(commands=commands, emitted=emitted, starts=starts, contexts=contexts)
+    )
+    state = await inspect_observation(service, owners, observer)
+    state.update(wire)
+    return state
+
+
 async def bridge_child(config_path, control, run_id):
     """Isolated instrumentation; no factory/provider/guard replacement."""
     import websockets
@@ -773,15 +787,16 @@ async def bridge_child(config_path, control, run_id):
                     stop.set()
                     break
                 sequence += 1
-                state = await inspect_observation(service, owners, observer)
-                state.update(
-                    run_id=run_id,
-                    seq=sequence,
+                state = await capture_observation(
+                    service,
+                    owners,
+                    observer,
                     commands=commands,
                     emitted=emitted,
                     starts=starts,
                     contexts=contexts,
                 )
+                state.update(run_id=run_id, seq=sequence)
                 write_json(control / "state.json", state)
                 await asyncio.sleep(0.025)
             await serving

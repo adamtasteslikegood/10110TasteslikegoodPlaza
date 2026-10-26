@@ -18,7 +18,7 @@ func command(kind: String, id: String, generation: String = "A") -> Dictionary:
 	return p
 
 func state(id: String, generation: String = "A", lifecycle: String = "active") -> Dictionary:
-	return {"type": "domain_state", "protocol_version": 2, "execution_id": "E-" + generation if lifecycle != "inactive" else null, "domain_revision": "1", "saved_sessions": [{"domain_session_id": generation, "created_at": "2026-10-26", "ended_at": null, "ended_by": null, "high_water_mark": "0"}], "state_store": {"backend": "sqlite", "durable": true, "continuity": "project", "error_type": null}, "request_id": id, "project_id": "P", "workspace_id": "W", "domain_id": "core", "domain_session_id": generation, "state": lifecycle, "execution_state": "idle"}
+	return {"type": "domain_state", "protocol_version": 2, "execution_id": "E-" + generation if lifecycle != "inactive" else null, "domain_revision": "1", "saved_sessions": [{"domain_session_id": generation, "created_at": "2026-10-26", "ended_at": null, "ended_by": null, "high_water_mark": "0"}], "state_store": {"backend": "sqlite", "continuity_id": "00000000-0000-4000-8000-000000000001", "durable": true, "continuity": "project", "error_type": null}, "request_id": id, "project_id": "P", "workspace_id": "W", "domain_id": "core", "domain_session_id": generation, "state": lifecycle, "execution_state": "idle"}
 
 func result(output: String, generation: String = "A", request: String = "run") -> Dictionary:
 	return {"type": "domain_result", "protocol_version": 2, "execution_id": "E-" + generation, "request_id": request, "project_id": "P", "workspace_id": "W", "domain_id": "core", "domain_session_id": generation, "output_id": output, "agent_id": "systems-architect", "task": "work", "output": "answer " + output, "status": "success", "reason": "completed", "truncated": false, "memory": {"saved": true, "revision": 4, "error_type": null}}
@@ -175,6 +175,10 @@ func _ready() -> void:
 	backend_discontinuity_regression()
 	execution_control_regression()
 	catalog_receipt_bound_regression()
+	fix_round1_namespace_regressions()
+	fix_round1_budget_regressions()
+	fix_round1_namespace_validation_regressions()
+	fix_round1_metadata_budget_regressions()
 	finish()
 
 func dict_accepted() -> Dictionary:
@@ -276,7 +280,7 @@ func additional_vectors() -> void:
 	s = Store.new()
 	var discover := {"type": "describe_workspace", "protocol_version": 2, "request_id": "describe"}
 	s.admit_command(discover)
-	var malformed := {"type": "workspace_state", "protocol_version": 2, "state_store": {"backend": "sqlite", "durable": true, "continuity": "project", "error_type": null}, "request_id": "describe", "stage": "ready", "project_id": "P", "workspace_id": "W", "memory": {"status": "saved", "revision": 1}}
+	var malformed := {"type": "workspace_state", "protocol_version": 2, "state_store": {"backend": "sqlite", "continuity_id": "00000000-0000-4000-8000-000000000001", "durable": true, "continuity": "project", "error_type": null}, "request_id": "describe", "stage": "ready", "project_id": "P", "workspace_id": "W", "memory": {"status": "saved", "revision": 1}}
 	check(s.apply_packet(malformed).is_empty(), "incomplete discovery schema cannot bind a project")
 	s = fresh()
 	replay(s)
@@ -355,7 +359,7 @@ func archive_retention_boundary() -> void:
 	for n in range(1, 5):
 		var terminal := result(str(n), "A", "old-" + str(n))
 		terminal.task = "old"
-		terminal.output = "x".repeat(262144 if n < 4 else 259675)
+		terminal.output = "x".repeat(262144 if n < 4 else 259500)
 		s.apply_packet(terminal)
 	var unknown := command("domain_query", "unknown")
 	unknown.task = "unknown"
@@ -384,7 +388,7 @@ func final_rebinding_regression() -> void:
 	s.apply_packet(result("1"))
 	s.disconnect_connection()
 	check(s.admit_command({"type": "describe_workspace", "protocol_version": 2, "request_id": "unconfigured-discovery"}), "final R3 discovery admitted")
-	var unconfigured := {"type": "workspace_state", "protocol_version": 2, "state_store": {"backend": "sqlite", "durable": true, "continuity": "project", "error_type": null}, "request_id": "unconfigured-discovery", "project_id": null, "workspace_id": null, "stage": "unconfigured", "reason": null, "architect_decision": null, "project_path": null, "worktree_path": null, "branch": null, "changed_files": null, "reservation": null, "memory": {"path": null, "status": "unavailable", "revision": null, "error_type": null}}
+	var unconfigured := {"type": "workspace_state", "protocol_version": 2, "state_store": {"backend": "sqlite", "continuity_id": "00000000-0000-4000-8000-000000000001", "durable": true, "continuity": "project", "error_type": null}, "request_id": "unconfigured-discovery", "project_id": null, "workspace_id": null, "stage": "unconfigured", "reason": null, "architect_decision": null, "project_path": null, "worktree_path": null, "branch": null, "changed_files": null, "reservation": null, "memory": {"path": null, "status": "unavailable", "revision": null, "error_type": null}}
 	var changed: Dictionary = s.apply_packet(unconfigured)
 	check(changed.get("project_changed", false), "final R3 authoritative unconfigured discovery changes prior binding")
 	var current: Dictionary = s.snapshot("core")
@@ -528,7 +532,7 @@ func backend_discontinuity_regression() -> void:
 	var memory := state("memory-reconnect", "A", "inactive")
 	memory.domain_session_id = null
 	memory.saved_sessions = []
-	memory.state_store = {"backend": "memory", "durable": false, "continuity": "process", "error_type": null}
+	memory.state_store = {"backend": "memory", "continuity_id": "00000000-0000-4000-8000-000000000002", "durable": false, "continuity": "process", "error_type": null}
 	s.apply_packet(memory)
 	check(s.snapshot("core").selected_session_id == "" and s.snapshot("core").results.is_empty(), "switch to memory cannot present selected SQLite history as process continuity")
 	check(s.apply_packet(result("2")).is_empty(), "old backend packets cannot reintroduce old application history")
@@ -556,3 +560,143 @@ func catalog_receipt_bound_regression() -> void:
 		status.saved_sessions.append({"domain_session_id": "old-" + str(index), "created_at": "1", "ended_at": "2", "ended_by": "user", "high_water_mark": "0"})
 		s.apply_packet(status)
 	check(s._domains.core.buckets.size() <= 128 and s.snapshot("core").domain_session_id == "A", "catalog turnover keeps receipt metadata bounded without evicting current authority")
+
+
+func fix_round1_namespace_regressions() -> void:
+	for old_backend in ["sqlite", "memory"]:
+		for nested in [false, true]:
+			for revision in ["0", "9"]:
+				var s = fresh()
+				s.admit_command(command("domain_status", "old-namespace"))
+				var old := state("old-namespace")
+				old.domain_revision = "3"
+				if old_backend == "memory": old.state_store = {"backend": "memory", "continuity_id": "00000000-0000-4000-8000-000000000002", "durable": false, "continuity": "process", "error_type": null}
+				s.apply_packet(old)
+				s.apply_packet(result("1"))
+				s.disconnect_connection()
+				var reset := state("new-namespace", "A", "inactive")
+				reset.domain_session_id = null
+				reset.saved_sessions = []
+				reset.domain_revision = revision
+				reset.state_store = {"backend": "memory", "continuity_id": "00000000-0000-4000-8000-000000000003", "durable": false, "continuity": "process", "error_type": null}
+				var accepted: bool
+				if nested: accepted = s.observe_domain(reset, s.observation_fence())
+				else:
+					s.admit_command(command("domain_status", "new-namespace"))
+					accepted = s.apply_packet(reset).get("reason") == "domain_state"
+				var after: Dictionary = s.snapshot("core")
+				check(accepted and after.domain_revision == revision and after.domain_session_id == "" and after.results.is_empty(), "new %s namespace replaces %s authority at revision %s via %s" % ["memory", old_backend, revision, "observation" if nested else "status"])
+	var s = fresh()
+	s.admit_command(command("domain_status", "current-namespace"))
+	var current := state("current-namespace")
+	current.domain_revision = "3"
+	s.apply_packet(current)
+	var unsaved := result("1", "A", "local-unsaved")
+	unsaved.erase("output_id")
+	unsaved.committed = false
+	s.apply_packet(unsaved)
+	s.disconnect_connection()
+	s.admit_command(command("domain_status", "same-namespace"))
+	current.request_id = "same-namespace"
+	s.apply_packet(current)
+	check(s.snapshot("core").unsaved_results.size() == 1 and s.snapshot("core").execution_id == "E-A", "same namespace reconnect preserves unsaved text and authority")
+	s.admit_command(command("domain_status", "same-namespace-stale"))
+	var stale := state("same-namespace-stale")
+	stale.domain_revision = "2"
+	check(s.apply_packet(stale).get("reason") == "status_stale" and s.snapshot("core").domain_revision == "3", "same namespace still rejects lower revisions")
+	check(not s.observe_domain(stale, s.observation_fence()) and s.snapshot("core").unsaved_results.size() == 1, "nested stale same-namespace observation preserves unsaved text")
+	s = Store.new()
+	s.bind_project("P")
+	s.admit_command(command("domain_status", "empty-sqlite"))
+	var empty := state("empty-sqlite", "A", "inactive")
+	empty.domain_session_id = null
+	empty.domain_revision = "0"
+	empty.saved_sessions = []
+	empty.state_store.continuity_id = null
+	s.apply_packet(empty)
+	s.set_draft("core", "first Start draft")
+	var start := command("activate_domain", "first-start")
+	start.expected_domain_revision = "0"
+	check(s.admit_command(start), "uninitialized SQLite Start admitted")
+	s.apply_packet(state("first-start", "A", "activating"))
+	check(s.snapshot("core").draft == "first Start draft" and s.snapshot("core").pending_control.get("request_id") == "first-start", "SQLite instance initialization does not retire pending first Start or draft")
+
+
+func fix_round1_budget_regressions() -> void:
+	var s = fresh()
+	var generation := "A"
+	for index in range(18):
+		var run := command("domain_query", "unknown-" + str(index), generation)
+		run.task = "u".repeat(65536)
+		check(s.admit_command(run), "large unknown input admitted before archival")
+		var next_generation := "archive-" + str(index)
+		var status_id := "archive-status-" + str(index)
+		s.admit_command(command("domain_status", status_id))
+		s.apply_packet(state(status_id, next_generation))
+		generation = next_generation
+	var archive: Dictionary = s.snapshot("core")
+	check(JSON.stringify(archive).to_utf8_buffer().size() <= Store.MAX_BYTES and archive.get("omitted_unknown_count", 0) > 0, "multiple archived 64-KiB inputs fit aggregate byte budget with explicit unknown omission")
+	check(archive.domain_session_id == generation and archive.pending_query.is_empty() and archive.error.get("unresolved_queries_omitted", 0) > 0, "unknown omission preserves current authority and unknown-outcome disclosure")
+	s = fresh()
+	for index in range(199):
+		var unsaved := result("1", "A", "unsaved-" + str(index))
+		unsaved.erase("output_id")
+		unsaved.committed = false
+		s.apply_packet(unsaved)
+	s.set_draft("core", "next draft")
+	check(s.admit_command(command("domain_query", "current-pending")), "pending current Run admitted at unsaved retention boundary")
+	check(s.admit_command(command("background_domain", "current-control")), "current control admitted at retention boundary")
+	var pending: Dictionary = s.snapshot("core")
+	var entries: int = pending.results.size() + pending.unsaved_results.size() + pending.saved_sessions.size() + pending.memory_reconciliation.size() + (0 if pending.draft == "" else 1) + (0 if pending.pending_query.is_empty() else 1) + (0 if pending.pending_control.is_empty() else 1) + pending.error.get("unresolved_queries", []).size()
+	check(entries <= Store.MAX_ENTRIES and pending.pending_query.get("request_id") == "current-pending" and pending.draft == "next draft" and pending.pending_control.get("request_id") == "current-control", "unsaved/draft/pending/catalog share one entry budget without dropping current correlation")
+
+
+func fix_round1_namespace_validation_regressions() -> void:
+	var s = fresh()
+	s.apply_packet(result("1"))
+	for invalid in ["protocol", "project", "flag", "identity", "storage_error_field"]:
+		var id: String = "invalid-namespace-" + invalid
+		s.admit_command(command("domain_status", id))
+		var packet := state(id, "A", "inactive")
+		packet.domain_session_id = null
+		packet.saved_sessions = []
+		packet.domain_revision = "0"
+		packet.state_store = {"backend": "memory", "continuity_id": "00000000-0000-4000-8000-000000000003", "durable": false, "continuity": "process", "error_type": null}
+		if invalid == "protocol": packet.protocol_version = 1
+		elif invalid == "project": packet.project_id = "OTHER"
+		elif invalid == "flag": packet.state_store.durable = "false"
+		elif invalid == "identity": packet.state_store.erase("continuity_id")
+		else: packet.state_store.erase("error_type")
+		check(s.apply_packet(packet).is_empty() and s.snapshot("core").results.size() == 1 and s.snapshot("core").domain_session_id == "A", "invalid namespace packet cannot mutate cache: " + invalid)
+		var valid := state(id)
+		s.apply_packet(valid)
+	s.disconnect_connection()
+	s.admit_command(command("domain_status", "unknown-store"))
+	var failed := state("unknown-store", "A", "inactive")
+	failed.domain_session_id = null
+	failed.saved_sessions = []
+	failed.domain_revision = "0"
+	failed.state_store.continuity_id = null
+	failed.state_store.error_type = "state_store_invalid"
+	s.apply_packet(failed)
+	var blocked: Dictionary = s.snapshot("core")
+	check(blocked.authority_unavailable and blocked.execution_id == "" and blocked.read_only and blocked.state_store.error_type == "state_store_invalid" and blocked.results.size() == 1, "unidentified failed store exposes fault and keeps only read-only cached history")
+	check(not s.admit_command(command("domain_query", "no-unidentified-work")), "unidentified store cannot authorize cached work")
+
+
+func fix_round1_metadata_budget_regressions() -> void:
+	var s = fresh()
+	s.admit_command(command("domain_status", "large-status-metadata"))
+	var metadata := state("large-status-metadata")
+	metadata.state_store.diagnostic_extension = "x".repeat(995000)
+	s.apply_packet(metadata)
+	s.set_draft("core", "d".repeat(65536))
+	check(s.admit_command(command("domain_query", "metadata-current")), "current correlation admitted with extended status metadata")
+	check(JSON.stringify(s.snapshot("core")).to_utf8_buffer().size() <= Store.MAX_BYTES and s.snapshot("core").pending_query.get("request_id") == "metadata-current", "retained status facts cannot bypass aggregate byte budget through extensions")
+	s = fresh()
+	var terminal := result("1")
+	terminal.memory.path = "p".repeat(995000)
+	s.apply_packet(terminal)
+	s.set_draft("core", "d".repeat(65536))
+	check(s.admit_command(command("domain_query", "memory-current")), "current correlation admitted with extended terminal memory")
+	check(JSON.stringify(s.snapshot("core")).to_utf8_buffer().size() <= Store.MAX_BYTES and s.snapshot("core").pending_query.get("request_id") == "memory-current", "terminal memory extensions cannot escape text eviction into retained status facts")

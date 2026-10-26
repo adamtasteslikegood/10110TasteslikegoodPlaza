@@ -398,6 +398,11 @@ class StateCoordinator:
         self._reconciling_task = self._owned(self._reconcile_owned(pending))
         await asyncio.shield(self._reconciling_task)
 
+    @property
+    def instance_id(self) -> str | None:
+        """Committed image identity, absent until the first SQLite Start."""
+        return self._view.instance_id if self._view is not None else None
+
     def snapshot(self) -> StateView | None:
         return deepcopy(self._view)
 

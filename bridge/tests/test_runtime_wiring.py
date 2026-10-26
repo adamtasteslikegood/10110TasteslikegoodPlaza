@@ -1217,7 +1217,11 @@ async def test_application_state_opens_when_project_ready_without_start(
         assert recovered.executions[0].outcome == "interrupted"
         assert server.domains._sessions == {}
         assert server.application_state_status() == dict(
-            backend="sqlite", durable=True, continuity="project", error_type=None
+            backend="sqlite",
+            durable=True,
+            continuity="project",
+            continuity_id=recovered.instance_id,
+            error_type=None,
         )
         assert not offline_clients[0].reply.called
     finally:
@@ -1315,11 +1319,18 @@ async def test_memory_backend_advertises_discontinuity_without_disk_access(
         await server.project.start()
         await server.project._bootstrap_task
         assert server.application_state_status() == dict(
-            backend="memory", durable=False, continuity="process", error_type=None
+            backend="memory",
+            durable=False,
+            continuity="process",
+            continuity_id=server.domains.boot_id,
+            error_type=None,
         )
         assert server.application_state.snapshot() is None
         await server.application_state.commit(start())
         assert server.application_state.snapshot().revision == 1
+        assert (
+            server.application_state_status()["continuity_id"] == server.domains.boot_id
+        )
         assert not offline_clients[0].reply.called
     finally:
         await server._shutdown()

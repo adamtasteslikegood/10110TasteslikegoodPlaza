@@ -41,10 +41,10 @@ func deliver(p: Dictionary) -> void:
 	await frames()
 
 func workspace(id: String, project: Variant = "P") -> Dictionary:
-	return {"type": "workspace_state", "protocol_version": 2, "state_store": {"backend": "sqlite", "durable": true, "continuity": "project", "error_type": null}, "request_id": id, "project_id": project, "workspace_id": "W", "stage": "ready", "reason": null, "architect_decision": null, "project_path": "/project", "worktree_path": "/execution", "branch": "plaza/workspace-P", "changed_files": {"total": 0, "tracked": 0, "untracked": 0, "truncated": false}, "reservation": null, "memory": {"path": "/memory", "status": "saved", "revision": 8, "error_type": null}}
+	return {"type": "workspace_state", "protocol_version": 2, "state_store": {"backend": "sqlite", "continuity_id": "00000000-0000-4000-8000-000000000001", "durable": true, "continuity": "project", "error_type": null}, "request_id": id, "project_id": project, "workspace_id": "W", "stage": "ready", "reason": null, "architect_decision": null, "project_path": "/project", "worktree_path": "/execution", "branch": "plaza/workspace-P", "changed_files": {"total": 0, "tracked": 0, "untracked": 0, "truncated": false}, "reservation": null, "memory": {"path": "/memory", "status": "saved", "revision": 8, "error_type": null}}
 
 func state(id: String, lifecycle: String = "active") -> Dictionary:
-	return {"type": "domain_state", "protocol_version": 2, "execution_id": "E-" + "A" if lifecycle != "inactive" else null, "domain_revision": "1", "saved_sessions": [{"domain_session_id": "A", "created_at": "2026-10-26", "ended_at": null, "ended_by": null, "high_water_mark": "0"}], "state_store": {"backend": "sqlite", "durable": true, "continuity": "project", "error_type": null}, "request_id": id, "project_id": "P", "workspace_id": "W", "domain_id": "core", "domain_session_id": "A", "state": lifecycle, "execution_state": "idle"}
+	return {"type": "domain_state", "protocol_version": 2, "execution_id": "E-" + "A" if lifecycle != "inactive" else null, "domain_revision": "1", "saved_sessions": [{"domain_session_id": "A", "created_at": "2026-10-26", "ended_at": null, "ended_by": null, "high_water_mark": "0"}], "state_store": {"backend": "sqlite", "continuity_id": "00000000-0000-4000-8000-000000000001", "durable": true, "continuity": "project", "error_type": null}, "request_id": id, "project_id": "P", "workspace_id": "W", "domain_id": "core", "domain_session_id": "A", "state": lifecycle, "execution_state": "idle"}
 
 func _ready() -> void:
 	BridgeClient.set_process(false)
@@ -183,6 +183,7 @@ func _ready() -> void:
 	await polling_and_failure_checks()
 	await review_transport_regressions()
 	await final_review_regressions()
+	await fix_round1_bounded_status_regression()
 	finish()
 
 func polling_and_failure_checks() -> void:
@@ -452,3 +453,37 @@ func settle_ready_status() -> void:
 	empty.execution_id = null
 	empty.saved_sessions = []
 	await deliver(empty)
+
+
+func fix_round1_bounded_status_regression() -> void:
+	client.set_process(false)
+	client._reconnect_timer.stop()
+	client._socket.close()
+	client.queue_free()
+	peer.close()
+	peer = null
+	client = load("res://tests/domain_transport_fixture.gd").new()
+	client.bridge_url = "ws://127.0.0.1:%d" % server.get_local_port()
+	add_child(client)
+	await open()
+	var wire := await receive()
+	await deliver(workspace(wire.request_id))
+	var id: String = client.activate_domain("core")
+	await receive()
+	var current := state(id)
+	current.domain_revision = "3"
+	await deliver(current)
+	wire = await receive()
+	await deliver(workspace(wire.request_id))
+	id = client.domain_status("core")
+	await receive()
+	var stale := state(id)
+	stale.domain_revision = "0"
+	await deliver(stale)
+	wire = await receive()
+	check(wire.get("type") == "domain_status", "stale same-namespace snapshot gets one read-only refresh")
+	stale.request_id = wire.request_id
+	var sent_before: int = client.sent.size()
+	await deliver(stale)
+	await frames(20)
+	check(client.sent.size() == sent_before and client._discovery_request == "" and client.domain_snapshot("core").domain_revision == "3", "unchanged rejected snapshot stops reissuing status regardless of request ID")

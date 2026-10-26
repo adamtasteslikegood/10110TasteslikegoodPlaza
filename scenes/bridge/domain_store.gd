@@ -108,7 +108,7 @@ func _domain(id: String) -> Dictionary:
 	if not valid_domain(id): return {}
 	if not _domains.has(id):
 		if _domains.size() >= MAX_DOMAINS: return {}
-		_domains[id] = {"project_id": _project_id, "domain_id": id, "domain_session_id": "", "workspace_id": "", "state": "inactive", "execution_state": "idle", "pending_query": {}, "pending_control": {}, "draft": "", "results": [], "omitted_count": 0, "uncertain": false, "error": {}, "memory": {}, "buckets": {}, "version": 0, "lifecycle_uncertain": false, "query_uncertain": false, "cleanup_confirmed": false, "execution_id": "", "domain_revision": "0", "saved_sessions": [], "selected_session_id": "", "unsaved_results": [], "state_store": {}, "memory_reconciliation": []}
+		_domains[id] = {"project_id": _project_id, "domain_id": id, "domain_session_id": "", "workspace_id": "", "state": "inactive", "execution_state": "idle", "pending_query": {}, "pending_control": {}, "draft": "", "results": [], "omitted_count": 0, "uncertain": false, "error": {}, "memory": {}, "buckets": {}, "version": 0, "lifecycle_uncertain": false, "query_uncertain": false, "cleanup_confirmed": false, "execution_id": "", "domain_revision": "0", "saved_sessions": [], "selected_session_id": "", "unsaved_results": [], "state_store": {}, "memory_reconciliation": [], "authority_unavailable": false, "omitted_unknown_count": 0}
 	return _domains[id]
 
 
@@ -122,7 +122,7 @@ func snapshot(domain_id: String) -> Dictionary:
 	out.erase("query_uncertain")
 	out.erase("cleanup_confirmed")
 	var b: Dictionary = d.buckets.get(d.domain_session_id, {})
-	out.read_only = d.selected_session_id != "" and (d.selected_session_id != d.domain_session_id or d.domain_session_id == "")
+	out.read_only = d.authority_unavailable or (d.selected_session_id != "" and (d.selected_session_id != d.domain_session_id or d.domain_session_id == ""))
 	var selected: Dictionary = d.buckets.get(d.selected_session_id, {})
 	out.selected_received_cursor = selected.get("received", "0")
 	out.selected_consumed_cursor = selected.get("consumed", "0")
@@ -132,10 +132,11 @@ func snapshot(domain_id: String) -> Dictionary:
 		out.error = b.receipt_error.duplicate(true)
 		if not d.error.is_empty(): out.error.command_error = d.error.duplicate(true)
 	var unresolved := _unresolved_queries(d)
-	if not unresolved.is_empty():
+	if not unresolved.is_empty() or d.omitted_unknown_count > 0:
 		if out.error.is_empty():
 			out.error = {"error_type": "unknown_outcome", "message": "An earlier generation's Run outcome is unknown"}
 		out.error.unresolved_queries = unresolved
+		if d.omitted_unknown_count > 0: out.error.unresolved_queries_omitted = d.omitted_unknown_count
 	return out
 
 
@@ -162,7 +163,9 @@ func mark_read(domain_id: String, output_id: String) -> void:
 	var d := _domain(domain_id)
 	if n == "" or d.is_empty() or not d.buckets.has(d.selected_session_id): return
 	var b: Dictionary = d.buckets[d.selected_session_id]
-	if compare(n, b.received) <= 0 and compare(n, b.consumed) > 0: b.consumed = n
+	if compare(n, b.received) <= 0 and compare(n, b.consumed) > 0:
+		b.consumed = n
+		_trim(d)
 
 
 func disconnect_connection() -> void:
@@ -209,6 +212,7 @@ func admit_command(packet: Dictionary) -> bool:
 	var d := _domain(packet.get("domain_id", "")) if packet.get("domain_id") is String else {}
 	if d.is_empty():
 		return false
+	if d.authority_unavailable and kind not in ["domain_status"]: return false
 	if kind == "domain_status":
 		for c in _commands.values():
 			if c.type == kind and c.domain_id == d.domain_id:
@@ -342,10 +346,19 @@ func apply_packet(packet: Dictionary) -> Dictionary:
 		return {}
 	if c.type not in ["activate_domain", "domain_status", "background_domain", "refocus_domain", "deactivate_domain", "end_domain_session"]:
 		return {}
-	if c.type == "domain_status" and c.version != d.version:
+	var namespace_changed := _namespace_changed(d, packet.state_store)
+	if namespace_changed:
+		if c.type != "domain_status": return {}
+		_reset_namespace(d, id)
+	if _unidentified_storage(d, packet.state_store):
+		_mark_storage_unavailable(d, packet.state_store)
+		_settle(d, id)
+		_trim(d)
+		return _change("domain", d.domain_id, "domain_state", id)
+	if not namespace_changed and c.type == "domain_status" and c.version != d.version:
 		_settle(d, id)
 		return _change("domain", d.domain_id, "status_stale", id)
-	if compare(decimal(packet.domain_revision), d.domain_revision) < 0:
+	if not namespace_changed and compare(decimal(packet.domain_revision), d.domain_revision) < 0:
 		_settle(d, id)
 		return _change("domain", d.domain_id, "status_stale", id)
 	if c.has("execution_id") and c.execution_id != d.execution_id: return {}
@@ -379,7 +392,7 @@ func apply_packet(packet: Dictionary) -> Dictionary:
 func _switch_generation(d: Dictionary, generation: String) -> void:
 	# Retire input, not its outcome: no terminal exists until the bridge sends one.
 	if not d.pending_query.is_empty() and d.buckets.has(d.domain_session_id):
-		d.buckets[d.domain_session_id].unresolved_query = d.pending_query.duplicate(true)
+		_archive_query(d, d.domain_session_id, d.pending_query)
 	d.query_uncertain = false
 	d.lifecycle_uncertain = false
 	d.cleanup_confirmed = false
@@ -404,7 +417,9 @@ func _prune_buckets(d: Dictionary) -> void:
 				old = id
 				break
 		if old == "": return
-		if not d.buckets[old].unresolved_query.is_empty(): d.omitted_count = mini(2147483647, d.omitted_count + 1)
+		if not d.buckets[old].unresolved_query.is_empty():
+			d.omitted_count = mini(2147483647, d.omitted_count + 1)
+			d.omitted_unknown_count = mini(2147483647, d.omitted_unknown_count + 1)
 		d.buckets.erase(old)
 		for i in range(d.results.size() - 1, -1, -1):
 			if d.results[i].domain_session_id == old:
@@ -466,7 +481,7 @@ func _apply_result(d: Dictionary, p: Dictionary) -> Dictionary:
 		d.draft = "" if d.draft == p.task else d.draft
 		if current_execution: d.execution_state = "idle"
 	if current_execution or matched_query: d.version += 1
-	if current_execution: _merge_memory(d.memory, p.memory)
+	if current_execution: _merge_memory(d.memory, _terminal_memory(p.memory))
 	for i in range(d.unsaved_results.size() - 1, -1, -1):
 		if d.unsaved_results[i].request_id == p.request_id and d.unsaved_results[i].domain_session_id == p.domain_session_id and d.unsaved_results[i].execution_id == p.execution_id and d.unsaved_results[i].output == p.output: d.unsaved_results.remove_at(i)
 	if b.unresolved_query.get("request_id") == p.request_id:
@@ -504,6 +519,7 @@ func _apply_completion(d: Dictionary, p: Dictionary, c: Dictionary) -> Dictionar
 	_refresh_uncertainty(d)
 	# Completion fields were captured before sends; never overwrite live lifecycle.
 	_settle(d, p.request_id)
+	_trim(d)
 	return _change("domain", d.domain_id, "resume_complete", p.request_id)
 
 
@@ -527,6 +543,14 @@ func _refresh_uncertainty(d: Dictionary) -> void:
 	d.uncertain = d.lifecycle_uncertain or d.query_uncertain or not current.get("receipt_error", {}).is_empty()
 
 
+func _archive_query(d: Dictionary, session_id: String, query: Dictionary) -> void:
+	var bucket: Dictionary = d.buckets[session_id]
+	if not bucket.unresolved_query.is_empty() and bucket.unresolved_query.get("request_id") != query.request_id:
+		d.omitted_unknown_count = mini(2147483647, d.omitted_unknown_count + 1)
+		d.omitted_count = mini(2147483647, d.omitted_count + 1)
+	bucket.unresolved_query = query.duplicate(true)
+
+
 func _unresolved_queries(d: Dictionary) -> Array:
 	var unresolved := []
 	for bucket in d.buckets.values():
@@ -541,7 +565,7 @@ func _settle(d: Dictionary, id: String) -> void:
 
 
 func _valid_storage(value: Variant) -> bool:
-	return value is Dictionary and value.get("backend") in ["sqlite", "memory"] and value.get("durable") is bool and value.get("durable") == (value.get("backend") == "sqlite") and value.get("continuity") == ("project" if value.get("durable") else "process") and (value.get("error_type") == null or valid_id(value.get("error_type")))
+	return value is Dictionary and value.get("backend") in ["sqlite", "memory"] and value.get("durable") is bool and value.get("durable") == (value.get("backend") == "sqlite") and value.get("continuity") == ("project" if value.get("durable") else "process") and value.has("continuity_id") and value.has("error_type") and (value.continuity_id == null or valid_id(value.continuity_id)) and (value.get("error_type") == null or valid_id(value.get("error_type")))
 
 
 func _valid_state(p: Dictionary) -> bool:
@@ -585,19 +609,18 @@ func _adopt_catalog(d: Dictionary, packet: Dictionary) -> void:
 			if command.get("domain_id") == d.domain_id and command.has("execution_id") and command.execution_id != incoming_execution: _commands.erase(id)
 		if d.pending_control.has("execution_id") and d.pending_control.execution_id != incoming_execution: d.pending_control = {}
 		if d.pending_query.has("execution_id") and d.pending_query.execution_id != incoming_execution:
-			if d.buckets.has(d.domain_session_id): d.buckets[d.domain_session_id].unresolved_query = d.pending_query.duplicate(true)
+			if d.buckets.has(d.domain_session_id): _archive_query(d, d.domain_session_id, d.pending_query)
 			d.pending_query = {}
 			d.query_uncertain = false
-	if not d.state_store.is_empty() and d.state_store.get("backend") != packet.state_store.backend:
-		d.buckets.clear()
-		d.results.clear()
-		d.unsaved_results.clear()
-		d.selected_session_id = ""
-		d.error = {"error_type": "backend_changed", "message": "Application backend changed. Previous backend history is separate; any earlier unresolved execution outcome still needs inspection."}
+	d.authority_unavailable = false
 	d.execution_id = packet.execution_id if packet.execution_id != null else ""
 	d.domain_revision = decimal(packet.domain_revision)
-	d.saved_sessions = packet.saved_sessions.duplicate(true)
-	d.state_store = packet.state_store.duplicate(true)
+	d.saved_sessions = []
+	for item in packet.saved_sessions:
+		var metadata := {}
+		for field in ["domain_session_id", "created_at", "ended_at", "ended_by", "high_water_mark"]: metadata[field] = item[field]
+		d.saved_sessions.append(metadata)
+	d.state_store = _storage_facts(packet.state_store)
 	d.memory_reconciliation = packet.get("memory_reconciliation", []).duplicate(true)
 	for item in d.saved_sessions:
 		var id: String = item.domain_session_id
@@ -635,11 +658,21 @@ func _merge_memory(target: Dictionary, incoming: Dictionary) -> void:
 		if incoming.has(key): target[key] = incoming[key]
 
 
+func _storage_facts(storage: Dictionary) -> Dictionary:
+	var facts := {}
+	for field in ["backend", "durable", "continuity", "continuity_id", "error_type"]: facts[field] = storage[field]
+	return facts
+
+
+func _terminal_memory(incoming: Dictionary) -> Dictionary:
+	return {"saved": incoming.saved, "revision": incoming.revision, "error_type": incoming.error_type}
+
+
 func _merge_workspace_memory(incoming: Dictionary) -> void:
 	if _workspace.is_empty(): return
 	# A replayed turn at the same revision cannot erase a later failed save.
 	if float(incoming.get("revision", 0) if incoming.get("revision") != null else 0) <= float(_workspace.memory.get("revision", 0) if _workspace.memory.get("revision") != null else 0): return
-	var memory: Dictionary = incoming.duplicate(true)
+	var memory: Dictionary = _terminal_memory(incoming)
 	memory.status = "saved" if memory.saved else "unsaved"
 	memory.erase("saved")
 	_merge_memory(_workspace.memory, memory)
@@ -686,18 +719,45 @@ func _apply_workspace(p: Dictionary, c: Dictionary) -> Dictionary:
 	return _change("workspace", "", "workspace_state", p.request_id, true, changed)
 
 
-func _trim(d: Dictionary) -> void:
-	# Count the complete exposed wire shapes, pending input and draft together.
-	# Receipt metadata is independently bounded (128 saved-application buckets, 256 sparse IDs each).
-	var bytes: int = JSON.stringify(snapshot(d.domain_id)).to_utf8_buffer().size()
-	var extra: int = d.unsaved_results.size() + (0 if d.draft == "" else 1) + (0 if d.pending_query.is_empty() else 1) + _unresolved_queries(d).size()
-	while not d.results.is_empty() and (d.results.size() + extra > MAX_ENTRIES or bytes > MAX_BYTES):
-		d.results.pop_front()
-		d.omitted_count = mini(2147483647, d.omitted_count + 1)
-		bytes = JSON.stringify(snapshot(d.domain_id)).to_utf8_buffer().size()
+func _retained_entries(d: Dictionary) -> int:
+	var archived := 0
+	for bucket in d.buckets.values():
+		if not bucket.unresolved_query.is_empty(): archived += 1
+	return d.results.size() + d.unsaved_results.size() + d.saved_sessions.size() + d.memory_reconciliation.size() + archived + (0 if d.draft == "" else 1) + (0 if d.pending_query.is_empty() else 1) + (0 if d.pending_control.is_empty() else 1)
 
-	while not d.unsaved_results.is_empty() and (d.unsaved_results.size() + (0 if d.draft == "" else 1) > MAX_ENTRIES or bytes > MAX_BYTES):
-		d.unsaved_results.pop_front()
+
+func _trim(d: Dictionary) -> void:
+	# One budget covers the complete public snapshot and every retained class.
+	# Preserve the current draft, pending correlations and current/selected catalog
+	# records. Omit oldest whole text/unknown input, then old diagnostic metadata.
+	var bytes: int = JSON.stringify(snapshot(d.domain_id)).to_utf8_buffer().size()
+	while _retained_entries(d) > MAX_ENTRIES or bytes > MAX_BYTES:
+		var omitted := false
+		if not d.results.is_empty():
+			d.results.pop_front()
+			omitted = true
+		elif not d.unsaved_results.is_empty():
+			d.unsaved_results.pop_front()
+			omitted = true
+		else:
+			for bucket in d.buckets.values():
+				if not bucket.unresolved_query.is_empty():
+					bucket.unresolved_query = {}
+					d.omitted_unknown_count = mini(2147483647, d.omitted_unknown_count + 1)
+					omitted = true
+					break
+			if not omitted and not d.memory_reconciliation.is_empty():
+				d.memory_reconciliation.pop_front()
+				omitted = true
+			if not omitted:
+				for index in range(d.saved_sessions.size()):
+					var session: String = d.saved_sessions[index].domain_session_id
+					if session != d.domain_session_id and session != d.selected_session_id:
+						d.saved_sessions.remove_at(index)
+						d.buckets.erase(session)
+						omitted = true
+						break
+		if not omitted: break
 		d.omitted_count = mini(2147483647, d.omitted_count + 1)
 		bytes = JSON.stringify(snapshot(d.domain_id)).to_utf8_buffer().size()
 
@@ -723,13 +783,22 @@ func observe_project(project: Dictionary) -> Dictionary:
 func observe_domain(packet: Dictionary, fence: Dictionary) -> bool:
 	if fence.get("epoch") != _epoch or not valid_domain(packet.get("domain_id")) or not _valid_state(packet): return false
 	if packet.get("project_id", "") != _project_id and not (_project_id == "" and packet.get("project_id") == null): return false
-	var d := _domain(packet.domain_id)
-	if d.is_empty() or d.version != fence.get("versions", {}).get(packet.domain_id, 0) or compare(decimal(packet.domain_revision), d.domain_revision) < 0: return false
-	if not d.pending_control.is_empty() or not d.pending_query.is_empty(): return false
 	var generation: Variant = packet.get("domain_session_id")
 	if generation != null and not valid_id(generation): return false
 	if packet.get("workspace_id") != null and not valid_id(packet.workspace_id): return false
-	if d.buckets.has(generation) and d.buckets[generation].get("workspace_id") != packet.get("workspace_id"): return false
+	var d := _domain(packet.domain_id)
+	if d.is_empty(): return false
+	var namespace_changed := _namespace_changed(d, packet.state_store)
+	if not namespace_changed:
+		if d.version != fence.get("versions", {}).get(packet.domain_id, 0): return false
+		if d.buckets.has(generation) and d.buckets[generation].get("workspace_id") != packet.get("workspace_id"): return false
+	if namespace_changed: _reset_namespace(d, "")
+	if _unidentified_storage(d, packet.state_store):
+		_mark_storage_unavailable(d, packet.state_store)
+		_trim(d)
+		return true
+	if not namespace_changed and compare(decimal(packet.domain_revision), d.domain_revision) < 0: return false
+	if not d.pending_control.is_empty() or not d.pending_query.is_empty(): return false
 	if generation == null: generation = ""
 	if generation != d.domain_session_id: _switch_generation(d, generation)
 	_adopt_catalog(d, packet)
@@ -741,8 +810,57 @@ func observe_domain(packet: Dictionary, fence: Dictionary) -> bool:
 	d.cleanup_confirmed = packet.state == "inactive" and packet.execution_state == "idle"
 	d.version += 1
 	_refresh_uncertainty(d)
+	_trim(d)
 	return true
+
+
+func _namespace_changed(d: Dictionary, storage: Dictionary) -> bool:
+	if d.state_store.is_empty(): return false
+	if d.state_store.backend != storage.backend: return true
+	var previous: Variant = d.state_store.get("continuity_id")
+	return previous != null and storage.continuity_id != null and previous != storage.continuity_id
+
+
+func _reset_namespace(d: Dictionary, request_id: String) -> void:
+	for id in _commands.keys():
+		if id != request_id and _commands[id].get("domain_id") == d.domain_id: _commands.erase(id)
+	for field in ["domain_session_id", "execution_id", "workspace_id", "selected_session_id"]: d[field] = ""
+	d.domain_revision = "0"
+	d.state = "inactive"
+	d.execution_state = "idle"
+	d.pending_query = {}
+	d.pending_control = {}
+	d.buckets = {}
+	d.results = []
+	d.unsaved_results = []
+	d.saved_sessions = []
+	d.memory_reconciliation = []
+	d.state_store = {}
+	d.omitted_count = 0
+	d.omitted_unknown_count = 0
+	d.lifecycle_uncertain = false
+	d.query_uncertain = false
+	d.cleanup_confirmed = false
+	d.error = {"error_type": "continuity_changed", "message": "Application history continuity changed. Earlier backend/process history is separate; prior unresolved execution outcomes still need inspection."}
+
+
+func _unidentified_storage(d: Dictionary, storage: Dictionary) -> bool:
+	return storage.continuity_id == null and (storage.error_type != null or d.state_store.get("continuity_id") != null)
+
+
+func _mark_storage_unavailable(d: Dictionary, storage: Dictionary) -> void:
+	d.state_store = _storage_facts(storage)
+	if d.state_store.error_type == null: d.state_store.error_type = "state_store_busy"
+	d.authority_unavailable = true
+	d.execution_id = ""
+	d.pending_control = {}
+	d.lifecycle_uncertain = true
+	d.version += 1
+	d.error = {"error_type": d.state_store.error_type, "message": "Application storage identity is unavailable. Cached history is read-only; inspect and reconcile storage before explicit work."}
+	_refresh_uncertainty(d)
 
 func save_view(domain_id: String, scroll: float, follow: bool, anchor: Dictionary) -> void:
 	var d := _domain(domain_id)
-	if not d.is_empty(): d.view = {"scroll": scroll, "follow": follow, "anchor": anchor.duplicate(true)}
+	if not d.is_empty():
+		d.view = {"scroll": scroll, "follow": follow, "anchor": anchor.duplicate(true)}
+		_trim(d)

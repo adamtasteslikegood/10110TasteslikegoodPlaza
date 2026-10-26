@@ -29,6 +29,7 @@ var _status_queue: Array[String] = []
 var _resume_queue: Array[String] = []
 var _recover_domains: Dictionary = {}
 var _history_discovered: Dictionary = {}
+var _stale_status_observations: Dictionary = {}
 # A failed observation waits for explicit retry or a new connection.
 var _failed_status_domains: Dictionary = {}
 var _workspace_poll := 0.0
@@ -98,6 +99,7 @@ func _on_connection_closed() -> void:
 	_failed_status_domains.clear()
 	domains.disconnect_connection()
 	_history_discovered.clear()
+	_stale_status_observations.clear()
 	_domain_requests.clear()
 	_discovery_request = ""
 	_refresh_workspace = false
@@ -407,14 +409,21 @@ func _on_domain_packet(packet: Dictionary) -> void:
 			_resume_queue.erase(change.domain_id)
 		GameEvents.domain_changed.emit(change.domain_id, change.reason, change.request_id)
 		var failed_control: bool = change.reason == "domain_error" and command.get("type") != "domain_status"
-		if change.reason in ["resume_complete", "status_stale"] or failed_control:
+		if change.reason == "status_stale":
+			var current := domain_snapshot(change.domain_id)
+			var facts := JSON.stringify([packet.get("state_store"), packet.get("domain_revision"), current.get("state_store"), current.get("domain_revision"), domains.observation_fence().versions.get(change.domain_id)])
+			if _stale_status_observations.get(change.domain_id) != facts:
+				_stale_status_observations[change.domain_id] = facts
+				domain_status(change.domain_id)
+		elif change.reason == "resume_complete" or failed_control:
 			domain_status(change.domain_id)
 		if change.reason == "domain_state" and command.get("type") == "domain_status":
+			_stale_status_observations.erase(change.domain_id)
 			_recover_domains.erase(change.domain_id)
 			_queue_history(change.domain_id)
 		if change.reason == "domain_state" and command.get("type") == "activate_domain":
 			var current := domain_snapshot(change.domain_id)
-			_history_discovered[str(current.project_id) + ":" + change.domain_id + ":" + current.selected_session_id] = true
+			_history_discovered[str(current.project_id) + ":" + str(current.state_store.get("continuity_id")) + ":" + change.domain_id + ":" + current.selected_session_id] = true
 		var settled_control: bool = change.reason == "domain_state" and command.get("type") != "domain_status" and change.settled
 		if change.reason == "domain_result" or failed_control or settled_control:
 			# Lifecycle/capacity changes invalidate every observed working character.
@@ -428,9 +437,10 @@ func _on_domain_packet(packet: Dictionary) -> void:
 
 func _queue_history(domain_id: String, force: bool = false) -> void:
 	var current := domain_snapshot(domain_id)
+	if current.get("authority_unavailable", false): return
 	var session: String = current.get("selected_session_id", "")
 	if session.is_empty(): return
-	var key := str(current.get("project_id", "")) + ":" + domain_id + ":" + session
+	var key := str(current.get("project_id", "")) + ":" + str(current.get("state_store", {}).get("continuity_id")) + ":" + domain_id + ":" + session
 	if not force and _history_discovered.has(key): return
 	_history_discovered[key] = true
 	if domain_id not in _resume_queue: _resume_queue.append(domain_id)
@@ -471,6 +481,7 @@ func _reset_project_views() -> void:
 	_resume_queue.clear()
 	_recover_domains.clear()
 	_history_discovered.clear()
+	_stale_status_observations.clear()
 	_failed_status_domains.clear()
 	_notify_connection()
 	_character_requests.clear()

@@ -1479,3 +1479,55 @@ def test_first_run_proof_requires_one_bounded_application_recap(damage):
     else:
         sources[0][damage] = "wrong" if damage != "revision" else "not-a-digest"
     assert module().validate_evidence(record)
+
+
+@pytest.mark.asyncio
+async def test_live_capture_never_attaches_new_stop_to_older_physical_observation(
+    monkeypatch,
+):
+    entered, release = asyncio.Event(), asyncio.Event()
+    physical = dict(
+        reservation={"owner": "execution-A"},
+        lease_marker_exists=True,
+        owners=[dict(clean=False, worker_done=False, transport_closed=False)],
+    )
+    emitted = []
+
+    async def inspect(*args):
+        snapshot = json.loads(json.dumps(physical))
+        entered.set()
+        await release.wait()
+        return snapshot
+
+    monkeypatch.setattr(module(), "inspect_observation", inspect)
+    capturing = asyncio.create_task(
+        module().capture_observation(
+            None, [], None, commands=[], emitted=emitted, starts=[], contexts=[]
+        )
+    )
+    await entered.wait()
+    # The real backend releases physical ownership before emitting inactive.
+    physical.update(
+        reservation=None,
+        lease_marker_exists=False,
+        owners=[dict(clean=True, worker_done=True, transport_closed=True)],
+    )
+    emitted.append(dict(type="domain_state", request_id="exact-stop", state="inactive"))
+    release.set()
+    earlier = await capturing
+    assert earlier["emitted"] == []
+    assert (
+        earlier["reservation"] == {"owner": "execution-A"}
+        and earlier["lease_marker_exists"]
+    )
+    later = await module().capture_observation(
+        None, [], None, commands=[], emitted=emitted, starts=[], contexts=[]
+    )
+    assert later["emitted"] == [
+        dict(type="domain_state", request_id="exact-stop", state="inactive")
+    ]
+    assert later["reservation"] is None and not later["lease_marker_exists"]
+    assert all(
+        owner["clean"] and owner["worker_done"] and owner["transport_closed"]
+        for owner in later["owners"]
+    )

@@ -33,11 +33,11 @@ func check(ok: bool, message: String) -> bool:
 
 func workspace(id: String) -> Dictionary:
 	if unconfigured:
-		return {"type": "workspace_state", "protocol_version": 2, "state_store": {"backend": "sqlite", "durable": true, "continuity": "project", "error_type": null}, "request_id": id, "project_id": null, "workspace_id": null, "stage": "unconfigured", "reason": null, "architect_decision": null, "project_path": null, "worktree_path": null, "branch": null, "changed_files": null, "reservation": null, "memory": {"path": null, "status": "unavailable", "revision": null, "error_type": null}}
-	return {"type": "workspace_state", "protocol_version": 2, "state_store": {"backend": "sqlite", "durable": true, "continuity": "project", "error_type": null}, "request_id": id, "project_id": "P", "workspace_id": "W", "stage": project_stage, "reason": null, "architect_decision": null, "project_path": "/project", "worktree_path": "/execution", "branch": "plaza/workspace-P", "changed_files": {"total": 0, "tracked": 0, "untracked": 0, "truncated": false}, "reservation": null, "memory": {"path": "/memory", "status": "saved", "revision": 8, "error_type": null}}
+		return {"type": "workspace_state", "protocol_version": 2, "state_store": {"backend": "sqlite", "continuity_id": "00000000-0000-4000-8000-000000000001", "durable": true, "continuity": "project", "error_type": null}, "request_id": id, "project_id": null, "workspace_id": null, "stage": "unconfigured", "reason": null, "architect_decision": null, "project_path": null, "worktree_path": null, "branch": null, "changed_files": null, "reservation": null, "memory": {"path": null, "status": "unavailable", "revision": null, "error_type": null}}
+	return {"type": "workspace_state", "protocol_version": 2, "state_store": {"backend": "sqlite", "continuity_id": "00000000-0000-4000-8000-000000000001", "durable": true, "continuity": "project", "error_type": null}, "request_id": id, "project_id": "P", "workspace_id": "W", "stage": project_stage, "reason": null, "architect_decision": null, "project_path": "/project", "worktree_path": "/execution", "branch": "plaza/workspace-P", "changed_files": {"total": 0, "tracked": 0, "untracked": 0, "truncated": false}, "reservation": null, "memory": {"path": "/memory", "status": "saved", "revision": 8, "error_type": null}}
 
 func state(id: String, value: String = "active") -> Dictionary:
-	return {"type": "domain_state", "protocol_version": 2, "execution_id": "E-" + generation if value != "inactive" else null, "domain_revision": "1", "saved_sessions": [{"domain_session_id": generation, "created_at": "2026-10-26", "ended_at": null, "ended_by": null, "high_water_mark": "0"}], "state_store": {"backend": "sqlite", "durable": true, "continuity": "project", "error_type": null}, "request_id": id, "project_id": "P", "workspace_id": "W", "domain_id": "core", "domain_session_id": generation, "state": value, "execution_state": execution}
+	return {"type": "domain_state", "protocol_version": 2, "execution_id": "E-" + generation if value != "inactive" else null, "domain_revision": "1", "saved_sessions": [{"domain_session_id": generation, "created_at": "2026-10-26", "ended_at": null, "ended_by": null, "high_water_mark": "0"}], "state_store": {"backend": "sqlite", "continuity_id": "00000000-0000-4000-8000-000000000001", "durable": true, "continuity": "project", "error_type": null}, "request_id": id, "project_id": "P", "workspace_id": "W", "domain_id": "core", "domain_session_id": generation, "state": value, "execution_state": execution}
 
 func service() -> void:
 	if peer == null: return
@@ -50,7 +50,7 @@ func service() -> void:
 			var observation := state("", lifecycle if prepared else "inactive")
 			observation.erase("request_id")
 			if not prepared: observation.domain_session_id = null; observation.execution_id = null; observation.saved_sessions = []
-			var response := {"type": "agent_status", "request_id": p.request_id, "agent_id": p.agent_id, "execution_kind": "working", "domain_id": "core", "project": workspace(""), "workspace": {"stage": "ready" if prepared else "unprepared"}, "domain_state": observation, "capabilities": {"protocol_version": 2, "state_store": {"backend": "sqlite", "durable": true, "continuity": "project", "error_type": null},"can_start": not prepared or lifecycle == "inactive", "can_run": prepared and lifecycle in ["active", "background"], "can_prepare_project": true}}
+			var response := {"type": "agent_status", "request_id": p.request_id, "agent_id": p.agent_id, "execution_kind": "working", "domain_id": "core", "project": workspace(""), "workspace": {"stage": "ready" if prepared else "unprepared"}, "domain_state": observation, "capabilities": {"protocol_version": 2, "state_store": {"backend": "sqlite", "continuity_id": "00000000-0000-4000-8000-000000000001", "durable": true, "continuity": "project", "error_type": null},"can_start": not prepared or lifecycle == "inactive", "can_run": prepared and lifecycle in ["active", "background"], "can_prepare_project": true}}
 			response.merge(readiness_fixture, true)
 			status_packets.append(response)
 			if not hold_status: peer.send_text(JSON.stringify(response))
@@ -300,7 +300,7 @@ func blocked_readiness_checks() -> void:
 		["synthetic-sensitive password=not-real", "failed", "readiness could not be confirmed"],
 	]
 	for spec in cases:
-		readiness_fixture = {"workspace": {"stage": spec[1], "reason": spec[0] if spec[1] == "failed" else null, "reservation": {"domain_id": "core", "domain_session_id": "prior-owner", "cleanup_failed": spec[0] == "cleanup_failed"} if spec[0] in ["workspace_busy", "cleanup_failed"] else null}, "capabilities": {"protocol_version": 2, "state_store": {"backend": "sqlite", "durable": true, "continuity": "project", "error_type": null},"can_start": false, "can_run": false, "can_prepare_project": false, "reason": spec[0]}}
+		readiness_fixture = {"workspace": {"stage": spec[1], "reason": spec[0] if spec[1] == "failed" else null, "reservation": {"domain_id": "core", "domain_session_id": "prior-owner", "cleanup_failed": spec[0] == "cleanup_failed"} if spec[0] in ["workspace_busy", "cleanup_failed"] else null}, "capabilities": {"protocol_version": 2, "state_store": {"backend": "sqlite", "continuity_id": "00000000-0000-4000-8000-000000000001", "durable": true, "continuity": "project", "error_type": null},"can_start": false, "can_run": false, "can_prepare_project": false, "reason": spec[0]}}
 		GameEvents.npc_approached.emit("systems-architect", AgentRegistry.get_agent("systems-architect"))
 		await frames(15)
 		await click(button("Status"))
@@ -350,12 +350,12 @@ func blocked_readiness_checks() -> void:
 	check(not results.get_parsed_text().contains("readiness could not be confirmed") and not button("Start").disabled, "representative change cannot copy stale readiness notice")
 	for stage in ["needs_architect", "initializing"]:
 		project_stage = stage
-		readiness_fixture = {"capabilities": {"protocol_version": 2, "state_store": {"backend": "sqlite", "durable": true, "continuity": "project", "error_type": null},"can_start": false, "can_run": false, "can_prepare_project": stage == "needs_architect", "reason": "workspace_not_ready"}}
+		readiness_fixture = {"capabilities": {"protocol_version": 2, "state_store": {"backend": "sqlite", "continuity_id": "00000000-0000-4000-8000-000000000001", "durable": true, "continuity": "project", "error_type": null},"can_start": false, "can_run": false, "can_prepare_project": stage == "needs_architect", "reason": "workspace_not_ready"}}
 		await click(button("Status"))
 		await frames(12)
 		check(results.get_parsed_text().contains("Chief Architect") if stage == "needs_architect" else results.get_parsed_text().contains("preparation is in progress"), "ordinary project readiness has fixed safe next step: " + stage)
 	unconfigured = true
-	readiness_fixture = {"capabilities": {"protocol_version": 2, "state_store": {"backend": "sqlite", "durable": true, "continuity": "project", "error_type": null},"can_start": false, "can_run": false, "can_prepare_project": false, "reason": "workspace_unconfigured"}}
+	readiness_fixture = {"capabilities": {"protocol_version": 2, "state_store": {"backend": "sqlite", "continuity_id": "00000000-0000-4000-8000-000000000001", "durable": true, "continuity": "project", "error_type": null},"can_start": false, "can_run": false, "can_prepare_project": false, "reason": "workspace_unconfigured"}}
 	await click(button("Status"))
 	await frames(20)
 	check(BridgeClient.workspace_snapshot().stage == "unconfigured" and results.get_parsed_text().contains("Project is not configured") and not results.get_parsed_text().contains("preparation is in progress"), "project replacement clears prior readiness notice and exposes configuration step")

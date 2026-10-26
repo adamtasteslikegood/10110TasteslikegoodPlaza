@@ -225,6 +225,7 @@ class Lifetime:
         reviewer=None,
         domain_id="engineering",
         wait_bootstrap=True,
+        state_backend="sqlite",
     ):
         self.domain_id = domain_id
         self.wait_bootstrap = wait_bootstrap
@@ -234,7 +235,10 @@ class Lifetime:
         (self.runtime / "sentinel").write_text("runtime unsaved")
         self.run_id = uuid.uuid4().hex
         self.config = replace(
-            default_config(), workspace_root_dir=root, log_dir=tmp_path / "logs"
+            default_config(),
+            workspace_root_dir=root,
+            log_dir=tmp_path / "logs",
+            domain_state_backend=state_backend,
         )
         self.service = ProjectService(
             self.config,

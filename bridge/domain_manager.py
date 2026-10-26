@@ -74,6 +74,11 @@ class DomainManager:
             backend=self._config.domain_state_backend,
             durable=durable,
             continuity="project" if durable else "process",
+            continuity_id=(
+                (coordinator.instance_id if coordinator else None)
+                if durable
+                else self.boot_id
+            ),
             error_type=coordinator.health if coordinator else "state_store_busy",
         )
 
