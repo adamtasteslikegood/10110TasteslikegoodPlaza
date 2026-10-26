@@ -223,3 +223,19 @@ Preflight also found the gate's actual plugin-test harness/generated types are
 not provisioned in this cloud checkout; the Plaza SDK CLI does not expose that
 repo's plugin-test command. This is a verification setup issue to solve/report,
 not a passing test result and not a reason to invent a substitute harness.
+
+## Active Plaza next step — October 25, 2026
+
+The owner directs this project to continue M13–M15 if it does not actually depend
+on shared gate #29. Remote issue/source inspection confirms that #373's local
+in-memory extraction has no dependency on the shared UUID minter, DO service or
+Cloudflare account. Keep gate #29 in its separate repository; do not serialize
+Plaza development behind that tooling task.
+
+The [bounded #373 design](docs/superpowers/specs/2026-10-25-m13-memory-store-extraction-design.md)
+is ready for owner review. It preserves current replay/admission/retention and
+packet contracts, including the retained duplicate-request lookup that shares
+the existing deque. The subsequent implementation plan follows approval of that
+bounded design. The broader Q02–Q11 questions remain relevant to persistence and
+remote execution, not prerequisites to extracting an unchanged in-memory store.
+No new canon, persistence, recovery or provider decision is ratified by this note.

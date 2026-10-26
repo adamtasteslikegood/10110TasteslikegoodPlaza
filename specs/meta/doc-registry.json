@@ -408,6 +408,10 @@
     {
       "path": "docs/research/cloudflare-durable-objects/brayden-chat-review.md",
       "reason": "Static source review of an external Workers/DO/React Router chat example at a pinned commit; non-authoritative research only, no product decision or implementation approval."
+    },
+    {
+      "path": "docs/superpowers/specs/2026-10-25-m13-memory-store-extraction-design.md",
+      "reason": "Proposed bounded #373 extraction design, derived from existing M12 replay/admission behavior and owner direction to continue M13. Review artifact, not ratification or a new decision origin."
     }
   ]
 }
