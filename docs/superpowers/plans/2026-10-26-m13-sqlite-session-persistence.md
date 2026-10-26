@@ -8,7 +8,7 @@
 
 **Tech Stack:** Existing Python stdlib SQLite/asyncio, pytest/pytest-asyncio, existing Godot/GDScript and pinned CI engine; no new runtime dependency.
 
-**Spec:** `docs/superpowers/specs/2026-10-26-m13-sqlite-session-persistence-design.md`, approved by Adam October 26, 2026, with direction to prepare the implementation plan and handoff. This plan has not yet received its own execution review.
+**Spec:** `docs/superpowers/specs/2026-10-26-m13-sqlite-session-persistence-design.md`, approved by Adam October 26, 2026, with direction to prepare the implementation plan and handoff. Adam approved this plan and selected subagent-driven development October 26, 2026.
 
 ## Global Constraints
 
@@ -186,7 +186,7 @@ Shared types in `application_state.py` (all frozen dataclasses; nested packets c
 
 Tasks execute 1→10. Each task gets RED→GREEN, a scoped commit and the selected review gate. Task 9's governed-source alignment must be complete before implementation is presented for delivery; preliminary documentation amendments can accompany Tasks 3–4 where their behavior changes. Do not deploy speculative cloud resources.
 
-**Recommended method:** subagent-driven, with a fresh implementer and fresh reviewer per task, followed by a whole-branch review. The durable write ownership, crash recovery and execution fencing are consequential enough to justify independent reviews at their boundaries. Existing phase-1 native execution was a separate decision; confirm this plan's execution method at review.
+**Recommended method:** subagent-driven, with a fresh implementer and fresh reviewer per task, followed by a whole-branch review. The durable write ownership, crash recovery and execution fencing are consequential enough to justify independent reviews at their boundaries. Existing phase-1 native execution was a separate decision; Adam selected this method after reviewing the plan.
 
 **Execution starting point:** this branch, `docs/PLZG-290-sqlite-persistence-design`, based on dev `1bb3a19`. Fetch dev and inspect the clean worktree before execution; integrate intervening changes without rebasing published history or changing the unrelated `work` checkout. Record actual base/head and dependencies; earlier phase-1 test results do not certify new dependencies or persistence behavior.
 
