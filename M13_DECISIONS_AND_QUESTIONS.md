@@ -233,9 +233,24 @@ Cloudflare account. Keep gate #29 in its separate repository; do not serialize
 Plaza development behind that tooling task.
 
 The [bounded #373 design](docs/superpowers/specs/2026-10-25-m13-memory-store-extraction-design.md)
-is ready for owner review. It preserves current replay/admission/retention and
+was approved by Adam on 2026-10-26 for planning and implementation. It preserves current replay/admission/retention and
 packet contracts, including the retained duplicate-request lookup that shares
-the existing deque. The subsequent implementation plan follows approval of that
-bounded design. The broader Q02–Q11 questions remain relevant to persistence and
+the existing deque. The [bounded implementation plan](docs/superpowers/plans/2026-10-26-m13-memory-store-extraction.md)
+records the extraction, verification and continuation state. The broader Q02–Q11 questions remain relevant to persistence and
 remote execution, not prerequisites to extracting an unchanged in-memory store.
 No new canon, persistence, recovery or provider decision is ratified by this note.
+
+
+## #373 implementation checkpoint — October 26, 2026
+
+The in-memory boundary is implemented in `bridge/domain_store.py` and consumed
+by `DomainSession`. The store owns append/ID allocation, output-text UTF-8 byte
+and count retention, retained-request lookup and replay metadata. Execution,
+checkpointing, snapshots, truncation and delivery remain in the session. Native
+execution used one fresh whole-change review; no correctness findings were raised.
+
+This is phase 1 only. Phase 2 still waits for phase-1 merge and a separately
+approved durable lifecycle/recovery contract. Q02–Q11 and the broader governance
+alignment queue remain open; the extraction does not settle those questions.
+The shared gate repository's #29 remains independent. Final verification and
+exact tested versions are recorded in the implementation plan.

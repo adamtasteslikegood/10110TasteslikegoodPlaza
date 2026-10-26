@@ -60,10 +60,10 @@
 
 **Files:** Update this plan's execution record, approved design status, `M13_DECISIONS_AND_QUESTIONS.md`, `CHANGELOG.md`; index this plan in `specs/meta/doc-registry.json` as a derived execution artifact.
 
-- [ ] Run full `python -m pytest bridge/tests -q` and `npm test` using available Godot; report the exact tested engine version and any difference from CI's pinned engine. Expect no failures or skipped required Godot integration.
-- [ ] Run `black --check .`, `flake8 . --select=E9,F63,F7,F82`, `python scripts/validate_specs.py`, `git diff --check`; expect success.
-- [ ] Compare all twelve `GUARD_SOURCES` and fixed guard acceptance evidence to the approved starting commit; expect unchanged. Run `_verify_runtime` for `dontAsk` and `bypassPermissions`; expect success without rewriting evidence.
-- [ ] Obtain fresh whole-change review against the approved design; address correctness findings with regression tests. Commit final verification/handoff and push the integration target without altering dev. Broader canon questions remain in the owner queue; no phase 2 begins here.
+- [x] Run full `python -m pytest bridge/tests -q` and `npm test` using available Godot; report the exact tested engine version and any difference from CI's pinned engine. Expect no failures or skipped required Godot integration.
+- [x] Run `black --check .`, `flake8 . --select=E9,F63,F7,F82`, `python scripts/validate_specs.py`, `git diff --check`; expect success.
+- [x] Compare all twelve `GUARD_SOURCES` and fixed guard acceptance evidence to the approved starting commit; expect unchanged. Run `_verify_runtime` for `dontAsk` and `bypassPermissions`; expect success without rewriting evidence.
+- [x] Obtain fresh whole-change review against the approved design; address correctness findings with regression tests. Commit final verification/handoff and push the integration target without altering dev. Broader canon questions remain in the owner queue; no phase 2 begins here.
 
 ## Execution record
 
@@ -75,3 +75,16 @@
 - Task 1 complete: absent-module RED; contract suite GREEN, 19 passed; new files Black-clean.
 
 - Task 2 complete: injected-store constructor RED, then GREEN; serialized terminal field order regression RED→GREEN. Targeted store/session/M12 suite: 90 passed. Existing `test_domain_session.py` is unchanged.
+
+- Task 3 complete: full `PLAZA_REQUIRE_GODOT=1 python -m pytest bridge/tests tests -q`: **2013 passed, 118 subtests passed**, no skips, 147.17 s. This first full run used the container's Godot 4.6.3 for its Python-driven integrations.
+- Full `npm test` rerun with **Godot 4.7.1.stable.official.a13da4feb**, archive SHA512 verified against the committed CI pin: **pass**. All eight scene gates pass; conversation integration 2 tests and domain/orchestration integration 41 tests pass. Fake providers only; no new hosted-model/laptop acceptance claimed.
+- Environment finding: the initial `npm test` used default Godot 4.6.3 and failed seven existing dialogue checks (paragraph triple-click, Ctrl+Home follow, reading position, composer PgUp, focus Tab, Escape focus and Escape movement). Re-running unchanged product/UI code with CI-pinned 4.7.1 passes all 289 dialogue checks and the complete npm gate. No test expectations or UI code were weakened to accommodate the older engine.
+- Black: **109 files clean**. Fatal Flake8, spec validator (**23 governed docs, doc set 0.2.18**) and whitespace checks pass.
+- All twelve `GUARD_SOURCES` plus the fixed acceptance file are byte-identical to `0f9bdc1`; actual `_verify_runtime('dontAsk')` and `_verify_runtime('bypassPermissions')` both pass. Historical paid guard reports are unchanged and not re-stamped.
+- Fresh whole-change review: GPT-6 Astra xhigh, `0f9bdc1..31f39f5`, independently ran 21 new store/session cases. **No Critical, Important or Minor findings.** No fix pass needed.
+- Final review disposition: durable I/O/restart failure handling remains explicitly deferred by the approved phase-1 scope; this store supplies no restart recovery. Cost if mistaken: callers cannot rely on durable replay.
+- Final review disposition: an injected store belongs to one session; sharing it across sessions is outside the protocol contract. Defaults allocate independently. Cost if violated: histories/IDs could mix across sessions; future factories must retain this ownership rule.
+- Final review disposition: terminal dictionaries are internal session-constructed data, not a new external-input surface. Arbitrary malformed direct appends are caller errors. Cost if violated: malformed internal data may raise and interrupt terminal handling; durable/imported data needs explicit validation in its own design.
+- No deferred minors. The only test migration is replacing private deque reads with public replay; packet and execution-count expectations remain unchanged.
+- Delivery: implementation committed and pushed to `plaza/workspace-integration`; dev remains unchanged. #373 stays open pending dev delivery; no phase 2 begins before its merge. Broader owner governance questions remain in the working queue.
+- Jira synchronization could not run: the Atlassian connection requires reauthentication. No Jira status change is claimed.
