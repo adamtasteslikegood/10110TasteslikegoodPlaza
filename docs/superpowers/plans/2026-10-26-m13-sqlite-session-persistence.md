@@ -69,11 +69,11 @@ Shared types in `application_state.py` (all frozen dataclasses; nested packets c
 
 **Interfaces:** `StateImage.open(common_git_dir: Path, project_id: str, *, initialize: bool = False, initial_image: Callable[[str], bytes] | None = None) -> StateImage | None`; `read() -> bytes`; `replace(data: bytes) -> None`; `close() -> None`. The returned object holds a validated stable `FileLock` until close, checks its inode before commits, and exposes `instance_id: str`. Missing both artifacts with initialize=False returns None without creating directories/locks. Explicit initialization requires initial_image(instance_id) from Task 2’s schema factory (Task 1 tests use a stdlib-generated SQLite fixture); generate the instance UUID once and pass it to that callback and the manifest. Initialization never invents the schema itself. Define the shared records/protocol from the interface map in this task so later modules can import them. Manifest filename is `manifest.json`, with version1, project_id, instance_id and state `initializing`/`ready`.
 
-- [ ] Write tests `test_missing_read_does_not_initialize`, `test_second_writer_busy`, `test_manifest_without_image_blocks`, `test_image_before_ready_blocks`, `test_missing_after_ready_blocks`, `test_orphan_image_blocks`, `test_unsafe_inode_rejected`. Assert no implicit recreation and original bytes preserved; cover symlink/hardlink/parent swaps, lock inode replacement, regular mode0600 files in mode0700 directories.
-- [ ] Run `python -m pytest bridge/tests/test_state_image.py -q`; require RED for the absent implementation.
-- [ ] Implement anchored reads/replacement and OS-lock ownership. Initialization writes initializing manifest, valid image, then ready manifest, each durably; interrupted initialization always requires explicit inspection. Require serialize/deserialize support before initialization. On failed/uncertain writes retain evidence, never unlink lock files or unknown remnants.
-- [ ] Run the new suite plus `bridge/tests/test_project_files.py` if present; otherwise locate and run existing project-files coverage by `rg -l 'FileLock|atomic_replace' bridge/tests`. Require GREEN including both initialization crash points.
-- [ ] Commit `feat(PLZG-290): add safe application state image ownership`.
+- [x] Write tests `test_missing_read_does_not_initialize`, `test_second_writer_busy`, `test_manifest_without_image_blocks`, `test_image_before_ready_blocks`, `test_missing_after_ready_blocks`, `test_orphan_image_blocks`, `test_unsafe_inode_rejected`. Assert no implicit recreation and original bytes preserved; cover symlink/hardlink/parent swaps, lock inode replacement, regular mode0600 files in mode0700 directories.
+- [x] Run `python -m pytest bridge/tests/test_state_image.py -q`; require RED for the absent implementation.
+- [x] Implement anchored reads/replacement and OS-lock ownership. Initialization writes initializing manifest, valid image, then ready manifest, each durably; interrupted initialization always requires explicit inspection. Require serialize/deserialize support before initialization. On failed/uncertain writes retain evidence, never unlink lock files or unknown remnants.
+- [x] Run the new suite plus `bridge/tests/test_project_files.py` if present; otherwise locate and run existing project-files coverage by `rg -l 'FileLock|atomic_replace' bridge/tests`. Require GREEN including both initialization crash points.
+- [x] Commit `feat(PLZG-290): add safe application state image ownership`.
 
 ## Task 2: SQLite records, bounds and replay contracts
 
@@ -216,3 +216,7 @@ assert len(recap.source_output_ids) <= 4
 ```
 
 **Plan self-review:** all ten spec sections mapped: files/ownership/initialization→1; schema/limits/retention→2; worker/config/publication→3; lifecycle/fencing→4; cross-store Run order→5; crash/shutdown→6; recap→7; real client→8; maintenance/governance→9; independent acceptance/performance/guards→10. All five Review Focus conditions have named owning tests. No runtime code or new dependency is introduced by writing this plan.
+
+## Execution receipts
+
+- Task1 complete: `23c4dc3`, fix `0f4209e`; independent review approved after RecursionError fix. 60 image tests pass locally and on actual Python3.11. Existing broad contention-test sleep-patch flake remains explicitly tracked for final verification; broad gate was389pass/1fail, not green.
