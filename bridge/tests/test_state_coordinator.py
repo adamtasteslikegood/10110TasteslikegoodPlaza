@@ -559,3 +559,148 @@ async def test_close_drains_reconciliation_waiting_for_pending_writer(
     finally:
         release.set()
         await coordinator.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("cancel_first", [False, True])
+async def test_overlapping_reconciliation_callers_share_one_owned_inspection(
+    cancel_first,
+):
+    from bridge.state_coordinator import StateCoordinator, VolatileStateRepository
+
+    entered, release = threading.Event(), threading.Event()
+    calls = []
+
+    class Repository(VolatileStateRepository):
+        def reconcile(self):
+            calls.append("inspection")
+            entered.set()
+            assert release.wait(5)
+            return super().reconcile()
+
+    coordinator = StateCoordinator(lambda: Repository("project"))
+    await coordinator.open()
+    await coordinator.commit(start())
+    first = asyncio.create_task(coordinator.reconcile())
+    second = None
+    try:
+        await wait_thread(entered)
+        second = asyncio.create_task(coordinator.reconcile())
+        await asyncio.sleep(0)
+        assert not coordinator.admission_open
+        with pytest.raises(StateError):
+            await coordinator.commit(start())
+        if cancel_first:
+            first.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await first
+        release.set()
+        if not cancel_first:
+            await first
+        await second
+        assert calls == ["inspection"]
+        assert coordinator.admission_open
+    finally:
+        release.set()
+        await coordinator.close()
+
+
+@pytest.mark.asyncio
+async def test_failed_inspection_rejects_already_queued_worker_mutation():
+    from bridge.state_coordinator import StateCoordinator, VolatileStateRepository
+
+    entered, release = threading.Event(), threading.Event()
+
+    class Repository(VolatileStateRepository):
+        def reconcile(self):
+            entered.set()
+            assert release.wait(5)
+            raise StateError("state_store_invalid")
+
+    coordinator = StateCoordinator(lambda: Repository("project"))
+    await coordinator.open()
+    initial = await coordinator.commit(start())
+    inspection = asyncio.create_task(coordinator.reconcile())
+    try:
+        await wait_thread(entered)
+        # Exercise the worker's independent gate: an already scheduled operation
+        # must remain safe even without relying on the event-loop admission gate.
+        queued = coordinator._owned(
+            coordinator._commit_owned(
+                2,
+                StateCommand(
+                    "stop",
+                    dict(
+                        execution_id=initial.result["execution_id"],
+                        outcome="stopped",
+                        timestamp="later",
+                    ),
+                ),
+            )
+        )
+        await asyncio.sleep(0)
+        release.set()
+        with pytest.raises(StateError, match="state_store_invalid"):
+            await inspection
+        with pytest.raises(StateError, match="state_store_invalid"):
+            await queued
+        assert not coordinator.admission_open
+        assert coordinator.snapshot() == initial.view
+    finally:
+        release.set()
+        await coordinator.close()
+
+
+@pytest.mark.asyncio
+async def test_uncertain_reconciliation_requires_successful_parent_fsync(
+    tmp_path, monkeypatch
+):
+    coordinator, initial = await opened(tmp_path)
+    prior = coordinator.snapshot()
+    original_fsync, original_replace = os.fsync, os.replace
+    failing = True
+    syncs, renames = [], []
+
+    def fsync(fd):
+        if stat.S_ISDIR(os.fstat(fd).st_mode):
+            syncs.append("failed" if failing else "synced")
+            if failing:
+                raise OSError(errno.EIO, "private parent fsync failure")
+        return original_fsync(fd)
+
+    def rename(*args, **kwargs):
+        renames.append("rename")
+        return original_replace(*args, **kwargs)
+
+    monkeypatch.setattr(os, "fsync", fsync)
+    monkeypatch.setattr(os, "replace", rename)
+    try:
+        with pytest.raises(StateError, match="state_store_uncertain"):
+            await coordinator.commit(
+                StateCommand(
+                    "stop",
+                    dict(
+                        execution_id=initial.result["execution_id"],
+                        outcome="stopped",
+                        timestamp="later",
+                    ),
+                )
+            )
+        uncertain = coordinator.uncertain_transaction_id
+        with pytest.raises(StateError, match="state_store_uncertain"):
+            await coordinator.reconcile()
+        assert not coordinator.admission_open
+        assert coordinator.health == "state_store_uncertain"
+        assert coordinator.snapshot() == prior
+        assert coordinator.uncertain_transaction_id == uncertain
+        failing = False
+        await coordinator.reconcile()
+        assert syncs == ["failed", "failed", "synced"]
+        assert renames == ["rename"]
+        assert coordinator.admission_open
+        assert coordinator.uncertain_transaction_id is None
+        assert coordinator.snapshot().revision == prior.revision + 1
+        assert coordinator.snapshot().instance_id == prior.instance_id
+        assert coordinator.snapshot().executions[0].stopped_at == "later"
+    finally:
+        await coordinator.close()

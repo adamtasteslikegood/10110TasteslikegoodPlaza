@@ -79,6 +79,11 @@ class LazySQLiteStateRepository:
         return self._repository.apply(command)
 
     def reconcile(self) -> StateView | None:
+        if self._image is not None:
+            # Reading the live namespace alone cannot settle a failed rename
+            # directory fsync. Confirm durable bytes and directory first, while
+            # retaining the same anchored image and writer authority.
+            self._image.confirm_durable()
         if self._repository is not None:
             self._repository.close()
             self._repository = None
@@ -161,6 +166,7 @@ class StateCoordinator:
         self._next_transaction_id = 0
         self._operations = set()
         self._opening = self._closing_task = None
+        self._reconciling_task = None
         self._closing = self._closed = False
 
     @property
@@ -169,6 +175,7 @@ class StateCoordinator:
             self._opening is not None
             and self._opening.done()
             and self._health is None
+            and (self._reconciling_task is None or self._reconciling_task.done())
             and not self._closing
         )
 
@@ -268,27 +275,37 @@ class StateCoordinator:
         return await asyncio.shield(task)
 
     def _worker_reconcile(self):
-        if self._repository is None:
-            raise StateError(self._worker_health or "state_store_failed")
-        reconcile = getattr(self._repository, "reconcile", None)
-        if not callable(reconcile):
-            raise StateError(self._worker_health or "state_store_uncertain")
-        view = reconcile()
-        prior = self._failed_base or self._worker_view
-        if prior is not None:
-            revisions = {prior.revision}
-            if self._worker_uncertain:
-                revisions.add(prior.revision + 1)
-            if (
-                view is None
-                or view.project_id != prior.project_id
-                or view.instance_id != prior.instance_id
-                or view.revision not in revisions
-            ):
+        # The worker has its own gate, independent of event-loop acknowledgements
+        # and already queued work. Failed inspection must never leave it open.
+        self._worker_health = self._worker_health or "state_store_uncertain"
+        try:
+            if self._repository is None:
+                raise StateError(self._worker_health)
+            reconcile = getattr(self._repository, "reconcile", None)
+            if not callable(reconcile):
+                raise StateError(self._worker_health)
+            view = reconcile()
+            prior = self._failed_base or self._worker_view
+            if prior is not None:
+                revisions = {prior.revision}
+                if self._worker_uncertain:
+                    revisions.add(prior.revision + 1)
+                if (
+                    view is None
+                    or view.project_id != prior.project_id
+                    or view.instance_id != prior.instance_id
+                    or view.revision not in revisions
+                ):
+                    raise StateError("state_store_invalid")
+            elif view is not None:
                 raise StateError("state_store_invalid")
-        elif view is not None:
-            raise StateError("state_store_invalid")
-        self._worker_view = deepcopy(view)
+            self._worker_view = deepcopy(view)
+        except StateError as error:
+            self._worker_health = error.code
+            raise
+        except Exception:
+            self._worker_health = "state_store_failed"
+            raise StateError("state_store_failed") from None
         self._worker_health = None
         self._worker_uncertain = False
         self._failed_base = None
@@ -316,13 +333,16 @@ class StateCoordinator:
         """
         if self._closing:
             raise StateError("state_store_failed")
+        if self._reconciling_task is not None and not self._reconciling_task.done():
+            await asyncio.shield(self._reconciling_task)
+            return
         # Fence admission synchronously even when called on a healthy store.
         self._health = self._health or "state_store_uncertain"
         pending = tuple(self._operations)
         # Ownership starts before waiting for preceding work, so concurrent
         # shutdown cannot close the repository ahead of this reconciliation.
-        task = self._owned(self._reconcile_owned(pending))
-        await asyncio.shield(task)
+        self._reconciling_task = self._owned(self._reconcile_owned(pending))
+        await asyncio.shield(self._reconciling_task)
 
     def snapshot(self) -> StateView | None:
         return deepcopy(self._view)

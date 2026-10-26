@@ -247,7 +247,7 @@ def test_symlink_parent_rejected(api, git_dir, name):
     assert_error(api, "state_store_invalid", lambda: initialized(api, git_dir))
 
 
-@pytest.mark.parametrize("operation", ["read", "replace"])
+@pytest.mark.parametrize("operation", ["read", "replace", "confirm"])
 @pytest.mark.parametrize("swap", ["parent", "lock"])
 def test_owned_inode_swap_blocks_operations(api, git_dir, operation, swap):
     image = initialized(api, git_dir)
@@ -268,7 +268,15 @@ def test_owned_inode_swap_blocks_operations(api, git_dir, operation, swap):
         assert_error(
             api,
             "state_store_invalid",
-            lambda: image.read() if operation == "read" else image.replace(seed("new")),
+            lambda: (
+                image.read()
+                if operation == "read"
+                else (
+                    image.confirm_durable()
+                    if operation == "confirm"
+                    else image.replace(seed("new"))
+                )
+            ),
         )
         assert (directory / "state.sqlite3").read_bytes() == before
         if swap == "parent":
@@ -581,3 +589,34 @@ def test_manifest_decoder_recursion_failure_is_typed_and_preserves_evidence(
     path.write_bytes(original_manifest)
     reopened = initialized(api, git_dir)
     reopened.close()
+
+
+def test_confirm_durable_syncs_image_then_directory_without_replacement(
+    api, git_dir, monkeypatch
+):
+    image = initialized(api, git_dir)
+    before = artifacts(git_dir)
+    identities = []
+    fsync = os.fsync
+
+    def synchronize(fd):
+        info = os.fstat(fd)
+        identities.append((info.st_dev, info.st_ino))
+        fsync(fd)
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("durability confirmation must not replace state")
+
+    monkeypatch.setattr(os, "fsync", synchronize)
+    monkeypatch.setattr(os, "replace", forbidden)
+    try:
+        image.confirm_durable()
+        info = (state_dir(git_dir) / "state.sqlite3").stat()
+        parent = state_dir(git_dir).stat()
+        assert identities == [
+            (info.st_dev, info.st_ino),
+            (parent.st_dev, parent.st_ino),
+        ]
+        assert artifacts(git_dir) == before
+    finally:
+        image.close()

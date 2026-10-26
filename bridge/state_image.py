@@ -255,6 +255,36 @@ class StateImage:
         self._check_data(data)
         self._replace("state.sqlite3", data)
 
+    def confirm_durable(self) -> None:
+        """Settle uncertain replacement without rewriting bytes or releasing lock.
+
+        A readable renamed image is not proof of crash durability. Synchronize
+        its no-follow file descriptor, then the retained directory descriptor;
+        validate lifetime anchors and the current image inode around both syncs.
+        """
+        try:
+            self._validate()
+            self._stat("state.sqlite3")
+            fd = files._open(self._parent, "state.sqlite3", os.O_RDONLY)
+        except StateError:
+            raise
+        except OSError:
+            raise StateError("state_store_invalid") from None
+        try:
+            identity = _identity(os.fstat(fd))
+            os.fsync(fd)
+            self._validate()
+            if _identity(self._stat("state.sqlite3")) != identity:
+                raise StateError("state_store_invalid")
+            os.fsync(self._parent)
+            self._validate()
+            if _identity(self._stat("state.sqlite3")) != identity:
+                raise StateError("state_store_invalid")
+        except OSError:
+            raise StateError("state_store_uncertain", uncertain=True) from None
+        finally:
+            os.close(fd)
+
     def _replace(self, name, data):
         try:
             self._validate()
