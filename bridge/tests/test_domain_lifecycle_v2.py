@@ -564,3 +564,117 @@ async def test_real_sdk_installed_hook_denies_faulted_application_state(
         assert not [call for call, _ in clients[0].calls if call == "query"]
     finally:
         coordinator._health = None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("clean", [True, False])
+async def test_shutdown_cancellation_drains_pending_end_and_other_owner(
+    lifecycle, monkeypatch, clean
+):
+    import threading
+
+    manager, _, service, owners, coordinators = lifecycle
+    coordinator = coordinators[-1]
+    core = await coordinator.commit(
+        StateCommand(
+            "start",
+            dict(
+                domain_id="core",
+                expected_domain_revision=0,
+                boot_id=str(uuid4()),
+                execution_id=str(uuid4()),
+                timestamp="2026-10-26T00:00:00Z",
+            ),
+        )
+    )
+    await coordinator.commit(
+        StateCommand(
+            "stop",
+            dict(
+                execution_id=core.result["execution_id"],
+                outcome="stopped",
+                timestamp="2026-10-26T00:00:01Z",
+            ),
+        )
+    )
+    await send(manager, "activate_domain")
+    owner = owners[-1]
+    owner.clean = clean
+    owner.stop_gate = asyncio.Event()
+    entered, release = threading.Event(), threading.Event()
+    original = coordinator._repository.apply
+
+    def blocked(command):
+        if command.kind == "end":
+            entered.set()
+            assert release.wait(5), "test did not release the End worker"
+        return original(command)
+
+    monkeypatch.setattr(coordinator._repository, "apply", blocked)
+    packets = []
+
+    async def emit(packet):
+        packets.append(packet)
+
+    end = asyncio.create_task(
+        manager.handle(
+            dict(
+                type="end_domain_session",
+                protocol_version=2,
+                request_id="end-core",
+                domain_id="core",
+                domain_session_id=core.result["session_id"],
+                expected_domain_revision="2",
+            ),
+            context=context(),
+            emit=emit,
+        )
+    )
+    shutdown = None
+    try:
+        assert await asyncio.to_thread(entered.wait, 3)
+        pending_end = next(iter(manager._operations))
+        shutdown = asyncio.create_task(manager.shutdown())
+        await asyncio.sleep(0)
+        shutdown.cancel("first shutdown cancellation")
+        await asyncio.sleep(0)
+        assert not shutdown.done()
+        assert not pending_end.cancelled() and not pending_end.done()
+        shutdown.cancel("second shutdown cancellation")
+        await asyncio.sleep(0)
+        assert not shutdown.done() and not pending_end.cancelled()
+        assert not owner.stopped.is_set() and service.reservation.held
+        release.set()
+        await asyncio.wait_for(asyncio.shield(end), 3)
+        await asyncio.wait_for(owner.stopped.wait(), 3)
+        assert packets[-1]["type"] == "domain_state"
+        assert packets[-1]["domain_session_id"] is None
+        shutdown.cancel("third shutdown cancellation")
+        await asyncio.sleep(0)
+        assert not shutdown.done() and service.reservation.held
+        owner.stop_gate.set()
+        with pytest.raises(asyncio.CancelledError) as error:
+            await shutdown
+        assert error.value.args == ("third shutdown cancellation",)
+        assert owner.stopped.is_set()
+        assert owner.lease.held is not clean
+        assert bool(service.reservation) is not clean
+        assert bool(service.capacity) is not clean
+        assert manager.snapshot("engineering")["state"] == (
+            "inactive" if clean else "cleanup_failed"
+        )
+        saved_core = next(
+            s
+            for s in coordinator.snapshot().sessions
+            if s.session_id == core.result["session_id"]
+        )
+        assert saved_core.ended_at is not None
+        assert not manager._operations and not coordinator._operations
+    finally:
+        release.set()
+        owner.clean = True
+        owner.stop_gate.set()
+        await asyncio.gather(
+            end, *([shutdown] if shutdown else []), return_exceptions=True
+        )
+        await manager.shutdown()

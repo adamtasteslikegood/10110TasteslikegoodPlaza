@@ -48,6 +48,7 @@ class DomainManager:
         self._stores = {}
         self._operations = set()
         self._activation_lock = asyncio.Lock()
+        self._shutdown_task = None
 
     @property
     def coordinator(self):
@@ -454,6 +455,34 @@ class DomainManager:
 
     async def shutdown(self) -> None:
         self._closing = True
+        if self._shutdown_task is None or (
+            self._shutdown_task.done() and self._shutdown_task.exception() is not None
+        ):
+            # Cleanup failures retain ownership and permit an explicit later
+            # cleanup attempt. Concurrent callers share this one retained drain.
+            self._shutdown_task = asyncio.create_task(self._shutdown_owned())
+            self._shutdown_task.add_done_callback(
+                lambda done: None if done.cancelled() else done.exception()
+            )
+        drain = self._shutdown_task
+        cancelled = None
+        while not drain.done():
+            try:
+                await asyncio.shield(drain)
+            except asyncio.CancelledError as error:
+                cancelled = error
+            except Exception:
+                # Observe the owned outcome below after preserving cancellation.
+                break
+        if cancelled is not None:
+            try:
+                drain.result()
+            except Exception as error:
+                raise cancelled from error
+            raise cancelled
+        drain.result()
+
+    async def _shutdown_owned(self) -> None:
         if self._operations:
             await asyncio.gather(*tuple(self._operations), return_exceptions=True)
         sessions = [
