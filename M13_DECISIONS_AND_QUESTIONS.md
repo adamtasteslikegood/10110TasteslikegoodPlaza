@@ -406,10 +406,40 @@ Additional design items:
 |---|---|---|
 | Q19 | Pick the SQLite location, OS writer ownership and database/sidecar safety strategy; define corrupt/unsafe/full/read-only/busy behavior without silent recreation. | Existing `project_files.py`, common-Git metadata, D-038/D-039; technical alternatives not yet selected. |
 | Q20 | Reconcile synchronous replay/admission with durable I/O and commit-before-publish. Treat SQLite and Markdown updates as distinct commits with honest reconciliation rather than claiming a cross-store transaction. | Approved phase-1 design explicitly deferred durable caller/ownership semantics; `domain_session.py` preparation/save/cleanup paths. |
-| Q21 | Decide whether reopening supplies a bounded conversation recap to the fresh SDK runtime, or only restores visible history/identity alongside existing project notes. Any recalled content remains continuity data, not authority or a task queue. | Specific owner question pending in this design conversation. Stable identity does not by itself answer model-context restoration. |
+| Q21 | Decide whether reopening supplies a bounded conversation recap to the fresh SDK runtime, or only restores visible history/identity alongside existing project notes. Any recalled content remains continuity data, not authority or a task queue. | Answered October 26: Adam selects the bounded agent recap alongside project notes. Stable identity does not by itself answer model-context restoration. |
 | Q22 | Define session/history/request retention, schema migration and disk limits separately from replay's 256-entry / 4 MiB output-text window; avoid silently promising lifetime deduplication or unlimited storage. | `MemoryStore` contract and Q06. Quotas/archival details require explicit design rather than inherited assumptions. |
 
 Next: settle the pending model-context question; compare the durable-I/O
 approaches; write the bounded design with lifecycle/schema/failure/acceptance
 contracts; run a fresh builder check; obtain approval before an implementation
 plan or product changes. Existing recorded answers must not be asked again.
+
+
+### Bounded persistence design — owner recap answer and builder handoff
+
+Adam accepted the bounded conversation recap and asked to proceed/handoff. The
+[proposed SQLite design](docs/superpowers/specs/2026-10-26-m13-sqlite-session-persistence-design.md)
+covers durable identity, accepted-work recovery, explicit End, execution fencing,
+minimum client restoration and a bounded deterministic recap. Q21 is answered.
+The worker/cache split, sidecar-free serialized SQLite image, quotas, backend
+default and protocol-version proposal are **builder recommendations**, not owner
+choices or implementation approval. A fresh builder check precedes design handoff.
+
+The Confluence environment secret is owner-reported configured. A protected-dev
+publisher rerun was dispatched to verify actual activation; do not infer success
+from configuration alone. This is separate from SQLite implementation authority.
+
+
+The fresh builder check returned “nothing important left.” The draft additionally
+clarifies the initialization manifest (a lost database must not silently become
+an empty new session) and startup-only memory/SQLite discontinuities. These are
+builder recommendations for review. Q19/Q20/Q22 have proposed resolutions in the
+written design; they are not marked canonically resolved before owner approval.
+No runtime code or dependency installation was part of this design work.
+
+
+Confluence activation is now verified: protected-dev workflow dispatch
+[40285487133](https://github.com/adamtasteslikegood/10110TasteslikegoodPlaza/actions/runs/40285487133)
+completed successfully, including publisher verification and the apply job. This
+supersedes the earlier missing-secret blocker. It publishes committed dev; this
+proposed design branch is not included until its own reviewed delivery.
