@@ -557,3 +557,27 @@ def test_successful_commit_fsyncs_image_before_rename_then_parent(
         assert events == ["image_fsync", "rename", "parent_fsync"]
     finally:
         image.close()
+
+
+def test_manifest_decoder_recursion_failure_is_typed_and_preserves_evidence(
+    api, git_dir, monkeypatch
+):
+    image = initialized(api, git_dir)
+    image.close()
+    path = state_dir(git_dir) / "manifest.json"
+    original_manifest = path.read_bytes()
+    path.write_bytes(b"[" * 1500 + b"0" + b"]" * 1500)
+    before = artifacts(git_dir)
+
+    def recursion_failure(data, **kwargs):
+        raise RecursionError("private decoder failure")
+
+    # Python 3.12 decodes this nesting; inject the supported-runtime failure
+    # deterministically instead of claiming a Python 3.11 runtime execution.
+    with monkeypatch.context() as patch:
+        patch.setattr(api[0].json, "loads", recursion_failure)
+        assert_error(api, "state_store_invalid", lambda: initialized(api, git_dir))
+    assert artifacts(git_dir) == before
+    path.write_bytes(original_manifest)
+    reopened = initialized(api, git_dir)
+    reopened.close()

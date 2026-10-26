@@ -213,7 +213,7 @@ class StateImage:
             return value["instance_id"]
         except StateError:
             raise
-        except (ValueError, TypeError, AttributeError):
+        except (ValueError, TypeError, AttributeError, RecursionError):
             raise StateError("state_store_invalid") from None
 
     def _write_manifest(self, state):
