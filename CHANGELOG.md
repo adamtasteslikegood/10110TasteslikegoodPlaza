@@ -17,6 +17,21 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
 
+### Added — bounded SQLite application sessions (PLZG-290, implementation branch)
+
+- Persist bounded project-scoped sessions and committed results in locked,
+  sidecar-free SQLite images. Stop preserves the application session; explicit
+  End records attribution after cleanup. Every fresh Start gets a new execution
+  identity; restart/replay recovers history without SDK/model/tool activation.
+- Classify accepted/dispatched crash outcomes without retrying work; reconcile
+  domain notes only with exact retained-turn ownership. Supply a bounded quoted
+  recap on the first Run of each fresh execution and restore both Godot work surfaces.
+- Add offline `scripts/domain_state.py` export and ended-session deletion using
+  safe exclusive UTF-8 JSON outputs and a durable backup before compacting commit.
+  Document startup backend switching, limits, cleartext content and safe recovery.
+- Final M13 performance, fresh guard/live evidence and acceptance remain pending;
+  historical M12 evidence retains its original source/runtime/mode bindings.
+
 ### Changed — in-memory domain store extraction (PLZG-290, #373)
 
 - Move bounded terminal history behind `DomainSessionStore` and `MemoryStore`.

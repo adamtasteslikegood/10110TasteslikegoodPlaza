@@ -618,6 +618,14 @@ identity on each explicit Start. This status does not claim delivery or acceptan
 process or permission to run tools on reconnect. See the
 [working owner queue](../M13_DECISIONS_AND_QUESTIONS.md) before later phases.
 
+The implementation branch now includes the durable repository/coordinator,
+accepted-work recovery, exact owned note reconciliation, bounded recap, Godot
+protocol-v2 restored history/End controls and offline maintenance. The
+[operator guide](../docs/m13-session-persistence.md) records startup-only backend
+switching, quotas and backup-before-delete. Final performance, fresh source-bound
+guard/live evidence and whole-branch acceptance remain required; M13 stays In
+Progress and historical M12 proof is unchanged.
+
 ### Milestone 14 — Independent execution workspaces
 
 Extend M12's per-department worktree foundation with broader parallel execution

@@ -12,10 +12,11 @@ process can omit or forge headers. D-005/D-020 frontend independence remains;
 a future browser frontend needs an explicit trusted-Origin and authentication
 contract before connecting directly.
 
-The request/response examples below describe the current implementation, not a
-durable platform API. NPC conversation history is connection-local; domain SDK
-clients, lifecycle state, and output buffers are bridge-process-local. Neither
-engine currently provides bridge-managed recovery after a bridge restart.
+The request/response examples below describe this implementation branch. NPC
+conversation history and SDK processes remain process-local. M13 adds bounded
+project-scoped application-session persistence and domain protocol v2; restoration
+never resumes an SDK process or starts work. Final M13 evidence/acceptance remains
+pending. See the [M13 operating guide](../docs/m13-session-persistence.md).
 
 Normal model execution, including NPC calls, defaults to Claude Code through the
 Claude Agent SDK (`D-037`). `CONVERSATION_BACKEND=claude_code` preserves native CLI
@@ -91,7 +92,8 @@ is unchanged and an ID does not establish durable recovery.
 - **Live context is not restored.** Optional M10 disk transcripts archive
   exchanges for inspection; they never repopulate this history. Disconnect or
   restart forgets live context. There is no stable conversation identity for
-  reconnect/restart recovery. Durable session state is planned for M13.
+  reconnect/restart recovery for extras. M13 domain sessions have the separate
+  bounded application history/recap contract below.
 
 ### Character status and explicit setup
 
@@ -108,7 +110,7 @@ valid supplied correlation IDs.
 `agent_status` returns `type`, `agent_id`, `request_id`, `execution_kind`
 (`working` or `extra`), nullable `domain_id`, `capabilities`, `project`, nullable
 `workspace`, and nullable `domain_state`. Working characters receive their own
-department's workspace and existing generation; extras have null workspace/state.
+department's workspace and current application/execution state; extras have null workspace/state.
 Status never creates a worktree, reserves capacity, invokes a provider, runs a
 query, or changes foreground ownership. It refreshes bounded observations of
 already-existing workspaces. Architect and Auditor report the same Core owner.
@@ -121,8 +123,8 @@ are observations, not guarantees: Start/Run revalidate readiness and the SDK's
 source/runtime-bound live tool-guard acceptance. Status does not run acceptance
 probes. `tools` is `["Read","Edit","Bash"]` only when Run is locally available,
 otherwise `[]`. Locally failed/disconnected/stopped owners report `sdk_error`;
-Stop and explicitly Start a fresh generation to recover. Observing failure leaves
-the existing generation, lease and capacity intact until Stop. Capacity is `{limit:1, available, domain_id, domain_session_id}`;
+Stop and explicitly Start a fresh execution to recover. Observing failure leaves
+the existing execution, lease and capacity intact until Stop. Capacity is `{limit:1, available, domain_id, domain_session_id}`;
 the IDs identify the process-local capacity owner, or null when free. No queue
 or concurrent domain execution is implied. Extras can converse while a domain runs.
 
@@ -195,54 +197,73 @@ retains the last confirmed revision. A successful task/history remains successfu
 when its memory checkpoint fails. Memory is bounded short-term context, not
 complete history, an automatic task queue or runtime recovery.
 
-### Domain Start, Run, Stop and observation
+### Domain Start, Run, Stop, End and observation (v2)
 
 Each Run validates that the selected catalog agent belongs to the requested
 domain before memory, history or provider admission; mismatches return
 `invalid_binding`.
 
-Every domain command requires an explicit nonempty `request_id` (at most 128
-UTF-8 bytes). Domain IDs contain ASCII letters, digits, `_` or `-`, at most 128
-bytes. Start obtains the process-local `domain_session_id`; all Run, background,
-refocus, Stop and replay requests require that expected generation. Unknown or
-stale generations fail with `session_unavailable`. No client identity is an
-authentication or ownership principal.
+Every domain command (including `describe_workspace`) requires integer
+`protocol_version:2` and an explicit nonempty `request_id` (at most 128 UTF-8
+bytes). A missing/invalid version returns `upgrade_required` before execution.
+Domain IDs contain ASCII letters, digits, `_` or `-`, at most 128 bytes. Commands
+accept exactly the documented fields. Start and End require
+`expected_domain_revision`, a decimal string in 0..9223372036854775807; stale
+revisions return `stale_domain_revision`. Observe status before a deliberate
+retry. No client identity is an authentication or ownership principal.
 
 ```json
-{"type":"activate_domain","domain_id":"core","request_id":"start-1"}
-{"type":"domain_status","domain_id":"core","request_id":"status-1"}
+{"type":"describe_workspace","protocol_version":2,"request_id":"workspace-1"}
+{"type":"domain_status","protocol_version":2,"domain_id":"core","request_id":"status-1"}
+{"type":"activate_domain","protocol_version":2,"domain_id":"core","expected_domain_revision":"0","request_id":"start-1"}
 ```
 
 Start lazily prepares/reuses the selected department worktree and may connect an
 SDK owner, but makes zero model queries. Send is an explicit `domain_query`.
 Start emits correlated `domain_state` with `state:"activating"` before connecting,
 then `state:"active"` or `domain_error`. Both packets carry `project_id`,
-`workspace_id`, `domain_id`, `domain_session_id`, and `execution_state`.
-`domain_status` includes `available_generations`; an unknown domain is inactive
-with null generation. Start before readiness rejects `workspace_not_ready` (or
+`workspace_id`, `domain_id`, stable application `domain_session_id`, fresh
+`execution_id`, `domain_revision` and `execution_state`. A fresh explicit Start
+reuses the open application session; after End it creates a new application UUID.
+`domain_status` includes `saved_sessions` (application ID, creation/End attribution
+and decimal-string highwater), including ended-only history. An unknown domain
+is inactive with null application/execution and revision `"0"`. Start before readiness rejects `workspace_not_ready` (or
 `workspace_unconfigured`). One session reserves the worktree, including idle,
 background and completed work. **Stop releases the workspace after confirmed
-cleanup.** Disconnect never releases a domain or cancels admitted work.
+cleanup, preserving application identity and history.** Disconnect never releases
+a domain, cancels admitted work or Ends the application session. Explicit End
+requires confirmed orderly cleanup and settled requests, records actor/time and
+retains history; failed End preserves the session/draft. Game/bridge exit and
+crash do not End. The application UUID is not a provider-session resume token.
 
 ```json
-{"type":"domain_query","domain_id":"core","domain_session_id":"generation-uuid","agent_id":"systems-architect","task":"Review the auth middleware","request_id":"run-1"}
-{"type":"background_domain","domain_id":"core","domain_session_id":"generation-uuid","request_id":"background-1"}
-{"type":"refocus_domain","domain_id":"core","domain_session_id":"generation-uuid","request_id":"focus-1"}
-{"type":"deactivate_domain","domain_id":"core","domain_session_id":"generation-uuid","request_id":"stop-1"}
+{"type":"domain_query","protocol_version":2,"domain_id":"core","domain_session_id":"application-uuid","execution_id":"execution-uuid","agent_id":"systems-architect","task":"Review the auth middleware","request_id":"run-1"}
+{"type":"background_domain","protocol_version":2,"domain_id":"core","domain_session_id":"application-uuid","execution_id":"execution-uuid","request_id":"background-1"}
+{"type":"refocus_domain","protocol_version":2,"domain_id":"core","domain_session_id":"application-uuid","execution_id":"execution-uuid","request_id":"focus-1"}
+{"type":"deactivate_domain","protocol_version":2,"domain_id":"core","domain_session_id":"application-uuid","execution_id":"execution-uuid","request_id":"stop-1"}
+{"type":"end_domain_session","protocol_version":2,"domain_id":"core","domain_session_id":"application-uuid","expected_domain_revision":"2","request_id":"end-1"}
 ```
 
-A Run is acknowledged by `domain_accepted` only after successful preflight and
-intent checkpoint. It later produces one retained `domain_result`, even on error
+Run, background, refocus and Stop require the current `execution_id`; delayed
+controls fail `stale_execution`, even if the application ID still matches. End
+and replay bind the application ID without granting old execution authority.
+Use the actual observed revision/token rather than copying these placeholders.
+
+A Run is acknowledged by `domain_accepted` only after successful preflight,
+pending-note checkpoint and committed accepted request. Dispatch is committed
+before invoking the SDK. It later produces one retained `domain_result`, even on error
 or cancellation. Task text is bounded to 64 KiB UTF-8. A conflicting duplicate ID
 or overlapping query rejects; an exact pending duplicate returns its acceptance,
 and a retained completed duplicate returns its result without execution. There
-is no hidden query queue. Lifecycle states are `inactive`, `activating`, `active`,
+is one unfinished accepted request per domain and no hidden query queue. Completed
+duplicate recognition expires with retained terminals; unfinished requests do not
+expire. Lifecycle states are `inactive`, `activating`, `active`,
 `background`, `stopping`, `cleanup_failed`; execution state is independent.
 
 ```json
 {
   "type":"domain_result", "project_id":"repository-key", "workspace_id":"workspace-uuid",
-  "domain_id":"core", "domain_session_id":"generation-uuid",
+  "domain_id":"core", "domain_session_id":"application-uuid", "execution_id":"execution-uuid",
   "request_id":"run-1", "output_id":"1", "agent_id":"systems-architect",
   "task":"Review the auth middleware", "output":"Review complete.",
   "status":"success", "reason":"completed",
@@ -258,20 +279,49 @@ save status and delivery. NPC replies retain `{agent_id,task,output,status}` wit
 `status:"error"`, safe `error_type`/`message`, and valid supplied correlation.
 No internal diagnostic UUID is fabricated into a malformed domain command.
 
+Frozen `domain_accepted`/`domain_result` data may omit `protocol_version`; clients
+allow absent version only for those frames after exact project/application/
+execution/request correlation and strict flag validation. A supplied version must
+be integer 2; missing execution identity fails. Historical data is never lifecycle
+authority and packets are not restamped. Commands, lifecycle and negotiation are
+strict v2. A failed state save exposes `committed:false`, storage `error_type` and
+no `output_id` for the live result; replay never claims that answer as saved history.
+
 ### Replay and connection admission
 
 ```json
-{"type":"resume","domain_id":"core","domain_session_id":"generation-uuid","cursor":"0","request_id":"replay-1"}
+{"type":"resume","protocol_version":2,"domain_id":"core","domain_session_id":"application-uuid","cursor":"0","request_id":"replay-1"}
 ```
 
 Replay returns results above the ASCII decimal-string cursor (at most 128 UTF-8 bytes) through a captured
 high-water mark, ending in `resume_complete` even when empty. Results retain their
 original Run request IDs; completion carries the replay request ID. Replay does
-not refocus. IDs begin at `"1"` per generation. History gaps and the earliest
-retained ID are explicit. Each generation retains at most 256 terminals / 4 MiB
-output, each output at most 256 KiB UTF-8. At most ten domain identities and two
-generations per domain are retained; live/unclean ownership is never evicted.
-Nothing here restores SDK state or terminal buffers after bridge restart.
+not refocus. IDs begin at `"1"` per application session and keep their values across
+SQLite restart. History gaps, earliest retained ID and highwater are explicit,
+including when the retained window is empty. Each session retains at most 256
+terminals / 4 MiB output-text, each output at most 256 KiB UTF-8. Terminal JSON is
+at most 2 MiB UTF-8. The project store allows 128 sessions/10 domains in a 64 MiB
+serialized image, with a 2 MiB logical completion allowance at admission. End does
+not evict history; selected ended sessions can be deleted only by the offline
+backup-first maintenance CLI. Atomic replacement can require 128 MiB plus failed
+temporary remnants; image size is not a total disk quota.
+
+`state_store` reports `backend`, `durable`, `continuity`, `continuity_id` and
+`error_type`. SQLite uses project continuity and its persisted instance UUID
+(null before first image); memory uses process continuity and a fresh boot UUID.
+Backend changes or two established differing continuity IDs retire old caches
+before revision comparisons; initial null→SQLite UUID establishes continuity
+without retiring an in-flight first Start/draft. Validate the complete packet
+before mutation. Memory never imports/changes SQLite history. Busy, invalid,
+unsupported, quota, failed and uncertain storage states fail visibly without
+automatic fallback or silent recreation.
+
+Restoration starts no SDK/model/tools: accepted-without-dispatch is `not_executed`,
+dispatch-without-terminal is `interrupted`/unknown, and saved terminals replay
+unchanged. Exact owned note reconciliation is reported separately through
+`memory_reconciliation`. A bounded quoted recap is supplied once on the first
+actual Run of each fresh execution; it does not enqueue old work or imply provider
+process recovery. Details and operator recovery are in the M13 guide.
 
 Each connection admits one NPC operation, one ordinary domain control, one Stop
 and one discovery (`describe_workspace` / `domain_status`) independently. An
@@ -299,7 +349,9 @@ does not change an established binding.
 | `workspace_unconfigured`, `workspace_not_ready`, `workspace_invalid` | Project binding/readiness failure |
 | `workspace_busy` | Another domain holds the reservation |
 | `memory_unavailable` | Required memory preflight or checkpoint failed |
-| `session_unavailable`, `sdk_error` | Unknown/stale generation or unusable SDK owner |
+| `session_unavailable`, `sdk_error` | Unknown application session or unusable SDK owner |
+| `upgrade_required`, `stale_execution`, `stale_domain_revision` | Protocol version or lifecycle/execution fencing failed |
+| `state_store_busy`, `state_store_invalid`, `state_store_unsupported`, `state_store_quota`, `state_store_failed`, `state_store_uncertain` | Visible storage failure; no automatic fallback or empty recreation |
 | `cleanup_failed` | Cleanup is unconfirmed; ownership/evidence retained |
 
 Shutdown drains domains, then owned NPC/setup/IO, then detaches the memory run,
@@ -346,15 +398,14 @@ fails pending requests once and archives that generation read-only; reconnect
 starts fresh server model context. No display transcript or archived draft is
 replayed. Frontend display limits are independent of model and disk limits.
 History, resizing and keyboard controls are implemented with deterministic
-coverage; owner desktop acceptance was recorded for M11; M12 desktop acceptance
-remains outstanding. See the
+coverage; owner desktop acceptance was recorded for M11 and M12. See the
 [operating guide](../QUICKSTART.md#npc-conversation-history-and-controls-m11).
 The bridge has no UI awareness, and legacy conversation clients may omit request IDs.
-The character/domain amendment has deterministic physical Godot coverage. Its
-fresh source/runtime/mode-bound real acceptance remains pending; recorded
-2026-10-21 Linux live evidence is historical. Laptop binary and M12 desktop acceptance remain
-open. Worktree notes survive clean restart, while
-result replay is process-local. See [M12 operations and platform limits](../QUICKSTART.md#project-work-and-domain-controls-m12)
+The character/domain amendment's M12 owner acceptance is complete; its recorded
+source/runtime/mode-bound evidence remains historical. M13 has new deterministic
+coverage; final fresh guard/live acceptance remains pending. Worktree notes and
+bounded committed SQLite history survive restart without execution resumption.
+See [M12 operations and platform limits](../QUICKSTART.md#project-work-and-domain-controls-m12)
 and [bounded live evidence](../QUICKSTART.md#m12-live-evidence-and-desktop-checks).
 
 ## Planned platform evolution
@@ -366,7 +417,7 @@ describes the intended boundaries and open contract decisions.
 
 | Milestone | Intended change |
 |---|---|
-| M13 | Durable identities scoped by user, project, and domain, with defined restart/reconnect recovery. Exact fields and recovery semantics require implementation and verification. |
+| M13 | Bounded local persistence is implemented on this branch as documented above; final performance/fresh guard/live acceptance remains pending. Broader user/remote state is outside this increment. |
 | M14 | Broader isolation and workspace/runtime providers beyond the M12 cooperative local Git worktree. |
 | M15 | Authenticated hosted operation with durable storage and enforced ownership/access boundaries. |
 

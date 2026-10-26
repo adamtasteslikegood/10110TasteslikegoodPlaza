@@ -151,7 +151,17 @@ End is explicit, and restart restores history while each explicit Start creates 
 fresh execution. Reconnect/status/replay never starts work. M12 text and evidence
 below remain the historical acceptance contract; M13 implementation is in progress
 and requires its own verification and fresh guarded-source evidence. This notice
-changes no locked decision, Markdown project-note contract or authentication path.
+changes no locked decision, project-note bounds/isolation or authentication path.
+
+The [M13 operating guide](../../m13-session-persistence.md) now documents the
+implemented successor branch; final M13 acceptance remains pending. Its approved
+exact-turn/owned note reconciliation supersedes the historical blanket startup
+recovery of domain pending turns in §4.4, for both storage backends. Legacy domain
+turns without a retained SQL request can remain pending for specific operator
+inspection; extras/direct-store defaults remain. M13's bounded cleartext task/output
+records refine the earlier M12-only database exclusion above; credentials, raw SDK
+objects and complete guidance bodies remain excluded. Historical M12 text and
+acceptance evidence below are preserved, not reinterpreted as M13 proof.
 
 ## 4. Workspace selection and reservation
 

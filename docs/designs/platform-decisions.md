@@ -82,6 +82,18 @@ This additive approved extension follows unchanged D-035 validation/precedence
 and preserves all existing defaults. Memory mode neither imports nor modifies
 SQLite history; returning to SQLite resumes its saved project history.
 
+The [M13 operator guide](../m13-session-persistence.md) describes the implemented
+branch behavior, including offline lock-respecting export and selected ended-session
+deletion only after durable exclusive backup. Final M13 acceptance remains pending.
+The approved recovery refinement protects domain pending notes in both backends
+until exact retained-request/turn reconciliation under valid owned readiness;
+extras/direct-store legacy defaults remain. Legacy domain turns lacking a retained
+SQL request may remain pending for specific operator inspection. This supersedes
+historical blanket domain startup recovery, without relaxing D-039's bounds,
+project isolation or prohibition on invented success/re-execution. The SQLite store
+contains bounded task/output text in local cleartext; credential/raw SDK storage
+remains excluded. No new locked decision or doc-set version change is introduced.
+
 ## 1. Scope — what belongs in this document
 
 | Belongs here | Belongs elsewhere |

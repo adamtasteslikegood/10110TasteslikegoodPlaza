@@ -483,3 +483,25 @@ Task6 reviewed complete through `4b9d28d`: real process crash recovery, exact ow
 Task7 reviewed complete through `ba17ec6`: bounded quoted conversation recap on the first actual invocation per fresh execution, exact source metadata, strict malformed-state rejection. Next Task8 Godotv2/history/End controls. BackendTasks1–7 reviewed; UI/maintenance/final actual evidence still pending. No full feature/live acceptance claim.
 
 Task8 independently reviewed complete through `dce7203`: protocol-v2 restored history, separate End controls, explicit Start/Run, full public cache limits and storage continuity ownership. Tasks1–8 implementation gates are complete; remaining Task9 offline maintenance/operator alignment and Task10 final QA/performance/fresh live acceptance are required. Two Minor client findings (duplicate pending settlement and notice-prefix scroll anchors) are assigned to Task10/final review, not silently closed. No shipped acceptance or dev merge is claimed.
+
+### Task9 resolved maintenance clarifications — October 26, 2026
+
+The implementation handoff resolves export as observational: it may include an
+open-but-stopped application session or unreconciled historical execution rows
+when the same project writer lock is exclusively held. Persisted unstopped rows
+do not establish a live owner; export performs no crash cleanup or SDK activation.
+A live writer blocks either command. The approved design's active-session
+restriction remains strict for destructive deletion: `ended_at` is required even
+after Stop, with a durable exclusive backup before commit. This is an
+implementation clarification of the approved export/delete scope, not a new
+locked decision or imported recovery path.
+
+The version-1 JSON export/backup ceiling is 512 MiB (8 × the 64 MiB image limit),
+counted incrementally in actual UTF-8 bytes before output creation. This allows
+bounded JSON quoting/envelope expansion without changing runtime image quotas;
+physical disk/fsync failures remain possible. Canonical selected records and the
+source image receive separate SHA256 metadata. There is no restore/import/reset
+command. The [operator guide](docs/m13-session-persistence.md) carries these rules
+and the approved successor for exact owned domain-note reconciliation. No new
+unresolved governing conflict was found; locked decisions, historical contracts
+and paid evidence remain unchanged. Final M13 acceptance remains Task10 work.
