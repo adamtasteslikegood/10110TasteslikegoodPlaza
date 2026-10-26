@@ -530,6 +530,13 @@ async def test_server_old_history_reopen_run_stop_end_reopen_exact_sequence(
             )
         )[-1]
         assert fresh["output_id"] == "2" and len(owners[-1].calls) == 1
+        recap = owners[-1].calls[0]["context_packet"].continuity
+        assert recap.source_high_water == 1 and recap.source_output_ids == (1,)
+        assert (
+            "Original saved task" in recap.text and "New saved task" not in recap.text
+        )
+        assert owners[-1].calls[0]["prior_project_notes"]
+
         if end:
             await send(
                 server,
@@ -560,6 +567,22 @@ async def test_server_old_history_reopen_run_stop_end_reopen_exact_sequence(
                 )
             ) == [fresh]
             assert not owners[-1].calls
+        else:
+            activated = (await send(server, "activate_domain"))[-1]
+            assert activated["domain_session_id"] != first["domain_session_id"]
+            await send(
+                server,
+                "domain_query",
+                request_id="after-end",
+                agent_id="backend-architect",
+                task="New application work",
+            )
+            recap = owners[-1].calls[0]["context_packet"].continuity
+            assert recap.source_high_water == 0 and recap.source_output_ids == ()
+            assert (
+                "Original saved task" not in recap.text
+                and "New saved task" not in recap.text
+            )
     finally:
         await server._shutdown()
         server.close()
@@ -816,3 +839,91 @@ async def test_stop_during_acceptance_archives_input_and_outcome_once(
         not owner.calls
         and coordinator.replay(session.domain_session_id, 0).entries == terminal
     )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status", ["success", "error"])
+async def test_first_run_only_per_execution(durable, runtime_archive, status):
+    manager, session, _, owner, _, _, _, emit, command = durable
+    recorder, writer = runtime_archive
+    session._recorder = recorder
+    owner.outcome = replace(owner.outcome, status=status)
+    await run_until_terminal(durable)
+    first = owner.calls[0]["context_packet"].continuity
+    assert first is not None and first.source_high_water == 0
+    assert first.source_output_ids == ()
+    await manager.handle(command, context=context(), emit=emit)
+    command["request_id"] = "second"
+    await run_until_terminal(durable)
+    assert len(owner.calls) == 2
+    assert owner.calls[1]["context_packet"].continuity is None
+    events = [
+        r
+        for kind, r, _ in writer.records
+        if kind == "event" and r["event"] == "execution_started"
+    ]
+    assert events[0]["recap_source_high_water"] == 0
+    assert events[0]["recap_source_output_ids"] == []
+    assert events[0]["domain_session_id"] == session.domain_session_id
+    assert events[0]["execution_id"] == session.execution_id
+    assert events[0].get("recap_notice_output_id") is None
+    assert events[1].get("recap_source_high_water") is None
+    assert first.text not in str(events)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("kind", ["accept", "dispatch"])
+async def test_failed_pre_sdk_attempt_does_not_consume_recap(durable, kind):
+    from bridge.application_state import StateCommand
+
+    _, session, _, owner, coordinator, controls, packets, _, command = durable
+    controls["fail"] = kind
+    if kind == "accept":
+        manager, _, _, _, _, _, _, emit, _ = durable
+        await manager.handle(command, context=context(), emit=emit)
+    else:
+        await run_until_terminal(durable)
+    assert not owner.calls
+    controls.pop("fail")
+    await coordinator.reconcile()
+    if kind == "dispatch":
+        # The explicitly reconciled known not-invoked request is settled first.
+        await coordinator.commit(
+            StateCommand(
+                "terminal",
+                dict(
+                    session_id=session.domain_session_id,
+                    request_id=command["request_id"],
+                    packet=dict(
+                        request_id=command["request_id"],
+                        agent_id=command["agent_id"],
+                        task=command["task"],
+                        status="error",
+                        reason="not_executed",
+                        output="Not executed",
+                    ),
+                ),
+            )
+        )
+    command["request_id"] = "actual-first"
+    packets.clear()
+    await run_until_terminal(durable)
+    assert len(owner.calls) == 1
+    assert owner.calls[0]["context_packet"].continuity is not None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("defect", ["wrong_project", "missing", "malformed"])
+async def test_bad_recap_view_fails_run_before_acceptance(durable, monkeypatch, defect):
+    manager, _, _, owner, coordinator, controls, packets, emit, command = durable
+    snapshot = coordinator.snapshot()
+    if defect == "wrong_project":
+        snapshot = replace(snapshot, project_id="other-project")
+    elif defect == "missing":
+        snapshot = None
+    else:
+        snapshot = replace(snapshot, sessions=())
+    monkeypatch.setattr(coordinator, "snapshot", lambda: snapshot)
+    await manager.handle(command, context=context(), emit=emit)
+    assert packets[-1]["error_type"] == "state_store_invalid"
+    assert not owner.calls and "accept" not in controls["events"]

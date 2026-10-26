@@ -30,6 +30,8 @@ GUARD_SOURCES = (
     "bridge/domain_session.py",
     "bridge/domain_run_state.py",
     "bridge/session_recovery.py",
+    "bridge/session_recap.py",
+    "bridge/context.py",
     "bridge/domain_protocol.py",
     "bridge/conversation_backend.py",
     "bridge/tool_guard_evidence.py",

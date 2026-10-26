@@ -552,3 +552,64 @@ def test_context_diagnostics_only_capture_identities_and_revisions(tmp_path):
         dict(identity="/[REDACTED]/guidance", scope="project", revision="abc")
     ]
     assert "private" not in json.dumps(row)
+
+
+def test_supplied_recap_source_metadata_only(tmp_path):
+    from uuid import uuid4
+
+    cfg = config(tmp_path)
+    recorder = BridgeRecorder(cfg, "plaza")
+    application, execution = str(uuid4()), str(uuid4())
+    assert recorder.event(
+        "execution_started",
+        context(),
+        domain_session_id=application,
+        execution_id=execution,
+        recap_source_high_water=10,
+        recap_source_output_ids=(4, 6, 8, 10),
+        recap_notice_output_id=9,
+    )
+    recorder.close()
+    row = records(cfg)[0]
+    assert row["domain_session_id"] == application and row["execution_id"] == execution
+    assert row["recap_source_high_water"] == 10
+    assert row["recap_source_output_ids"] == [4, 6, 8, 10]
+    assert row["recap_notice_output_id"] == 9
+    assert not {"text", "content", "consumed", "recap"} & row.keys()
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"recap_source_high_water": True},
+        {"recap_source_high_water": -1},
+        {"recap_source_output_ids": (1, 2, 3, 4, 5)},
+        {"recap_source_output_ids": (2, 1)},
+        {"recap_source_output_ids": (1, 1)},
+        {"recap_source_output_ids": (True,)},
+        {"recap_source_output_ids": (11,)},
+        {"recap_source_output_ids": "historical task text"},
+        {"recap_notice_output_id": "historical answer"},
+        {"recap_notice_output_id": 11},
+        {"recap_notice_output_id": 1},
+        {"domain_session_id": "historical task"},
+        {"execution_id": None},
+        {"recap_source_high_water": None},
+    ],
+)
+def test_invalid_recap_metadata_cannot_reach_admin_archive(tmp_path, changes):
+    from uuid import uuid4
+
+    cfg = config(tmp_path)
+    recorder = BridgeRecorder(cfg, "plaza")
+    args = dict(
+        domain_session_id=str(uuid4()),
+        execution_id=str(uuid4()),
+        recap_source_high_water=10,
+        recap_source_output_ids=(1, 3),
+        recap_notice_output_id=2,
+    )
+    args.update(changes)
+    assert not recorder.event("execution_started", context(), **args)
+    recorder.close()
+    assert not records(cfg)

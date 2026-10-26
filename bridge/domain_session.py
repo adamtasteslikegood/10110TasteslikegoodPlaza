@@ -8,7 +8,7 @@ to confirm cleanup. Delivery is an independent best-effort observation.
 import asyncio
 from collections.abc import Awaitable, Callable
 from copy import deepcopy
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from enum import Enum
 import time
 from typing import TYPE_CHECKING
@@ -18,13 +18,14 @@ from bridge.context import compose_context
 from bridge.agents import load_agent
 from bridge.agent_bindings import require_working_binding, InvalidBinding
 from bridge.config import BridgeConfig
-from bridge.application_state import StateCommand, StateError
+from bridge.application_state import StateCommand, StateError, StateView
 from datetime import datetime, timezone
 from bridge.domain_protocol import DomainCommandError, error_packet
 from bridge.domain_sdk import DomainSDKOwner, SDKOutcome
 from bridge.domain_store import DomainSessionStore, MemoryStore
 from bridge.domain_run_state import DurableRunState, settle_owned
 from bridge.session_recovery import reconcile_memory
+from bridge.session_recap import build_recap
 from bridge.failure_diagnostics import (
     diagnostic_fields,
     exception_diagnostics,
@@ -194,6 +195,7 @@ class DomainSession:
             if coordinator is not None
             else None
         )
+        self._recap_supplied = False
         self._memory_revision = None
         # The store intentionally rejects concurrent file-lock acquisition.
         # Serialize this generation's own checkpoints while retaining explicit
@@ -575,6 +577,21 @@ class DomainSession:
                 permission_mode=self._config.domain_permission_mode,
                 interaction="explicit_run",
             )
+            if self._coordinator is not None and not self._recap_supplied:
+                view = self._coordinator.snapshot()
+                if (
+                    not isinstance(view, StateView)
+                    or view.project_id != self._workspace.project_id
+                ):
+                    raise StateError("state_store_invalid")
+                context_packet = replace(
+                    context_packet,
+                    continuity=build_recap(
+                        view,
+                        self.domain_session_id,
+                        exclude_request_id=run.command["request_id"],
+                    ),
+                )
             # The owner may have failed while checkpoint IO was awaiting.
             await self._require_owner_ready()
             cancelled = False
@@ -663,12 +680,6 @@ class DomainSession:
                 run, SDKOutcome("", "cancelled", "stopped", None, None), started
             )
             return
-        if self._recorder:
-            self._recorder.event(
-                "execution_started",
-                run.context,
-                context_sources=context_packet.diagnostics(),
-            )
         try:
             run.preparing = True
             if self._run_state is not None:
@@ -681,6 +692,28 @@ class DomainSession:
                 outcome = SDKOutcome("", "cancelled", "stopped", None, None)
             else:
                 self._require_state_ready()
+                # Only this actual invocation consumes first-entry continuity.
+                # Acceptance, dispatch failure and retained duplicate replay do not.
+                recap = context_packet.continuity
+                if self._recorder:
+                    supplied = (
+                        dict(
+                            domain_session_id=self.domain_session_id,
+                            execution_id=self.execution_id,
+                            recap_source_high_water=recap.source_high_water,
+                            recap_source_output_ids=recap.source_output_ids,
+                            recap_notice_output_id=recap.notice_output_id,
+                        )
+                        if recap is not None
+                        else {}
+                    )
+                    self._recorder.event(
+                        "execution_started",
+                        run.context,
+                        context_sources=context_packet.diagnostics(),
+                        **supplied,
+                    )
+                self._recap_supplied = True
                 outcome = await self._owner.execute(
                     agent_id=run.command["agent_id"],
                     definition=definition,

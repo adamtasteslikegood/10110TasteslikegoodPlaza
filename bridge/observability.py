@@ -13,6 +13,7 @@ import math
 import re
 import threading
 from typing import Literal
+from uuid import UUID
 
 from bridge.config import BridgeConfig
 from bridge.log_storage import RunLogWriter
@@ -205,6 +206,11 @@ class BridgeRecorder:
         duration_ms: float | None = None,
         domain_state: str | None = None,
         context_sources: list[dict] | None = None,
+        domain_session_id: str | None = None,
+        execution_id: str | None = None,
+        recap_source_high_water: int | None = None,
+        recap_source_output_ids: tuple[int, ...] | None = None,
+        recap_notice_output_id: int | None = None,
         terminal_reason: str | None = None,
         readiness_category: str | None = None,
         tool_name: str | None = None,
@@ -242,9 +248,55 @@ class BridgeRecorder:
                         }
                         for source in context_sources
                     ]
+                supplied = {}
+                if any(
+                    value is not None
+                    for value in (
+                        domain_session_id,
+                        execution_id,
+                        recap_source_high_water,
+                        recap_source_output_ids,
+                        recap_notice_output_id,
+                    )
+                ):
+                    if (
+                        type(recap_source_high_water) is not int
+                        or not 0 <= recap_source_high_water < 2**63
+                        or not isinstance(recap_source_output_ids, tuple)
+                        or len(recap_source_output_ids) > 4
+                        or any(
+                            type(i) is not int or not 1 <= i <= recap_source_high_water
+                            for i in recap_source_output_ids
+                        )
+                        or tuple(sorted(set(recap_source_output_ids)))
+                        != recap_source_output_ids
+                        or (
+                            recap_notice_output_id is not None
+                            and (
+                                type(recap_notice_output_id) is not int
+                                or not 1
+                                <= recap_notice_output_id
+                                <= recap_source_high_water
+                                or recap_notice_output_id in recap_source_output_ids
+                            )
+                        )
+                        or not isinstance(domain_session_id, str)
+                        or str(UUID(domain_session_id)) != domain_session_id
+                        or not isinstance(execution_id, str)
+                        or str(UUID(execution_id)) != execution_id
+                    ):
+                        raise ValueError("Invalid supplied recap metadata")
+                    supplied = dict(
+                        domain_session_id=domain_session_id,
+                        execution_id=execution_id,
+                        recap_source_high_water=recap_source_high_water,
+                        recap_source_output_ids=list(recap_source_output_ids),
+                        recap_notice_output_id=recap_notice_output_id,
+                    )
                 metadata = self._record(
                     context,
                     context_sources=context_sources,
+                    **supplied,
                     event=name,
                     outcome=outcome,
                     duration_ms=duration_ms,
