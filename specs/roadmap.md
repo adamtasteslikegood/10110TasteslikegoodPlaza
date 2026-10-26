@@ -10,7 +10,7 @@ owner: adamtasteslikegood
 derives_from: [PROJECT-OVERVIEW, DESIGN-25D, SPEC-DRIVERS-025, BRIDGE-PLATFORM-DESIGN]
 enforcement: asserted
 gates: [Validate Specs:live, Export Godot 4 Prototype:live]
-weakest_claim: M9–M12 are complete with owner acceptance; M13 is in progress with the bounded in-memory extraction pending dev delivery; M14–M15 remain planned.
+weakest_claim: M9–M12 are complete with owner acceptance; M13 is in progress with the bounded in-memory extraction and durable storage still to build; M14–M15 remain planned.
 ---
 
 # 10110 TastesLike Plaza — Bridge-First Platform Roadmap
@@ -31,7 +31,7 @@ remain deferred frontend milestones. M11 improves NPC conversation; it does not
 complete or replace M5 or M6.
 
 The owner approved the written bridge-first design and M10 plan on 2026-10-18.
-M9–M12 are complete with owner acceptance; M13 is in progress with the bounded in-memory extraction pending dev delivery; M14–M15 remain planned.
+M9–M12 are complete with owner acceptance; M13 is in progress with the bounded in-memory extraction and durable storage still to build; M14–M15 remain planned.
 M10 acceptance covers offline configuration, archive/lifecycle and loopback service
 tests; it does not establish later UI features or durable application recovery.
 `D-033` supersedes broad `D-006` with scoped synchronous NPC calls; `D-034`
@@ -607,7 +607,7 @@ JSONL transcripts and debug logs from M10 remain diagnostic records rather than
 the application's state store.
 
 The first bounded increment, [#373](https://github.com/adamtasteslikegood/10110TasteslikegoodPlaza/issues/373),
-is owner-approved and implemented on the integration branch, pending dev delivery:
+is owner-approved and implemented; [PR #376](https://github.com/adamtasteslikegood/10110TasteslikegoodPlaza/pull/376) tracks dev delivery:
 extract `DomainSessionStore` / `MemoryStore` while preserving current replay,
 retention and duplicate handling. This increment adds no persistent storage.
 [Its implementation record](../docs/superpowers/plans/2026-10-26-m13-memory-store-extraction.md)

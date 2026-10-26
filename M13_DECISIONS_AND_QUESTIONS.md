@@ -1,6 +1,8 @@
 # M13 decisions and questions for Adam
 
 **Status: working review queue; not a specification, decision register or implementation approval.**
+**Resume from the live [PR #376 state](https://github.com/adamtasteslikegood/10110TasteslikegoodPlaza/pull/376):** checkpoints below describe their capture times. When that PR is merged and #373 closed, phase 1 is delivered; continue with the bounded persistence design rather than repeating extraction or branch reconciliation. M13 remains In Progress.
+
 Prepared October 23, 2026 (America/Los_Angeles). Tracks reconciliation for [GitHub #373](https://github.com/adamtasteslikegood/10110TasteslikegoodPlaza/issues/373) and PLZG-290. No new D-numbers are assigned here.
 
 ## Historical instructions — research reconciliation round (completed)
@@ -349,3 +351,13 @@ aging threshold or forecast was invented, and no validator was weakened.
 Review/check completion and dev merge are the remaining phase-1 delivery work.
 Phase 2 still requires its bounded persistence design; the new Stop/End answer
 is an input, not approval of that whole design.
+
+
+The current-dev merge (`7aff235`, including publisher PR #375) preserves both
+registry additions and the later live flow reading. Existing PM-tool requirements
+must be installed alongside the bridge requirements for the combined test suite;
+the initial local run lacked `requests` and produced 17 publisher setup errors.
+Installing `scripts/pm/requirements.txt` made all 17 publisher cases pass, without
+source changes. The complete combined regression is rerun before merge; its final
+result is recorded on PR #376. The historical 2,013-test extraction run remains
+accurate for its original baseline rather than being overwritten with new counts.
