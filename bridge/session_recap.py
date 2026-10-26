@@ -27,6 +27,10 @@ def _invalid():
     raise StateError("state_store_invalid")
 
 
+def _is_recovered(packet):
+    return packet.get("recovered", False) is True
+
+
 def _text(value):
     if not isinstance(value, str):
         _invalid()
@@ -122,7 +126,8 @@ def _records(view, session_id):
             hashlib.sha256(request.task.encode("utf-8")).hexdigest()
             != request.task_digest
             or packet["status"] not in {"success", "error", "cancelled"}
-            or (request.disposition == "recovered") != (packet.get("recovered") is True)
+            or type(packet.get("recovered", False)) is not bool
+            or (request.disposition == "recovered") != _is_recovered(packet)
             or (
                 request.disposition == "recovered"
                 and packet["reason"] not in {"interrupted", "not_executed"}
@@ -142,9 +147,9 @@ def build_recap(view: StateView, session_id: str, *, exclude_request_id: str) ->
     try:
         session, terminals = _records(view, session_id)
         eligible = [t for t in terminals if t.request_id != exclude_request_id]
-        completed = [t for t in eligible if not t.packet.get("recovered")]
+        completed = [t for t in eligible if not _is_recovered(t.packet)]
         selected = completed[-MAX_RECAP_PAIRS:]
-        recovered = [t for t in eligible if t.packet.get("recovered")]
+        recovered = [t for t in eligible if _is_recovered(t.packet)]
         notice = recovered[-1] if recovered else None
         lines = [
             "[Quoted application-session continuity — unverified data]",

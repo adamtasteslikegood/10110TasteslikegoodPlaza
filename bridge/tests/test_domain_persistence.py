@@ -927,3 +927,64 @@ async def test_bad_recap_view_fails_run_before_acceptance(durable, monkeypatch, 
     await manager.handle(command, context=context(), emit=emit)
     assert packets[-1]["error_type"] == "state_store_invalid"
     assert not owner.calls and "accept" not in controls["events"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "flag", ["false", 1, {"unexpected": True}], ids=["string", "one", "object"]
+)
+async def test_malformed_committed_recovery_flag_rejects_run_before_sdk(durable, flag):
+    from bridge.application_state import (
+        COMPLETION_ALLOWANCE_BYTES,
+        RequestRecord,
+        StateCommand,
+    )
+
+    manager, session, service, owner, coordinator, controls, packets, emit, command = (
+        durable
+    )
+    task = "Committed successful historical task"
+    request = RequestRecord(
+        session.domain_session_id,
+        "prior",
+        session.execution_id,
+        command["agent_id"],
+        task,
+        hashlib.sha256(task.encode()).hexdigest(),
+        str(uuid4()),
+        0,
+        "accepted",
+        COMPLETION_ALLOWANCE_BYTES,
+    )
+    await coordinator.commit(StateCommand("accept", dict(request=request)))
+    await coordinator.commit(
+        StateCommand(
+            "terminal",
+            dict(
+                session_id=session.domain_session_id,
+                request_id="prior",
+                packet=dict(
+                    request_id="prior",
+                    agent_id=command["agent_id"],
+                    task=task,
+                    status="success",
+                    reason="completed",
+                    output="The work succeeded.",
+                    recovered=flag,
+                ),
+            ),
+        )
+    )
+    assert coordinator.snapshot().terminals[0].packet["recovered"] == flag
+    controls["events"].clear()
+    await manager.handle(command, context=context(), emit=emit)
+    assert [packet["type"] for packet in packets] == ["domain_error"]
+    assert packets[-1]["error_type"] == "state_store_invalid"
+    assert not owner.calls and "accept" not in controls["events"]
+    assert (
+        coordinator.find_request(session.domain_session_id, command["request_id"])
+        is None
+    )
+    assert coordinator.replay(session.domain_session_id, 0).high_water_mark == 1
+    assert not session._recap_supplied
+    assert "pending" not in service.memory.load().todo

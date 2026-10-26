@@ -256,3 +256,52 @@ def test_pair_labels_preserve_each_representative_and_real_outcome():
         ("builder", "error"),
         ("reviewer", "cancelled"),
     ]
+
+
+@pytest.mark.parametrize(
+    "flag",
+    ["false", 1, {"unexpected": True}, 0, "", None, [], {}],
+    ids=[
+        "string",
+        "one",
+        "object",
+        "zero",
+        "empty-string",
+        "null",
+        "array",
+        "empty-object",
+    ],
+)
+@pytest.mark.parametrize("disposition", ["terminal", "recovered"])
+def test_non_boolean_recovery_flags_rejected(flag, disposition):
+    view = history()
+    if disposition == "recovered":
+        view = replace(
+            view, requests=(replace(view.requests[0], disposition=disposition),)
+        )
+        view.terminals[0].packet.update(status="error", reason="interrupted")
+    view.terminals[0].packet["recovered"] = flag
+    with pytest.raises(StateError, match="state_store_invalid"):
+        recap(view)
+
+
+@pytest.mark.parametrize("explicit_false", [False, True], ids=["absent", "false"])
+def test_canonical_normal_flag_preserves_completed_pair(explicit_false):
+    view = history()
+    if explicit_false:
+        view.terminals[0].packet["recovered"] = False
+    result = recap(view)
+    assert result.source_output_ids == (1,) and result.notice_output_id is None
+    assert pairs(result)[0]["outcome"] == "success"
+    assert "Recovery notice:" not in result.text
+
+
+@pytest.mark.parametrize("disposition,flag", [("terminal", True), ("recovered", False)])
+def test_boolean_recovery_flag_must_match_request_disposition(disposition, flag):
+    view = history()
+    view = replace(view, requests=(replace(view.requests[0], disposition=disposition),))
+    view.terminals[0].packet.update(
+        recovered=flag, status="error", reason="interrupted"
+    )
+    with pytest.raises(StateError, match="state_store_invalid"):
+        recap(view)
