@@ -179,6 +179,7 @@ func _ready() -> void:
 	fix_round1_budget_regressions()
 	fix_round1_namespace_validation_regressions()
 	fix_round1_metadata_budget_regressions()
+	fix_round2_unavailable_owner_regressions()
 	finish()
 
 func dict_accepted() -> Dictionary:
@@ -700,3 +701,46 @@ func fix_round1_metadata_budget_regressions() -> void:
 	s.set_draft("core", "d".repeat(65536))
 	check(s.admit_command(command("domain_query", "memory-current")), "current correlation admitted with extended terminal memory")
 	check(JSON.stringify(s.snapshot("core")).to_utf8_buffer().size() <= Store.MAX_BYTES and s.snapshot("core").pending_query.get("request_id") == "memory-current", "terminal memory extensions cannot escape text eviction into retained status facts")
+
+
+func fix_round2_unavailable_owner_regressions() -> void:
+	for nested in [false, true]:
+		for target in ["lower-B", "higher-B", "same-A", "stale-A"]:
+			var s = fresh()
+			s.admit_command(command("domain_status", "owner-A"))
+			var current := state("owner-A")
+			current.domain_revision = "3"
+			s.apply_packet(current)
+			s.apply_packet(result("1"))
+			var unsaved := result("2", "A", "owner-A-unsaved")
+			unsaved.erase("output_id")
+			unsaved.committed = false
+			s.apply_packet(unsaved)
+			s.set_draft("core", "same project draft")
+			s.disconnect_connection()
+			var unavailable := state("unavailable", "A", "inactive")
+			unavailable.domain_session_id = null
+			unavailable.domain_revision = "0"
+			unavailable.saved_sessions = []
+			unavailable.state_store.continuity_id = null
+			unavailable.state_store.error_type = "state_store_invalid"
+			if nested: check(s.observe_domain(unavailable, s.observation_fence()), "nested unavailable snapshot accepted")
+			else:
+				s.admit_command(command("domain_status", "unavailable"))
+				check(s.apply_packet(unavailable).get("reason") == "domain_state", "correlated unavailable snapshot accepted")
+			check(s.snapshot("core").authority_unavailable and s.snapshot("core").results.size() == 1 and s.snapshot("core").unsaved_results.size() == 1, "unavailable facts preserve read-only cache without claiming identity")
+			var replacement := state("replacement", "B" if target.ends_with("B") else "A")
+			replacement.domain_revision = {"lower-B": "1", "higher-B": "9", "same-A": "3", "stale-A": "2"}[target]
+			if target.ends_with("B"): replacement.state_store.continuity_id = "00000000-0000-4000-8000-000000000004"
+			var accepted: bool
+			if nested: accepted = s.observe_domain(replacement, s.observation_fence())
+			else:
+				s.admit_command(command("domain_status", "replacement"))
+				accepted = s.apply_packet(replacement).get("reason") == "domain_state"
+			var observed: Dictionary = s.snapshot("core")
+			if target.ends_with("B"):
+				check(accepted and observed.domain_session_id == "B" and observed.domain_revision == replacement.domain_revision and observed.results.is_empty() and observed.unsaved_results.is_empty() and observed.received_cursor == "0" and observed.selected_session_id == "B", "A→unavailable→%s resets cache before comparing revisions via %s" % [target, "nested observation" if nested else "status"])
+			elif target == "same-A":
+				check(accepted and not observed.authority_unavailable and observed.domain_session_id == "A" and observed.results.size() == 1 and observed.unsaved_results.size() == 1 and observed.received_cursor == "1" and observed.draft == "same project draft", "same A recovery retains saved/unsaved cache and draft")
+			else:
+				check(not accepted and observed.domain_revision == "3" and observed.authority_unavailable and observed.results.size() == 1, "unavailable interval does not relax same-A lower-revision fencing")

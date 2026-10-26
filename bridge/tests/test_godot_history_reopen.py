@@ -370,3 +370,198 @@ async def test_kept_game_survives_backend_and_memory_process_discontinuities(
         if process.returncode is None:
             process.kill()
         await output_task
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("replacement", ["lower-B", "higher-B", "same-A"])
+async def test_kept_game_preserves_cache_owner_through_unavailable_storage(
+    tmp_path, monkeypatch, offline_clients, replacement
+):
+    """Real server/client, with a disposable SQLite repository-owner test seam."""
+    from uuid import uuid4
+    from bridge.application_state import StateCommand
+    from bridge.state_coordinator import StateCoordinator, LazySQLiteStateRepository
+
+    root = repository(tmp_path, "unavailable-project")
+    control = tmp_path / "unavailable-control"
+    control.mkdir()
+    godot = shutil.which(os.environ.get("GODOT_BIN", "godot"))
+    if not godot:
+        if os.environ.get("PLAZA_REQUIRE_GODOT"):
+            pytest.fail("Godot is required")
+        pytest.skip("Godot unavailable")
+    process = await asyncio.create_subprocess_exec(
+        godot,
+        "--headless",
+        "--path",
+        str(ROOT),
+        "tests/godot_history_continuity.tscn",
+        env={**os.environ, "PLAZA_CONTINUITY_CONTROL": str(control)},
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.STDOUT,
+    )
+    output_task = asyncio.create_task(process.communicate())
+
+    async def step(life, number, cursor, *, retained=None):
+        observer = await life.socket()
+        await observer.send("domain_status", f"owner-observation-{number}")
+        current = await observer.reply(
+            f"owner-observation-{number}", type="domain_state"
+        )
+        expected = retained or current
+        instruction = dict(
+            url=life.url,
+            revision=expected["domain_revision"],
+            application=expected["domain_session_id"] or "",
+            continuity_id=current["state_store"]["continuity_id"],
+            cursor=cursor,
+        )
+        temporary = control / f"step-{number}.json.tmp"
+        temporary.write_text(json.dumps(instruction))
+        temporary.replace(control / f"step-{number}.json")
+        receipt = control / f"observed-{number}.json"
+        await until(
+            lambda: receipt.exists() or process.returncode is not None, timeout=15
+        )
+        assert receipt.exists(), (await output_task)[0].decode()
+        return json.loads(receipt.read_text()), current
+
+    try:
+        first = tmp_path / "owner-A"
+        first.mkdir()
+        provider = Provider()
+        provider.release.set()
+        async with Lifetime(
+            first, root, monkeypatch, provider, domain_id="core"
+        ) as life:
+            socket = await life.socket()
+            application = await socket.start()
+            await socket.run(application, task="read previous notes")
+            await socket.reply("run", type="domain_result")
+            await socket.send("deactivate_domain", "stop-A", application)
+            await socket.reply("stop-A", type="domain_state")
+            await socket.send("end_domain_session", "end-A", application)
+            await socket.reply("end-A", type="domain_state")
+            initial, old_authority = await step(life, 1, "1")
+            transient, _ = await step(life, 2, "1")
+            assert old_authority["domain_revision"] == "3"
+            assert (
+                transient["snapshot"]["unsaved_results"][0]["output"]
+                == "unsaved continuity text"
+            )
+            old_identity = initial["snapshot"]["state_store"]["continuity_id"]
+        second = tmp_path / "owner-unavailable"
+        second.mkdir()
+        provider = Provider()
+        life = Lifetime(second, root, monkeypatch, provider, domain_id="core")
+
+        async def unavailable_open():
+            life.server._state_error = "state_store_invalid"
+
+        monkeypatch.setattr(life.server, "_open_application_state", unavailable_open)
+        async with life:
+            unavailable, wire = await step(life, 3, "1", retained=old_authority)
+            assert wire["state_store"]["continuity_id"] is None
+            assert (
+                unavailable["snapshot"]["authority_unavailable"]
+                and not unavailable["start_enabled"]
+            )
+            assert (
+                len(unavailable["snapshot"]["results"])
+                == len(unavailable["snapshot"]["unsaved_results"])
+                == 1
+            )
+            assert not provider.clients and not provider.queries
+            assert len(life.commands) <= 7
+        third = tmp_path / "owner-recovered"
+        third.mkdir()
+        provider = Provider()
+        life = Lifetime(third, root, monkeypatch, provider, domain_id="core")
+        if replacement != "same-A":
+            replacement_common = tmp_path / "disposable-replacement-common.git"
+            replacement_common.mkdir()
+
+            async def replacement_open():
+                binding = await life.service.application_state_binding()
+                assert binding is not None
+                _, project_id = binding
+                coordinator = StateCoordinator(
+                    lambda: LazySQLiteStateRepository(replacement_common, project_id),
+                    boot_id=life.server.domains.boot_id,
+                )
+                life.server.application_state = coordinator
+                await coordinator.open()
+                for turn in range(1 if replacement == "lower-B" else 4):
+                    execution = str(uuid4())
+                    await coordinator.commit(
+                        StateCommand(
+                            "start",
+                            dict(
+                                domain_id="core",
+                                expected_domain_revision=turn * 2,
+                                boot_id=life.server.domains.boot_id,
+                                execution_id=execution,
+                                timestamp="now",
+                            ),
+                        )
+                    )
+                    await coordinator.commit(
+                        StateCommand(
+                            "stop",
+                            dict(
+                                execution_id=execution,
+                                outcome="stopped",
+                                timestamp="now",
+                            ),
+                        )
+                    )
+                await life.service.observe_application_state(coordinator.snapshot())
+
+            monkeypatch.setattr(
+                life.server, "_open_application_state", replacement_open
+            )
+        async with life:
+            recovered, authority = await step(
+                life, 4, "1" if replacement == "same-A" else "0"
+            )
+            snapshot = recovered["snapshot"]
+            assert not snapshot["authority_unavailable"] and recovered["start_enabled"]
+            assert (
+                not recovered["focus"] and not provider.clients and not provider.queries
+            )
+            if replacement == "same-A":
+                assert snapshot["state_store"]["continuity_id"] == old_identity
+                assert len(snapshot["results"]) == len(snapshot["unsaved_results"]) == 1
+            else:
+                assert snapshot["state_store"]["continuity_id"] != old_identity
+                assert snapshot["domain_revision"] == (
+                    "2" if replacement == "lower-B" else "8"
+                )
+                assert not snapshot["results"] and not snapshot["unsaved_results"]
+                assert snapshot["selected_received_cursor"] == "0"
+            assert len(life.commands) <= 9
+            (control / "explicit-start").write_text("explicit user Start")
+            await until(
+                lambda: (control / "started.json").exists()
+                or process.returncode is not None
+            )
+            assert (control / "started.json").exists(), (await output_task)[0].decode()
+            starts = [
+                packet
+                for packet in life.commands
+                if packet["type"] == "activate_domain"
+            ]
+            assert (
+                len(starts) == 1
+                and starts[0]["expected_domain_revision"]
+                == authority["domain_revision"]
+            )
+            assert len(provider.clients) == 1 and not provider.queries
+            output, _ = await asyncio.wait_for(output_task, 5)
+            assert (
+                process.returncode == 0 and b"godot_history_continuity: OK" in output
+            ), output.decode()
+    finally:
+        if process.returncode is None:
+            process.kill()
+        await output_task

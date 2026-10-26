@@ -108,7 +108,7 @@ func _domain(id: String) -> Dictionary:
 	if not valid_domain(id): return {}
 	if not _domains.has(id):
 		if _domains.size() >= MAX_DOMAINS: return {}
-		_domains[id] = {"project_id": _project_id, "domain_id": id, "domain_session_id": "", "workspace_id": "", "state": "inactive", "execution_state": "idle", "pending_query": {}, "pending_control": {}, "draft": "", "results": [], "omitted_count": 0, "uncertain": false, "error": {}, "memory": {}, "buckets": {}, "version": 0, "lifecycle_uncertain": false, "query_uncertain": false, "cleanup_confirmed": false, "execution_id": "", "domain_revision": "0", "saved_sessions": [], "selected_session_id": "", "unsaved_results": [], "state_store": {}, "memory_reconciliation": [], "authority_unavailable": false, "omitted_unknown_count": 0}
+		_domains[id] = {"project_id": _project_id, "domain_id": id, "domain_session_id": "", "workspace_id": "", "state": "inactive", "execution_state": "idle", "pending_query": {}, "pending_control": {}, "draft": "", "results": [], "omitted_count": 0, "uncertain": false, "error": {}, "memory": {}, "buckets": {}, "version": 0, "lifecycle_uncertain": false, "query_uncertain": false, "cleanup_confirmed": false, "execution_id": "", "domain_revision": "0", "saved_sessions": [], "selected_session_id": "", "unsaved_results": [], "state_store": {}, "memory_reconciliation": [], "authority_unavailable": false, "omitted_unknown_count": 0, "cache_owner": {}}
 	return _domains[id]
 
 
@@ -121,6 +121,7 @@ func snapshot(domain_id: String) -> Dictionary:
 	out.erase("lifecycle_uncertain")
 	out.erase("query_uncertain")
 	out.erase("cleanup_confirmed")
+	out.erase("cache_owner")
 	var b: Dictionary = d.buckets.get(d.domain_session_id, {})
 	out.read_only = d.authority_unavailable or (d.selected_session_id != "" and (d.selected_session_id != d.domain_session_id or d.domain_session_id == ""))
 	var selected: Dictionary = d.buckets.get(d.selected_session_id, {})
@@ -621,6 +622,7 @@ func _adopt_catalog(d: Dictionary, packet: Dictionary) -> void:
 		for field in ["domain_session_id", "created_at", "ended_at", "ended_by", "high_water_mark"]: metadata[field] = item[field]
 		d.saved_sessions.append(metadata)
 	d.state_store = _storage_facts(packet.state_store)
+	_remember_cache_owner(d, packet.state_store)
 	d.memory_reconciliation = packet.get("memory_reconciliation", []).duplicate(true)
 	for item in d.saved_sessions:
 		var id: String = item.domain_session_id
@@ -815,9 +817,9 @@ func observe_domain(packet: Dictionary, fence: Dictionary) -> bool:
 
 
 func _namespace_changed(d: Dictionary, storage: Dictionary) -> bool:
-	if d.state_store.is_empty(): return false
-	if d.state_store.backend != storage.backend: return true
-	var previous: Variant = d.state_store.get("continuity_id")
+	if d.cache_owner.is_empty(): return false
+	if d.cache_owner.backend != storage.backend: return true
+	var previous: Variant = d.cache_owner.get("continuity_id")
 	return previous != null and storage.continuity_id != null and previous != storage.continuity_id
 
 
@@ -836,6 +838,7 @@ func _reset_namespace(d: Dictionary, request_id: String) -> void:
 	d.saved_sessions = []
 	d.memory_reconciliation = []
 	d.state_store = {}
+	d.cache_owner = {}
 	d.omitted_count = 0
 	d.omitted_unknown_count = 0
 	d.lifecycle_uncertain = false
@@ -845,10 +848,17 @@ func _reset_namespace(d: Dictionary, request_id: String) -> void:
 
 
 func _unidentified_storage(d: Dictionary, storage: Dictionary) -> bool:
-	return storage.continuity_id == null and (storage.error_type != null or d.state_store.get("continuity_id") != null)
+	return storage.continuity_id == null and (storage.error_type != null or d.cache_owner.get("continuity_id") != null)
+
+
+func _remember_cache_owner(d: Dictionary, storage: Dictionary) -> void:
+	# Unavailable facts describe health, not a replacement owner for retained text.
+	if d.cache_owner.is_empty() or storage.continuity_id != null:
+		d.cache_owner = {"backend": storage.backend, "continuity_id": storage.continuity_id}
 
 
 func _mark_storage_unavailable(d: Dictionary, storage: Dictionary) -> void:
+	_remember_cache_owner(d, storage)
 	d.state_store = _storage_facts(storage)
 	if d.state_store.error_type == null: d.state_store.error_type = "state_store_busy"
 	d.authority_unavailable = true
