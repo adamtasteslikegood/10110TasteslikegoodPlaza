@@ -626,6 +626,7 @@ def test_application_state_sources_require_fresh_guard_evidence():
         "bridge/state_image.py",
         "bridge/sqlite_state.py",
         "bridge/state_coordinator.py",
+        "bridge/domain_run_state.py",
         "bridge/project_service.py",
         "bridge/server.py",
     } <= set(GUARD_SOURCES)

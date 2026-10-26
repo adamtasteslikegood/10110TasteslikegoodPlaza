@@ -132,12 +132,31 @@ class Socket:
         self.domain_id = domain_id
 
     async def send(self, kind, request_id, generation=None, **extra):
-        command = dict(type=kind, request_id=request_id)
+        command = dict(type=kind, protocol_version=2, request_id=request_id)
         if kind != "describe_workspace":
             command["domain_id"] = self.domain_id
         if generation is not None:
             command["domain_session_id"] = generation
         command.update(extra)
+        # The driver observes v2 authority over the same wire as a real client.
+        # Explicit values remain intact so stale/legacy negative cases are real.
+        if kind in {
+            "activate_domain",
+            "end_domain_session",
+            "domain_query",
+            "background_domain",
+            "refocus_domain",
+            "deactivate_domain",
+        }:
+            status_id = "authority-" + uuid.uuid4().hex
+            await self.send("domain_status", status_id, domain_id=command["domain_id"])
+            status = await self.reply(status_id, type="domain_state")
+            if kind in {"activate_domain", "end_domain_session"}:
+                command.setdefault(
+                    "expected_domain_revision", status["domain_revision"]
+                )
+            else:
+                command.setdefault("execution_id", status["execution_id"])
         await self.socket.send(json.dumps(command))
         return command
 

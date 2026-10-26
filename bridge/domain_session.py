@@ -23,6 +23,7 @@ from datetime import datetime, timezone
 from bridge.domain_protocol import DomainCommandError, error_packet
 from bridge.domain_sdk import DomainSDKOwner, SDKOutcome
 from bridge.domain_store import DomainSessionStore, MemoryStore
+from bridge.domain_run_state import DurableRunState, settle_owned
 from bridge.failure_diagnostics import (
     diagnostic_fields,
     exception_diagnostics,
@@ -95,6 +96,9 @@ class _Run:
     job: asyncio.Task | None = None
     accepted: bool = False
     preparing: bool = False
+    execution_id: str | None = None
+    memory_revision: int | None = None
+    disposition: str | None = None
 
 
 class _ExecutionReadiness:
@@ -176,7 +180,18 @@ class DomainSession:
         self._broken = False
         self._inflight = None
         self._jobs = set()
-        self._store = store if store is not None else MemoryStore()
+        # The synchronous terminal-only store remains a direct-session test seam.
+        # A coordinator-backed owner never creates or falls back to that store.
+        self._store = (
+            (store if store is not None else MemoryStore())
+            if coordinator is None
+            else None
+        )
+        self._run_state = (
+            DurableRunState(coordinator, domain_session_id, self.execution_id)
+            if coordinator is not None
+            else None
+        )
         self._memory_revision = None
         # The store intentionally rejects concurrent file-lock acquisition.
         # Serialize this generation's own checkpoints while retaining explicit
@@ -377,25 +392,52 @@ class DomainSession:
             return await self._error(
                 command, "session_unavailable", emit, context, started
             )
-        packet = self._store.find_request(command["request_id"])
-        if packet is not None:
-            if (packet["agent_id"], packet["task"]) != (
-                command["agent_id"],
-                command["task"],
-            ):
-                return await self._error(
-                    command, "invalid_request", emit, context, started
-                )
-            return await deliver(emit, packet, self._recorder, context)
         if self._inflight is not None:
             run = self._inflight
             if run.command["request_id"] == command["request_id"]:
-                if run.command != command:
+                if (run.command["agent_id"], run.command["task"]) != (
+                    command["agent_id"],
+                    command["task"],
+                ):
                     return await self._error(
                         command, "invalid_request", emit, context, started
                     )
                 packet = await asyncio.shield(run.admitted)
                 return await deliver(emit, packet, self._recorder, context)
+        if self._run_state is not None:
+            request = self._run_state.find_request(command["request_id"])
+            if request is not None:
+                if (request.agent_id, request.task) != (
+                    command["agent_id"],
+                    command["task"],
+                ):
+                    return await self._error(
+                        command, "invalid_request", emit, context, started
+                    )
+                packet = self._run_state.find_terminal(command["request_id"])
+                if packet is None:
+                    packet = dict(
+                        type="domain_accepted",
+                        **self._identity(),
+                        request_id=request.request_id,
+                        agent_id=request.agent_id,
+                        task=request.task,
+                        execution_state="running",
+                    )
+                    packet["execution_id"] = request.execution_id
+                return await deliver(emit, packet, self._recorder, context)
+        else:
+            packet = self._store.find_request(command["request_id"])
+            if packet is not None:
+                if (packet["agent_id"], packet["task"]) != (
+                    command["agent_id"],
+                    command["task"],
+                ):
+                    return await self._error(
+                        command, "invalid_request", emit, context, started
+                    )
+                return await deliver(emit, packet, self._recorder, context)
+        if self._inflight is not None:
             return await self._error(command, "domain_busy", emit, context, started)
         if (
             self._state not in (SessionState.ACTIVE, SessionState.BACKGROUND)
@@ -433,6 +475,7 @@ class DomainSession:
             ),
             asyncio.get_running_loop().create_future(),
         )
+        run.execution_id = self.execution_id
         self._inflight = run
         run.job = self._track(self._run(run, definition))
         await asyncio.shield(run.admitted)
@@ -496,7 +539,7 @@ class DomainSession:
                 await self._require_owner_ready()
                 prepare_attempted = True
                 snapshot = await self._readiness.prepare_turn(run.intent)
-                self._memory_revision = snapshot.revision
+                self._memory_revision = run.memory_revision = snapshot.revision
                 self._service.publish_memory(snapshot)
             context_packet = await owned_io(
                 compose_context,
@@ -510,24 +553,40 @@ class DomainSession:
                 permission_mode=self._config.domain_permission_mode,
                 interaction="explicit_run",
             )
-            run.preparing = False
             # The owner may have failed while checkpoint IO was awaiting.
             await self._require_owner_ready()
+            if self._run_state is not None:
+                _, cancelled = await self._run_state.accept(
+                    run.intent, run.memory_revision
+                )
+                run.accepted = True
+                run.disposition = "accepted"
+                if cancelled or self._stopping:
+                    raise asyncio.CancelledError()
+            run.preparing = False
         except (Exception, asyncio.CancelledError) as error:
             run.preparing = False
             # prepare_turn can fail/cancel after its durable begin. Its owned IO
             # has drained; finish safely settles that intent if it exists. An
             # already-dead owner never began intent and must not touch memory.
+            if run.accepted:
+                outcome = SDKOutcome("", "cancelled", "stopped", None, None)
+                terminal = await self._finish_run(run, outcome, started)
+                if not run.admitted.done():
+                    run.admitted.set_result(terminal)
+                return
             if prepare_attempted:
-                await self._save(
-                    run,
-                    SDKOutcome(
-                        "Not executed: admission did not complete.",
-                        "error",
-                        "not_executed",
-                        None,
-                        None,
-                    ),
+                await settle_owned(
+                    self._save(
+                        run,
+                        SDKOutcome(
+                            "Not executed: admission did not complete.",
+                            "error",
+                            "not_executed",
+                            None,
+                            None,
+                        ),
+                    )
                 )
             packet = error_packet(
                 run.command,
@@ -551,7 +610,7 @@ class DomainSession:
                     **diagnostics,
                 )
             self._inflight = None
-            await deliver(run.emit, packet, self._recorder, run.context)
+            await settle_owned(deliver(run.emit, packet, self._recorder, run.context))
             run.admitted.set_result(packet)
             return
         run.accepted = True
@@ -565,19 +624,37 @@ class DomainSession:
         )
         # Sink failure cannot roll admission back; release execution after the
         # acceptance attempt even when the originating socket disappeared.
-        await deliver(run.emit, packet, self._recorder, run.context)
+        run.preparing = True
+        _, cancelled = await settle_owned(
+            deliver(run.emit, packet, self._recorder, run.context)
+        )
         run.admitted.set_result(packet)
+        run.preparing = False
         if self._recorder:
             self._recorder.message(run.context, "user", run.command["task"], "input")
+        if cancelled:
+            await self._finish_run(
+                run, SDKOutcome("", "cancelled", "stopped", None, None), started
+            )
+            return
+        if self._recorder:
             self._recorder.event(
                 "execution_started",
                 run.context,
                 context_sources=context_packet.diagnostics(),
             )
         try:
+            run.preparing = True
+            if self._run_state is not None:
+                _, cancelled = await self._run_state.dispatch(run.command["request_id"])
+                run.disposition = "dispatched"
+                if cancelled:
+                    raise asyncio.CancelledError()
+            run.preparing = False
             if self._stopping:
                 outcome = SDKOutcome("", "cancelled", "stopped", None, None)
             else:
+                self._require_state_ready()
                 outcome = await self._owner.execute(
                     agent_id=run.command["agent_id"],
                     definition=definition,
@@ -585,9 +662,34 @@ class DomainSession:
                     prior_project_notes=snapshot.as_context(),
                     context_packet=context_packet,
                 )
+        except asyncio.CancelledError:
+            run.preparing = False
+            outcome = SDKOutcome("", "cancelled", "stopped", None, None)
+        except StateError:
+            run.preparing = False
+            outcome = SDKOutcome("", "error", "not_executed", None, None)
         except Exception:
+            run.preparing = False
             self._broken = True
             outcome = SDKOutcome("", "error", "transport_error", None, None)
+        await self._finish_run(run, outcome, started)
+
+    def _uncommitted(self, run, code, output, saved):
+        return dict(
+            type="domain_result",
+            **self._identity(),
+            request_id=run.command["request_id"],
+            agent_id=run.command["agent_id"],
+            task=run.command["task"],
+            output=output,
+            status="error",
+            reason=code,
+            error_type=code,
+            committed=False,
+            memory=asdict(saved) if saved is not None else None,
+        )
+
+    async def _finish_run(self, run, outcome, started):
         if outcome.reason in (
             "transport_error",
             "missing_terminal",
@@ -613,7 +715,7 @@ class DomainSession:
                 tool_use_id=outcome.tool_use_id,
             ),
         )
-        saved = await self._save(run, outcome)
+        saved, _ = await settle_owned(self._save(run, outcome))
         terminal = dict(
             type="domain_result",
             **self._identity(),
@@ -629,20 +731,32 @@ class DomainSession:
         )
         if outcome.readiness_category is not None:
             terminal["readiness_category"] = outcome.readiness_category
-        terminal = self._store.append(terminal)
+        if self._run_state is None:
+            terminal = self._store.append(terminal)
+        else:
+            try:
+                commit, _ = await self._run_state.terminal(
+                    run.command["request_id"], terminal
+                )
+                terminal = commit.result["terminal"]
+                run.disposition = "terminal"
+            except StateError as error:
+                terminal = self._uncommitted(run, error.code, output, saved)
         self._inflight = None
         if self._recorder:
-            record_outcome = "failure" if outcome.status == "error" else outcome.status
+            record_outcome = (
+                "failure" if terminal["status"] == "error" else terminal["status"]
+            )
             self._recorder.message(
                 run.context,
-                "assistant" if outcome.status == "success" else "error",
+                "assistant" if terminal["status"] == "success" else "error",
                 (
                     output
                     if outcome.status in ("success", "error")
                     else "cancelled" if outcome.status == "cancelled" else "sdk_error"
                 ),
                 record_outcome,
-                output_id=terminal["output_id"],
+                output_id=terminal.get("output_id"),
                 provider_session_id=outcome.provider_session_id,
             )
             self._recorder.event(
@@ -650,16 +764,17 @@ class DomainSession:
                     "success": "request_completed",
                     "error": "request_failed",
                     "cancelled": "request_cancelled",
-                }[outcome.status],
+                }[terminal["status"]],
                 run.context,
                 outcome=record_outcome,
                 duration_ms=(time.monotonic() - started) * 1000,
-                terminal_reason=outcome.reason,
+                terminal_reason=terminal["reason"],
                 readiness_category=outcome.readiness_category,
                 tool_name=outcome.tool_name,
                 tool_use_id=outcome.tool_use_id,
             )
-        await deliver(run.emit, terminal, self._recorder, run.context)
+        await settle_owned(deliver(run.emit, terminal, self._recorder, run.context))
+        return terminal
 
     async def _checkpoint(self, event):
         async with self._memory_lock:
@@ -778,7 +893,11 @@ class DomainSession:
         return result
 
     def replay(self, cursor: int) -> list[dict]:
-        window = self._store.replay(cursor)
+        window = (
+            self._coordinator.replay(self.domain_session_id, cursor)
+            if self._coordinator is not None
+            else self._store.replay(cursor)
+        )
         packets = window.entries
         packets.append(
             dict(

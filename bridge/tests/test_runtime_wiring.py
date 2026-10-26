@@ -382,6 +382,8 @@ async def test_delivery_failure_is_separate_from_successful_execution(
     async with asyncio.timeout(3):
         while len(session.replay(0)) == 1:
             await asyncio.sleep(0.001)
+    # Durable replay publication precedes recorder/delivery continuation.
+    await asyncio.gather(*tuple(session._jobs))
     assert [r["outcome"] for r in messages(writer)] == ["input", "success"]
     assert events(writer, "delivery_failed") and not events(writer, "request_failed")
     assert session.replay(0)[0]["status"] == "success"

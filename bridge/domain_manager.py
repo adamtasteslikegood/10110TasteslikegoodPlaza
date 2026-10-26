@@ -7,7 +7,6 @@ from uuid import uuid4, uuid5, NAMESPACE_URL
 from datetime import datetime, timezone
 
 from bridge.application_state import StateCommand, StateError
-from bridge.domain_store import MemoryStore
 
 from bridge.config import BridgeConfig
 from bridge.domain_protocol import (
@@ -45,7 +44,6 @@ class DomainManager:
             uuid5(NAMESPACE_URL, project_service.owner_run_id)
         )
         self._controls = {}
-        self._stores = {}
         self._operations = set()
         self._activation_lock = asyncio.Lock()
         self._shutdown_task = None
@@ -218,14 +216,12 @@ class DomainManager:
                 )
             )
             identity = commit.result
-            store = self._stores.setdefault(identity["session_id"], MemoryStore())
             session = DomainSession(
                 domain,
                 identity["session_id"],
                 config=self._config,
                 project_service=self._service,
                 recorder=self._recorder,
-                store=store,
                 execution_id=identity["execution_id"],
                 coordinator=coordinator,
                 authority_check=self._check_authority,
@@ -307,12 +303,7 @@ class DomainManager:
         record = next((s for s in saved if s.session_id == session_id), None)
         if record is None:
             raise DomainCommandError("session_unavailable")
-        # Task 5 moves runtime Run terminals to async commits. Until then the
-        # terminal-only MemoryStore is an explicitly separate process view.
-        store = self._stores.get(session_id)
-        window = store.replay(command["cursor"]) if store else None
-        if window is None or window.high_water_mark == 0:
-            window = self.coordinator.replay(session_id, command["cursor"])
+        window = self.coordinator.replay(session_id, command["cursor"])
         packet = self.snapshot(domain)
         if packet["domain_session_id"] != session_id:
             packet.update(

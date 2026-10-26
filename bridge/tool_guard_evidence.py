@@ -28,6 +28,7 @@ GUARD_SOURCES = (
     "bridge/domain_sdk.py",
     "bridge/domain_manager.py",
     "bridge/domain_session.py",
+    "bridge/domain_run_state.py",
     "bridge/domain_protocol.py",
     "bridge/conversation_backend.py",
     "bridge/tool_guard_evidence.py",
