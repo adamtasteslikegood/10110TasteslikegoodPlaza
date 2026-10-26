@@ -117,11 +117,11 @@ Shared types in `application_state.py` (all frozen dataclasses; nested packets c
 
 **Interfaces:** Task 2 accept/dispatch/terminal commits; extend `_Run` with execution_id, turn_id/memory_revision and durable disposition. The in-flight fence is installed before the first await. Retained duplicate comparison uses original agent/task digest and cannot restart work.
 
-- [ ] Write `test_accept_before_ack_and_dispatch_before_execute`, `test_notes_before_terminal_before_delivery`, `test_accept_failure_never_executes`, `test_terminal_failure_is_uncommitted`, `test_duplicate_during_commit_executes_once`. Use ordered event spies and real repositories; assert domain_accepted occurs after durable acceptance, SDK entry after durable dispatch, saved memory outcome before terminal commit, delivery after published revision, no fake output_id on failed persistence.
-- [ ] Run `python -m pytest bridge/tests/test_domain_persistence.py -q`; require RED at ordering expectations.
-- [ ] Implement design §6 order exactly. Carry exact Markdown turn identity/revision; settle not-executed intents safely on rejected acceptance. Terminal commit atomically assigns highwater, disposition and trimming; clear pending after commit publication. If persistence fails after tools, send bounded explicitly uncommitted text/error with no durable output_id, close admission and preserve uncertainty. Do not present it as saved history. Preserve memory-save-failed facts frozen in committed packets.
-- [ ] Run new suite plus `bridge/tests/test_domain_store_session.py`, `bridge/tests/test_domain_session.py`, `bridge/tests/test_m12_integration.py`; require GREEN. Add failures before/after each await and oversized terminal metadata; no weakened readiness or duplicate checks.
-- [ ] Commit `feat(PLZG-290): durably fence accepted work and saved results`.
+- [x] Write `test_accept_before_ack_and_dispatch_before_execute`, `test_notes_before_terminal_before_delivery`, `test_accept_failure_never_executes`, `test_terminal_failure_is_uncommitted`, `test_duplicate_during_commit_executes_once`. Use ordered event spies and real repositories; assert domain_accepted occurs after durable acceptance, SDK entry after durable dispatch, saved memory outcome before terminal commit, delivery after published revision, no fake output_id on failed persistence.
+- [x] Run `python -m pytest bridge/tests/test_domain_persistence.py -q`; require RED at ordering expectations.
+- [x] Implement design §6 order exactly. Carry exact Markdown turn identity/revision; settle not-executed intents safely on rejected acceptance. Terminal commit atomically assigns highwater, disposition and trimming; clear pending after commit publication. If persistence fails after tools, send bounded explicitly uncommitted text/error with no durable output_id, close admission and preserve uncertainty. Do not present it as saved history. Preserve memory-save-failed facts frozen in committed packets.
+- [x] Run new suite plus `bridge/tests/test_domain_store_session.py`, `bridge/tests/test_domain_session.py`, `bridge/tests/test_m12_integration.py`; require GREEN. Add failures before/after each await and oversized terminal metadata; no weakened readiness or duplicate checks.
+- [x] Commit `feat(PLZG-290): durably fence accepted work and saved results`.
 
 ## Task 6: Crash recovery and shutdown ownership
 
@@ -226,3 +226,5 @@ assert len(recap.source_output_ids) <= 4
 - Task3 complete: `f080420`, review fix `0742fff`; independent Astra review approved. 799 covering tests pass on Python3.12/3.11. Coalesced reconciliation and anchored durability confirmation cover both review findings; worker/server ownership and backend discontinuity covered. New guarded inventory requires genuinely fresh Task10 evidence; old reports untouched.
 
 - Task4 complete: `98df428`, review fix `9c9efdb`; independent Astra review approved. 516 pre-fix covering tests and 258 affected post-fix tests pass on Python3.12/3.11. Cancelled shutdown now drains owned lifecycle operations and every owner before propagating cancellation. Production durable Run pipeline/combined replay remains Task5; no shipped persistence claim.
+
+- Task5 complete: `ea6c715`, review fix `e2a9922`; independent Astra review approved. 588 covering tests pass on Python3.12/3.11, including real server Run/Stop/End/reopen exact replay, owned cancellation and once-only accepted input archival. Production process-store shadow removed. Minor R2 test-driver authority/reply handling is explicitly deferred to Task8/final review. Startup recovery remains Task6.
