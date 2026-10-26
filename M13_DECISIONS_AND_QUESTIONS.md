@@ -299,7 +299,8 @@ Reconciliation for the phase-1 delivery:
 - **Q17/Q18 remain mechanically resolved:** shipped config defaults are dev's;
   individually indexed research imports do not gain decision authority.
 
-Remaining product decisions: Q02 exact Stop/End/restart execution semantics;
+Remaining product decisions: Q02 generation/cursor/interrupted-work semantics
+(the Stop/End split is answered below);
 Q03 stable identity/DO keys/writer/host authority; Q04 remote transport/auth;
 Q05 containment guarantees and sequencing; Q06 stored/mirrored data and retention;
 Q09 remote credential feasibility/policy; Q11 provider and milestone sequencing.
@@ -326,3 +327,25 @@ ownership evidence. This records a future requirement, not implemented durable
 identity, a new End control, history deletion, automatic SDK recovery or approval
 of the whole persistence design. Other Q02 details (execution generations,
 cursors and interrupted-work representation) remain for that design.
+
+
+### Dev PR and review checkpoint
+
+[PR #376](https://github.com/adamtasteslikegood/10110TasteslikegoodPlaza/pull/376)
+now carries the reconciled research history, approved extraction and factual
+status updates to dev. A fresh independent pre-delivery review of
+`971ac2f..94aba28` found no Critical, Important or Minor issues; 21 focused cases,
+123 authored links/anchors and all twelve raw snapshot pairs were verified.
+Original artifact/vendor whitespace is preserved; whitespace-clean claims apply
+to the authored extraction/reconciliation range, not verbatim imports.
+
+Initial CI correctly rejected the expired October 9 board-flow snapshot. A fresh,
+complete live Jira reading (three pages, 267 unique issues: 184 Done and 3 In
+Progress) and board 169's empty active-sprint listing support the updated
+`data/plzg-flow-snapshot.json`. Work-item age is explicitly since creation, not
+cycle time. No historical sprint or M12 acceptance file was restamped, no new
+aging threshold or forecast was invented, and no validator was weakened.
+
+Review/check completion and dev merge are the remaining phase-1 delivery work.
+Phase 2 still requires its bounded persistence design; the new Stop/End answer
+is an input, not approval of that whole design.
