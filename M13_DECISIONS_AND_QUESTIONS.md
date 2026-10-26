@@ -505,3 +505,5 @@ command. The [operator guide](docs/m13-session-persistence.md) carries these rul
 and the approved successor for exact owned domain-note reconciliation. No new
 unresolved governing conflict was found; locked decisions, historical contracts
 and paid evidence remain unchanged. Final M13 acceptance remains Task10 work.
+
+Task9 independently reviewed complete through `2e2fffd`: offline lock-respecting export and backup-before-delete of ended sessions, plus aligned operator docs. 200 focused tests pass on Python3.12/3.11. One Minor platform-error wording correction joins the two client minors in Task10/final QA. Continue Task10 full regression/performance/fresh actual evidence; Tasks1–9 are not shipped acceptance.
