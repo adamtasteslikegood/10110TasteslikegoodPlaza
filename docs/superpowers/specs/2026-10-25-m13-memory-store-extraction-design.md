@@ -1,6 +1,7 @@
 # M13 first increment — extract the in-memory domain store (#373)
 
-Status: proposed bounded design for owner review. No implementation yet.
+Status: owner-approved 2026-10-26; bounded #373 implementation authorized.
+Execution: [implementation plan](../plans/2026-10-26-m13-memory-store-extraction.md).
 
 ## Scope and dependencies
 
