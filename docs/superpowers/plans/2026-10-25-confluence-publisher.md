@@ -1,6 +1,6 @@
 # Confluence source mirror publisher implementation plan
 
-> **For agentic workers:** Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Update the existing imported Confluence documents and parent indexes after GitHub merges, retaining GitHub as the source of truth.
 
@@ -33,10 +33,10 @@
 
 **Interfaces:** `load_documents(root) -> list[Document]`, `load_coordinates(root) -> dict`, `render_document(document, documents, destinations, commit, version) -> str`.
 
-- [ ] Write tests for missing/escaping sources, registry status, bootstrap IDs, resolved relative links, preserved code fences, and generated index records.
-- [ ] Run the tests and observe failures before implementing.
-- [ ] Implement registry loading and storage rendering using the existing converter.
-- [ ] Verify tests, `validate_specs.py`, and credential-free `--dry-run` against the real checkout.
+- [x] Write tests for missing/escaping sources, registry status, bootstrap IDs, resolved relative links, preserved code fences, and generated index records.
+- [x] Run the tests and observe failures before implementing.
+- [x] Implement registry loading and storage rendering using the existing converter.
+- [x] Verify tests, `validate_specs.py`, and credential-free `--dry-run` against the real checkout.
 
 ### Task 2: Confluence reconciliation and merge workflow
 
@@ -44,10 +44,10 @@
 
 **Interfaces:** `ConfluenceClient.request(method, path, payload=None) -> dict`, `publish(root, client, commit) -> dict`; remote map property `plaza-doc-mirrors` stores per-source digest, published version and destination identity.
 
-- [ ] Write failing tests with a local HTTP server for authentication routing, bounded rate-limit retries, version conflicts, existing/new documents, partial-run recovery, archive polling, restore, and idempotence.
-- [ ] Implement scoped API access, preflight validation, source hash/version publication, persisted destination recovery, and explicit failure reporting. Reactivated archived documents require manual restore; page-mode changes require manual conversion because a public conversion API is unavailable.
-- [ ] Add push/manual triggers, serialized publication, checkout of current `dev`, validation, dry-run artifact, and secret-backed apply.
-- [ ] Run the publisher tests and project Python suite; inspect workflow and diff; commit and open a PR with activation limitations stated.
+- [x] Write failing tests with a local HTTP server for authentication routing, bounded rate-limit retries, version conflicts, existing/new documents, partial-run recovery, archive polling, restore, and idempotence.
+- [x] Implement scoped API access, preflight validation, source hash/version publication, persisted destination recovery, and explicit failure reporting. Reactivated archived documents require manual restore; page-mode changes require manual conversion because a public conversion API is unavailable.
+- [x] Add push/manual triggers, serialized publication, checkout of current `dev`, validation, dry-run artifact, and secret-backed apply.
+- [x] Run the publisher tests and project Python suite; inspect workflow and diff; commit and open a PR with activation limitations stated.
 
 ## Activation
 
@@ -72,3 +72,8 @@ its `as_of` is older than 14 days. This was confirmed with the baseline validato
 the publisher does not refresh unrelated board evidence. The initial Godot
 integration timeout was resolved by importing the current project cache; the
 isolated integration test then passed without an application-code change.
+
+Final verification: 2,009 Python tests and 118 subtests passed. Black checked all
+108 Python files. The governed validator and credential-free render passed.
+Draft PR #375 contains the prepared publisher; an authenticated apply and the
+pre-existing delivery freshness gate remain pending.
