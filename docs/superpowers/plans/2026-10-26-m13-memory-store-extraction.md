@@ -37,11 +37,11 @@
 - `DomainSessionStore` protocol: synchronous `append(terminal: dict) -> dict`, `find_request(request_id: str) -> dict | None`, `replay(cursor: int) -> ReplayWindow`.
 - `MemoryStore()` uses fixed existing caps; no persistence or runtime configuration. `append` copies input, assigns its next output ID and returns an independent terminal, even if retention drops it. Lookup returns the oldest retained matching ID, matching the old scan. Replay raises existing `DomainCommandError` for invalid cursor types/values.
 
-- [ ] Write factory-parametrized contract tests for: empty store `(entries=[], highwater=0, earliest=None, gap=False)`; append IDs `1,2`; cursors `0,1,2,99`; invalid `True,False,-1,1.0,'1',None`; count trim after 258 outputs `(256 entries, earliest=3, highwater=258)`; exact 4 MiB Unicode output then overflow; large metadata ignored by byte accounting; oversized output trimming to empty with highwater 1 and gap at cursor 0; retained lookup eviction; defensive nested copies; independent stores and fresh empty instances.
-- [ ] Run `python -m pytest bridge/tests/test_domain_store.py -q`; expect failure because the store implementation is absent.
-- [ ] Implement the protocol, replay metadata and deque store. Retain output-byte accounting and highwater independently of trimming.
-- [ ] Run the contract suite; expect all cases pass. Run Black on new Python files.
-- [ ] Commit `refactor(PLZG-290): extract bounded in-memory domain store`.
+- [x] Write factory-parametrized contract tests for: empty store `(entries=[], highwater=0, earliest=None, gap=False)`; append IDs `1,2`; cursors `0,1,2,99`; invalid `True,False,-1,1.0,'1',None`; count trim after 258 outputs `(256 entries, earliest=3, highwater=258)`; exact 4 MiB Unicode output then overflow; large metadata ignored by byte accounting; oversized output trimming to empty with highwater 1 and gap at cursor 0; retained lookup eviction; defensive nested copies; independent stores and fresh empty instances.
+- [x] Run `python -m pytest bridge/tests/test_domain_store.py -q`; expect failure because the store implementation is absent.
+- [x] Implement the protocol, replay metadata and deque store. Retain output-byte accounting and highwater independently of trimming.
+- [x] Run the contract suite; expect all cases pass. Run Black on new Python files.
+- [x] Commit `refactor(PLZG-290): extract bounded in-memory domain store`.
 
 ### Task 2: Route DomainSession through the store
 
@@ -71,3 +71,5 @@
 - Pre-flight Task 1 → Task 2: protocol signatures and replay metadata match; no interface conflicts.
 - Existing integration tests' private-deque reads require the explicit migration above; no packet expectations change.
 - Skill task-helper scripts are not accessible through the installed cloud resource; record progress here rather than inventing successful helper runs.
+
+- Task 1 complete: absent-module RED; contract suite GREEN, 19 passed; new files Black-clean.
