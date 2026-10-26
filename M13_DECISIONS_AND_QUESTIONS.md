@@ -309,3 +309,20 @@ not questions to repeat. Their unresolved details do not block phase-1 delivery.
 Atlassian reconnection succeeded: PLZG-290 is In Progress with implementation
 and verification comment 11509. This supersedes the earlier connector failure
 as a current blocker; its original failure record remains historical.
+
+### Q02 owner answer — October 25, 2026 Pacific
+
+Adam selected: **“Yes — separate Stop from End session (recommended)”** in
+response to the question: “For the next M13 persistence design, should Stop halt
+execution and release the workspace while preserving the application session,
+with a separate End session control that closes it permanently? This would mean
+a crash/restart does not end the session, and reconnect alone never starts agent
+work.”
+
+Carry this answer into the next bounded persistence design. Stop must retain
+the durable application session; End is a separate intentional lifecycle action.
+Release still requires confirmed cleanup; uncertainty must retain existing
+ownership evidence. This records a future requirement, not implemented durable
+identity, a new End control, history deletion, automatic SDK recovery or approval
+of the whole persistence design. Other Q02 details (execution generations,
+cursors and interrupted-work representation) remain for that design.
