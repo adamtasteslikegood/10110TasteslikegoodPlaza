@@ -10,7 +10,7 @@ owner: adamtasteslikegood
 derives_from: [PROJECT-OVERVIEW, DESIGN-25D, SPEC-DRIVERS-025, BRIDGE-PLATFORM-DESIGN]
 enforcement: asserted
 gates: [Validate Specs:live, Export Godot 4 Prototype:live]
-weakest_claim: M9–M12 are complete with owner acceptance; M13 is in progress with the bounded in-memory extraction and durable storage still to build; M14–M15 remain planned.
+weakest_claim: M9–M12 are complete with owner acceptance; M13 is in progress: the bounded in-memory extraction is implemented and durable storage remains to build; M14–M15 remain planned.
 ---
 
 # 10110 TastesLike Plaza — Bridge-First Platform Roadmap
@@ -31,7 +31,7 @@ remain deferred frontend milestones. M11 improves NPC conversation; it does not
 complete or replace M5 or M6.
 
 The owner approved the written bridge-first design and M10 plan on 2026-10-18.
-M9–M12 are complete with owner acceptance; M13 is in progress with the bounded in-memory extraction and durable storage still to build; M14–M15 remain planned.
+M9–M12 are complete with owner acceptance; M13 is in progress: the bounded in-memory extraction is implemented and durable storage remains to build; M14–M15 remain planned.
 M10 acceptance covers offline configuration, archive/lifecycle and loopback service
 tests; it does not establish later UI features or durable application recovery.
 `D-033` supersedes broad `D-006` with scoped synchronous NPC calls; `D-034`
