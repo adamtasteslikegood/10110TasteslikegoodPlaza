@@ -120,6 +120,7 @@ class ProjectService:
         self._workspaces = {}
         self._readiness_by_domain = {}
         self._workspace_states = {}
+        self._reservation_revisions = {}
         self._domain_tasks = {}
         self._capacity_owner = None
         self._memory = None
@@ -515,6 +516,9 @@ class ProjectService:
         return self._readiness_by_domain[domain_id]
 
     def publish_reservation(self, lease):
+        self._reservation_revisions[lease.domain_id] = (
+            self._reservation_revisions.get(lease.domain_id, 0) + 1
+        )
         state = self._workspace_states[lease.domain_id]
         state["reservation"] = dict(
             domain_id=lease.domain_id,
@@ -534,6 +538,11 @@ class ProjectService:
             state["reservation"] = None
         elif not clean:
             reservation["cleanup_failed"] = True
+        else:
+            return
+        self._reservation_revisions[lease.domain_id] = (
+            self._reservation_revisions.get(lease.domain_id, 0) + 1
+        )
 
     def publish_memory(self, result):
         value = self._snapshot["memory"]
@@ -593,9 +602,14 @@ class ProjectService:
                 truncated=truncated,
             )
 
+        reservation_revision = self._reservation_revisions.get(domain_id, 0)
         try:
             reservation, changed = await owned_io(observe)
-            self._workspace_states[domain_id]["reservation"] = reservation
+            # Lifecycle publications take precedence over observations started
+            # before reservation acquisition or cleanup completed.
+            if self._reservation_revisions.get(domain_id, 0) == reservation_revision:
+                self._workspace_states[domain_id]["reservation"] = reservation
+            reservation = self._workspace_states[domain_id]["reservation"]
             self._workspace_states[domain_id]["changed_files"] = changed
             uncertain = reservation is not None and reservation["cleanup_failed"]
             self._workspace_states[domain_id].update(
