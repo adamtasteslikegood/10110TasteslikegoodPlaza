@@ -15,6 +15,7 @@ from bridge.domain_protocol import (
     validate_domain_command,
 )
 from bridge.domain_session import DomainSession, DomainSink, SessionState, deliver
+from bridge.domain_run_state import settle_owned
 from bridge.failure_diagnostics import exception_diagnostics
 from bridge.observability import BridgeRecorder, RequestContext
 from bridge.workspace import WorkspaceError
@@ -328,17 +329,25 @@ class DomainManager:
                 )
                 session._lifecycle_stopped = True
             revision = int(self.snapshot(domain)["domain_revision"])
-            await coordinator.commit(
-                StateCommand(
-                    "end",
-                    dict(
-                        session_id=session_id,
-                        expected_domain_revision=revision,
-                        actor="user",
-                        timestamp=datetime.now(timezone.utc).isoformat(),
-                    ),
+            guard = getattr(self._service, "domain_cleanup_guard", None)
+            if guard is None:
+                raise DomainCommandError("cleanup_failed")
+            async with guard(domain):
+                _, cancelled = await settle_owned(
+                    coordinator.commit(
+                        StateCommand(
+                            "end",
+                            dict(
+                                session_id=session_id,
+                                expected_domain_revision=revision,
+                                actor="user",
+                                timestamp=datetime.now(timezone.utc).isoformat(),
+                            ),
+                        )
+                    )
                 )
-            )
+            if cancelled:
+                raise asyncio.CancelledError()
             return self.snapshot(domain)
 
     async def _deactivate(self, command, session):

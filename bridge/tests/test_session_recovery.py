@@ -22,6 +22,182 @@ NEW_BOOT = "00000000-0000-4000-8000-000000000002"
 lifecycle = lifecycle_fixture
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "ownership", ["clean", "foreign", "unavailable", "missing_lock", "blocked_end"]
+)
+async def test_restored_end_requires_existing_clean_workspace(
+    tmp_path, monkeypatch, ownership
+):
+    from bridge.project_service import ProjectService
+    from bridge.server import BridgeServer
+    from bridge.tests.domain_fakes import FakeOwner
+    from bridge.tests.test_workspace import repository
+    from bridge.workspace import WorkspaceError
+    from bridge.workspace_lease import WorkspaceLease
+
+    root = repository(tmp_path)
+    runtime = tmp_path / "runtime"
+    runtime.mkdir()
+    config = replace(default_config(), workspace_root_dir=root)
+    owners = []
+
+    def factory(*args):
+        owner = FakeOwner(*args)
+        owners.append(owner)
+        return owner
+
+    monkeypatch.setattr("bridge.domain_session.DomainSDKOwner", factory)
+
+    async def open_server():
+        service = ProjectService(
+            config, runtime_root=runtime, owner_run_id=str(uuid4())
+        )
+        server = BridgeServer(config=config, project_service=service)
+        await service.start()
+        await service._bootstrap_task
+        await server._ensure_application_state()
+        return server
+
+    async def command(server, kind, **values):
+        current = server.domains.snapshot("engineering")
+        value = dict(
+            type=kind,
+            protocol_version=2,
+            request_id=str(uuid4()),
+            domain_id="engineering",
+            expected_domain_revision=current["domain_revision"],
+        )
+        if kind != "activate_domain":
+            value["domain_session_id"] = current["domain_session_id"]
+        if kind == "deactivate_domain":
+            value.pop("expected_domain_revision")
+            value["execution_id"] = current["execution_id"]
+        value.update(values)
+        return (await server.dispatch(value))[-1]
+
+    first = await open_server()
+    try:
+        active = await command(first, "activate_domain")
+        assert active["state"] == "active"
+        assert (await command(first, "deactivate_domain"))["state"] == "inactive"
+    finally:
+        await first._shutdown()
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("Restored End must not construct SDK ownership")
+
+    monkeypatch.setattr("bridge.domain_session.DomainSDKOwner", forbidden)
+    server = await open_server()
+    lease = None
+    try:
+        assert not server.domains._sessions
+        workspace = server.project.require_workspace("engineering")
+        if ownership == "foreign":
+            lease = WorkspaceLease.acquire(
+                workspace, domain_id="engineering", domain_session_id=str(uuid4())
+            )
+        elif ownership == "unavailable":
+
+            def unavailable(*args, **kwargs):
+                raise WorkspaceError(
+                    "workspace_invalid", "Unavailable selected binding"
+                )
+
+            monkeypatch.setattr("bridge.project_service.load_workspace", unavailable)
+        elif ownership == "missing_lock":
+            (workspace.git_dir / "plaza-execution.lock").unlink()
+        marker = workspace.git_dir / "plaza-unclean.json"
+        before_marker = marker.read_bytes() if marker.exists() else None
+        before = server.application_state.snapshot()
+        if ownership == "blocked_end":
+            entered, release = threading.Event(), threading.Event()
+            repository = server.application_state._repository
+            original = repository.apply
+
+            def blocked(value):
+                if value.kind == "end":
+                    entered.set()
+                    assert release.wait(10)
+                return original(value)
+
+            monkeypatch.setattr(repository, "apply", blocked)
+            ending = asyncio.create_task(command(server, "end_domain_session"))
+            shutdown = None
+            try:
+                assert await asyncio.wait_for(asyncio.to_thread(entered.wait, 3), 4)
+                operation = next(iter(server.domains._operations))
+                for phase in range(3):
+                    with pytest.raises(WorkspaceError) as busy:
+                        await asyncio.to_thread(
+                            WorkspaceLease.acquire,
+                            workspace,
+                            domain_id="engineering",
+                            domain_session_id=str(uuid4()),
+                        )
+                    assert busy.value.code == "workspace_busy" and not marker.exists()
+                    assert not operation.done()
+                    if phase == 0:
+                        ending.cancel()
+                        with pytest.raises(asyncio.CancelledError):
+                            await ending
+                    elif phase == 1:
+                        shutdown = asyncio.create_task(server.domains.shutdown())
+                        await asyncio.sleep(0)
+                        shutdown.cancel()
+                        await asyncio.sleep(0)
+                        assert not shutdown.done()
+            finally:
+                release.set()
+            with pytest.raises(asyncio.CancelledError):
+                await shutdown
+            assert operation.done() and not operation.cancelled()
+            assert (
+                not server.domains._operations
+                and not server.application_state._operations
+            )
+            # Once the durable operation and owned finally settle, the same
+            # existing lock is available without an SDK ever being constructed.
+            probe = WorkspaceLease.acquire(
+                workspace, domain_id="engineering", domain_session_id=str(uuid4())
+            )
+            probe.release(cleanup_confirmed=True)
+            result = server.domains.snapshot("engineering")
+        else:
+            result = await command(server, "end_domain_session")
+        if ownership in {"clean", "blocked_end"}:
+            assert result["state"] == "inactive" and result["domain_session_id"] is None
+            assert server.application_state.snapshot().sessions[0].ended_at
+        else:
+            assert result["error_type"] == "cleanup_failed"
+            assert server.application_state.snapshot() == before
+            assert (
+                server.domains.snapshot("engineering")["domain_session_id"]
+                == active["domain_session_id"]
+            )
+            assert (marker.read_bytes() if marker.exists() else None) == before_marker
+            if lease is not None:
+                assert lease.held
+        assert len(owners) == 1 and not server.project._domain_tasks
+        replay = (
+            await server.dispatch(
+                dict(
+                    type="resume",
+                    protocol_version=2,
+                    request_id=str(uuid4()),
+                    domain_id="engineering",
+                    domain_session_id=active["domain_session_id"],
+                    cursor="0",
+                )
+            )
+        )[-1]
+        assert replay["type"] == "resume_complete"
+    finally:
+        if lease is not None:
+            lease.release(cleanup_confirmed=True)
+        await server._shutdown()
+
+
 def seed(common, disposition="accepted", boot=OLD_BOOT, committed=False):
     repository = LazySQLiteStateRepository(common, "project")
     repository.load()

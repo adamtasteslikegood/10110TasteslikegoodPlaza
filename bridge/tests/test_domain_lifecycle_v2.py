@@ -572,6 +572,7 @@ async def test_shutdown_cancellation_drains_pending_end_and_other_owner(
     lifecycle, monkeypatch, clean
 ):
     import threading
+    from bridge.workspace_lease import WorkspaceLease
 
     manager, _, service, owners, coordinators = lifecycle
     coordinator = coordinators[-1]
@@ -597,6 +598,13 @@ async def test_shutdown_cancellation_drains_pending_end_and_other_owner(
             ),
         )
     )
+    # Establish actual clean workspace ownership for the saved core session;
+    # the SQL stopped record alone is deliberately not cleanup evidence.
+    core_workspace = await service.prepare_domain("core")
+    core_lease = WorkspaceLease.acquire(
+        core_workspace, domain_id="core", domain_session_id=core.result["session_id"]
+    )
+    core_lease.release(cleanup_confirmed=True)
     await send(manager, "activate_domain")
     owner = owners[-1]
     owner.clean = clean

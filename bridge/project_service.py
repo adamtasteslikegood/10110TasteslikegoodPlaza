@@ -1,9 +1,11 @@
 """One configured project: owned bootstrap, trusted setup, cached observations."""
 
 import asyncio
+from contextlib import asynccontextmanager
 from copy import deepcopy
 from dataclasses import asdict, replace
 import json
+import os
 from pathlib import Path
 
 from bridge.context import compose_context
@@ -12,6 +14,8 @@ from bridge.agent_bindings import DOMAIN_IDS
 from bridge.conversation import ConversationEngine
 from bridge.conversation_backend import ExecutionMetadata
 from bridge.project_memory import MemorySnapshot, ProjectMemoryStore, MemoryError
+from bridge import project_files as files
+from bridge.domain_run_state import settle_owned
 from bridge.readiness import ReadinessService, owned_io
 from bridge.repository_setup import (
     build_init_proposal,
@@ -521,6 +525,56 @@ class ProjectService:
             # Independent unreadable notes cannot hide valid committed history.
             # The initial fail-closed exclusion policy remains in effect.
             pass
+
+    @asynccontextmanager
+    async def domain_cleanup_guard(self, domain_id):
+        """Hold an existing read-only execution-lock probe through durable End.
+
+        SQL recovery is not cleanup evidence. Resolve the selected registration
+        afresh, reject any marker or foreign lock, and never provision ownership.
+        """
+
+        def acquire():
+            lock = None
+            try:
+                project = self._validated_project()
+                workspace = load_workspace(
+                    project, domain_id=domain_id, runtime_root=self._runtime_root
+                )
+                if workspace is None:
+                    raise ValueError("Selected workspace is unavailable")
+                validate_workspace(workspace, runtime_root=self._runtime_root)
+                path = workspace.git_dir / "plaza-execution.lock"
+                with files.directory(path.parent) as parent:
+                    fd = files._open(parent, path.name, os.O_RDONLY)
+                    lock = files.FileLock(path, fd)
+                    files.lock_exclusive(fd)
+                    lock.validate()
+                    if (
+                        files._check(parent, "plaza-unclean.json", missing=True)
+                        is not None
+                    ):
+                        raise ValueError("Selected workspace requires cleanup")
+                    validate_workspace(workspace, runtime_root=self._runtime_root)
+                    lock.validate()
+                return lock
+            except Exception:
+                if lock is not None:
+                    lock.close()
+                raise WorkspaceError(
+                    "cleanup_failed",
+                    "Workspace requires confirmed cleanup or operator inspection",
+                ) from None
+
+        lock, cancelled = await settle_owned(owned_io(acquire))
+        try:
+            if cancelled:
+                raise asyncio.CancelledError()
+            yield
+        finally:
+            _, cancelled = await settle_owned(owned_io(lock.close))
+            if cancelled:
+                raise asyncio.CancelledError()
 
     async def prepare_memory_turn(self, turn):
         """Project-only extras admission; never provisions a department worktree."""

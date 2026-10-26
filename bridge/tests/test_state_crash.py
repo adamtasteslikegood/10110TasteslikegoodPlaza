@@ -199,5 +199,31 @@ async def test_killed_server_recovers_once_without_tools(
             else:
                 assert workspace is not None
                 assert (workspace.git_dir / "plaza-unclean.json").exists()
+            if boundary == "accepted_before_dispatch" and not notes_unavailable:
+                markers = {
+                    path: path.read_bytes()
+                    for path in (root / ".git/worktrees").glob("*/plaza-unclean.json")
+                }
+                current = server.domains.snapshot("engineering")
+                assert not server.domains._sessions
+                reply = await server.dispatch(
+                    dict(
+                        type="end_domain_session",
+                        protocol_version=2,
+                        request_id=str(uuid4()),
+                        domain_id="engineering",
+                        domain_session_id=current["domain_session_id"],
+                        expected_domain_revision=current["domain_revision"],
+                    )
+                )
+                assert reply[-1]["error_type"] == "cleanup_failed"
+                assert server.application_state.snapshot() == view
+                assert (
+                    server.domains.snapshot("engineering")["domain_session_id"]
+                    == current["domain_session_id"]
+                )
+                assert all(s.ended_at is None for s in view.sessions)
+                assert {p: p.read_bytes() for p in markers} == markers
+                assert not service._domain_tasks
         finally:
             await server._shutdown()
