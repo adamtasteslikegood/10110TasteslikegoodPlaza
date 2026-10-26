@@ -280,7 +280,7 @@ async def test_empty_project_physical_background_npc_and_rendered_replay(
                                 sort_keys=True,
                             )
                         )
-                    terminal = session._entries[0]
+                    terminal = session.replay(0)[0]
                     godot_identity = identity(payload)
                     assert godot_identity == identity(terminal)
                     assert payload["output"] == terminal["output"]
@@ -297,7 +297,7 @@ async def test_empty_project_physical_background_npc_and_rendered_replay(
                     assert (
                         len(provider.queries)
                         == len(provider.writes)
-                        == len(session._entries)
+                        == len(session.replay(0)) - 1
                         == payload["rendered_unique_results"]
                         == 1
                     )

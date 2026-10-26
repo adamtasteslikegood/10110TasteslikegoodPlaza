@@ -6,7 +6,6 @@ to confirm cleanup. Delivery is an independent best-effort observation.
 """
 
 import asyncio
-from collections import deque
 from collections.abc import Awaitable, Callable
 from copy import deepcopy
 from dataclasses import asdict, dataclass
@@ -21,6 +20,7 @@ from bridge.agent_bindings import require_working_binding, InvalidBinding
 from bridge.config import BridgeConfig
 from bridge.domain_protocol import DomainCommandError, error_packet
 from bridge.domain_sdk import DomainSDKOwner, SDKOutcome
+from bridge.domain_store import DomainSessionStore, MemoryStore
 from bridge.failure_diagnostics import (
     diagnostic_fields,
     exception_diagnostics,
@@ -43,9 +43,7 @@ _SDK_ENV_PASSTHROUGH = [
     "CLAUDE_CODE_OAUTH_TOKEN",
     "CLAUDE_CODE_0AUTH_TOKEN",
 ]
-MAX_ENTRIES = 256
 MAX_OUTPUT_BYTES = 256 * 1024
-MAX_TOTAL_OUTPUT_BYTES = 4 * 1024 * 1024
 
 
 class SessionState(Enum):
@@ -105,7 +103,8 @@ class DomainSession:
         *,
         config: BridgeConfig,
         project_service: "ProjectService",
-        recorder: BridgeRecorder | None = None
+        recorder: BridgeRecorder | None = None,
+        store: DomainSessionStore | None = None,
     ):
         self.domain_id, self.domain_session_id = domain_id, domain_session_id
         self._config, self._service, self._recorder = config, project_service, recorder
@@ -123,9 +122,7 @@ class DomainSession:
         self._broken = False
         self._inflight = None
         self._jobs = set()
-        self._entries = deque()
-        self._output_bytes = 0
-        self._highwater = 0
+        self._store = store if store is not None else MemoryStore()
         self._memory_revision = None
         # The store intentionally rejects concurrent file-lock acquisition.
         # Serialize this generation's own checkpoints while retaining explicit
@@ -306,16 +303,16 @@ class DomainSession:
             return await self._error(
                 command, "session_unavailable", emit, context, started
             )
-        for packet in self._entries:
-            if packet["request_id"] == command["request_id"]:
-                if (packet["agent_id"], packet["task"]) != (
-                    command["agent_id"],
-                    command["task"],
-                ):
-                    return await self._error(
-                        command, "invalid_request", emit, context, started
-                    )
-                return await deliver(emit, packet, self._recorder, context)
+        packet = self._store.find_request(command["request_id"])
+        if packet is not None:
+            if (packet["agent_id"], packet["task"]) != (
+                command["agent_id"],
+                command["task"],
+            ):
+                return await self._error(
+                    command, "invalid_request", emit, context, started
+                )
+            return await deliver(emit, packet, self._recorder, context)
         if self._inflight is not None:
             run = self._inflight
             if run.command["request_id"] == command["request_id"]:
@@ -536,7 +533,6 @@ class DomainSession:
             ),
         )
         saved = await self._save(run, outcome)
-        self._highwater += 1
         terminal = dict(
             type="domain_result",
             **self._identity(),
@@ -544,7 +540,7 @@ class DomainSession:
             agent_id=run.command["agent_id"],
             task=run.command["task"],
             output=output,
-            output_id=str(self._highwater),
+            output_id=None,  # Store assigns the ID, preserving wire field order.
             status=outcome.status,
             reason=outcome.reason,
             truncated=truncated,
@@ -552,13 +548,7 @@ class DomainSession:
         )
         if outcome.readiness_category is not None:
             terminal["readiness_category"] = outcome.readiness_category
-        self._entries.append(terminal)
-        self._output_bytes += len(output.encode("utf-8"))
-        while (
-            len(self._entries) > MAX_ENTRIES
-            or self._output_bytes > MAX_TOTAL_OUTPUT_BYTES
-        ):
-            self._output_bytes -= len(self._entries.popleft()["output"].encode("utf-8"))
+        terminal = self._store.append(terminal)
         self._inflight = None
         if self._recorder:
             record_outcome = "failure" if outcome.status == "error" else outcome.status
@@ -695,24 +685,19 @@ class DomainSession:
         return result
 
     def replay(self, cursor: int) -> list[dict]:
-        if type(cursor) is not int or cursor < 0:
-            raise DomainCommandError()
-        highwater = self._highwater
-        earliest = (
-            int(self._entries[0]["output_id"]) if self._entries else highwater + 1
-        )
-        packets = [
-            deepcopy(entry)
-            for entry in self._entries
-            if cursor < int(entry["output_id"]) <= highwater
-        ]
+        window = self._store.replay(cursor)
+        packets = window.entries
         packets.append(
             dict(
                 self.snapshot(),
                 type="resume_complete",
-                high_water_mark=str(highwater),
-                earliest_output_id=str(earliest) if self._entries else None,
-                history_gap=cursor < earliest - 1,
+                high_water_mark=str(window.high_water_mark),
+                earliest_output_id=(
+                    str(window.earliest_output_id)
+                    if window.earliest_output_id is not None
+                    else None
+                ),
+                history_gap=window.history_gap,
             )
         )
         return packets

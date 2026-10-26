@@ -49,12 +49,12 @@
 
 **Interfaces:** Consume Task 1's synchronous protocol. Add optional keyword-only `store: DomainSessionStore | None = None` to `DomainSession`; default to a new `MemoryStore` for every session. Retain all existing constructor callers and `replay(cursor) -> list[dict]` packets.
 
-- [ ] Write a real-store session test using existing setup/fakes: inject MemoryStore, run a real domain task, assert delivered terminal equals stored result and public replay packet, duplicate is not reexecuted, conflict rejects; a second session remains empty. Expect initial failure for unsupported `store` constructor argument.
-- [ ] Run `python -m pytest bridge/tests/test_domain_store_session.py -q`; expect the above failure.
-- [ ] Replace deque/highwater/byte ownership with the store; lookup before inflight checks; append after `_save` and before clearing inflight; compose unchanged resume packet from replay metadata and current snapshot. Keep truncation, recording and delivery order untouched.
-- [ ] Replace only the two integration tests' private deque accesses with public replay results. Preserve their packet equality and execution-count assertions.
-- [ ] Run `python -m pytest bridge/tests/test_domain_store.py bridge/tests/test_domain_store_session.py bridge/tests/test_domain_session.py bridge/tests/test_m12_integration.py -q`; expect all pass, including original count/byte trimming, retained duplicates and immutable replay tests.
-- [ ] Commit `refactor(PLZG-290): delegate domain terminal retention to store`.
+- [x] Write a real-store session test using existing setup/fakes: inject MemoryStore, run a real domain task, assert delivered terminal equals stored result and public replay packet, duplicate is not reexecuted, conflict rejects; a second session remains empty. Expect initial failure for unsupported `store` constructor argument.
+- [x] Run `python -m pytest bridge/tests/test_domain_store_session.py -q`; expect the above failure.
+- [x] Replace deque/highwater/byte ownership with the store; lookup before inflight checks; append after `_save` and before clearing inflight; compose unchanged resume packet from replay metadata and current snapshot. Keep truncation, recording and delivery order untouched.
+- [x] Replace only the two integration tests' private deque accesses with public replay results. Preserve their packet equality and execution-count assertions.
+- [x] Run `python -m pytest bridge/tests/test_domain_store.py bridge/tests/test_domain_store_session.py bridge/tests/test_domain_session.py bridge/tests/test_m12_integration.py -q`; expect all pass, including original count/byte trimming, retained duplicates and immutable replay tests.
+- [x] Commit `refactor(PLZG-290): delegate domain terminal retention to store`.
 
 ### Task 3: Regression verification and handoff
 
@@ -73,3 +73,5 @@
 - Skill task-helper scripts are not accessible through the installed cloud resource; record progress here rather than inventing successful helper runs.
 
 - Task 1 complete: absent-module RED; contract suite GREEN, 19 passed; new files Black-clean.
+
+- Task 2 complete: injected-store constructor RED, then GREEN; serialized terminal field order regression RED→GREEN. Targeted store/session/M12 suite: 90 passed. Existing `test_domain_session.py` is unchanged.
