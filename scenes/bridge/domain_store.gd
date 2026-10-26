@@ -9,7 +9,7 @@ const MAX_SPARSE := 256
 const MAX_DOMAINS := 10
 const STATES := ["inactive", "activating", "active", "background", "stopping", "cleanup_failed"]
 const EXECUTION := ["idle", "running", "stopping", "cleanup_failed"]
-const COMMANDS := ["describe_workspace", "domain_status", "activate_domain", "domain_query", "background_domain", "refocus_domain", "deactivate_domain", "resume"]
+const COMMANDS := ["describe_workspace", "domain_status", "activate_domain", "domain_query", "background_domain", "refocus_domain", "deactivate_domain", "end_domain_session", "resume"]
 const TERMINAL_REASONS := ["sdk_error", "assistant_error", "permission_denied", "readiness_failed", "max_turns", "max_budget_usd", "max_tokens", "output_limit", "missing_terminal", "transport_error", "deferred_tool_use", "completed", "stopped", "not_executed"]
 const READINESS_CATEGORIES := ["cwd_mismatch", "branch_changed", "workspace_invalid", "lease_invalid", "memory_unavailable", "tool_correlation_invalid", "readiness_timeout", "readiness_error", "readiness_cancelled", "workspace_not_ready", "workspace_busy", "cleanup_failed", "context_unavailable"]
 
@@ -108,7 +108,7 @@ func _domain(id: String) -> Dictionary:
 	if not valid_domain(id): return {}
 	if not _domains.has(id):
 		if _domains.size() >= MAX_DOMAINS: return {}
-		_domains[id] = {"project_id": _project_id, "domain_id": id, "domain_session_id": "", "workspace_id": "", "state": "inactive", "execution_state": "idle", "pending_query": {}, "pending_control": {}, "draft": "", "results": [], "omitted_count": 0, "uncertain": false, "error": {}, "memory": {}, "buckets": {}, "version": 0, "lifecycle_uncertain": false, "query_uncertain": false, "cleanup_confirmed": false}
+		_domains[id] = {"project_id": _project_id, "domain_id": id, "domain_session_id": "", "workspace_id": "", "state": "inactive", "execution_state": "idle", "pending_query": {}, "pending_control": {}, "draft": "", "results": [], "omitted_count": 0, "uncertain": false, "error": {}, "memory": {}, "buckets": {}, "version": 0, "lifecycle_uncertain": false, "query_uncertain": false, "cleanup_confirmed": false, "execution_id": "", "domain_revision": "0", "saved_sessions": [], "selected_session_id": "", "unsaved_results": [], "state_store": {}, "memory_reconciliation": []}
 	return _domains[id]
 
 
@@ -122,6 +122,10 @@ func snapshot(domain_id: String) -> Dictionary:
 	out.erase("query_uncertain")
 	out.erase("cleanup_confirmed")
 	var b: Dictionary = d.buckets.get(d.domain_session_id, {})
+	out.read_only = d.selected_session_id != "" and (d.selected_session_id != d.domain_session_id or d.domain_session_id == "")
+	var selected: Dictionary = d.buckets.get(d.selected_session_id, {})
+	out.selected_received_cursor = selected.get("received", "0")
+	out.selected_consumed_cursor = selected.get("consumed", "0")
 	out.received_cursor = b.get("received", "0")
 	out.consumed_cursor = b.get("consumed", "0")
 	if not b.get("receipt_error", {}).is_empty():
@@ -133,6 +137,15 @@ func snapshot(domain_id: String) -> Dictionary:
 			out.error = {"error_type": "unknown_outcome", "message": "An earlier generation's Run outcome is unknown"}
 		out.error.unresolved_queries = unresolved
 	return out
+
+
+func selected_results(domain_id: String) -> Array:
+	var d := _domain(domain_id)
+	var results := []
+	if d.is_empty(): return results
+	for result in d.results + d.unsaved_results:
+		if result.domain_session_id == d.selected_session_id: results.append(result.duplicate(true))
+	return results
 
 
 func set_draft(domain_id: String, text: String) -> bool:
@@ -147,8 +160,8 @@ func set_draft(domain_id: String, text: String) -> bool:
 func mark_read(domain_id: String, output_id: String) -> void:
 	var n := decimal(output_id)
 	var d := _domain(domain_id)
-	if n == "" or d.is_empty() or not d.buckets.has(d.domain_session_id): return
-	var b: Dictionary = d.buckets[d.domain_session_id]
+	if n == "" or d.is_empty() or not d.buckets.has(d.selected_session_id): return
+	var b: Dictionary = d.buckets[d.selected_session_id]
 	if compare(n, b.received) <= 0 and compare(n, b.consumed) > 0: b.consumed = n
 
 
@@ -167,11 +180,14 @@ func admit_command(packet: Dictionary) -> bool:
 	var id: Variant = packet.get("request_id")
 	if kind not in COMMANDS or not valid_id(id) or _commands.has(id):
 		return false
-	var fields := ["type", "request_id"]
+	if packet.get("protocol_version") is not int or packet.protocol_version != 2: return false
+	var fields := ["type", "request_id", "protocol_version"]
 	if kind != "describe_workspace":
 		fields.append("domain_id")
 	if kind not in ["describe_workspace", "domain_status", "activate_domain"]:
 		fields.append("domain_session_id")
+	if kind in ["activate_domain", "end_domain_session"]: fields.append("expected_domain_revision")
+	if kind in ["domain_query", "background_domain", "refocus_domain", "deactivate_domain"]: fields.append("execution_id")
 	if kind == "domain_query":
 		fields.append_array(["agent_id", "task"])
 	if kind == "resume":
@@ -181,6 +197,9 @@ func admit_command(packet: Dictionary) -> bool:
 	for key in fields:
 		if not packet.has(key):
 			return false
+	if kind in ["activate_domain", "end_domain_session"]:
+		var revision := decimal(packet.get("expected_domain_revision"))
+		if revision == "" or compare(revision, "9223372036854775807") > 0: return false
 	if kind == "describe_workspace":
 		for c in _commands.values():
 			if c.type == kind:
@@ -207,6 +226,9 @@ func admit_command(packet: Dictionary) -> bool:
 				return false
 		elif packet.domain_session_id != d.domain_session_id:
 			return false
+		if kind in ["domain_query", "background_domain", "refocus_domain", "deactivate_domain"]:
+			if not valid_id(packet.get("execution_id")) or packet.execution_id != d.execution_id: return false
+		if kind in ["domain_query", "end_domain_session"] and (d.selected_session_id != d.domain_session_id or d.domain_session_id == ""): return false
 		if kind == "domain_query":
 			if not d.pending_query.is_empty() or d.uncertain or d.state not in ["active", "background"]:
 				return false
@@ -284,7 +306,7 @@ func apply_packet(packet: Dictionary) -> Dictionary:
 	if not c.is_empty():
 		if c.get("domain_id") != d.domain_id:
 			return {}
-		if c.has("domain_session_id") and c.domain_session_id != generation:
+		if c.has("domain_session_id") and c.domain_session_id != generation and not (kind == "domain_state" and c.type == "end_domain_session" and generation == null):
 			return {}
 	if kind == "domain_result":
 		return _apply_result(d, packet)
@@ -308,7 +330,7 @@ func apply_packet(packet: Dictionary) -> Dictionary:
 	if kind == "resume_complete":
 		return _apply_completion(d, packet, c)
 	if kind == "domain_accepted":
-		if c.type != "domain_query" or d.pending_query.get("request_id") != id or generation != d.domain_session_id:
+		if c.type != "domain_query" or d.pending_query.get("request_id") != id or generation != d.domain_session_id or packet.get("execution_id") != d.execution_id or (packet.has("protocol_version") and packet.protocol_version != 2):
 			return {}
 		if packet.get("execution_state") != "running" or packet.get("agent_id") != d.pending_query.agent_id or packet.get("task") != d.pending_query.task:
 			return {}
@@ -318,11 +340,15 @@ func apply_packet(packet: Dictionary) -> Dictionary:
 		return _change("domain", d.domain_id, kind, id, false)
 	if not _valid_state(packet):
 		return {}
-	if c.type not in ["activate_domain", "domain_status", "background_domain", "refocus_domain", "deactivate_domain"]:
+	if c.type not in ["activate_domain", "domain_status", "background_domain", "refocus_domain", "deactivate_domain", "end_domain_session"]:
 		return {}
 	if c.type == "domain_status" and c.version != d.version:
 		_settle(d, id)
 		return _change("domain", d.domain_id, "status_stale", id)
+	if compare(decimal(packet.domain_revision), d.domain_revision) < 0:
+		_settle(d, id)
+		return _change("domain", d.domain_id, "status_stale", id)
+	if c.has("execution_id") and c.execution_id != d.execution_id: return {}
 	if generation != null and generation != d.domain_session_id:
 		if c.type not in ["activate_domain", "domain_status"]:
 			return {}
@@ -330,9 +356,10 @@ func apply_packet(packet: Dictionary) -> Dictionary:
 		if c.type == "activate_domain":
 			d.pending_control = {"type": c.type, "domain_id": d.domain_id, "request_id": id}
 	elif generation == null and d.domain_session_id != "":
-		if c.type != "domain_status":
+		if c.type not in ["domain_status", "end_domain_session"]:
 			return {}
 		_switch_generation(d, "")
+	_adopt_catalog(d, packet)
 	d.workspace_id = packet.get("workspace_id", "")
 	if d.buckets.has(generation):
 		d.buckets[generation].workspace_id = packet.get("workspace_id")
@@ -361,11 +388,22 @@ func _switch_generation(d: Dictionary, generation: String) -> void:
 		if c.get("domain_id") == d.domain_id and c.has("domain_session_id") and c.domain_session_id != generation: _commands.erase(id)
 	d.pending_query = {}
 	d.pending_control = {}
+	var follow_current: bool = d.selected_session_id == d.domain_session_id or d.selected_session_id == ""
 	d.domain_session_id = generation
+	if follow_current: d.selected_session_id = generation
 	if generation == "": return
 	if not d.buckets.has(generation): d.buckets[generation] = {"received": "0", "consumed": "0", "observed": {}, "receipt_error": {}, "receipt_fence": "0", "unresolved_query": {}}
-	while d.buckets.size() > 2:
-		var old: String = d.buckets.keys()[0]
+	_prune_buckets(d)
+
+
+func _prune_buckets(d: Dictionary) -> void:
+	while d.buckets.size() > 128:
+		var old := ""
+		for id in d.buckets:
+			if id != d.domain_session_id and id != d.selected_session_id:
+				old = id
+				break
+		if old == "": return
 		if not d.buckets[old].unresolved_query.is_empty(): d.omitted_count = mini(2147483647, d.omitted_count + 1)
 		d.buckets.erase(old)
 		for i in range(d.results.size() - 1, -1, -1):
@@ -375,13 +413,33 @@ func _switch_generation(d: Dictionary, generation: String) -> void:
 
 
 func _apply_result(d: Dictionary, p: Dictionary) -> Dictionary:
-	var n := decimal(p.get("output_id"))
-	if n in ["", "0"] or not d.buckets.has(p.get("domain_session_id")): return {}
+	if p.has("protocol_version") and (not (p.protocol_version is int or p.protocol_version is float) or p.protocol_version != 2): return {}
+	if not valid_id(p.get("execution_id")) or not d.buckets.has(p.get("domain_session_id")): return {}
+	for flag in ["committed", "recovered"]:
+		if p.has(flag) and not p[flag] is bool: return {}
 	if p.get("status") not in ["success", "error", "cancelled"] or not valid_id(p.get("agent_id")): return {}
 	if not p.get("task") is String or p.task.to_utf8_buffer().size() > 65536 or not p.get("output") is String or p.output.to_utf8_buffer().size() > 262144: return {}
-	if not p.get("reason") is String or not p.get("truncated") is bool or not _valid_memory(p.get("memory"), true): return {}
-	# Bound the full shape, including unexpected extensions, before retaining it.
+	if not p.get("reason") is String: return {}
+	if p.has("truncated") and not p.truncated is bool: return {}
+	if not p.get("recovered", false) and p.get("committed", true) and not p.get("truncated") is bool: return {}
+	if p.get("memory") != null and not _valid_memory(p.memory, true): return {}
+	if p.get("committed", true) and p.get("memory") == null: return {}
 	if JSON.stringify(p).to_utf8_buffer().size() > MAX_BYTES: return {}
+	var current_execution: bool = p.domain_session_id == d.domain_session_id and p.execution_id == d.execution_id
+	if not p.get("committed", true):
+		if p.has("output_id"): return {}
+		for existing in d.unsaved_results:
+			if existing.request_id == p.request_id and existing.execution_id == p.execution_id: return {}
+		d.unsaved_results.append(p.duplicate(true))
+		if current_execution and d.pending_query.get("request_id") == p.request_id:
+			d.pending_query = {}
+			_commands.erase(p.request_id)
+			d.query_uncertain = true
+			d.error = {"error_type": p.get("error_type", "state_store_failed"), "message": "Answer is unsaved. Persistence failed; inspect storage and refresh status after operator reconciliation."}
+		_trim(d)
+		return _change("domain", d.domain_id, "domain_result", p.request_id)
+	var n := decimal(p.get("output_id"))
+	if n in ["", "0"]: return {}
 	var b: Dictionary = d.buckets[p.domain_session_id]
 	if compare(n, b.received) <= 0 or b.observed.has(n): return {}
 	var retained := false
@@ -400,25 +458,27 @@ func _apply_result(d: Dictionary, p: Dictionary) -> Dictionary:
 		var discarded: String = keys.back()
 		b.observed.erase(discarded)
 		_receipt_problem(b, "receipt_capacity", "Receipt history needs replay", discarded)
-	if p.domain_session_id == d.domain_session_id:
-		if d.pending_query.get("request_id") == p.request_id:
-			d.pending_query = {}
-			_commands.erase(p.request_id)
-			d.execution_state = "idle"
-			d.query_uncertain = false
-			d.draft = "" if d.draft == p.task else d.draft
-		d.version += 1
-		_merge_memory(d.memory, p.memory)
+	var matched_query: bool = p.domain_session_id == d.domain_session_id and d.pending_query.get("request_id") == p.request_id and d.pending_query.get("agent_id") == p.agent_id and d.pending_query.get("task") == p.task
+	if matched_query:
+		d.pending_query = {}
+		_commands.erase(p.request_id)
+		d.query_uncertain = false
+		d.draft = "" if d.draft == p.task else d.draft
+		if current_execution: d.execution_state = "idle"
+	if current_execution or matched_query: d.version += 1
+	if current_execution: _merge_memory(d.memory, p.memory)
+	for i in range(d.unsaved_results.size() - 1, -1, -1):
+		if d.unsaved_results[i].request_id == p.request_id and d.unsaved_results[i].domain_session_id == p.domain_session_id and d.unsaved_results[i].execution_id == p.execution_id and d.unsaved_results[i].output == p.output: d.unsaved_results.remove_at(i)
 	if b.unresolved_query.get("request_id") == p.request_id:
 		b.unresolved_query = {}
 	_refresh_uncertainty(d)
-	_merge_workspace_memory(p.memory)
+	if current_execution: _merge_workspace_memory(p.memory)
 	_trim(d)
 	return _change("domain", d.domain_id, "domain_result", p.request_id)
 
 
 func _apply_completion(d: Dictionary, p: Dictionary, c: Dictionary) -> Dictionary:
-	if c.type != "resume" or not d.buckets.has(p.get("domain_session_id")) or not p.get("history_gap") is bool or not _valid_state(p): return {}
+	if c.type != "resume" or not d.buckets.has(p.get("domain_session_id")) or not p.get("history_gap") is bool or not p.get("ended") is bool or not _valid_state(p): return {}
 	var h := decimal(p.get("high_water_mark"))
 	var e := decimal(p.get("earliest_output_id")) if p.get("earliest_output_id") != null else ""
 	var requested := decimal(c.cursor)
@@ -480,13 +540,79 @@ func _settle(d: Dictionary, id: String) -> void:
 	if d.pending_control.get("request_id") == id: d.pending_control = {}
 
 
+func _valid_storage(value: Variant) -> bool:
+	return value is Dictionary and value.get("backend") in ["sqlite", "memory"] and value.get("durable") is bool and value.get("durable") == (value.get("backend") == "sqlite") and value.get("continuity") == ("project" if value.get("durable") else "process") and (value.get("error_type") == null or valid_id(value.get("error_type")))
+
+
 func _valid_state(p: Dictionary) -> bool:
+	if not (p.get("protocol_version") is int or p.get("protocol_version") is float) or p.protocol_version != 2: return false
 	if p.get("state") not in STATES or p.get("execution_state") not in EXECUTION: return false
+	for field in ["domain_session_id", "execution_id", "domain_revision", "saved_sessions", "state_store"]:
+		if not p.has(field): return false
+	for flag in ["recovered", "committed", "ended"]:
+		if p.has(flag) and not p[flag] is bool: return false
+	if JSON.stringify(p).to_utf8_buffer().size() > MAX_BYTES: return false
 	if p.get("domain_session_id") == null and p.state != "inactive": return false
+	if p.get("execution_id") != null and not valid_id(p.execution_id): return false
+	if p.state != "inactive" and p.get("execution_id") == null: return false
+	var revision := decimal(p.get("domain_revision"))
+	if revision == "" or compare(revision, "9223372036854775807") > 0 or not _valid_storage(p.get("state_store")): return false
+	if not p.get("saved_sessions") is Array or p.saved_sessions.size() > 128: return false
+	var seen := {}
+	for item in p.saved_sessions:
+		if not item is Dictionary or not valid_id(item.get("domain_session_id")) or seen.has(item.domain_session_id): return false
+		if not valid_id(item.get("created_at")) or decimal(item.get("high_water_mark")) == "": return false
+		if not item.has("ended_at") or not item.has("ended_by"): return false
+		if item.ended_at != null and not valid_id(item.ended_at): return false
+		if item.ended_by != null and not valid_id(item.ended_by): return false
+		seen[item.domain_session_id] = true
 	if p.has("available_generations"):
-		if not p.available_generations is Array or p.available_generations.size() > 2: return false
+		if not p.available_generations is Array or p.available_generations.size() > 128: return false
 		for generation in p.available_generations:
 			if not valid_id(generation): return false
+	if p.has("memory_reconciliation"):
+		if not p.memory_reconciliation is Array or p.memory_reconciliation.size() > 256: return false
+		for fact in p.memory_reconciliation:
+			if not fact is Dictionary or not valid_id(fact.get("request_id")) or not fact.get("saved") is bool: return false
+	return true
+
+
+func _adopt_catalog(d: Dictionary, packet: Dictionary) -> void:
+	var incoming_execution: String = packet.execution_id if packet.execution_id != null else ""
+	if incoming_execution != "" and incoming_execution != d.execution_id:
+		for id in _commands.keys():
+			var command: Dictionary = _commands[id]
+			if command.get("domain_id") == d.domain_id and command.has("execution_id") and command.execution_id != incoming_execution: _commands.erase(id)
+		if d.pending_control.has("execution_id") and d.pending_control.execution_id != incoming_execution: d.pending_control = {}
+		if d.pending_query.has("execution_id") and d.pending_query.execution_id != incoming_execution:
+			if d.buckets.has(d.domain_session_id): d.buckets[d.domain_session_id].unresolved_query = d.pending_query.duplicate(true)
+			d.pending_query = {}
+			d.query_uncertain = false
+	if not d.state_store.is_empty() and d.state_store.get("backend") != packet.state_store.backend:
+		d.buckets.clear()
+		d.results.clear()
+		d.unsaved_results.clear()
+		d.selected_session_id = ""
+		d.error = {"error_type": "backend_changed", "message": "Application backend changed. Previous backend history is separate; any earlier unresolved execution outcome still needs inspection."}
+	d.execution_id = packet.execution_id if packet.execution_id != null else ""
+	d.domain_revision = decimal(packet.domain_revision)
+	d.saved_sessions = packet.saved_sessions.duplicate(true)
+	d.state_store = packet.state_store.duplicate(true)
+	d.memory_reconciliation = packet.get("memory_reconciliation", []).duplicate(true)
+	for item in d.saved_sessions:
+		var id: String = item.domain_session_id
+		if not d.buckets.has(id):
+			d.buckets[id] = {"received": "0", "consumed": "0", "observed": {}, "receipt_error": {}, "receipt_fence": "0", "unresolved_query": {}, "workspace_id": packet.get("workspace_id")}
+	_prune_buckets(d)
+	if not d.buckets.has(d.selected_session_id): d.selected_session_id = d.domain_session_id
+	if d.selected_session_id == "" and not d.saved_sessions.is_empty(): d.selected_session_id = d.saved_sessions.back().domain_session_id
+
+
+func select_session(domain_id: String, session_id: String) -> bool:
+	var d := _domain(domain_id)
+	if d.is_empty() or not d.pending_control.is_empty(): return false
+	if not d.buckets.has(session_id): return false
+	d.selected_session_id = session_id
 	return true
 
 
@@ -521,6 +647,8 @@ func _merge_workspace_memory(incoming: Dictionary) -> void:
 
 func _apply_workspace(p: Dictionary, c: Dictionary) -> Dictionary:
 	if c.get("type") != "describe_workspace": return {}
+	if not c.get("observation", false):
+		if not (p.get("protocol_version") is int or p.get("protocol_version") is float) or p.protocol_version != 2 or not _valid_storage(p.get("state_store")): return {}
 	for key in ["project_id", "workspace_id", "reason", "architect_decision", "project_path", "worktree_path", "branch", "changed_files", "reservation", "memory"]:
 		if not p.has(key): return {}
 	for key in ["reason", "project_path", "worktree_path", "branch"]:
@@ -550,7 +678,9 @@ func _apply_workspace(p: Dictionary, c: Dictionary) -> Dictionary:
 			d.project_id = project
 	var memory: Dictionary = _workspace.get("memory", {}).duplicate(true)
 	_merge_memory(memory, p.memory)
+	var storage: Dictionary = p.get("state_store", _workspace.get("state_store", {})).duplicate(true)
 	_workspace = p.duplicate(true)
+	if not storage.is_empty() and not changed: _workspace.state_store = storage
 	_workspace.memory = memory if not changed else p.memory.duplicate(true)
 	_commands.erase(p.request_id)
 	return _change("workspace", "", "workspace_state", p.request_id, true, changed)
@@ -558,11 +688,16 @@ func _apply_workspace(p: Dictionary, c: Dictionary) -> Dictionary:
 
 func _trim(d: Dictionary) -> void:
 	# Count the complete exposed wire shapes, pending input and draft together.
-	# Receipt metadata is independently bounded (two buckets, 256 sparse IDs each).
+	# Receipt metadata is independently bounded (128 saved-application buckets, 256 sparse IDs each).
 	var bytes: int = JSON.stringify(snapshot(d.domain_id)).to_utf8_buffer().size()
-	var extra := (0 if d.draft == "" else 1) + (0 if d.pending_query.is_empty() else 1) + _unresolved_queries(d).size()
+	var extra: int = d.unsaved_results.size() + (0 if d.draft == "" else 1) + (0 if d.pending_query.is_empty() else 1) + _unresolved_queries(d).size()
 	while not d.results.is_empty() and (d.results.size() + extra > MAX_ENTRIES or bytes > MAX_BYTES):
 		d.results.pop_front()
+		d.omitted_count = mini(2147483647, d.omitted_count + 1)
+		bytes = JSON.stringify(snapshot(d.domain_id)).to_utf8_buffer().size()
+
+	while not d.unsaved_results.is_empty() and (d.unsaved_results.size() + (0 if d.draft == "" else 1) > MAX_ENTRIES or bytes > MAX_BYTES):
+		d.unsaved_results.pop_front()
 		d.omitted_count = mini(2147483647, d.omitted_count + 1)
 		bytes = JSON.stringify(snapshot(d.domain_id)).to_utf8_buffer().size()
 
@@ -583,13 +718,13 @@ func observation_current(fence: Dictionary) -> bool:
 func observe_project(project: Dictionary) -> Dictionary:
 	var packet := project.duplicate(true)
 	packet.request_id = ""
-	return _apply_workspace(packet, {"type": "describe_workspace"})
+	return _apply_workspace(packet, {"type": "describe_workspace", "observation": true})
 
 func observe_domain(packet: Dictionary, fence: Dictionary) -> bool:
 	if fence.get("epoch") != _epoch or not valid_domain(packet.get("domain_id")) or not _valid_state(packet): return false
 	if packet.get("project_id", "") != _project_id and not (_project_id == "" and packet.get("project_id") == null): return false
 	var d := _domain(packet.domain_id)
-	if d.is_empty() or d.version != fence.get("versions", {}).get(packet.domain_id, 0): return false
+	if d.is_empty() or d.version != fence.get("versions", {}).get(packet.domain_id, 0) or compare(decimal(packet.domain_revision), d.domain_revision) < 0: return false
 	if not d.pending_control.is_empty() or not d.pending_query.is_empty(): return false
 	var generation: Variant = packet.get("domain_session_id")
 	if generation != null and not valid_id(generation): return false
@@ -597,6 +732,7 @@ func observe_domain(packet: Dictionary, fence: Dictionary) -> bool:
 	if d.buckets.has(generation) and d.buckets[generation].get("workspace_id") != packet.get("workspace_id"): return false
 	if generation == null: generation = ""
 	if generation != d.domain_session_id: _switch_generation(d, generation)
+	_adopt_catalog(d, packet)
 	d.workspace_id = packet.get("workspace_id")
 	if d.buckets.has(generation): d.buckets[generation].workspace_id = packet.get("workspace_id")
 	d.state = packet.state

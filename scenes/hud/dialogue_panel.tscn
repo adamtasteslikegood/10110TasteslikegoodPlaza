@@ -70,6 +70,12 @@ theme_override_font_sizes/font_size = 12
 text = "Select All"
 tooltip_text = "Select the displayed transcript"
 
+[node name="HistorySelect" type="OptionButton" parent="Panel/Margin/Rows"]
+size_flags_horizontal = 3
+text = "Saved application history"
+fit_to_longest_item = false
+clip_text = true
+
 [node name="BodyLabel" type="RichTextLabel" parent="Panel/Margin/Rows"]
 size_flags_vertical = 3
 fit_content = false
@@ -99,14 +105,17 @@ max_lines_visible = 2
 text_overrun_behavior = 3
 text = ""
 
-[node name="Actions" type="HBoxContainer" parent="Panel/Margin/Rows"]
+[node name="Actions" type="HFlowContainer" parent="Panel/Margin/Rows"]
 [node name="Prepare" type="Button" parent="Panel/Margin/Rows/Actions"]
 text = "Prepare"
 [node name="Start" type="Button" parent="Panel/Margin/Rows/Actions"]
-text = "Let's work"
+text = "Start current work"
 [node name="Send" type="Button" parent="Panel/Margin/Rows/Actions"]
 text = "Send"
 [node name="Stop" type="Button" parent="Panel/Margin/Rows/Actions"]
-text = "Stop"
+text = "Stop current work"
+[node name="End" type="Button" parent="Panel/Margin/Rows/Actions"]
+text = "End session"
+
 [node name="Status" type="Button" parent="Panel/Margin/Rows/Actions"]
 text = "Refresh status"

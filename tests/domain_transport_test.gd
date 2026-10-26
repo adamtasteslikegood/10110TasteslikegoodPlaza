@@ -41,10 +41,10 @@ func deliver(p: Dictionary) -> void:
 	await frames()
 
 func workspace(id: String, project: Variant = "P") -> Dictionary:
-	return {"type": "workspace_state", "request_id": id, "project_id": project, "workspace_id": "W", "stage": "ready", "reason": null, "architect_decision": null, "project_path": "/project", "worktree_path": "/execution", "branch": "plaza/workspace-P", "changed_files": {"total": 0, "tracked": 0, "untracked": 0, "truncated": false}, "reservation": null, "memory": {"path": "/memory", "status": "saved", "revision": 8, "error_type": null}}
+	return {"type": "workspace_state", "protocol_version": 2, "state_store": {"backend": "sqlite", "durable": true, "continuity": "project", "error_type": null}, "request_id": id, "project_id": project, "workspace_id": "W", "stage": "ready", "reason": null, "architect_decision": null, "project_path": "/project", "worktree_path": "/execution", "branch": "plaza/workspace-P", "changed_files": {"total": 0, "tracked": 0, "untracked": 0, "truncated": false}, "reservation": null, "memory": {"path": "/memory", "status": "saved", "revision": 8, "error_type": null}}
 
 func state(id: String, lifecycle: String = "active") -> Dictionary:
-	return {"type": "domain_state", "request_id": id, "project_id": "P", "workspace_id": "W", "domain_id": "core", "domain_session_id": "A", "state": lifecycle, "execution_state": "idle"}
+	return {"type": "domain_state", "protocol_version": 2, "execution_id": "E-" + "A" if lifecycle != "inactive" else null, "domain_revision": "1", "saved_sessions": [{"domain_session_id": "A", "created_at": "2026-10-26", "ended_at": null, "ended_by": null, "high_water_mark": "0"}], "state_store": {"backend": "sqlite", "durable": true, "continuity": "project", "error_type": null}, "request_id": id, "project_id": "P", "workspace_id": "W", "domain_id": "core", "domain_session_id": "A", "state": lifecycle, "execution_state": "idle"}
 
 func _ready() -> void:
 	BridgeClient.set_process(false)
@@ -128,7 +128,7 @@ func _ready() -> void:
 	check(client.domain_snapshot("core").pending_query.request_id == run, "acceptance preserves query")
 	client.set_domain_draft("core", "keep")
 	check(client.send_domain_query("core", "systems-architect", "again") == "" and client.domain_snapshot("core").draft == "keep", "busy retains draft")
-	var terminal := {"type": "domain_result", "request_id": run, "project_id": "P", "workspace_id": "W", "domain_id": "core", "domain_session_id": "A", "output_id": "1", "agent_id": "systems-architect", "task": "work", "output": "done", "status": "success", "reason": "completed", "truncated": false, "memory": {"saved": true, "revision": 3, "error_type": null}}
+	var terminal := {"type": "domain_result", "protocol_version": 2, "execution_id": "E-A", "request_id": run, "project_id": "P", "workspace_id": "W", "domain_id": "core", "domain_session_id": "A", "output_id": "1", "agent_id": "systems-architect", "task": "work", "output": "done", "status": "success", "reason": "completed", "truncated": false, "memory": {"saved": true, "revision": 3, "error_type": null}}
 	var forged := terminal.duplicate(true)
 	forged.request_id = npc
 	forged.domain_session_id = "wrong-generation"
@@ -145,7 +145,7 @@ func _ready() -> void:
 	wire = await receive()
 	check(wire.get("cursor") == "1", "resume uses safe receipt cursor")
 	var completion := state(resume)
-	completion.merge({"type": "resume_complete", "high_water_mark": "1", "earliest_output_id": "1", "history_gap": false}, true)
+	completion.merge({"type": "resume_complete", "ended": false, "high_water_mark": "1", "earliest_output_id": "1", "history_gap": false}, true)
 	await deliver(completion)
 	check(client.domain_snapshot("core").pending_control.is_empty(), "empty replay completes")
 	wire = await receive()
@@ -192,6 +192,7 @@ func polling_and_failure_checks() -> void:
 		var p := workspace(id, "P2")
 		p.stage = stage
 		await deliver(p)
+		await settle_ready_status()
 		var count: int = client.sent.size()
 		client._workspace_poll = 0.0
 		client._process(1.0)
@@ -216,12 +217,26 @@ func polling_and_failure_checks() -> void:
 	await receive()
 	p = workspace(id, "P2")
 	await deliver(p)
+	await settle_ready_status()
 	# Real synchronous boundary failure leaves the admitted Run uncertain.
 	id = client.domain_status("core")
 	await receive()
 	p = state(id)
 	p.project_id = "P2"
 	await deliver(p)
+	# Fresh v2 discovery replays even an empty saved application before work.
+	var recovered: Dictionary = client.domain_snapshot("core").pending_control
+	if recovered.get("type") == "resume":
+		var replay_wire := await receive()
+		check(replay_wire.get("type") == "resume", "new project observes history without Run")
+		var replayed := state(replay_wire.request_id)
+		replayed.project_id = "P2"
+		replayed.merge({"type": "resume_complete", "ended": false, "high_water_mark": "0", "earliest_output_id": null, "history_gap": false}, true)
+		await deliver(replayed)
+		var refreshed := await receive()
+		var fresh_state := state(refreshed.request_id)
+		fresh_state.project_id = "P2"
+		await deliver(fresh_state)
 	var old_run: String = client.send_domain_query("core", "systems-architect", "old generation")
 	await receive()
 	id = client.domain_status("core")
@@ -289,7 +304,7 @@ func review_transport_regressions() -> void:
 	await deliver(state(id))
 	wire = await receive()
 	var completion := state(wire.get("request_id", "missing"))
-	completion.merge({"type": "resume_complete", "high_water_mark": "0", "earliest_output_id": null, "history_gap": false}, true)
+	completion.merge({"type": "resume_complete", "ended": false, "high_water_mark": "0", "earliest_output_id": null, "history_gap": false}, true)
 	await deliver(completion)
 	wire = await receive()
 	await deliver(state(wire.get("request_id", "missing")))
@@ -334,7 +349,7 @@ func review_transport_regressions() -> void:
 	id = client.resume_domain("core")
 	await receive()
 	for n in ["3", "5"]:
-		await deliver({"type": "domain_result", "request_id": "old-run-" + n, "project_id": "P", "workspace_id": "W", "domain_id": "core", "domain_session_id": "B", "output_id": n, "agent_id": "systems-architect", "task": "old", "output": "answer", "status": "success", "reason": "completed", "truncated": false, "memory": {"saved": true, "revision": 3, "error_type": null}})
+		await deliver({"type": "domain_result", "protocol_version": 2, "execution_id": "E-A", "request_id": "old-run-" + n, "project_id": "P", "workspace_id": "W", "domain_id": "core", "domain_session_id": "B", "output_id": n, "agent_id": "systems-architect", "task": "old", "output": "answer", "status": "success", "reason": "completed", "truncated": false, "memory": {"saved": true, "revision": 3, "error_type": null}})
 		if n == "3":
 			wire = await receive()
 			await deliver(workspace(wire.get("request_id", "missing")))
@@ -398,7 +413,7 @@ func final_review_regressions() -> void:
 	wire = await receive()
 	await deliver(workspace(wire.request_id))
 	client.set_domain_draft("core", "private domain draft")
-	await deliver({"type": "domain_result", "request_id": "old-result", "project_id": "P", "workspace_id": "W", "domain_id": "core", "domain_session_id": "A", "output_id": "1", "agent_id": "systems-architect", "task": "old task", "output": "private old result", "status": "success", "reason": "completed", "truncated": false, "memory": {"saved": true, "revision": 9, "error_type": null}})
+	await deliver({"type": "domain_result", "protocol_version": 2, "execution_id": "E-A", "request_id": "old-result", "project_id": "P", "workspace_id": "W", "domain_id": "core", "domain_session_id": "A", "output_id": "1", "agent_id": "systems-architect", "task": "old task", "output": "private old result", "status": "success", "reason": "completed", "truncated": false, "memory": {"saved": true, "revision": 9, "error_type": null}})
 	wire = await receive()
 	await deliver(workspace(wire.request_id))
 	check(not client.conversation_snapshot("systems-architect").messages.is_empty() and client.domain_snapshot("core").results.size() == 1, "final R3 prior-project caches populated")
@@ -423,3 +438,17 @@ func final_review_regressions() -> void:
 	await receive()
 	await deliver({"type": "domain_error", "request_id": start, "domain_id": "core", "project_id": null, "status": "error", "error_type": "workspace_unconfigured", "message": "Configure a project"})
 	check(client.domain_snapshot("core").pending_control.is_empty() and not client._domain_requests.has(start) and "workspace_unconfigured" in unconfigured_notices, "final R3 null-project Start rejection settles transport correlation")
+
+
+func settle_ready_status() -> void:
+	# A preparing→ready transition now observes remembered domains once.
+	var pending: Dictionary = client._domain_requests.get(client._discovery_request, {})
+	if pending.get("type") != "domain_status": return
+	var wire := await receive()
+	check(wire.get("type") == "domain_status", "ready transition uses read-only domain observation")
+	var empty := state(wire.request_id, "inactive")
+	empty.project_id = "P2"
+	empty.domain_session_id = null
+	empty.execution_id = null
+	empty.saved_sessions = []
+	await deliver(empty)

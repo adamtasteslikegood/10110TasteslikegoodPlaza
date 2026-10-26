@@ -1125,22 +1125,57 @@ print("M12_RECEIPT "+json.dumps(receipt))"""
 class Plain:
     def __init__(self, socket):
         self.socket, self.packets = socket, []
+        self.pending = []
 
     async def send(self, kind, request, generation=None, **extra):
-        command = dict(type=kind, request_id=request, domain_id="core", **extra)
-        if generation:
+        command = dict(type=kind, protocol_version=2, request_id=request)
+        if kind != "describe_workspace":
+            command["domain_id"] = "core"
+        if generation is not None:
             command["domain_session_id"] = generation
+        command.update(extra)
+        authority = (
+            "expected_domain_revision"
+            if kind in {"activate_domain", "end_domain_session"}
+            else "execution_id"
+        )
+        if authority not in command and kind in {
+            "activate_domain",
+            "end_domain_session",
+            "domain_query",
+            "background_domain",
+            "refocus_domain",
+            "deactivate_domain",
+        }:
+            status_id = "authority-" + uuid4().hex
+            await self.send("domain_status", status_id, domain_id=command["domain_id"])
+            status = await self.reply(status_id, type="domain_state")
+            command[authority] = status[
+                (
+                    "domain_revision"
+                    if authority == "expected_domain_revision"
+                    else "execution_id"
+                )
+            ]
         await self.socket.send(json.dumps(command))
+        return command
 
     async def reply(self, request, **expected):
+        def matches(packet):
+            return packet.get("request_id") == request and all(
+                packet.get(k) == v for k, v in expected.items()
+            )
+
+        for index, packet in enumerate(self.pending):
+            if matches(packet):
+                return self.pending.pop(index)
         async with asyncio.timeout(STAGE_SECONDS):
             while True:
                 packet = json.loads(await self.socket.recv())
                 self.packets.append(packet)
-                if packet.get("request_id") == request and all(
-                    packet.get(k) == v for k, v in expected.items()
-                ):
+                if matches(packet):
                     return packet
+                self.pending.append(packet)
 
 
 async def initial(life, report):
@@ -1907,7 +1942,20 @@ def _proof_admission(section, permission_mode):
         "context execution facts",
     )
     sources = context["sources"]
-    require(isinstance(sources, list) and len(sources) == 6, "context sources")
+    # This proof covers the first Run after the explicit fresh Start above.
+    # M13 adds exactly one quoted recap to that invocation; the six instruction
+    # sources retain their original checks. Never rewrite the captured evidence.
+    require(isinstance(sources, list) and len(sources) == 7, "context sources")
+    recap = sources[0]
+    require(
+        isinstance(recap, dict)
+        and set(recap) == {"identity", "scope", "revision"}
+        and recap["identity"] == "application-recap"
+        and recap["scope"] == "quoted-continuity",
+        "bounded application recap source",
+    )
+    _proof_hash(recap["revision"], "application recap revision")
+    sources = sources[1:]
     scopes = (
         "shipped",
         "installation",

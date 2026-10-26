@@ -26,11 +26,11 @@ func check(ok: bool, message: String) -> bool:
 
 func workspace(id: String) -> Dictionary:
 	if unconfigured:
-		return {"type": "workspace_state", "request_id": id, "project_id": null, "workspace_id": null, "stage": "unconfigured", "reason": null, "architect_decision": null, "project_path": null, "worktree_path": null, "branch": null, "changed_files": null, "reservation": null, "memory": {"path": null, "status": "unavailable", "revision": null, "error_type": null}}
-	return {"type": "workspace_state", "request_id": id, "project_id": "P", "workspace_id": "W", "stage": "ready", "reason": null, "architect_decision": null, "project_path": "/project", "worktree_path": "/execution", "branch": "plaza/workspace-P", "changed_files": {"total": 0, "tracked": 0, "untracked": 0, "truncated": false}, "reservation": null, "memory": {"path": "/memory", "status": "saved", "revision": 8, "error_type": null}}
+		return {"type": "workspace_state", "protocol_version": 2, "state_store": {"backend": "sqlite", "durable": true, "continuity": "project", "error_type": null}, "request_id": id, "project_id": null, "workspace_id": null, "stage": "unconfigured", "reason": null, "architect_decision": null, "project_path": null, "worktree_path": null, "branch": null, "changed_files": null, "reservation": null, "memory": {"path": null, "status": "unavailable", "revision": null, "error_type": null}}
+	return {"type": "workspace_state", "protocol_version": 2, "state_store": {"backend": "sqlite", "durable": true, "continuity": "project", "error_type": null}, "request_id": id, "project_id": "P", "workspace_id": "W", "stage": "ready", "reason": null, "architect_decision": null, "project_path": "/project", "worktree_path": "/execution", "branch": "plaza/workspace-P", "changed_files": {"total": 0, "tracked": 0, "untracked": 0, "truncated": false}, "reservation": null, "memory": {"path": "/memory", "status": "saved", "revision": 8, "error_type": null}}
 
 func state(id: String, value: String = "active") -> Dictionary:
-	return {"type": "domain_state", "request_id": id, "project_id": "P", "workspace_id": "W", "domain_id": "core", "domain_session_id": generation, "state": value, "execution_state": execution}
+	return {"type": "domain_state", "protocol_version": 2, "execution_id": "E-" + generation if value != "inactive" else null, "domain_revision": "1", "saved_sessions": [{"domain_session_id": generation, "created_at": "2026-10-26", "ended_at": null, "ended_by": null, "high_water_mark": "0"}], "state_store": {"backend": "sqlite", "durable": true, "continuity": "project", "error_type": null}, "request_id": id, "project_id": "P", "workspace_id": "W", "domain_id": "core", "domain_session_id": generation, "state": value, "execution_state": execution}
 
 func service() -> void:
 	if peer == null: return
@@ -41,8 +41,8 @@ func service() -> void:
 		elif p.get("type") == "agent_status":
 			var observation := state("", lifecycle if count("activate_domain") > 0 else "inactive")
 			observation.erase("request_id")
-			if count("activate_domain") == 0: observation.domain_session_id = null
-			peer.send_text(JSON.stringify({"type": "agent_status", "request_id": p.request_id, "agent_id": p.agent_id, "execution_kind": "extra" if p.agent_id.begins_with("fixture-extra") else "working", "domain_id": null if p.agent_id.begins_with("fixture-extra") else "core", "project": workspace(""), "workspace": {"stage": "unprepared"}, "domain_state": observation, "capabilities": {"can_start": true, "can_run": true, "can_prepare_project": true}}))
+			if count("activate_domain") == 0: observation.domain_session_id = null; observation.execution_id = null; observation.saved_sessions = []
+			peer.send_text(JSON.stringify({"type": "agent_status", "request_id": p.request_id, "agent_id": p.agent_id, "execution_kind": "extra" if p.agent_id.begins_with("fixture-extra") else "working", "domain_id": null if p.agent_id.begins_with("fixture-extra") else "core", "project": workspace(""), "workspace": {"stage": "unprepared"}, "domain_state": observation, "capabilities": {"protocol_version": 2, "state_store": {"backend": "sqlite", "durable": true, "continuity": "project", "error_type": null},"can_start": true, "can_run": true, "can_prepare_project": true}}))
 		elif p.get("type") == "domain_status":
 			status_attempts += 1
 			var response := state(p.request_id, lifecycle)
@@ -189,7 +189,7 @@ func _ready() -> void:
 	check(BridgeClient.domain_snapshot("core").draft == "next draft", "busy draft retained")
 	button("Stop").grab_focus()
 	await key(KEY_TAB)
-	check(get_viewport().gui_get_focus_owner() == button("Status"), "Tab skips disabled controls")
+	check(get_viewport().gui_get_focus_owner() == button("End"), "Tab skips disabled controls and reaches separate End")
 	await key(KEY_TAB, true)
 	check(button("Stop").has_focus(), "Shift Tab reverses enabled controls")
 	GameEvents.npc_left.emit("security-auditor")
@@ -216,7 +216,7 @@ func _ready() -> void:
 	check(npc_body.get_parsed_text().substr(referral_span.start, referral_span.length) == "Ask the Chief Architect to review the configured project.", "current NPC assistant span renders ordinary referral")
 	await key(KEY_ESCAPE)
 	var old_npc_text := npc_body.get_parsed_text()
-	var terminal := {"type": "domain_result", "request_id": run.request_id, "project_id": "P", "workspace_id": "W", "domain_id": "core", "domain_session_id": "A", "output_id": "1", "agent_id": "systems-architect", "task": run.task, "output": "domain result nonce ibis ✓\n雪", "status": "success", "reason": "completed", "truncated": false, "memory": {"saved": false, "revision": 9, "error_type": "write_failed"}}
+	var terminal := {"type": "domain_result", "protocol_version": 2, "execution_id": "E-" + generation, "request_id": run.request_id, "project_id": "P", "workspace_id": "W", "domain_id": "core", "domain_session_id": "A", "output_id": "1", "agent_id": "systems-architect", "task": run.task, "output": "domain result nonce ibis ✓\n雪", "status": "success", "reason": "completed", "truncated": false, "memory": {"saved": false, "revision": 9, "error_type": "write_failed"}}
 	execution = "idle"
 	await deliver(terminal)
 	check(not panel.visible and get_viewport().gui_get_focus_owner() == null and npc_body.get_parsed_text() == old_npc_text, "hidden result cannot open focus or overwrite NPC")
@@ -238,7 +238,7 @@ func _ready() -> void:
 	check(count("resume") == 1, "matching Refocus ack precedes Resume")
 	var resume := latest("resume")
 	var complete := state(resume.request_id)
-	complete.merge({"type": "resume_complete", "high_water_mark": "1", "earliest_output_id": "1", "history_gap": false}, true)
+	complete.merge({"type": "resume_complete", "ended": false, "high_water_mark": "1", "earliest_output_id": "1", "history_gap": false}, true)
 	await deliver(complete)
 	check(results.text.contains("domain result nonce ibis") and results.text.contains("unsaved"), "rendered output retains successful unsaved memory")
 	check(BridgeClient.domain_snapshot("core").consumed_cursor == "1", "visible current generation marked read")
@@ -320,7 +320,7 @@ func pending_background_return_checks(area: Area2D) -> void:
 	check(count("resume") == resumes + 1, "R1 only matching admitted Refocus ack releases one Resume")
 	var replay := latest("resume")
 	var complete := state(replay.request_id)
-	complete.merge({"type": "resume_complete", "high_water_mark": replay.cursor, "earliest_output_id": null, "history_gap": false}, true)
+	complete.merge({"type": "resume_complete", "ended": false, "high_water_mark": replay.cursor, "earliest_output_id": null, "history_gap": false}, true)
 	await deliver(complete)
 	check(count("activate_domain") == starts and count("domain_query") == runs and get_viewport().gui_get_focus_owner() == null, "R1 reordered return never Starts Runs or grabs focus")
 	# Closing again before the Background ack must cancel this view intent.
@@ -360,7 +360,7 @@ func recovery_checks() -> void:
 	# Reconnect replay is transport-owned; settle it without a fabricated terminal.
 	var replay := latest("resume")
 	var completion := state(replay.get("request_id", "missing"), "inactive")
-	completion.merge({"type": "resume_complete", "high_water_mark": "1", "earliest_output_id": "1", "history_gap": false}, true)
+	completion.merge({"type": "resume_complete", "ended": false, "high_water_mark": "1", "earliest_output_id": "1", "history_gap": false}, true)
 	await deliver(completion)
 	button("Stop").pressed.emit()
 	await frames()
@@ -389,7 +389,7 @@ func recovery_checks() -> void:
 	var incomplete_id: String = BridgeClient.resume_domain("core")
 	await frames()
 	var incomplete := state(incomplete_id)
-	incomplete.merge({"type": "resume_complete", "high_water_mark": "2", "earliest_output_id": "1", "history_gap": false}, true)
+	incomplete.merge({"type": "resume_complete", "ended": false, "high_water_mark": "2", "earliest_output_id": "1", "history_gap": false}, true)
 	await deliver(incomplete)
 	fail_next_status = true
 	await click(button("Status"))
@@ -403,7 +403,7 @@ func recovery_checks() -> void:
 	await deliver(state(latest("refocus_domain").request_id))
 	replay = latest("resume")
 	completion = state(replay.request_id)
-	completion.merge({"type": "resume_complete", "high_water_mark": "99999999999999999999", "earliest_output_id": null, "history_gap": true}, true)
+	completion.merge({"type": "resume_complete", "ended": false, "high_water_mark": "99999999999999999999", "earliest_output_id": null, "history_gap": true}, true)
 	await deliver(completion)
 	check(hud.get_node("Global/StatusLabel").text.contains("at least 2147483647 omitted"), "saturated omissions displayed as lower bound")
 	check(hud.get_node("Global/StatusLabel").text.contains("99999999999999999999 unread"), "unread cursor arithmetic does not narrow to int64")

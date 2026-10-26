@@ -91,6 +91,7 @@ def synthetic_proof():
             sources=[
                 dict(identity=identity, scope=scope, revision="b" * 64)
                 for identity, scope in (
+                    ("application-recap", "quoted-continuity"),
                     ("/fixture/bridge/context/GAME_CONTEXT.md", "shipped"),
                     ("/fixture/" + name + "/context/GAME_CONTEXT.md", "installation"),
                     ("/fixture/bridge/context/WORK_CONTEXT.md", "shipped"),

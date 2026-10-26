@@ -15,6 +15,10 @@ var _domains: Array[String] = []
 var _project_id := ""
 var _view_guard := false
 var _view_revision := 0
+var _history_ids: Array[String] = []
+var _history_catalog: Array = []
+@onready var _history: OptionButton = $Panel/Scroll/Rows/HistorySelect
+
 var _result_spans: Array[Dictionary] = []
 
 @onready var _panel: PanelContainer = $Panel
@@ -53,6 +57,10 @@ func _ready() -> void:
 	_action("Refocus").pressed.connect(_refocus)
 	_action("Background").pressed.connect(_background)
 	_action("Stop").pressed.connect(func(): BridgeClient.deactivate_domain(selected_domain_id))
+	_action("End").pressed.connect(func(): BridgeClient.end_domain_session(selected_domain_id))
+	_history.item_selected.connect(func(index):
+		_clipboard.invalidate()
+		BridgeClient.select_domain_session(selected_domain_id, _history_ids[index]))
 	_action("Status").pressed.connect(_recover)
 	_task_input.text_submitted.connect(_submit)
 	_task_input.text_changed.connect(_draft)
@@ -210,6 +218,7 @@ func _refresh() -> void:
 	if selected_domain_id in _domains: _global.text += "\n" + summaries[_domains.find(selected_domain_id)]
 	if not BridgeClient.is_bridge_connected(): _global.text = "Disconnected · " + _global.text
 	var snapshot := BridgeClient.domain_snapshot(selected_domain_id) if not selected_domain_id.is_empty() else {}
+	_update_history(snapshot)
 	var connected: bool = BridgeClient.is_bridge_connected()
 	var state: String = snapshot.get("state", "inactive")
 	var execution: String = snapshot.get("execution_state", "idle")
@@ -218,29 +227,32 @@ func _refresh() -> void:
 	var uncertain: bool = snapshot.get("uncertain", false)
 	var settled := pending.is_empty()
 	var ready := connected and not snapshot.is_empty()
-	_set_enabled(_action("Start"), ready and settled and state == "inactive" and execution == "idle" and character.get("capabilities", {}).get("can_start", false))
-	_set_enabled(_action("Run"), ready and settled and not uncertain and state in ["active", "background"] and execution == "idle" and snapshot.get("pending_query", {}).is_empty() and _agents.has(selected_domain_id))
-	_set_enabled(_action("Stop"), ready and not generation.is_empty() and (settled or pending.get("type") == "activate_domain") and (state != "inactive" or uncertain))
+	_set_enabled(_action("Start"), ready and settled and state == "inactive" and execution == "idle" and character.get("capabilities", {}).get("can_start", false) and snapshot.get("state_store", {}).get("error_type") == null)
+	_set_enabled(_action("Run"), ready and settled and not uncertain and state in ["active", "background"] and execution == "idle" and snapshot.get("pending_query", {}).is_empty() and _agents.has(selected_domain_id) and not snapshot.get("read_only", false) and snapshot.get("state_store", {}).get("error_type") == null)
+	_set_enabled(_action("End"), ready and settled and not generation.is_empty() and not snapshot.get("read_only", false))
+	_set_enabled(_action("Stop"), ready and not snapshot.get("execution_id", "").is_empty() and (settled or pending.get("type") == "activate_domain") and (state != "inactive" or uncertain))
 	_set_enabled($Global/Toolbar/StopButton, not _action("Stop").disabled)
 	_set_enabled(_action("Refocus"), ready and settled and not generation.is_empty())
 	_set_enabled(_global_refocus, ready and settled and not generation.is_empty())
 	_set_enabled(_action("Status"), ready)
 	_set_enabled(_action("Background"), true)
-	_task_input.editable = connected
-	if not connected and _task_input.has_focus(): _task_input.release_focus()
-	_task_input.focus_mode = Control.FOCUS_ALL if connected else Control.FOCUS_NONE
+	_task_input.editable = connected and not snapshot.get("read_only", false)
+	if not _task_input.editable and _task_input.has_focus(): _task_input.release_focus()
+	_task_input.focus_mode = Control.FOCUS_ALL if _task_input.editable else Control.FOCUS_NONE
 	var draft: String = snapshot.get("draft", "")
 	if _task_input.text != draft: _task_input.text = draft
 	_status.text = "%s · %s · %s%s\n%s unread · %s" % [selected_domain_id, state, execution, " · uncertain — Refresh status / Refocus to recover" if uncertain else "", _difference(snapshot.get("received_cursor", "0"), snapshot.get("consumed_cursor", "0")), _omitted(snapshot.get("omitted_count", 0))]
 	if not generation.is_empty() and state != "inactive": _status.text += "\nStop to release workspace"
 	if not connected: _status.text += "\nDisconnected — work outcome may be unknown"
 	var lines: Array[String] = []
+	var continuity := FailureDisplay.persistence(snapshot)
+	if not continuity.is_empty(): lines.append(continuity)
 	var spans: Array[Dictionary] = []
 	var character_offset := 0
-	for result in snapshot.get("results", []):
+	for result in BridgeClient.domains.selected_results(selected_domain_id):
 		var archived: bool = result.domain_session_id != generation
-		var turn_memory: Dictionary = result.get("memory", {})
-		lines.append("[%s%s · %s · output %s · %s · memory %s]\n%s\n%s" % ["Archived " if archived else "", result.domain_session_id, result.agent_id, result.output_id, result.status, "saved" if turn_memory.get("saved", false) else "unsaved", result.get("task", ""), result.get("output", result.get("message", ""))])
+		var turn_memory: Dictionary = result.memory if result.get("memory") is Dictionary else {}
+		lines.append("[%s%s · %s · output %s · %s · memory %s]\n%s\n%s" % ["Archived " if archived else "", result.domain_session_id, result.agent_id, result.get("output_id", "UNSAVED — no saved output ID"), result.status, "saved" if turn_memory.get("saved", false) else "unsaved", result.get("task", ""), result.get("output", result.get("message", ""))])
 		var cause := FailureDisplay.cause(result)
 		if not cause.is_empty(): lines[-1] += "\nCause: " + cause
 		spans.append({"request_id": result.request_id, "generation": result.domain_session_id, "role": "assistant", "start": character_offset, "length": lines.back().length()})
@@ -263,12 +275,12 @@ func _refresh() -> void:
 		_result_spans = spans
 		_restore_result_view()
 	# Only current-generation displayed receipts may advance current read state.
-	if _panel.visible and snapshot.get("received_cursor", "0") != snapshot.get("consumed_cursor", "0"):
-		var read_id: String = snapshot.get("consumed_cursor", "0")
+	if _panel.visible and snapshot.get("selected_received_cursor", "0") != snapshot.get("selected_consumed_cursor", "0"):
+		var read_id: String = snapshot.get("selected_consumed_cursor", "0")
 		for result in snapshot.get("results", []):
-			if result.domain_session_id == generation and _compare(result.output_id, snapshot.received_cursor) <= 0 and _compare(result.output_id, read_id) > 0:
+			if result.domain_session_id == snapshot.get("selected_session_id") and result.has("output_id") and _compare(result.output_id, snapshot.get("selected_received_cursor", "0")) <= 0 and _compare(result.output_id, read_id) > 0:
 				read_id = result.output_id
-		if read_id != snapshot.get("consumed_cursor", "0"): BridgeClient.mark_domain_read(selected_domain_id, read_id)
+		if read_id != snapshot.get("selected_consumed_cursor", "0"): BridgeClient.mark_domain_read(selected_domain_id, read_id)
 
 func _omitted(value: int) -> String:
 	return ("at least " if value == 2147483647 else "") + str(value) + " omitted"
@@ -303,7 +315,8 @@ func _input(event: InputEvent) -> void:
 		else: owner.release_focus()
 	elif _panel.is_ancestor_of(owner) and (event.is_action_pressed("chat_focus_next", false, true) or event.is_action_pressed("chat_focus_previous", false, true)):
 		var controls: Array[Control] = [_results, _action("Copy"), _action("SelectAll"), _task_input]
-		for name in ["Start", "Run", "Refocus", "Background", "Stop", "Status"]: controls.append(_action(name))
+		for name in ["Start", "Run", "Refocus", "Background", "Stop", "End", "Status"]: controls.append(_action(name))
+		controls.append(_history)
 		var enabled: Array[Control] = []
 		for control in controls:
 			if control.is_visible_in_tree() and control.focus_mode == Control.FOCUS_ALL: enabled.append(control)
@@ -358,3 +371,17 @@ func _restore_result_view() -> void:
 				break
 	bar.value = maxf(0, bar.max_value - bar.page) if view.get("follow", true) else value
 	_view_guard = false
+
+
+func _update_history(snapshot: Dictionary) -> void:
+	var ids: Array[String] = []
+	for item in snapshot.get("saved_sessions", []): ids.append(item.domain_session_id)
+	if snapshot.get("saved_sessions", []) != _history_catalog:
+		_history_catalog = snapshot.get("saved_sessions", []).duplicate(true)
+		_history_ids = ids
+		_history.clear()
+		for item in snapshot.get("saved_sessions", []):
+			_history.add_item(("Ended · " if item.ended_at != null else "Current · ") + item.created_at + " · " + item.domain_session_id)
+	_history.visible = not ids.is_empty()
+	_history.disabled = not snapshot.get("pending_control", {}).is_empty()
+	if snapshot.get("selected_session_id", "") in ids: _history.select(ids.find(snapshot.selected_session_id))

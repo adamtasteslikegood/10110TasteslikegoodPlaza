@@ -22,6 +22,9 @@ var _message_spans: Array[Dictionary] = []
 var _view_anchors: Dictionary = {}
 var _waiting := false
 var _domain_id := ""
+var _history_ids: Array[String] = []
+var _history_catalog: Array = []
+@onready var _history: OptionButton = $Panel/Margin/Rows/HistorySelect
 # Local binding may change before the outgoing surface saves its rendered view.
 var _rendered_domain_id := ""
 var _kind := ""
@@ -60,6 +63,10 @@ func _ready() -> void:
 	_action("Prepare").pressed.connect(func(): BridgeClient.project_setup(_current_agent_id, _question_input.text if not _question_input.text.strip_edges().is_empty() else "Prepare the configured project"))
 	_action("Start").pressed.connect(func(): BridgeClient.activate_domain(_domain_id))
 	_action("Send").pressed.connect(func(): _on_question_submitted(_question_input.text))
+	_history.item_selected.connect(func(index):
+		_clipboard.invalidate()
+		BridgeClient.select_domain_session(_domain_id, _history_ids[index]))
+	_action("End").pressed.connect(func(): BridgeClient.end_domain_session(_domain_id))
 	_action("Stop").pressed.connect(func(): BridgeClient.deactivate_domain(_domain_id))
 	_action("Status").pressed.connect(func(): BridgeClient.agent_status(_current_agent_id))
 	_question_input.text_submitted.connect(_on_question_submitted)
@@ -100,7 +107,8 @@ func _input(event: InputEvent) -> void:
 		_manual_scroll(_bottom())
 	elif event.is_action_pressed("chat_focus_next", false, true) or event.is_action_pressed("chat_focus_previous", false, true):
 		var controls: Array[Control] = [_body_label, $Panel/Margin/Rows/Header/Clipboard/Copy, $Panel/Margin/Rows/Header/Clipboard/SelectAll, _question_input]
-		for name in ["Prepare", "Start", "Send", "Stop", "Status"]: controls.append(_action(name))
+		for name in ["Prepare", "Start", "Send", "Stop", "End", "Status"]: controls.append(_action(name))
+		controls.append(_history)
 		var enabled: Array[Control] = []
 		for control in controls:
 			if control.is_visible_in_tree() and control.focus_mode == Control.FOCUS_ALL: enabled.append(control)
@@ -176,7 +184,7 @@ func _render(snapshot: Dictionary, reveal_id: String, scroll: float, preserve_re
 	if _question_input.text != snapshot.get("draft", ""):
 		_question_input.text = snapshot.get("draft", "")
 	var composer_had_focus := _question_input.has_focus()
-	_question_input.editable = (not _waiting or _kind == "working") and snapshot.get("connected", false)
+	_question_input.editable = (not _waiting or _kind == "working") and snapshot.get("connected", false) and not snapshot.get("read_only", false)
 	_question_input.focus_mode = Control.FOCUS_ALL if _question_input.editable else Control.FOCUS_NONE
 	if not _question_input.editable and composer_had_focus:
 		_body_label.grab_focus()
@@ -477,13 +485,15 @@ func _update_actions() -> void:
 	var state: String = snapshot.get("state", "inactive")
 	var working := _kind == "working"
 	$Panel/Margin/Rows/Actions.visible = _kind != "extra"
-	for name in ["Prepare", "Start", "Stop"]: _action(name).visible = working
+	_history.visible = working and not _history_ids.is_empty()
+	for name in ["Prepare", "Start", "Stop", "End"]: _action(name).visible = working
 	_action("Prepare").text = "Prepare this project" if capabilities.get("can_prepare_project", false) else "Project help"
 	_enable(_action("Prepare"), connected and working and data.get("pending", "").is_empty() and (capabilities.get("can_prepare_project", false) or BridgeClient.workspace_snapshot().get("stage") in ["unconfigured", "needs_architect", "failed"]))
-	_enable(_action("Start"), connected and working and pending.is_empty() and state == "inactive" and capabilities.get("can_start", false))
-	var run: bool = connected and pending.is_empty() and state in ["active", "background"] and snapshot.get("execution_state") == "idle" and snapshot.get("pending_query", {}).is_empty() and not snapshot.get("uncertain", false)
+	_enable(_action("Start"), connected and working and pending.is_empty() and state == "inactive" and capabilities.get("can_start", false) and snapshot.get("state_store", {}).get("error_type") == null)
+	var run: bool = connected and pending.is_empty() and state in ["active", "background"] and snapshot.get("execution_state") == "idle" and snapshot.get("pending_query", {}).is_empty() and not snapshot.get("uncertain", false) and not snapshot.get("read_only", false) and snapshot.get("state_store", {}).get("error_type") == null
 	_enable(_action("Send"), run if working else (connected and _kind == "extra" and not _waiting))
-	_enable(_action("Stop"), connected and working and not snapshot.get("domain_session_id", "").is_empty() and (pending.is_empty() or pending.get("type") == "activate_domain") and (state != "inactive" or snapshot.get("uncertain", false)))
+	_enable(_action("End"), connected and working and pending.is_empty() and not snapshot.get("domain_session_id", "").is_empty() and not snapshot.get("read_only", false))
+	_enable(_action("Stop"), connected and working and not snapshot.get("execution_id", "").is_empty() and (pending.is_empty() or pending.get("type") == "activate_domain") and (state != "inactive" or snapshot.get("uncertain", false)))
 	_enable(_action("Status"), connected and data.get("pending", "").is_empty())
 
 func _render_domain(reveal_id: String = "", restore: bool = false) -> void:
@@ -491,16 +501,19 @@ func _render_domain(reveal_id: String = "", restore: bool = false) -> void:
 	var snapshot := BridgeClient.domain_snapshot(_domain_id)
 	var view: Dictionary = snapshot.get("view", {})
 	if restore: _follow = view.get("follow", true)
+	_update_history(snapshot)
 	var messages := []
+	var continuity := FailureDisplay.persistence(snapshot)
+	if not continuity.is_empty(): messages.append({"role": "status", "content": continuity, "status": "history", "generation": snapshot.get("selected_session_id", ""), "request_id": "continuity"})
 	var data := BridgeClient.character_snapshot(_current_agent_id)
 	var readiness := FailureDisplay.readiness(BridgeClient.workspace_snapshot(), data)
 	# Full guidance remains revealed, scrollable and copyable while the existing
 	# assistant span grows; it is not clipped by the compact status label.
 	if not readiness.is_empty(): messages.append({"role": "status", "content": "Readiness: " + readiness, "status": "notice", "generation": snapshot.domain_session_id, "request_id": "readiness"})
 	var reveal_failed := false
-	for result in snapshot.get("results", []):
+	for result in BridgeClient.domains.selected_results(_domain_id):
 		messages.append({"role": "user", "content": result.task, "status": "submitted", "generation": result.domain_session_id, "request_id": result.request_id, "agent_id": result.agent_id})
-		messages.append({"role": "assistant", "content": result.output, "status": "%s · memory %s" % [result.status, "saved" if result.get("memory", {}).get("saved", false) else "unsaved"], "generation": result.domain_session_id, "request_id": result.request_id, "agent_id": result.agent_id})
+		messages.append({"role": "assistant", "content": result.output, "status": "%s · %s · memory %s" % [result.status, "output " + result.output_id if result.has("output_id") else "UNSAVED — no saved output ID", "saved" if (result.get("memory", {}) if result.get("memory") is Dictionary else {}).get("saved", false) else "unsaved"], "generation": result.domain_session_id, "request_id": result.request_id, "agent_id": result.agent_id})
 		var cause := FailureDisplay.cause(result)
 		if not cause.is_empty(): messages.append({"role": "error", "content": cause, "status": "cause", "generation": result.domain_session_id, "request_id": result.request_id, "agent_id": result.agent_id})
 		# A failed terminal's recovery text follows its partial assistant span.
@@ -516,8 +529,8 @@ func _render_domain(reveal_id: String = "", restore: bool = false) -> void:
 	for key in ["setup_output", "error"]:
 		if not data.get(key, "").is_empty(): messages.append({"role": "setup" if key == "setup_output" else "error", "content": data[key], "status": "notice", "generation": snapshot.domain_session_id, "request_id": key})
 	_rendered_domain_id = _domain_id
-	var presentation := {"messages": messages, "omitted": snapshot.get("omitted_count", 0), "pending": pending, "draft": snapshot.draft, "connected": BridgeClient.is_bridge_connected(), "generation": snapshot.domain_session_id}
-	_render(presentation, reveal_id, view.get("scroll", 0.0) if restore else _body_label.get_v_scroll_bar().value, not reveal_failed, view.get("anchor", {}) if restore else _reading_anchor())
+	var presentation := {"messages": messages, "omitted": snapshot.get("omitted_count", 0), "pending": pending, "draft": snapshot.draft, "connected": BridgeClient.is_bridge_connected(), "generation": snapshot.domain_session_id, "read_only": snapshot.get("read_only", false)}
+	_render(presentation, reveal_id, view.get("scroll", 0.0) if restore else _body_label.get_v_scroll_bar().value, not reveal_failed and not restore, view.get("anchor", {}) if restore else _reading_anchor())
 	_status_label.text = "%s · %s / %s · Project %s · Department %s%s" % [_domain_id, snapshot.state, snapshot.execution_state, BridgeClient.workspace_snapshot().get("stage", "unknown"), FailureDisplay.department_status(data), " · Stop to release workspace" if not snapshot.domain_session_id.is_empty() and snapshot.state != "inactive" else ""]
 	if snapshot.get("uncertain", false): _status_label.text += " · Unknown outcome — Refresh status"
 	if not BridgeClient.is_bridge_connected(): _status_label.text += " · Disconnected"
@@ -525,12 +538,17 @@ func _render_domain(reveal_id: String = "", restore: bool = false) -> void:
 	_update_actions()
 	if _panel.visible and BridgeClient.surface.owner == "dialogue":
 		for result in snapshot.results:
-			if result.domain_session_id == snapshot.domain_session_id and BridgeClient.DomainState.compare(result.output_id, snapshot.received_cursor) <= 0 and BridgeClient.DomainState.compare(result.output_id, snapshot.consumed_cursor) > 0:
+			if result.domain_session_id == snapshot.selected_session_id and result.has("output_id") and BridgeClient.DomainState.compare(result.output_id, snapshot.selected_received_cursor) <= 0 and BridgeClient.DomainState.compare(result.output_id, snapshot.selected_consumed_cursor) > 0:
 				BridgeClient.mark_domain_read(_domain_id, result.output_id)
 
 func _domain_changed(domain: String, reason: String, request: String) -> void:
 	if domain == _domain_id and _kind == "working":
-		_render_domain(request if reason == "domain_result" and _panel.visible else "")
+		var live_result := false
+		if reason == "domain_result":
+			var snapshot := BridgeClient.domain_snapshot(domain)
+			for result in BridgeClient.domains.selected_results(domain):
+				if result.request_id == request and result.get("execution_id") == snapshot.get("execution_id") and result.domain_session_id == snapshot.domain_session_id: live_result = true
+		_render_domain(request if live_result and _panel.visible else "", reason == "selection" or (reason == "domain_result" and not live_result))
 		if reason == "domain_error":
 			# A new command/startup/preflight notice follows the previous answer.
 			# Settle that older reveal so its clipping limit cannot hide the cause.
@@ -558,3 +576,17 @@ func _surface_changed() -> void:
 	if BridgeClient.surface.owner != "dialogue":
 		_release_focus()
 		_panel.hide()
+
+
+func _update_history(snapshot: Dictionary) -> void:
+	var ids: Array[String] = []
+	for item in snapshot.get("saved_sessions", []): ids.append(item.domain_session_id)
+	if snapshot.get("saved_sessions", []) != _history_catalog:
+		_history_catalog = snapshot.get("saved_sessions", []).duplicate(true)
+		_history_ids = ids
+		_history.clear()
+		for item in snapshot.get("saved_sessions", []):
+			_history.add_item(("Ended · " if item.ended_at != null else "Current · ") + item.created_at + " · " + item.domain_session_id)
+	_history.visible = _kind == "working" and not ids.is_empty()
+	_history.disabled = not snapshot.get("pending_control", {}).is_empty()
+	if snapshot.get("selected_session_id", "") in ids: _history.select(ids.find(snapshot.selected_session_id))

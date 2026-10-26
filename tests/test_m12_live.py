@@ -466,7 +466,13 @@ async def test_controlled_child_real_serve_closes_actual_manifest_without_provid
         assert rejected.value.response.status_code == 403
         async with websockets.connect(life.ready["url"]) as native:
             await native.send(
-                json.dumps(dict(type="describe_workspace", request_id="native"))
+                json.dumps(
+                    dict(
+                        type="describe_workspace",
+                        protocol_version=2,
+                        request_id="native",
+                    )
+                )
             )
             packet = json.loads(await native.recv())
             assert packet["request_id"] == "native" and packet["stage"] == "ready"
@@ -1206,9 +1212,15 @@ async def test_live_plain_start_uses_core_without_implicit_query():
     from unittest.mock import AsyncMock
 
     socket = SimpleNamespace(send=AsyncMock())
-    await module().Plain(socket).send("activate_domain", "start")
+    await module().Plain(socket).send(
+        "activate_domain", "start", expected_domain_revision="7"
+    )
     assert json.loads(socket.send.call_args.args[0]) == dict(
-        type="activate_domain", request_id="start", domain_id="core"
+        type="activate_domain",
+        protocol_version=2,
+        request_id="start",
+        domain_id="core",
+        expected_domain_revision="7",
     )
 
 
@@ -1449,3 +1461,21 @@ async def test_live_poll_waits_for_project_memory_writer_without_retrying_work(
     finally:
         await releasing
         await service.close()
+
+
+@pytest.mark.parametrize(
+    "damage", ["missing", "extra", "identity", "scope", "revision", "extensions"]
+)
+def test_first_run_proof_requires_one_bounded_application_recap(damage):
+    record = evidence()
+    assert module().validate_evidence(record) == []
+    sources = record["initial"]["context"]["sources"]
+    if damage == "missing":
+        sources.pop(0)
+    elif damage == "extra":
+        sources.insert(0, dict(sources[0]))
+    elif damage == "extensions":
+        sources[0]["text"] = "unexpected recap body"
+    else:
+        sources[0][damage] = "wrong" if damage != "revision" else "not-a-digest"
+    assert module().validate_evidence(record)

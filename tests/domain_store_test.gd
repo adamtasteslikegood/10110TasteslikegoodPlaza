@@ -9,21 +9,23 @@ func check(ok: bool, message: String) -> void:
 	if not ok: failures.append(message)
 
 func command(kind: String, id: String, generation: String = "A") -> Dictionary:
-	var p := {"type": kind, "domain_id": "core", "request_id": id}
+	var p := {"type": kind, "protocol_version": 2, "domain_id": "core", "request_id": id}
 	if kind not in ["activate_domain", "domain_status"]: p.domain_session_id = generation
+	if kind in ["activate_domain", "end_domain_session"]: p.expected_domain_revision = "1"
+	if kind in ["domain_query", "deactivate_domain", "background_domain", "refocus_domain"]: p.execution_id = "E-" + generation
 	if kind == "resume": p.cursor = "0"
 	if kind == "domain_query": p.merge({"agent_id": "systems-architect", "task": "work"})
 	return p
 
 func state(id: String, generation: String = "A", lifecycle: String = "active") -> Dictionary:
-	return {"type": "domain_state", "request_id": id, "project_id": "P", "workspace_id": "W", "domain_id": "core", "domain_session_id": generation, "state": lifecycle, "execution_state": "idle"}
+	return {"type": "domain_state", "protocol_version": 2, "execution_id": "E-" + generation if lifecycle != "inactive" else null, "domain_revision": "1", "saved_sessions": [{"domain_session_id": generation, "created_at": "2026-10-26", "ended_at": null, "ended_by": null, "high_water_mark": "0"}], "state_store": {"backend": "sqlite", "durable": true, "continuity": "project", "error_type": null}, "request_id": id, "project_id": "P", "workspace_id": "W", "domain_id": "core", "domain_session_id": generation, "state": lifecycle, "execution_state": "idle"}
 
 func result(output: String, generation: String = "A", request: String = "run") -> Dictionary:
-	return {"type": "domain_result", "request_id": request, "project_id": "P", "workspace_id": "W", "domain_id": "core", "domain_session_id": generation, "output_id": output, "agent_id": "systems-architect", "task": "work", "output": "answer " + output, "status": "success", "reason": "completed", "truncated": false, "memory": {"saved": true, "revision": 4, "error_type": null}}
+	return {"type": "domain_result", "protocol_version": 2, "execution_id": "E-" + generation, "request_id": request, "project_id": "P", "workspace_id": "W", "domain_id": "core", "domain_session_id": generation, "output_id": output, "agent_id": "systems-architect", "task": "work", "output": "answer " + output, "status": "success", "reason": "completed", "truncated": false, "memory": {"saved": true, "revision": 4, "error_type": null}}
 
 func complete(id: String, high: String, earliest: Variant = "1", gap: bool = false, generation: String = "A") -> Dictionary:
 	var p := state(id, generation)
-	p.merge({"type": "resume_complete", "high_water_mark": high, "earliest_output_id": earliest, "history_gap": gap}, true)
+	p.merge({"type": "resume_complete", "high_water_mark": high, "earliest_output_id": earliest, "history_gap": gap, "ended": false}, true)
 	return p
 
 func fresh() -> RefCounted:
@@ -168,6 +170,11 @@ func _ready() -> void:
 	archive_retention_boundary()
 	final_rebinding_regression()
 	diagnostic_command_regressions()
+	persistence_v2_regressions()
+	duplicate_execution_regression()
+	backend_discontinuity_regression()
+	execution_control_regression()
+	catalog_receipt_bound_regression()
 	finish()
 
 func dict_accepted() -> Dictionary:
@@ -227,7 +234,7 @@ func additional_vectors() -> void:
 	s.admit_command(command("domain_status", "C"))
 	s.apply_packet(state("C", "C"))
 	s.apply_packet(result("201", "A"))
-	check(s._domains.core.buckets.size() == 2 and s.snapshot("core").received_cursor == "0", "only two generations retained and unknown history ignored")
+	check(s._domains.core.buckets.size() == 3 and s.snapshot("core").received_cursor == "0", "saved application receipt buckets retain older history independently")
 	s = fresh()
 	for i in range(1, 301): s.apply_packet(result(str(i * 2)))
 	s.apply_packet(result("1"))
@@ -267,9 +274,9 @@ func additional_vectors() -> void:
 	invalid.domain_session_id = null
 	check(s.apply_packet(invalid).is_empty(), "active state requires a valid generation")
 	s = Store.new()
-	var discover := {"type": "describe_workspace", "request_id": "describe"}
+	var discover := {"type": "describe_workspace", "protocol_version": 2, "request_id": "describe"}
 	s.admit_command(discover)
-	var malformed := {"type": "workspace_state", "request_id": "describe", "stage": "ready", "project_id": "P", "workspace_id": "W", "memory": {"status": "saved", "revision": 1}}
+	var malformed := {"type": "workspace_state", "protocol_version": 2, "state_store": {"backend": "sqlite", "durable": true, "continuity": "project", "error_type": null}, "request_id": "describe", "stage": "ready", "project_id": "P", "workspace_id": "W", "memory": {"status": "saved", "revision": 1}}
 	check(s.apply_packet(malformed).is_empty(), "incomplete discovery schema cannot bind a project")
 	s = fresh()
 	replay(s)
@@ -348,7 +355,7 @@ func archive_retention_boundary() -> void:
 	for n in range(1, 5):
 		var terminal := result(str(n), "A", "old-" + str(n))
 		terminal.task = "old"
-		terminal.output = "x".repeat(262144 if n < 4 else 260350)
+		terminal.output = "x".repeat(262144 if n < 4 else 259675)
 		s.apply_packet(terminal)
 	var unknown := command("domain_query", "unknown")
 	unknown.task = "unknown"
@@ -362,7 +369,9 @@ func archive_retention_boundary() -> void:
 	var before: Dictionary = s.snapshot("core")
 	var before_bytes := JSON.stringify(before).to_utf8_buffer().size()
 	check(before.results.size() == 4 and before_bytes <= Store.MAX_BYTES and before_bytes > Store.MAX_BYTES - 100, "R5 setup retains four whole terminals just below byte cap")
-	var change: Dictionary = s.apply_packet(state("fresh", "B"))
+	var started := state("fresh", "B")
+	started.saved_sessions.push_front({"domain_session_id": "A", "created_at": "2026-10-25", "ended_at": null, "ended_by": null, "high_water_mark": "4"})
+	var change: Dictionary = s.apply_packet(started)
 	var after: Dictionary = s.snapshot("core")
 	check(not change.is_empty() and JSON.stringify(after).to_utf8_buffer().size() <= Store.MAX_BYTES, "R5 new-generation acknowledgment enforces complete snapshot byte cap")
 	check(after.error.get("unresolved_queries", []) == [unknown] and after.pending_query.is_empty() and after.pending_control.is_empty(), "R5 retention preserves original unknown input after state and control settle")
@@ -374,8 +383,8 @@ func final_rebinding_regression() -> void:
 	s.set_draft("core", "prior project private task")
 	s.apply_packet(result("1"))
 	s.disconnect_connection()
-	check(s.admit_command({"type": "describe_workspace", "request_id": "unconfigured-discovery"}), "final R3 discovery admitted")
-	var unconfigured := {"type": "workspace_state", "request_id": "unconfigured-discovery", "project_id": null, "workspace_id": null, "stage": "unconfigured", "reason": null, "architect_decision": null, "project_path": null, "worktree_path": null, "branch": null, "changed_files": null, "reservation": null, "memory": {"path": null, "status": "unavailable", "revision": null, "error_type": null}}
+	check(s.admit_command({"type": "describe_workspace", "protocol_version": 2, "request_id": "unconfigured-discovery"}), "final R3 discovery admitted")
+	var unconfigured := {"type": "workspace_state", "protocol_version": 2, "state_store": {"backend": "sqlite", "durable": true, "continuity": "project", "error_type": null}, "request_id": "unconfigured-discovery", "project_id": null, "workspace_id": null, "stage": "unconfigured", "reason": null, "architect_decision": null, "project_path": null, "worktree_path": null, "branch": null, "changed_files": null, "reservation": null, "memory": {"path": null, "status": "unavailable", "revision": null, "error_type": null}}
 	var changed: Dictionary = s.apply_packet(unconfigured)
 	check(changed.get("project_changed", false), "final R3 authoritative unconfigured discovery changes prior binding")
 	var current: Dictionary = s.snapshot("core")
@@ -417,3 +426,133 @@ func diagnostic_command_regressions() -> void:
 		s.apply_packet(failure)
 		var untrusted: Dictionary = s.snapshot("core").error.get("command_error", {})
 		check(not untrusted.has("terminal_reason") and not untrusted.has("readiness_category"), "unknown or non-string diagnostic metadata omitted")
+
+
+func persistence_v2_regressions() -> void:
+	# Old execution A has a retained terminal; B owns the same application now.
+	var s = fresh()
+	var switched := state("new-execution")
+	switched.execution_id = "E-B"
+	switched.domain_revision = "3"
+	check(s.admit_command(command("domain_status", "new-execution")), "v2 current authority refresh admitted")
+	s.apply_packet(switched)
+	var run := command("domain_query", "run-B")
+	run.execution_id = "E-B"
+	check(s.admit_command(run), "v2 Run targets current execution B")
+	var accepted := dict_accepted()
+	accepted.request_id = "run-B"
+	accepted.execution_id = "E-B"
+	s.apply_packet(accepted)
+	s.apply_packet(result("1", "A", "old-A"))
+	check(s.snapshot("core").get("execution_id") == "E-B" and s.snapshot("core").execution_state == "running" and s.snapshot("core").pending_query.get("request_id") == "run-B", "old A terminal preserves current B token and running state")
+	var stale := state("old-status")
+	stale.domain_revision = "1"
+	s.admit_command(command("domain_status", "old-status"))
+	s.apply_packet(stale)
+	check(s.snapshot("core").get("execution_id") == "E-B", "lower revision cannot replace B authority")
+	# Ended-only discovery restores latest history without an execution or Start.
+	s = Store.new()
+	s.bind_project("P")
+	s.admit_command(command("domain_status", "ended-only"))
+	var ended := state("ended-only", "A", "inactive")
+	ended.domain_session_id = null
+	ended.saved_sessions = [{"domain_session_id": "A", "created_at": "1", "ended_at": "2", "ended_by": "user", "high_water_mark": "1"}, {"domain_session_id": "C", "created_at": "3", "ended_at": "4", "ended_by": "user", "high_water_mark": "0"}]
+	s.apply_packet(ended)
+	check(s.snapshot("core").get("selected_session_id") == "C" and s.snapshot("core").get("read_only", false) and s.snapshot("core").domain_session_id == "", "ended-only selects latest ended read-only and retains no current application")
+	if s.has_method("select_session"):
+		check(s.select_session("core", "A"), "older saved session selectable")
+		var replay_old := command("resume", "old-history")
+		check(s.admit_command(replay_old), "saved ended history replay admitted")
+		s.apply_packet(result("1"))
+		var completed := complete("old-history", "1")
+		completed.ended = true
+		s.apply_packet(completed)
+		check(s.selected_results("core").size() == 1 and s.snapshot("core").received_cursor == "0", "ended history exact ID receipt does not create current application")
+	else: check(false, "saved history selection exists")
+	# Unsaved text remains visible without claiming a saved output ID/cursor.
+	s = fresh()
+	s.set_draft("core", "keep draft")
+	var unsaved := result("1")
+	unsaved.erase("output_id")
+	unsaved.committed = false
+	unsaved.status = "error"
+	unsaved.reason = "state_store_failed"
+	unsaved.erase("truncated")
+	s.apply_packet(unsaved)
+	check(s.snapshot("core").get("unsaved_results", []).size() == 1 and s.snapshot("core").received_cursor == "0" and s.snapshot("core").draft == "keep draft", "uncommitted answer visible but no saved cursor or draft loss")
+	for flag in ["recovered", "committed"]:
+		for value in ["false", 1, {}]:
+			var malformed := result("1")
+			malformed[flag] = value
+			check(s.apply_packet(malformed).is_empty() and s.snapshot("core").received_cursor == "0", "malformed boolean cannot change saved receipt: " + flag)
+	s.disconnect_connection()
+	s.admit_command(command("domain_status", "unsaved-reconnect"))
+	s.apply_packet(state("unsaved-reconnect", "A", "inactive"))
+	check(s.snapshot("core").unsaved_results.size() == 1 and s.snapshot("core").received_cursor == "0", "reconnect keeps uncommitted text explicitly unsaved")
+	var recovered := result("1")
+	recovered.recovered = true
+	recovered.status = "error"
+	recovered.reason = "interrupted"
+	recovered.output = "Execution outcome is unknown"
+	s.apply_packet(recovered)
+	check(s.snapshot("core").unsaved_results.size() == 1 and s.snapshot("core").results.size() == 1 and s.snapshot("core").received_cursor == "1", "saved recovery notice preserves different unsaved partial answer with no saved ID")
+
+
+func duplicate_execution_regression() -> void:
+	var s = fresh()
+	s.admit_command(command("domain_status", "B-authority"))
+	var current := state("B-authority")
+	current.execution_id = "E-B"
+	current.domain_revision = "3"
+	s.apply_packet(current)
+	var duplicate := command("domain_query", "saved-duplicate")
+	duplicate.execution_id = "E-B"
+	check(s.admit_command(duplicate), "duplicate request uses B execution authority")
+	var retained := result("1", "A", "saved-duplicate")
+	retained.erase("protocol_version")
+	s.apply_packet(retained)
+	var snapshot: Dictionary = s.snapshot("core")
+	check(snapshot.pending_query.is_empty() and snapshot.execution_id == "E-B" and snapshot.execution_state == "idle" and snapshot.state == "active", "retained duplicate settles exact request without altering B authority or lifecycle")
+
+
+func backend_discontinuity_regression() -> void:
+	var s = fresh()
+	s.apply_packet(result("1"))
+	s.admit_command(command("domain_status", "ended-catalog"))
+	var catalog := state("ended-catalog")
+	catalog.saved_sessions.push_front({"domain_session_id": "C", "created_at": "1", "ended_at": "2", "ended_by": "user", "high_water_mark": "0"})
+	s.apply_packet(catalog)
+	s.select_session("core", "C")
+	s.disconnect_connection()
+	s.admit_command(command("domain_status", "memory-reconnect"))
+	var memory := state("memory-reconnect", "A", "inactive")
+	memory.domain_session_id = null
+	memory.saved_sessions = []
+	memory.state_store = {"backend": "memory", "durable": false, "continuity": "process", "error_type": null}
+	s.apply_packet(memory)
+	check(s.snapshot("core").selected_session_id == "" and s.snapshot("core").results.is_empty(), "switch to memory cannot present selected SQLite history as process continuity")
+	check(s.apply_packet(result("2")).is_empty(), "old backend packets cannot reintroduce old application history")
+
+
+func execution_control_regression() -> void:
+	var s = fresh()
+	check(s.admit_command(command("background_domain", "A-background")), "A background pending before another execution")
+	s.admit_command(command("domain_status", "observe-B"))
+	var current := state("observe-B")
+	current.execution_id = "E-B"
+	current.domain_revision = "3"
+	s.apply_packet(current)
+	check(s.snapshot("core").pending_control.is_empty() and s.snapshot("core").execution_id == "E-B", "B authority retires A pending control within same application")
+	s.apply_packet(state("A-background", "A", "background"))
+	check(s.snapshot("core").execution_id == "E-B" and s.snapshot("core").state == "active", "late A lifecycle cannot replace B after same-app switch")
+
+
+func catalog_receipt_bound_regression() -> void:
+	var s = fresh()
+	for index in range(140):
+		var id := "catalog-" + str(index)
+		s.admit_command(command("domain_status", id))
+		var status := state(id)
+		status.saved_sessions.append({"domain_session_id": "old-" + str(index), "created_at": "1", "ended_at": "2", "ended_by": "user", "high_water_mark": "0"})
+		s.apply_packet(status)
+	check(s._domains.core.buckets.size() <= 128 and s.snapshot("core").domain_session_id == "A", "catalog turnover keeps receipt metadata bounded without evicting current authority")

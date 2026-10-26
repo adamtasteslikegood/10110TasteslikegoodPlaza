@@ -29,7 +29,7 @@ text = "Refocus domain remotely"
 size_flags_horizontal = 0
 
 [node name="StopButton" type="Button" parent="Global/Toolbar"]
-text = "Stop domain"
+text = "Stop current work"
 size_flags_horizontal = 0
 
 [node name="Panel" type="PanelContainer" parent="."]
@@ -50,6 +50,12 @@ theme_override_font_sizes/font_size = 12
 [node name="StatusLabel" type="Label" parent="Panel/Scroll/Rows"]
 autowrap_mode = 3
 theme_override_font_sizes/font_size = 12
+
+[node name="HistorySelect" type="OptionButton" parent="Panel/Scroll/Rows"]
+size_flags_horizontal = 3
+text = "Saved application history"
+fit_to_longest_item = false
+clip_text = true
 
 [node name="ResultsLabel" type="RichTextLabel" parent="Panel/Scroll/Rows"]
 custom_minimum_size = Vector2(0, 64)
@@ -85,7 +91,10 @@ text = "Refocus / replay"
 text = "Background / Close"
 
 [node name="Stop" type="Button" parent="Panel/Scroll/Rows/Actions"]
-text = "Stop"
+text = "Stop current work"
+
+[node name="End" type="Button" parent="Panel/Scroll/Rows/Actions"]
+text = "End session"
 
 [node name="Status" type="Button" parent="Panel/Scroll/Rows/Actions"]
 text = "Refresh status"

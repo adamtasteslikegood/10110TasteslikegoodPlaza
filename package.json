@@ -17,7 +17,7 @@
     "test": "npm run validate && npm run import && npm run smoke && npm run test:m11 && npm run test:bridge-integration && npm run test:m12 && npm run test:m12-integration",
     "test:m11": "python3 scripts/run_headless.py conversation_store transport_client dialogue_panel",
     "test:bridge-integration": "PLAZA_REQUIRE_GODOT=1 python3 -m pytest bridge/tests/test_godot_conversation_integration.py -q -s",
-    "test:m12": "python3 scripts/run_headless.py domain_store domain_transport domain_panel character_domain",
-    "test:m12-integration": "PLAZA_REQUIRE_GODOT=1 python3 -m pytest bridge/tests/test_godot_domain_integration.py bridge/tests/test_m12_integration.py bridge/tests/test_m12_live_orchestration.py -q -s"
+    "test:m12": "python3 scripts/run_headless.py domain_store domain_transport domain_panel character_domain domain_history_ui",
+    "test:m12-integration": "PLAZA_REQUIRE_GODOT=1 python3 -m pytest bridge/tests/test_godot_domain_integration.py bridge/tests/test_godot_history_reopen.py bridge/tests/test_m12_harness_authority.py bridge/tests/test_m12_integration.py bridge/tests/test_m12_live_orchestration.py -q -s"
   }
 }
