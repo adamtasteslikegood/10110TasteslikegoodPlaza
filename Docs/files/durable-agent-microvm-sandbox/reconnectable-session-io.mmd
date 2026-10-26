@@ -1,0 +1,13 @@
+graph LR
+    B[Python bridge] -->|Command ID session ID generation| S[Supervisor protocol]
+    S --> W[SDK worker]
+    W -->|Prompt interrupt permission| A[Claude Agent SDK]
+    A -->|Normalized SDK messages| W
+    W -->|Append sequenced events| E[(External event log)]
+    E -->|Replay after acknowledged sequence| B
+    B -->|Permission response| W
+    B -->|Retry command ID| S
+    S --> D[Deduplicate and serialize turns]
+    D --> W
+    W --> X[Tool execution in workspace]
+    X -->|Side effect outcome may be uncertain| R[Reconcile before retry]

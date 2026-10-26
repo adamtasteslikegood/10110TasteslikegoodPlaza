@@ -2,8 +2,8 @@
   "$comment": "Committed PLZG flow snapshot. Clause (b) of the delivery gate (scripts/validate_delivery_coordinates.py) requires this file to be FRESH -- as_of inside the sprint window it declares, and that sprint not yet ended; or, BETWEEN SPRINTS, \"sprint\": null with as_of no more than 14 days old (PLZG-239) -- and HONEST, with work_item_age naming exactly counts.wip items. wip MAY BE 0: the previous wip > 0 rule was removed by owner ruling 2026-08-02 (PLZG-130) because it tested snapshot timing rather than health, and rewarded a fake transition. Shape matches the pm-skills jira_snapshot_bridge.py '--to flow' output so the two are interchangeable. THIS IS A SNAPSHOT, NOT A LIVE READING: it is true as of the as_of timestamp and nowhere else. Re-query Jira before citing any number here -- the board owns these facts, this file does not.",
   "mode": "flow",
   "project": "PLZG",
-  "as_of": "2026-10-26T06:19:53Z",
-  "source": "Atlassian MCP searchJiraIssuesUsingJql against tasteslikegood.atlassian.net; project = PLZG ORDER BY key ASC, all 267 issues across 3 pages; status and created read live. Board 169 listJiraBoardSprints(state=active) returned no active sprint.",
+  "as_of": "2026-10-25T23:27:56-07:00",
+  "source": "Atlassian current connector: project = PLZG ORDER BY key ASC; three complete pages (100/100/67), unique keys, exact counts from statusCategory. Board 169 active-sprint listing returned zero active sprints.",
   "regenerate": "Re-query every PLZG issue with pagination, count Done and In Progress status categories, recompute each WIP age from created to as_of, and read board 169 active sprint state. Do not refresh only the timestamp.",
   "counts": {
     "total": 267,
@@ -14,20 +14,20 @@
     {
       "key": "PLZG-278",
       "created": "2026-10-09T08:36:02.907-0700",
-      "age_days": 16.61,
-      "status": "In Progress"
+      "age_days": 16.62,
+      "age_basis": "created, not time in current status"
     },
     {
       "key": "PLZG-290",
       "created": "2026-10-21T03:08:33.201-0700",
-      "age_days": 4.84,
-      "status": "In Progress"
+      "age_days": 4.85,
+      "age_basis": "created, not time in current status"
     },
     {
       "key": "PLZG-297",
       "created": "2026-10-25T19:41:58.252-0700",
-      "age_days": 0.15,
-      "status": "In Progress"
+      "age_days": 0.16,
+      "age_basis": "created, not time in current status"
     }
   ],
   "aging_wip_alerts": [],
@@ -36,8 +36,8 @@
   "forecast": null,
   "forecast_blackout": {
     "in_force": true,
-    "reason": "Historical non-stationary-throughput blackout retained. The prior snapshot recorded an 11-week zero-throughput gap; this board-state refresh does not recompute forecasts or lift that policy. See specs/sprint-2-charter.md section 3.",
+    "reason": "Forecast remains withheld. Fresh issue/status enumeration does not establish stationary throughput or real started-to-resolved history; the existing lift condition has not been verified by this reading.",
     "lift_condition": "10+ completions carrying real started->resolved timestamps, drawn from a window containing no zero-throughput weeks."
   },
-  "aging_wip_alerts_note": "No age threshold is configured in this snapshot; inspect work_item_age directly. No alert policy is inferred from issue age."
+  "aging_wip_alerts_note": "Not evaluated: this reading records issue age without selecting a new aging-alert threshold."
 }

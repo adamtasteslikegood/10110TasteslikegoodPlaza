@@ -229,16 +229,19 @@ async def test_closed_origin_replay_and_stale_generation(
         assert not provider.owners[0]._worker.done()
         provider.release.set()
         session = life.server.domains._sessions["engineering"][0]
-        await until(lambda: len(session._entries) == 1)
+        await until(lambda: len(session.replay(0)) - 1 == 1)
         # A terminal remains bound to A's closed sink; B receives no unsolicited push.
         with pytest.raises(TimeoutError):
             await asyncio.wait_for(b.socket.recv(), 0.05)
         terminal = (await b.replay(generation))[0]
-        assert terminal == session._entries[0]
+        assert terminal == session.replay(0)[0]
         assert terminal["status"] == "success" and terminal["memory"]["saved"]
         assert (await b.replay(generation, "again")) == [terminal]
         assert (
-            len(provider.queries) == len(provider.writes) == len(session._entries) == 1
+            len(provider.queries)
+            == len(provider.writes)
+            == len(session.replay(0)) - 1
+            == 1
         )
         await b.send("deactivate_domain", "stop", generation)
         assert (await b.reply("stop"))["state"] == "inactive"

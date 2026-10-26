@@ -126,8 +126,8 @@ flow passed in selected `dontAsk` mode at clean `eaba12a`, bound to 48 relevant
 source files. Chief setup, background work, independent extra conversation,
 replay, restart/readback, project isolation and all three clean bridge closures
 passed. The owner has confirmed laptop tools, worktree/memory behavior and the
-latest OAuth run. This correction's laptop and remaining desktop checks are
-separate; see [M12 evidence and desktop checks](#m12-live-evidence-and-desktop-checks).
+latest OAuth run. M12 owner laptop/desktop acceptance is now complete at dev
+`971ac2f`; see [M12 evidence and desktop checks](#m12-live-evidence-and-desktop-checks).
 Catalog characters require a prepared project for work. Explicit extras retain
 tools-disabled conversation when `WORKSPACE_ROOT_DIR` is JSON `null` (the default).
 Select one existing project directory before starting the bridge:
@@ -178,8 +178,9 @@ refreshing or restarting alone does not prove safe reuse.
 
 These blocked-state/recovery messages have provider-free UI regression coverage.
 Earlier live and clipboard evidence remains bound to its recorded sources and
-does not certify the updated display code. Correction-specific native laptop
-acceptance remains open; a disabled-control screenshot alone establishes no cause.
+does not certify the updated display code. The owner subsequently accepted the
+correction at dev `971ac2f`; see [M12 closeout](#m12-owner-closeout). A
+disabled-control screenshot alone establishes no cause.
 
 Walking away or pressing Escape backgrounds work. An explicit extra can converse
 while Core runs; another Core agent shows the shared work. Return/refocus replays
@@ -274,8 +275,8 @@ python3 scripts/check_chat_clipboard.py --godot /path/to/godot \
 The driver runs production panels with synthetic fixtures, reads the clipboard
 and X11 PRIMARY from another process while Godot runs, and saves exact observed payloads and
 optional layout images. With no DISPLAY it reports a skip; headless checks alone
-do not establish desktop clipboard behavior. Native laptop acceptance remains
-separate from these checks.
+do not establish desktop clipboard behavior. Native laptop acceptance is recorded separately in the
+[M12 closeout](#m12-owner-closeout).
 
 Recorded Linux/X11 proof at clean `3f0dde7`: **50 independent clipboard reads**
 across both panes, including native partial-word/paragraph/drag selection,
@@ -593,6 +594,29 @@ Nothing else in the repo needs them.
 
 ## M12 live evidence and desktop checks
 
+<a id="m12-owner-closeout"></a>
+### M12 owner closeout
+
+**Accepted by the owner on October 23, 2026 Pacific; PLZG-289 is Done.**
+The completed laptop checklist and follow-up reports cover dev
+`971ac2fa70515bbd20f0627a5b7e2a766a7288c2`, including runtime, clipboard and
+readiness fixes. Both local guard reports passed all 29 cases; fresh-pair,
+current-source and local-runtime validation passed, with fixed activation checks
+passing for both permission modes. The selected live mode was `dontAsk`.
+Laptop runtime: Linux; SDK 0.2.136, AnyIO 4.14.2, Claude Code 2.1.228;
+bundled CLI SHA256 `d535985e6941a3eb00179ccd7f52ceb0c6623a0305a518ebc4e6514f84a94c99`.
+
+The owner confirmed domain Stop and bridge Ctrl+C shutdown with exit 0. The
+latest run manifest closed with an end timestamp; no active run-owner or
+execution-unclean markers remained. Earlier open manifests were preserved as
+historical observations. The checklist items below are owner-accepted; raw logs,
+reports and the submitted checklist remain private. See
+[PLZG-289](https://tasteslikegood.atlassian.net/browse/PLZG-289) for the acceptance
+record. This does not restamp earlier cloud evidence, prove live UI operation in
+both permission modes, or establish sandboxing, concurrency or SDK recovery.
+
+The following dated cloud reports retain their original source/runtime bindings.
+
 **Runtime-correction Linux API-key cloud acceptance passed.** The new
 [live ledger](specs/evidence/m12-runtime-live-attempts-2026-10-22.json) and
 [unchanged report](specs/evidence/m12-runtime-live-dontAsk-2026-10-22.json)
@@ -778,40 +802,40 @@ hangs but fails clean acceptance. Private artifacts can contain disposable notes
 and output; do not publish credentials, environment, full options or raw SDK dumps.
 
 M12 acceptance status is recorded separately from historical NPC SDK evidence.
-The owner has confirmed laptop tools/worktree/memory behavior and latest OAuth;
-these are owner reports, not itemized results for the new correction below.
-Cloud Linux API-key runs do not prove laptop subscription billing, a different
-binary, or desktop behavior. M12 remains open for delivery and remaining
-acceptance. Record date, OS/Godot/CLI binary, tested commit, auth category and
-observed result; baseline connectivity does not need another confirmation.
+Owner laptop/desktop acceptance, including the correction checklist below, is
+recorded in the [M12 closeout](#m12-owner-closeout). Cloud Linux API-key runs
+remain separate evidence and do not themselves prove laptop subscription billing,
+a different binary or desktop behavior. For future changes, record date,
+OS/Godot/CLI binary, tested commit, auth category and observed result; the M12
+closeout does not certify later source changes.
 
 Correction-specific laptop checklist, using disposable projects for deliberate
 failure checks:
 
-- [ ] Run and inspect both local guard modes against the intended new sources,
+- [x] Run and inspect both local guard modes against the intended new sources,
   laptop binary and auth; record the selected live mode.
-- [ ] A supported final answer/memory envelope renders as readable prose; a valid
+- [x] A supported final answer/memory envelope renders as readable prose; a valid
   proposal updates the project notes. Malformed or unsupported proposals preserve
   useful output and do not apply rejected proposal fields; the bridge still saves
   its labeled task/result excerpts and observed outcome.
-- [ ] A managed-branch/root-cwd readiness failure shows a useful bounded cause in
+- [x] A managed-branch/root-cwd readiness failure shows a useful bounded cause in
   NPC dialogue and the domain pane. Restore the expected state and explicitly
   refresh/refocus; no automatic checkout/reset or weaker guard is expected.
-- [ ] A failed query shows its readable cause with any partial answer, including
+- [x] A failed query shows its readable cause with any partial answer, including
   an empty answer. With transcripts enabled, that partial text is retained;
   metadata-only logs do not acquire message bodies or arbitrary exception text.
-- [ ] Ordinary requested bridge shutdown closes the manifest after drain and
+- [x] Ordinary requested bridge shutdown closes the manifest after drain and
   removes run/lease markers. If cleanup is uncertain, keep its open manifest and
   ownership evidence for inspection; do not force an acceptance pass.
 
-Remaining desktop items, retaining earlier owner confirmations:
+Owner-accepted desktop items, retaining the original checklist wording:
 
-- [ ] Approach working characters without starting work; use typed referral/Prepare with the Chief and verify main/shared notes without an eager worktree.
-- [ ] Use dialogue Let's work/Send with mouse and keyboard; Enter never starts implicitly, pending draft stays editable, shared pane switching submits once, and scroll/selection/focus preserve movement.
-- [ ] On your native desktop, use Copy, Select All, right-click and platform shortcuts in both panes; paste selected and fallback text into another app during typing. Check Unicode/newlines, hidden-text exclusion, disconnected history, stale-menu dismissal, resize/focus and unchanged drafts/session controls.
-- [ ] Physically leave the anchor during real work; observe background state and hidden panel.
-- [ ] Switch Core representatives and preserve originating attribution; reach an explicit extra, finish its reply, return/refocus and see one domain result.
-- [ ] Stop idle and background sessions, confirm release, and start again; late status/reconnect packets never steal focus, switch the selected representative or submit work.
-- [ ] Change guidance between Runs and verify refresh; unsafe/oversized guidance fails visibly without silently dropping instructions.
-- [ ] Exercise a visible unsaved-memory state; confirm its revision/warning remains visible and recovery preserves edits.
-- [ ] Restart cleanly, explicitly read prior notes, and verify separate-project isolation.
+- [x] Approach working characters without starting work; use typed referral/Prepare with the Chief and verify main/shared notes without an eager worktree.
+- [x] Use dialogue Let's work/Send with mouse and keyboard; Enter never starts implicitly, pending draft stays editable, shared pane switching submits once, and scroll/selection/focus preserve movement.
+- [x] On your native desktop, use Copy, Select All, right-click and platform shortcuts in both panes; paste selected and fallback text into another app during typing. Check Unicode/newlines, hidden-text exclusion, disconnected history, stale-menu dismissal, resize/focus and unchanged drafts/session controls.
+- [x] Physically leave the anchor during real work; observe background state and hidden panel.
+- [x] Switch Core representatives and preserve originating attribution; reach an explicit extra, finish its reply, return/refocus and see one domain result.
+- [x] Stop idle and background sessions, confirm release, and start again; late status/reconnect packets never steal focus, switch the selected representative or submit work.
+- [x] Change guidance between Runs and verify refresh; unsafe/oversized guidance fails visibly without silently dropping instructions.
+- [x] Exercise a visible unsaved-memory state; confirm its revision/warning remains visible and recovery preserves edits.
+- [x] Restart cleanly, explicitly read prior notes, and verify separate-project isolation.

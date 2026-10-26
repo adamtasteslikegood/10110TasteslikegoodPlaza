@@ -56,3 +56,11 @@ If the doc instead tracks **active work**, lives or dies with a milestone, or ch
 - Don't propagate the `{{rolels}}` / `{{charactors}}` template placeholders left over from the upstream fork — clean them up locally when editing the section they're in.
 
 *Last updated: October 2026*
+
+## M13 research reconciliation — owner review pending
+
+- [Working decisions/questions for Adam](../M13_DECISIONS_AND_QUESTIONS.md):
+  sourced review queue, with no new decision authority.
+- [Cloudflare research and preserved snapshots](research/cloudflare-durable-objects/README.md).
+- [Proposed store/backend plan](superpowers/plans/2026-10-23-domain-session-store-execution-backend.md):
+  retained owner answers; implementation and governance alignment require the next review.
