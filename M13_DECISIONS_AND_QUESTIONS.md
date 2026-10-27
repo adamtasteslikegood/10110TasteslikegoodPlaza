@@ -520,7 +520,7 @@ probes and the [owner runbook](docs/m13-live-acceptance.md) are implemented.
 Full valid-layout Python passes2,419 +118 subtests on final production code;
 a later probe-only bounded read-only release-observation fix passes425 covering
 tests. Final pinned Godot/npm gates (store338/transport104, integration2+61) and
-static/spec checks pass. The [latest synthetic performance record](specs/evidence/m13-state-performance-linux-2026-10-27.json)
+static/spec checks pass. The [Task 10 synthetic performance record](specs/evidence/m13-state-performance-linux-2026-10-27.json)
 binds actual measured bytes/runtime, made on dirty34d2584 before boundary-fix
 commit; the [October26 checkpoint](specs/evidence/m13-state-performance-linux-2026-10-26.json)
 is unchanged. Neither is provider or desktop acceptance. Dense cumulative peak
@@ -534,3 +534,20 @@ controller/owner. M14/M15 remain planned; no fresh OAuth login exists in this
 cloud runtime and no token request/copy is part of acceptance.
 
 Task10 implementation independently reviewed through `26d49dd` with no findings. Local full production-boundary coverage is2,419 tests+118subtests, followed by425 covering observer-helper tests and final pinned npm nine scenes/2+61 integrations. Additional confirmed Stop correlation, large-frame/cache and diagnostic snapshot races were fixed with regressions. Dense66,478,080B state measured550,031,360B peak RSS high-water and248.09ms max heartbeat gap; these costs are explicit, with no invented SLO. All deferred minors are resolved. Continue controller whole-branch review, fresh33-case pair, hosted current-head CI/PR and owner desktop/OAuth; no final M13 acceptance/merge is claimed.
+
+
+Final whole-branch review fix wave (October 27): recovered and saved history now
+use a correlated project/store/application envelope independent of unavailable
+current worktrees, without changing schema v1 or frozen terminals. Current
+null↔known observations are permitted; known-workspace replacement and live
+result identity remain fenced. Both real game surfaces have crash/reopen and
+unavailable-worktree regressions. Draft prose and delivery checkboxes are corrected.
+Final full required-Godot Python passes2,435+118subtests; sequential npm passes
+nine scenes (store399/transport119) and2+67integrations; static/spec checks and
+270 isolated Python3.11 tests pass. Earlier failed/interrupted attempts remain
+preserved in the private final-fix report. The [new final-review-fix performance receipt](specs/evidence/m13-state-performance-linux-2026-10-27-final-review-fix.json)
+is a fresh measurement on dirty879e142: dense66,478,080B, peak550,002,688B,
+commits341.70–493.23ms, max heartbeat gap206.82ms; all profiles prove pre-release
+heartbeat/replay progress. Historical receipts remain unchanged. Scoped re-review,
+fresh actual33+33 guards, owner desktop/OAuth, hosted current-head CI and reviewed
+PR/tracking/merge remain pending; the old SDK acceptance envelope remains stale.

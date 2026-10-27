@@ -272,7 +272,10 @@ async def persisted_result(coordinator, identity):
 
 
 @pytest.mark.asyncio
-async def test_committed_ended_history_reopens_exactly_without_sdk(lifecycle):
+@pytest.mark.parametrize("enveloped", [False, True])
+async def test_committed_ended_history_reopens_exactly_without_sdk(
+    lifecycle, enveloped
+):
     manager, reboot, _, owners, coordinators = lifecycle
     first = await send(manager, "activate_domain")
     terminal = await persisted_result(coordinators[-1], first)
@@ -293,11 +296,25 @@ async def test_committed_ended_history_reopens_exactly_without_sdk(lifecycle):
             domain_session_id=first["domain_session_id"],
             request_id="replay",
             cursor="0",
+            **({"replay_format": "history_v1"} if enveloped else {}),
         ),
         context=context(),
         emit=emit,
     )
-    assert packets[0] == terminal and packets[0]["output_id"] == "1"
+    if enveloped:
+        envelope = packets[0]
+        assert (
+            envelope["type"] == "domain_history" and envelope["request_id"] == "replay"
+        )
+        assert envelope["project_id"] == coordinators[-1].snapshot().project_id
+        assert (
+            envelope["state_store"]["continuity_id"]
+            == coordinators[-1].snapshot().instance_id
+        )
+        assert envelope["domain_session_id"] == first["domain_session_id"]
+        assert envelope["terminal"] == terminal
+    else:
+        assert packets[0] == terminal and packets[0]["output_id"] == "1"
     assert packets[1]["ended"] and packets[1]["high_water_mark"] == "1"
     assert len(owners) == 1
 

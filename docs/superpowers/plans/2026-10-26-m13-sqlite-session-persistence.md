@@ -178,19 +178,33 @@ Shared types in `application_state.py` (all frozen dataclasses; nested packets c
 - [x] Add probe tests verifying report binding to exact source hashes, dependency/SDK/CLI/OS/engine versions, backend/mode and test completeness; missing cases or stale sources must reject acceptance. The live guide must specify shell commands, expected states and private report locations for Stop/restart/End/recap/crash/failed-storage recovery, with no private transcripts committed.
 - [x] Implement local persistence performance probe with representative and 64MiB boundary images, repeated commits, peak RSS/image size/commit latency/event-loop heartbeat. Report old+new transient disk and process overhead separately. Use a deliberately blocked writer test requiring heartbeat/replay progress before unblock; actual latency results are reviewed, not invented performance guarantees.
 - [x] Run full `PLAZA_REQUIRE_GODOT=1 python -m pytest bridge/tests tests -q`, `npm test` with committed CI-pinned Godot, `black --check .`, `flake8 . --select=E9,F63,F7,F82`, `python scripts/validate_specs.py`, `git diff --check`. Record exact counts/versions and any failures; no skipped required Godot gate counted as pass.
-- [x] Enumerate all changed/new execution-authorizing sources, include them in guarded inventory and update real campaigns to exercise the new admission path. Collect fresh guards for dontAsk and bypassPermissions and run their actual acceptance validator at final source/runtime. Changed sources require new reports, never hash substitution. Keep OAuth/API authentication coverage explicit; fake integrations are not live provider acceptance.
-- [x] Obtain fresh whole-branch review against approved design, including filesystem/crash/ownership and client control fencing. Resolve findings with regressions; rerun affected evidence after source changes. Record laptop acceptance separately from container tests and paid SDK guard probes; acceptance not yet obtained remains pending.
-- [x] Commit final evidence summary and working handoff. Open a reviewed PR to dev under the repo's lifecycle gate; attach it to the task, reread all review surfaces and resolve findings before D-031 merge. Update #380/PLZG-290 with actual completion boundaries; do not mark all M13–M15 complete for this increment. Preserve branch/worktree evidence and never publish private run logs by default.
+- [x] Enumerate changed/new execution-authorizing sources, include them in guarded inventory and update real campaigns to exercise the new admission path.
+- [ ] Collect fresh guards for dontAsk and bypassPermissions and run their actual acceptance validator at final source/runtime. Changed sources require new reports, never hash substitution. Keep OAuth/API authentication coverage explicit; fake integrations are not live provider acceptance.
+- [ ] Complete whole-branch review resolution against the approved design, including filesystem/crash/ownership and client control fencing. The broad review is received; resolve findings with regressions, obtain scoped re-review and refresh affected evidence after source changes.
+- [ ] Obtain owner laptop/desktop and fresh OAuth acceptance on the exact source/runtime; keep API-key coverage explicit. Container tests and paid SDK guard probes do not establish these outcomes.
+- [x] Prepare local evidence summary and working handoff with pending delivery boundaries explicit.
+- [ ] Obtain hosted full current-head CI and open a reviewed PR to dev under the repo's lifecycle gate; attach it to the task, reread all review surfaces and resolve findings before D-031 merge. Update #380/PLZG-290 with actual completion boundaries; do not mark all M13–M15 complete for this increment. Preserve branch/worktree evidence and never publish private run logs by default.
 
 Local verification receipt: full valid-layout Python **2,419 passed +118 subtests**
 covers final production boundary code. A later probe-only read-only observation
 fix passes **425 covering tests**; final sequential `npm test` passes all nine
 pinned Godot scenes (store338/transport104) plus 2+61 integration tests on that
 helper. Black133 files, syntax/undefined-name lint,23-document spec gate and diff
-checks pass. The latest synthetic source/runtime-bound [performance aggregate](../../../specs/evidence/m13-state-performance-linux-2026-10-27.json)
+checks pass. The Task 10 synthetic source/runtime-bound [performance aggregate](../../../specs/evidence/m13-state-performance-linux-2026-10-27.json)
 and unchanged [checkpoint receipt](../../../specs/evidence/m13-state-performance-linux-2026-10-26.json)
 are preserved without claiming provider/desktop acceptance. Earlier failed and
 setup-invalid attempts remain separately documented in the Task10 report.
+
+Final-review fix verification (October 27): full required-Godot Python
+**2,435 passed +118 subtests**; sequential `npm test` passed all nine scenes
+(store399/transport119) plus **2+67 integrations**. Black133, fatal flake8,
+23-document spec validation, whitespace and **270 isolated Python 3.11 tests**
+passed. The first full attempt's unrelated shared-stdlib clock fixture failure
+and the deliberately interrupted scope-correction attempt remain in the private
+fix report; neither is counted as a full pass. The [fresh final-review-fix performance receipt](../../../specs/evidence/m13-state-performance-linux-2026-10-27-final-review-fix.json)
+binds the final source content measured on dirty `879e142`; earlier receipts
+remain unchanged. Scoped re-review and every unchecked delivery outcome above
+remain pending.
 
 ### Task 10 execution boundary — October 26, 2026
 

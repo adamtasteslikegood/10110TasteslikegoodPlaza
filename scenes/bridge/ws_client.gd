@@ -58,7 +58,7 @@ func _attempt_connect() -> void:
 	_reconnect_timer.stop()
 	# Honor the approved terminal frame limit; the default 65,535-byte ring is
 	# smaller than an ordinary maximum output. Keep bounded frame headroom.
-	_socket.inbound_buffer_size = DomainState.MAX_TERMINAL_PACKET_BYTES + 4096
+	_socket.inbound_buffer_size = DomainState.MAX_HISTORY_PACKET_BYTES + 4096
 	var err := _socket.connect_to_url(bridge_url)
 	if err != OK:
 		push_warning("ws_client: cannot initiate connection to %s" % bridge_url)
@@ -204,7 +204,7 @@ func _fail_request(request_id: String, kind: String, message: String) -> void:
 
 
 func _on_message(raw: String) -> void:
-	if raw.to_utf8_buffer().size() > DomainState.MAX_TERMINAL_PACKET_BYTES:
+	if raw.to_utf8_buffer().size() > DomainState.MAX_HISTORY_PACKET_BYTES:
 		_protocol_diagnostic("packet exceeds the protocol byte limit")
 		return
 	var json := JSON.new()
@@ -212,11 +212,14 @@ func _on_message(raw: String) -> void:
 		_protocol_diagnostic("expected a JSON object")
 		return
 	var parsed: Dictionary = json.data
+	if parsed.get("type") != "domain_history" and raw.to_utf8_buffer().size() > DomainState.MAX_TERMINAL_PACKET_BYTES:
+		_protocol_diagnostic("packet exceeds the protocol byte limit")
+		return
 	if parsed.get("type") in ["agent_status", "project_setup"]:
 		_on_character_packet(parsed)
 		return
-	if parsed.get("type") in ["workspace_state", "domain_state", "domain_accepted", "domain_result", "domain_error", "resume_complete"]:
-		_on_domain_packet(parsed)
+	if parsed.get("type") in ["workspace_state", "domain_state", "domain_accepted", "domain_result", "domain_history", "domain_error", "resume_complete"]:
+		_on_domain_packet(parsed, raw.to_utf8_buffer().size())
 		return
 	var request_id: Variant = parsed.get("request_id")
 	if not request_id is String or not _pending_requests.has(request_id):
@@ -332,7 +335,7 @@ func select_domain_session(domain_id: String, session_id: String) -> bool:
 
 func resume_domain(domain_id: String) -> String:
 	var current := domain_snapshot(domain_id)
-	return _send_domain_command({"type": "resume", "domain_id": domain_id, "domain_session_id": current.get("selected_session_id", ""), "cursor": current.get("selected_received_cursor", "0")})
+	return _send_domain_command({"type": "resume", "domain_id": domain_id, "domain_session_id": current.get("selected_session_id", ""), "cursor": current.get("selected_received_cursor", "0"), "replay_format": "history_v1"})
 
 
 func _generation_command(kind: String, domain_id: String, extra: Dictionary = {}) -> String:
@@ -371,12 +374,12 @@ func _send_domain_command(packet: Dictionary) -> String:
 	return id
 
 
-func _on_domain_packet(packet: Dictionary) -> void:
+func _on_domain_packet(packet: Dictionary, wire_bytes: int = -1) -> void:
 	if not _connected:
 		return
 	var command: Dictionary = _domain_requests.get(packet.get("request_id"), {}).duplicate(true)
 	var prior_stage: Variant = workspace_snapshot().get("stage")
-	var change := domains.apply_packet(packet)
+	var change := domains.apply_packet(packet, wire_bytes)
 	if change.is_empty():
 		return
 	if change.settled:

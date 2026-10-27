@@ -5,6 +5,8 @@ import json
 import os
 from pathlib import Path
 import shutil
+import subprocess
+import sys
 
 import pytest
 
@@ -14,7 +16,9 @@ from bridge.tests.test_workspace import repository
 ROOT = Path(__file__).resolve().parents[2]
 
 
-async def game(url):
+async def game(
+    url, *, expected="Readback from prior notes: isolated", status_first=False
+):
     godot = shutil.which(os.environ.get("GODOT_BIN", "godot"))
     if not godot:
         if os.environ.get("PLAZA_REQUIRE_GODOT"):
@@ -26,7 +30,12 @@ async def game(url):
         "--path",
         str(ROOT),
         "tests/godot_history_reopen.tscn",
-        env={**os.environ, "PLAZA_TEST_BRIDGE_URL": url},
+        env={
+            **os.environ,
+            "PLAZA_TEST_BRIDGE_URL": url,
+            "PLAZA_HISTORY_EXPECTED": expected,
+            "PLAZA_HISTORY_STATUS_FIRST": "1" if status_first else "0",
+        },
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.STDOUT,
     )
@@ -565,3 +574,141 @@ async def test_kept_game_preserves_cache_owner_through_unavailable_storage(
         if process.returncode is None:
             process.kill()
         await output_task
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "boundary,reason,explanation",
+    [
+        ("accepted_before_dispatch", "not_executed", "The task was not executed."),
+        ("dispatch_before_sdk", "interrupted", "The execution outcome is unknown"),
+    ],
+)
+async def test_real_crash_recovery_reaches_both_game_surfaces_after_repeated_reopen(
+    tmp_path, monkeypatch, offline_clients, boundary, reason, explanation
+):
+    root = repository(tmp_path, "crash-project")
+    runtime = tmp_path / "crashed-runtime"
+    runtime.mkdir()
+    signal = tmp_path / "boundary.json"
+    env = {
+        k: v
+        for k, v in os.environ.items()
+        if not any(
+            part in k.upper()
+            for part in ("TOKEN", "KEY", "SECRET", "CREDENTIAL", "ANTHROPIC", "OPENAI")
+        )
+    }
+    with (tmp_path / "child.log").open("w+") as log:
+        child = subprocess.Popen(
+            [
+                sys.executable,
+                "-m",
+                "bridge.tests.state_crash_child",
+                str(root),
+                str(runtime),
+                boundary,
+                str(signal),
+                "core",
+            ],
+            env=env,
+            stdout=log,
+            stderr=log,
+        )
+        try:
+            await until(lambda: signal.exists() or child.poll() is not None)
+            if not signal.exists():
+                log.seek(0)
+                pytest.fail(log.read())
+            assert json.loads(signal.read_text())["calls"] == []
+        finally:
+            child.kill()
+            await asyncio.to_thread(child.wait)
+    frozen = None
+    image_bytes = None
+    for reopening in range(2):
+        directory = tmp_path / f"reopen-{reopening}"
+        directory.mkdir()
+        provider = Provider()
+        async with Lifetime(
+            directory, root, monkeypatch, provider, domain_id="core"
+        ) as life:
+            await life.server._ensure_application_state()
+            view = life.server.application_state.snapshot()
+            terminal = view.terminals[0].packet
+            assert terminal["reason"] == reason and terminal["recovered"] is True
+            assert terminal["output_id"] == "1"
+            if frozen is not None:
+                assert terminal == frozen
+            frozen = terminal
+            reopened = await game(
+                life.url, expected=explanation, status_first=bool(reopening)
+            )
+            assert reopened["results"] == [terminal]
+            assert reopened["selected_received_cursor"] == "1"
+            assert (
+                explanation in reopened["answer"]
+                and explanation in reopened["pane_answer"]
+            )
+            assert reopened["run_disabled"] and reopened["pane_run_disabled"]
+            assert reopened["start_disabled"] and reopened["pane_start_disabled"]
+            assert not provider.clients and not provider.queries
+            assert not any(
+                c["type"] in {"activate_domain", "domain_query"} for c in life.commands
+            )
+        current = (root / ".git/plaza/application-state/state.sqlite3").read_bytes()
+        if image_bytes is not None:
+            assert current == image_bytes
+        image_bytes = current
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("damage", ["missing-worktree", "invalid-registration"])
+@pytest.mark.parametrize(
+    "status_first", [False, True], ids=["character-first", "status-first"]
+)
+async def test_saved_history_survives_unavailable_current_workspace(
+    tmp_path, monkeypatch, offline_clients, damage, status_first
+):
+    root = repository(tmp_path, "unavailable-project")
+    first = tmp_path / "save"
+    first.mkdir()
+    provider = Provider()
+    provider.release.set()
+    async with Lifetime(first, root, monkeypatch, provider, domain_id="core") as life:
+        socket = await life.socket()
+        application = await socket.start()
+        await socket.run(application, task="read previous notes")
+        terminal = await socket.reply("run", type="domain_result")
+        await socket.send("deactivate_domain", "stop", application)
+        await socket.reply("stop", type="domain_state")
+        workspace = life.service.require_workspace("core")
+    image = root / ".git/plaza/application-state/state.sqlite3"
+    before = image.read_bytes()
+    if damage == "missing-worktree":
+        workspace.worktree_path.rename(tmp_path / "unavailable-worktree")
+    else:
+        (workspace.worktree_path / ".git").write_text("invalid worktree registration\n")
+    second = tmp_path / "inspect"
+    second.mkdir()
+    provider = Provider()
+    async with Lifetime(second, root, monkeypatch, provider, domain_id="core") as life:
+        assert life.service.workspace_snapshot("core")["workspace_id"] is None
+        assert life.service.workspace_snapshot("core")["stage"] == "failed"
+        reopened = await game(life.url, status_first=status_first)
+        observations = [
+            c["type"]
+            for c in life.commands
+            if c["type"] in {"domain_status", "agent_status"}
+        ]
+        assert observations[0] == ("domain_status" if status_first else "agent_status")
+        assert reopened["results"] == [terminal]
+        assert reopened["selected_received_cursor"] == "1"
+        assert "Readback from prior notes: isolated" in reopened["pane_answer"]
+        assert reopened["run_disabled"] and reopened["pane_run_disabled"]
+        assert reopened["start_disabled"] and reopened["pane_start_disabled"]
+        assert not provider.clients and not provider.queries
+        assert not any(
+            c["type"] in {"activate_domain", "domain_query"} for c in life.commands
+        )
+    assert image.read_bytes() == before

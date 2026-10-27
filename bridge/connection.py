@@ -53,7 +53,11 @@ class ConnectionState:
                 packet, future = await self._queue.get()
                 try:
                     async with asyncio.timeout(2):
-                        await self._websocket.send(json.dumps(packet))
+                        await self._websocket.send(
+                            json.dumps(
+                                packet, ensure_ascii=False, separators=(",", ":")
+                            )
+                        )
                 except BaseException:
                     if not future.done():
                         future.set_exception(

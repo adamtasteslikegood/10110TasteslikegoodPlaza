@@ -92,6 +92,10 @@ def validate_domain_command(payload: object) -> dict[str, object]:
         fields.update(("agent_id", "task"))
     if kind == "resume":
         fields.add("cursor")
+        if "replay_format" in payload:
+            if payload["replay_format"] != "history_v1":
+                raise DomainCommandError()
+            fields.add("replay_format")
     if set(payload) != fields or not valid_text(payload.get("request_id")):
         raise DomainCommandError()
     if "domain_id" in fields and not valid_domain(payload["domain_id"]):

@@ -17,7 +17,8 @@ from bridge.tests.domain_fakes import FakeOwner, context
 
 
 async def main():
-    root, runtime, boundary, signal = sys.argv[1:]
+    root, runtime, boundary, signal = sys.argv[1:5]
+    domain = sys.argv[5] if len(sys.argv) > 5 else "engineering"
     calls = []
 
     def stop(packet=None):
@@ -93,20 +94,20 @@ async def main():
             type="activate_domain",
             protocol_version=2,
             request_id="start",
-            domain_id="engineering",
+            domain_id=domain,
             expected_domain_revision="0",
         ),
         context=context(),
         emit=emit,
     )
-    active = server.domains.snapshot("engineering")
+    active = server.domains.snapshot(domain)
     await server.domains.handle(
         dict(
             type="domain_query",
             protocol_version=2,
             request_id="crash-run",
-            domain_id="engineering",
-            agent_id="backend-architect",
+            domain_id=domain,
+            agent_id="systems-architect" if domain == "core" else "backend-architect",
             task="Offline work",
             domain_session_id=active["domain_session_id"],
             execution_id=active["execution_id"],

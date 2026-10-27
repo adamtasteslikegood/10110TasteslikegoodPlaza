@@ -339,6 +339,7 @@ func review_transport_regressions() -> void:
 		await receive()
 		var next := state(id)
 		next.domain_session_id = "B"
+		next.saved_sessions[0].domain_session_id = "B"
 		await deliver(next)
 		wire = await receive()
 		await deliver(workspace(wire.get("request_id", "missing")))
@@ -359,6 +360,7 @@ func review_transport_regressions() -> void:
 	await deliver(workspace(wire.get("request_id", "missing")))
 	completion.request_id = id
 	completion.domain_session_id = "B"
+	completion.saved_sessions[0].domain_session_id = "B"
 	completion.high_water_mark = "5"
 	completion.earliest_output_id = "3"
 	completion.history_gap = true
@@ -366,6 +368,7 @@ func review_transport_regressions() -> void:
 	wire = await receive()
 	var status := state(wire.get("request_id", "missing"))
 	status.domain_session_id = "B"
+	status.saved_sessions[0].domain_session_id = "B"
 	await deliver(status)
 	var snapshot: Dictionary = client.domain_snapshot("core")
 	check(snapshot.received_cursor == "3" and snapshot.uncertain and snapshot.error.get("error_type") == "replay_incomplete", "R2 automatic lifecycle status cannot erase replay hole")
@@ -629,3 +632,46 @@ func heavy_large_row_and_oversize_checks() -> void:
 	peer.send_text(JSON.stringify(packet))
 	await heavy_frames(12)
 	check(client.domain_snapshot("core").pending_query.is_empty() and client.domain_snapshot("core").received_cursor == "3", "valid terminal still settles same Run after oversized wire denial")
+	await maximum_history_envelope_wire_checks()
+
+
+func maximum_history_envelope_wire_checks() -> void:
+	heavy_high_water = "4"
+	var resume: String = client.resume_domain("core")
+	await heavy_frames()
+	check(not resume.is_empty() and heavy_wires.back().get("replay_format") == "history_v1", "real client requests trusted history envelope")
+	var terminal := {"type": "domain_result", "protocol_version": 2, "request_id": "old-frozen", "domain_id": "core", "domain_session_id": HEAVY_SESSION, "execution_id": "old-execution", "output_id": "4", "agent_id": "systems-architect", "task": "old saved task", "output": "old answer", "status": "error", "reason": "interrupted", "recovered": true, "memory": {"saved": false, "revision": null, "error_type": "memory_reconciliation_pending"}, "padding": ""}
+	var remaining := 2097152 - JSON.stringify(terminal).to_utf8_buffer().size()
+	terminal.padding = "é".repeat(remaining / 2) + "a".repeat(remaining % 2)
+	var envelope := {"type": "domain_history", "protocol_version": 2, "request_id": resume, "project_id": "P", "domain_id": "core", "domain_session_id": HEAVY_SESSION, "state_store": heavy_state("").state_store, "terminal": terminal}
+	var encoded := JSON.stringify(envelope)
+	check(JSON.stringify(terminal).to_utf8_buffer().size() == 2097152 and encoded.to_utf8_buffer().size() > 2097152 and encoded.to_utf8_buffer().size() <= 2097152 + 4096, "exact2MiB frozen terminal plus bounded envelope")
+	peer.outbound_buffer_size = 2097152 + 8192
+	var oversized := envelope.duplicate(true)
+	oversized.terminal.padding += "x"
+	check(peer.send_text(JSON.stringify(oversized)) == OK, "send terminal one byte beyond cap inside envelope")
+	await heavy_frames(12)
+	check(client.domain_snapshot("core").received_cursor == "3" and not client.domain_snapshot("core").pending_control.is_empty(), "oversized nested terminal cannot settle receipt")
+	for spelling in ["whitespace", "escaped-metadata", "numeric-metadata"]:
+		var hostile := JSON.stringify(oversized)
+		if spelling == "whitespace": hostile = hostile.replace(',"project_id"', ',  "project_id"')
+		elif spelling == "escaped-metadata": hostile = hostile.replace('"project_id":"P"', '"project_id":"\\u0050"')
+		else: hostile = hostile.replace('"protocol_version":2', '"protocol_version":2e0')
+		check(peer.send_text(hostile) == OK, "send noncanonical " + spelling)
+		await heavy_frames(12)
+		check(client.domain_snapshot("core").received_cursor == "3" and not client.domain_snapshot("core").pending_control.is_empty(), "noncanonical " + spelling + " cannot conceal oversized nested terminal")
+	oversized = envelope.duplicate(true)
+	oversized.extra = "x".repeat(4096)
+	var dispatched: int = client.parsed_domain_ids.count(resume)
+	check(peer.send_text(JSON.stringify(oversized)) == OK, "send oversized envelope metadata")
+	await heavy_frames(12)
+	check(client.parsed_domain_ids.count(resume) == dispatched and client.domain_snapshot("core").received_cursor == "3", "total envelope cap enforced before dispatch")
+	check(peer.send_text(encoded) == OK, "send exact maximum terminal in valid history envelope")
+	await heavy_frames(12)
+	var snapshot: Dictionary = client.domain_snapshot("core")
+	check(client.is_bridge_connected() and snapshot.received_cursor == "4" and snapshot.results.is_empty(), "max history frame advances exact receipt before bounded whole-row eviction")
+	var done := heavy_state(resume)
+	done.merge({"type": "resume_complete", "ended": false, "high_water_mark": "4", "earliest_output_id": "1", "history_gap": false}, true)
+	peer.send_text(JSON.stringify(done))
+	await heavy_frames()
+	check(client.domain_snapshot("core").pending_control.is_empty() and JSON.stringify(client.domain_snapshot("core")).to_utf8_buffer().size() <= 1048576, "maximum history completion settles within unchanged display budget")

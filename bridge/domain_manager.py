@@ -375,7 +375,7 @@ class DomainManager:
 
     def _replay(self, command):
         domain, session_id = command["domain_id"], command["domain_session_id"]
-        _, _, saved = self._records(domain)
+        view, _, saved = self._records(domain)
         record = next((s for s in saved if s.session_id == session_id), None)
         if record is None:
             raise DomainCommandError("session_unavailable")
@@ -400,7 +400,25 @@ class DomainManager:
             history_gap=window.history_gap,
             request_id=command["request_id"],
         )
-        return window.entries + [packet]
+        entries = window.entries
+        if command.get("replay_format") == "history_v1":
+            # The validated store owns historical identity independently of
+            # current workspace readiness. Never restamp a frozen terminal.
+            entries = [
+                dict(
+                    type="domain_history",
+                    protocol_version=2,
+                    request_id=command["request_id"],
+                    project_id=view.project_id,
+                    domain_id=domain,
+                    domain_session_id=session_id,
+                    state_store=packet["state_store"].copy(),
+                    terminal=terminal,
+                )
+                for terminal in entries
+            ]
+            packet["project_id"] = view.project_id
+        return entries + [packet]
 
     async def handle(
         self, command: dict, *, context: RequestContext, emit: DomainSink

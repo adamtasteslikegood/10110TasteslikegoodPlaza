@@ -173,6 +173,7 @@ func _ready() -> void:
 	persistence_v2_regressions()
 	duplicate_execution_regression()
 	stop_status_order_regression()
+	historical_envelope_regression()
 	terminal_wire_cache_budget_regression()
 	unsaved_protected_metadata_regression()
 	backend_discontinuity_regression()
@@ -816,3 +817,90 @@ func unsaved_protected_metadata_regression() -> void:
 		check(snapshot.error.get("error_type") == "state_store_failed" and snapshot.error.get("unsaved_request_id") == "protected-fault" and JSON.stringify(snapshot).to_utf8_buffer().size() <= 1048576, "protected fault projects bounded documented facts for " + field)
 		s.apply_packet(packet)
 		check(s.snapshot("core").omitted_count == 1, "large protected " + field + " duplicate cannot count a second omission")
+
+
+func history_command(id: String = "history") -> Dictionary:
+	var p := command("resume", id)
+	p.cursor = "0"
+	p.replay_format = "history_v1"
+	return p
+
+func history_envelope(terminal: Dictionary, id: String = "history") -> Dictionary:
+	return {"type": "domain_history", "protocol_version": 2, "request_id": id, "project_id": "P", "domain_id": "core", "domain_session_id": "A", "state_store": state("").state_store, "terminal": terminal}
+
+func historical_envelope_regression() -> void:
+	for observation in [false, true]:
+		var fenced = fresh()
+		var foreign := state("foreign-workspace")
+		foreign.workspace_id = "different-known-workspace"
+		var changed: bool
+		if observation:
+			changed = fenced.observe_domain(foreign, fenced.observation_fence())
+		else:
+			fenced.admit_command(command("domain_status", "foreign-workspace"))
+			changed = not fenced.apply_packet(foreign).is_empty()
+		check(not changed and fenced.snapshot("core").workspace_id == "W", "known workspace replacement remains fenced for " + ("character" if observation else "status"))
+	for order in ["null-known", "known-null"]:
+		var s = fresh()
+		var status := state("current", "A", "inactive")
+		status.workspace_id = null if order == "null-known" else "W"
+		check(s.admit_command(command("domain_status", "current")), "current workspace status admitted")
+		check(not s.apply_packet(status).is_empty(), "correlated current workspace may become null")
+		check(s.admit_command(history_command()), "history envelope replay admitted")
+		var frozen := result("1")
+		var before := frozen.duplicate(true)
+		check(not s.apply_packet(history_envelope(frozen)).is_empty(), "trusted history survives current workspace null")
+		var done := complete("history", "1")
+		done.workspace_id = status.workspace_id
+		var foreign_done := done.duplicate(true)
+		foreign_done.state_store.continuity_id = "foreign-store"
+		check(s.apply_packet(foreign_done).is_empty() and not s.snapshot("core").pending_control.is_empty(), "completion rejects foreign store without settling resume")
+		check(not s.apply_packet(done).is_empty(), "history completion uses same store binding")
+		var fence: Dictionary = s.observation_fence()
+		status.workspace_id = "W" if order == "null-known" else null
+		check(s.observe_domain(status, fence), "current workspace observation may recover or disappear")
+		check(s.snapshot("core").received_cursor == "1" and s.snapshot("core").results == [before], "historical terminal frozen through either observation order")
+	for damage in ["project", "store", "backend", "session", "domain", "request", "nested-project", "nested-session", "nested-domain", "unsaved", "unknown-field", "metadata-limit", "terminal-limit", "old-epoch", "no-resume"]:
+		var s = fresh()
+		if damage != "no-resume": s.admit_command(history_command())
+		var p := history_envelope(result("1"))
+		match damage:
+			"project": p.project_id = "foreign"
+			"store": p.state_store.continuity_id = "other-store"
+			"backend":
+				p.state_store.backend = "memory"
+				p.state_store.durable = false
+				p.state_store.continuity = "process"
+			"session": p.domain_session_id = "foreign"
+			"domain": p.domain_id = "engineering"
+			"request": p.request_id = "not-pending"
+			"nested-project": p.terminal.project_id = "foreign"
+			"nested-session": p.terminal.domain_session_id = "foreign"
+			"nested-domain": p.terminal.domain_id = "engineering"
+			"unsaved": p.terminal.committed = false
+			"unknown-field": p.extension = "not allowed"
+			"metadata-limit": p.state_store.extension = "x".repeat(4096)
+			"terminal-limit": p.terminal.extra = "x".repeat(2097152)
+			"old-epoch": s.disconnect_connection()
+		check(s.apply_packet(p).is_empty() and s.snapshot("core").received_cursor == "0", "history isolation rejects " + damage)
+	var s = fresh()
+	check(s.admit_command(history_command()), "synthetic recovery replay admitted")
+	var recovered := result("1")
+	recovered.erase("project_id")
+	recovered.erase("workspace_id")
+	recovered.recovered = true
+	recovered.status = "error"
+	recovered.reason = "not_executed"
+	check(not s.apply_packet(history_envelope(recovered)).is_empty(), "synthetic recovery gets identity only from trusted envelope")
+	check(s.snapshot("core").results == [recovered], "synthetic recovery stays unmodified")
+	var direct := result("2")
+	direct.workspace_id = "foreign"
+	check(s.apply_packet(direct).is_empty(), "direct results retain strict workspace fence")
+	s = fresh()
+	s.admit_command(history_command())
+	var maximum := result("1")
+	maximum.padding = ""
+	maximum.padding = "a".repeat(2097152 - JSON.stringify(maximum).to_utf8_buffer().size())
+	check(JSON.stringify(maximum).to_utf8_buffer().size() == 2097152, "exact terminal cap fixture")
+	check(not s.apply_packet(history_envelope(maximum)).is_empty() and s.snapshot("core").received_cursor == "1", "max terminal plus envelope settles before whole-row eviction")
+	check(s.snapshot("core").results.is_empty() and JSON.stringify(s.snapshot("core")).to_utf8_buffer().size() <= 1048576, "history envelope preserves aggregate display cap")

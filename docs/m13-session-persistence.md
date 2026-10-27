@@ -24,7 +24,9 @@ Changing backend requires a bridge restart. Memory mode does not read, import,
 modify or delete SQLite history; returning to SQLite exposes the saved project
 history again. Each memory boot has a new continuity identity. Clients distinguish
 backend and continuity identity before comparing revisions, so an older SQLite
-view cannot inherit a memory draft or cached lifecycle. SQLite's continuity ID is
+view cannot inherit cached memory history or lifecycle. An unsent draft in a kept-open
+game can remain across the switch; it is client process state, not backend draft
+persistence or an import. SQLite's continuity ID is
 its persisted store-instance UUID, initially null before the first image exists.
 No storage error silently switches to memory.
 
@@ -51,6 +53,32 @@ decimal-string output IDs and highwater. They never start SDK/model/tools or
 resubmit a task. Saved ended sessions remain discoverable even when no open
 session exists. Uncommitted live answers display an unsaved state and are not
 claimed as restored history. The two work surfaces share this lifecycle.
+
+Saved history remains readable when the current department worktree or its
+registration is unavailable. Start/Run still require current readiness. The
+client requests `resume` with optional `replay_format: "history_v1"`; each
+`domain_history` reply contains exactly `type`, `protocol_version`, `request_id`,
+`project_id`, `domain_id`, `domain_session_id`, `state_store`, and `terminal`.
+The envelope binds the validated project/store namespace and catalog session to
+the same-connection pending resume. Its `terminal` is the original frozen packet,
+including its original IDs; replay never adds current workspace facts to it.
+An original project identity, when present, must match the envelope. Historical
+workspace identity is metadata, independent of current readiness. Completion
+uses that same pending resume/store binding and does not change lifecycle authority.
+Direct/live results retain their project/workspace checks. Omitting `replay_format`
+preserves the original plain replay response for existing v2 clients.
+
+Terminal JSON remains capped at 2 MiB. The fixed envelope shape permits at most
+4 KiB additional metadata and 2 MiB + 4 KiB total; the transport reserves another
+4 KiB for framing. Ordinary packets keep their 2 MiB cap. Outbound JSON uses
+compact UTF-8, matching stored packet accounting instead of expanding Unicode
+into ASCII escapes. Display retention stays at 1 MiB / 200 entries; receipt
+settles before a whole oversized display row is omitted. The client uses the
+transport's actual byte count, with canonical fixed-envelope overhead subtraction,
+to avoid Godot numeric reserialization changing boundary sizes. Noncanonical
+whitespace or metadata escapes count conservatively toward the terminal limit.
+SQLite schema v1 and
+unknown/corrupt-image refusal are unchanged; this adds no migration or reset.
 
 An accepted request with no committed dispatch is recovered as `not_executed`.
 Committed dispatch without a saved terminal is `interrupted`, with unknown outcome:

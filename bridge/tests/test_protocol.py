@@ -289,3 +289,23 @@ def test_lifecycle_revision_requires_bounded_ascii_decimal(value):
                 expected_domain_revision=value,
             )
         )
+
+
+@pytest.mark.parametrize("replay_format", ["history_v1", "unknown", None, True, {}])
+def test_history_envelope_format_is_explicit_and_closed(replay_format):
+    from bridge.domain_protocol import DomainCommandError, validate_domain_command
+
+    command = dict(
+        type="resume",
+        protocol_version=2,
+        request_id="history",
+        domain_id="core",
+        domain_session_id="saved-session",
+        cursor="0",
+        replay_format=replay_format,
+    )
+    if replay_format == "history_v1":
+        assert validate_domain_command(command)["replay_format"] == "history_v1"
+    else:
+        with pytest.raises(DomainCommandError):
+            validate_domain_command(command)

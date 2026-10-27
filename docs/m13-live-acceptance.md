@@ -56,18 +56,20 @@ to measure (for example `TMPDIR=/absolute/private/path python ...`). `/tmp` may 
 tmpfs. Record the actual filesystem and host load with the report; do not label a
 container/tmpfs/overlayfs run as SSD or power-loss durability evidence.
 
-The [latest Linux container measurement](../specs/evidence/m13-state-performance-linux-2026-10-27.json)
-used a dirty source tree based on `34d2584` before the boundary-fix commit, sequentially
-after QA, with images on overlayfs. Its 196-file source-map digest is
-`77ace47dc2cb962b71c94205705f6724d09d48902c27ec46de56754a92aeb133`.
-The densely populated image measured 66,478,080 bytes, peak cumulative RSS
-550,031,360 bytes and five commits of 299.12–501.40 ms, with a maximum heartbeat
-gap of 248.09 ms. During the deliberate writer barrier, ten heartbeats and five
-committed replay reads completed before release. These are material costs for
-review. They establish local measurements with source/runtime bindings; provider,
-owner desktop and OAuth acceptance remain separate and pending. The
-[October 26 checkpoint receipt](../specs/evidence/m13-state-performance-linux-2026-10-26.json)
-keeps its original source binding and measurements.
+The [latest final-review-fix Linux measurement](../specs/evidence/m13-state-performance-linux-2026-10-27-final-review-fix.json)
+was freshly measured on dirty `879e142` before the final-review-fix commit, after
+all QA finished, using a new private overlayfs TMPDIR. Its 196-source digest is
+`9a258fc0c61e332f866062e4397b7b3264e3e020152d758ce61baf069f79109b`.
+The dense 66,478,080-byte image measured 550,002,688 bytes cumulative peak RSS
+(497,328,128 above baseline), five commits of 341.70–493.23 ms, and a maximum
+heartbeat gap of 206.82 ms. Each of the three profiles completed ten heartbeats
+and five committed replay reads before the deliberately blocked writer released.
+The exact 64 MiB boundary profile has mostly free pages; it is separate from the
+dense populated profile. These remain material owner/deployment costs, with no
+invented SLO or physical SSD/power-loss claim. Provider, owner desktop and OAuth
+acceptance remain separate and pending. The [October 27 pre-fix receipt](../specs/evidence/m13-state-performance-linux-2026-10-27.json)
+and [October 26 checkpoint](../specs/evidence/m13-state-performance-linux-2026-10-26.json)
+keep their original bytes, source/runtime bindings and measurements.
 
 ## Authenticate and run the reviewed guard campaign
 

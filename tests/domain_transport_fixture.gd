@@ -14,6 +14,6 @@ func _send_text(payload: String) -> Error:
 	return super._send_text(payload)
 
 
-func _on_domain_packet(packet: Dictionary) -> void:
+func _on_domain_packet(packet: Dictionary, wire_bytes: int = -1) -> void:
 	parsed_domain_ids.append(str(packet.get("request_id", "")))
-	super._on_domain_packet(packet)
+	super._on_domain_packet(packet, wire_bytes)
