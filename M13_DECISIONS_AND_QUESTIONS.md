@@ -551,3 +551,19 @@ commits341.70–493.23ms, max heartbeat gap206.82ms; all profiles prove pre-rele
 heartbeat/replay progress. Historical receipts remain unchanged. Scoped re-review,
 fresh actual33+33 guards, owner desktop/OAuth, hosted current-head CI and reviewed
 PR/tracking/merge remain pending; the old SDK acceptance envelope remains stale.
+
+
+Current handoff: implementation and independent whole-branch/fix review are resolved
+through `acf1d72`, including strict raw-byte/UTF8 history admission and hosted history
+gate alignment. The [latest source-bound measurement](specs/evidence/m13-state-performance-linux-2026-10-27-boundary-correction.json)
+preserves material ~550MB RSS/225.67ms heartbeat and ~320ms maximum-frame receiver
+observations, without an SLO claim. Actual API-key33+33 guard reports validate;
+the unchanged fresh active envelope passes both production runtime checks. One
+earlier18-case bypass attempt remains privately preserved as incomplete; a fresh
+supervised full run passed without changing source/runtime/limits. The original
+interruption's sender remains unknown. Historical evidence is unchanged.
+[PR381](https://github.com/adamtasteslikegood/10110TasteslikegoodPlaza/pull/381)
+targetsdev; current-headCI/hosted review and owner desktop/freshOAuth acceptance
+remain delivery gates. Use the [live runbook](docs/m13-live-acceptance.md) from a
+separate code checkout, leaving bridge-owned execution branches unchanged.
+PLZG-290 is In Progress; no dev merge or M14/M15 completion is claimed.

@@ -11,7 +11,10 @@ Historical M12 reports keep their original hashes and observations.
 Use the reviewed M13 checkout, its pinned `requirements.txt`, Git prerequisites
 from [QUICKSTART](../QUICKSTART.md), and the CI-pinned Godot **4.7.1**. Set
 `GODOT_BIN` to its absolute executable path and put its directory on `PATH`.
-Activate the repository Python environment. From the repository root:
+Activate the repository Python environment. Use a separate Plaza code checkout
+for acceptance; do not switch branches in a bridge-managed execution worktree.
+The disposable test project below is separate from that code checkout. From the
+repository root:
 
 ```bash
 python -m pip check
@@ -172,9 +175,10 @@ PY
 
 After independent source review and genuinely fresh complete 33-case reports,
 the controller may install that unchanged private envelope with this explicit
-local operation. The currently committed envelope still has the historical
-29-case/max27-query records; production must remain closed until the new pair is
-installed and verified. Preserve the exact old envelope before replacement:
+local operation. The committed envelope now contains the fresh 33-case pair
+recorded below for the reviewed cloud API-key runtime. A different source/runtime
+must obtain matching evidence; owner desktop and OAuth acceptance remain pending.
+Preserve the exact existing envelope before replacement:
 
 ```bash
 python - <<'PY_INSTALL'
@@ -243,6 +247,33 @@ continues to apply. No hash substitution,
 changed observations, evidence override, automatic retries or fallback is allowed.
 Keep raw failed/partial runs in the private directory. Another runtime/OS needs
 new evidence; a Linux report cannot activate an unrelated laptop CLI binary.
+
+## Current cloud guard receipt
+
+Independent implementation review is resolved through `acf1d72`. Actual API-key
+campaigns passed **33 cases in each permission mode** on the pinned SDK/CLI,
+without changing guarded sources, prompts or limits. Both strict source validators
+and production `_verify_runtime` checks passed. The installed envelope is the
+unchanged fresh aggregate, SHA256
+`b1c4b84ce675f8d44463964ac588ad392c8471fa3283154ce718a4dabab728f2`.
+The private original report hashes are:
+
+- `dontAsk`: `07a3468643240a73f7e64f39c11f33ba1d208f454d839a71ec0111a1df810aba`.
+- `bypassPermissions`: `8af1e757874319cecdea66a5865b8ce2a0bf5307574b0def16ca49252a05dd05`.
+
+An earlier bypass attempt stopped after 18 passing cases without finalizing.
+Its exact incomplete checkpoint is retained privately; it is not accepted and
+was not combined with another run. Offline inspection found no Python parent/group
+kill operation or cgroup OOM event. A Claude child had SIGKILL exit status; the
+sender remains unknown. One deliberate fresh full campaign used an external
+supervisor and separate POSIX session, retained the same sources/runtime/limits,
+and exited0 with a complete accepted report. This does not explain or reclassify
+the interrupted attempt. A no-model 180-second control exited normally.
+
+The original fixed envelope was backed up byte-for-byte before atomic replacement;
+historical M12 evidence is unchanged. Raw private reports, logs and interruption
+artifacts are not published. This receipt establishes cloud API-key guard coverage,
+not owner desktop/OAuth acceptance or a dev merge.
 
 ## Desktop lifecycle checklist
 
