@@ -56,18 +56,29 @@ to measure (for example `TMPDIR=/absolute/private/path python ...`). `/tmp` may 
 tmpfs. Record the actual filesystem and host load with the report; do not label a
 container/tmpfs/overlayfs run as SSD or power-loss durability evidence.
 
-The [latest final-review-fix Linux measurement](../specs/evidence/m13-state-performance-linux-2026-10-27-final-review-fix.json)
-was freshly measured on dirty `879e142` before the final-review-fix commit, after
-all QA finished, using a new private overlayfs TMPDIR. Its 196-source digest is
-`9a258fc0c61e332f866062e4397b7b3264e3e020152d758ce61baf069f79109b`.
-The dense 66,478,080-byte image measured 550,002,688 bytes cumulative peak RSS
-(497,328,128 above baseline), five commits of 341.70–493.23 ms, and a maximum
-heartbeat gap of 206.82 ms. Each of the three profiles completed ten heartbeats
-and five committed replay reads before the deliberately blocked writer released.
-The exact 64 MiB boundary profile has mostly free pages; it is separate from the
-dense populated profile. These remain material owner/deployment costs, with no
-invented SLO or physical SSD/power-loss claim. Provider, owner desktop and OAuth
-acceptance remain separate and pending. The [October 27 pre-fix receipt](../specs/evidence/m13-state-performance-linux-2026-10-27.json)
+The [latest boundary-correction Linux measurement](../specs/evidence/m13-state-performance-linux-2026-10-27-boundary-correction.json)
+was freshly measured after QA drained, from dirty `4217a142` with the final
+`3b82ff23` runtime/test content, using a new private overlayfs TMPDIR. Its
+196-source digest is
+`0b28db6e8df0b61ac3e8347cd7adf2b7286fcb668724181f3e3c84143b28d315`.
+The dense 66,478,080-byte image measured 549,863,424 bytes cumulative peak RSS
+(496,934,912 above baseline), five commits of 287.63–510.20 ms, and a maximum
+heartbeat gap of 225.67 ms. Each of the three profiles completed nine or ten
+heartbeats and five committed replay reads before the deliberately blocked writer
+released. The exact 64 MiB boundary profile has mostly free pages; it is separate
+from the dense populated profile. These remain material owner/deployment costs,
+with no invented SLO or physical SSD/power-loss claim.
+
+Strict incoming-byte validation also adds bounded receiver work. An actual
+2,097,517-byte escaped frame's test sampling window measured 320.25 ms versus
+112.77 ms before validation; that window includes scheduling, parsing and UI
+application, rather than isolated guard time. This is a container observation,
+not owner-desktop acceptance or a latency promise. Actual producer maximum frames
+remain covered; nonproducer vertical-tab metadata can be conservatively rejected
+within four bytes of the nested limit due to Godot's escaping representation.
+Provider, owner desktop and OAuth acceptance remain separate and pending. The
+[earlier final-review-fix receipt](../specs/evidence/m13-state-performance-linux-2026-10-27-final-review-fix.json),
+[October 27 pre-fix receipt](../specs/evidence/m13-state-performance-linux-2026-10-27.json)
 and [October 26 checkpoint](../specs/evidence/m13-state-performance-linux-2026-10-26.json)
 keep their original bytes, source/runtime bindings and measurements.
 
