@@ -488,9 +488,9 @@ func _apply_history(p: Dictionary, c: Dictionary, wire_bytes: int) -> Dictionary
 	if overhead > MAX_HISTORY_OVERHEAD_BYTES: return {}
 	var total := wire_bytes if wire_bytes >= 0 else JSON.stringify(p).to_utf8_buffer().size()
 	if total > MAX_HISTORY_PACKET_BYTES: return {}
-	# Canonical metadata is a lower bound for its raw representation (extra
-	# whitespace/escapes only enlarge it), so subtraction cannot undercount
-	# the raw terminal. This byte count is transport-local, never a wire field.
+	# Transport rejects literal string controls. Canonical metadata is then a
+	# lower bound (extra whitespace/escapes only enlarge it), so subtraction
+	# cannot undercount the raw terminal. This count is transport-local.
 	var terminal_bytes := wire_bytes - overhead if wire_bytes >= 0 else -1
 	if wire_bytes >= 0 and terminal_bytes <= 0: return {}
 	var terminal: Dictionary = p.terminal

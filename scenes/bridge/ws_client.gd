@@ -77,7 +77,7 @@ func _process(delta: float) -> void:
 				describe_workspace()
 				for agent_id in _characters: agent_status(agent_id)
 			while _socket.get_available_packet_count() > 0:
-				_on_message(_socket.get_packet().get_string_from_utf8())
+				_on_message(_socket.get_packet())
 			_workspace_poll += delta
 			if _workspace_poll >= 2.0:
 				_workspace_poll = 0.0
@@ -203,23 +203,49 @@ func _fail_request(request_id: String, kind: String, message: String) -> void:
 	GameEvents.agent_query_failed.emit(pending.agent_id, kind, message)
 
 
-func _on_message(raw: String) -> void:
-	if raw.to_utf8_buffer().size() > DomainState.MAX_HISTORY_PACKET_BYTES:
+func _valid_json_controls(bytes: PackedByteArray) -> bool:
+	# Godot accepts literal string controls. Refuse that extension before UTF-8
+	# decoding (which replaces NUL), preserving canonical framing lower bounds.
+	# This checks lexemes only; JSON.parse validates the complete structure.
+	var in_string := false
+	var escaped := false
+	for byte in bytes:
+		if byte < 32 and (in_string or byte not in [9, 10, 13]): return false
+		if escaped:
+			escaped = false
+		elif in_string and byte == 92:
+			escaped = true
+		elif byte == 34:
+			in_string = not in_string
+	return true
+
+
+func _on_message(raw: Variant) -> void:
+	# Internal String callers share the same admission path as received bytes.
+	var bytes: PackedByteArray = raw if raw is PackedByteArray else raw.to_utf8_buffer()
+	if bytes.size() > DomainState.MAX_HISTORY_PACKET_BYTES:
 		_protocol_diagnostic("packet exceeds the protocol byte limit")
 		return
+	if not _valid_json_controls(bytes):
+		_protocol_diagnostic("literal JSON control character")
+		return
+	var text := bytes.get_string_from_utf8()
+	if text.to_utf8_buffer() != bytes:
+		_protocol_diagnostic("expected exact UTF-8 encoding")
+		return
 	var json := JSON.new()
-	if json.parse(raw) != OK or not json.data is Dictionary:
+	if json.parse(text) != OK or not json.data is Dictionary:
 		_protocol_diagnostic("expected a JSON object")
 		return
 	var parsed: Dictionary = json.data
-	if parsed.get("type") != "domain_history" and raw.to_utf8_buffer().size() > DomainState.MAX_TERMINAL_PACKET_BYTES:
+	if parsed.get("type") != "domain_history" and bytes.size() > DomainState.MAX_TERMINAL_PACKET_BYTES:
 		_protocol_diagnostic("packet exceeds the protocol byte limit")
 		return
 	if parsed.get("type") in ["agent_status", "project_setup"]:
 		_on_character_packet(parsed)
 		return
 	if parsed.get("type") in ["workspace_state", "domain_state", "domain_accepted", "domain_result", "domain_history", "domain_error", "resume_complete"]:
-		_on_domain_packet(parsed, raw.to_utf8_buffer().size())
+		_on_domain_packet(parsed, bytes.size())
 		return
 	var request_id: Variant = parsed.get("request_id")
 	if not request_id is String or not _pending_requests.has(request_id):

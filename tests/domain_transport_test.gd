@@ -675,3 +675,80 @@ func maximum_history_envelope_wire_checks() -> void:
 	peer.send_text(JSON.stringify(done))
 	await heavy_frames()
 	check(client.domain_snapshot("core").pending_control.is_empty() and JSON.stringify(client.domain_snapshot("core")).to_utf8_buffer().size() <= 1048576, "maximum history completion settles within unchanged display budget")
+	await history_control_spelling_wire_regression()
+
+
+func history_control_spelling_wire_regression() -> void:
+	heavy_high_water = "5"
+	var resume: String = client.resume_domain("core")
+	await heavy_frames()
+	check(not resume.is_empty(), "control-spelling regression has a real pending resume")
+	var terminal := {"type": "domain_result", "protocol_version": 2, "request_id": "frozen-controls", "domain_id": "core", "domain_session_id": HEAVY_SESSION, "execution_id": "old-execution", "output_id": "5", "agent_id": "systems-architect", "task": "old saved task", "output": "old answer", "status": "error", "reason": "interrupted", "recovered": true, "memory": {"saved": false, "revision": null, "error_type": "memory_reconciliation_pending"}, "padding": ""}
+	terminal.padding = "a".repeat(2097152 - JSON.stringify(terminal).to_utf8_buffer().size())
+	var envelope := {"type": "domain_history", "protocol_version": 2, "request_id": resume, "project_id": "P", "domain_id": "core", "domain_session_id": HEAVY_SESSION, "state_store": heavy_state("").state_store, "terminal": terminal}
+	envelope.state_store.error_type = "bad" + String.chr(1) + "x"
+	# Literal spellings are rejected even at the limit. Escaped canonical values
+	# retain the exact producer maximum; one extra nested byte remains invalid.
+	for variant in ["escaped-over", "literal-over", "literal-exact", "invalid-utf8-over", "escaped-exact"]:
+		var packet := envelope.duplicate(true)
+		if variant.ends_with("over"): packet.terminal.padding += "x"
+		var encoded := JSON.stringify(packet)
+		if variant.begins_with("escaped"): encoded = encoded.replace(String.chr(1), "\\u0001")
+		var bytes := encoded.to_utf8_buffer()
+		if variant == "invalid-utf8-over": bytes[bytes.find(1)] = 255
+		var dispatched: int = client.parsed_domain_ids.count(resume)
+		check(JSON.stringify(packet.terminal).to_utf8_buffer().size() == (2097153 if variant.ends_with("over") else 2097152), "literal/escaped fixture has exact nested byte count: " + variant)
+		# Godot closes invalid UTF-8 text frames itself. Its accepted binary
+		# frames reach the same JSON receiver and need the same byte admission.
+		check(peer.send(bytes, WebSocketPeer.WRITE_MODE_BINARY if variant == "invalid-utf8-over" else WebSocketPeer.WRITE_MODE_TEXT) == OK, "send maximum control-spelling frame: " + variant)
+		var started := Time.get_ticks_usec()
+		await heavy_frames(12)
+		print("CONTROL_BOUNDARY_RECEIVER ", JSON.stringify({"variant": variant, "frame_bytes": bytes.size(), "elapsed_ms": (Time.get_ticks_usec() - started) / 1000.0}))
+		var snapshot: Dictionary = client.domain_snapshot("core")
+		check(snapshot.received_cursor == ("5" if variant == "escaped-exact" else "4") and snapshot.pending_control.get("request_id") == resume and client._domain_requests.has(resume), "control-spelling boundary preserves exact cursor and pending resume: " + variant)
+		if variant.begins_with("literal") or variant == "invalid-utf8-over":
+			check(client.parsed_domain_ids.count(resume) == dispatched, "noncanonical string bytes rejected before domain dispatch: " + variant)
+	# Exercise every C0 value in metadata, with escaped quotes and even/odd
+	# backslash runs before it. TAB/LF/CR inside strings are also forbidden.
+	terminal = terminal.duplicate(true)
+	terminal.erase("padding")
+	terminal.output_id = "6"
+	envelope.terminal = terminal
+	for code in range(32):
+		envelope.state_store.error_type = "bad" + "\\".repeat(code % 3) + '"CONTROL_BYTE' + "x"
+		var encoded := JSON.stringify(envelope)
+		var marker := encoded.find("CONTROL_BYTE")
+		var bytes := encoded.substr(0, marker).to_utf8_buffer()
+		bytes.append(code)
+		bytes.append_array(encoded.substr(marker + "CONTROL_BYTE".length()).to_utf8_buffer())
+		var dispatched: int = client.parsed_domain_ids.count(resume)
+		check(peer.send(bytes, WebSocketPeer.WRITE_MODE_TEXT) == OK, "send literal C0 bytes with escape parity: " + str(code))
+		await heavy_frames(2)
+		var snapshot: Dictionary = client.domain_snapshot("core")
+		check(snapshot.received_cursor == "5" and snapshot.pending_control.get("request_id") == resume and client._domain_requests.has(resume) and client.parsed_domain_ids.count(resume) == dispatched, "literal C0 never advances or settles resume: " + str(code))
+	for code in [1, 8, 11, 12, 31]:
+		var encoded := String.chr(code) + JSON.stringify(envelope)
+		var dispatched: int = client.parsed_domain_ids.count(resume)
+		check(peer.send_text(encoded) == OK, "send non-whitespace exterior C0: " + str(code))
+		await heavy_frames(2)
+		check(client.domain_snapshot("core").received_cursor == "5" and client.domain_snapshot("core").pending_control.get("request_id") == resume and client.parsed_domain_ids.count(resume) == dispatched, "non-whitespace exterior C0 preserves receipt and pending resume: " + str(code))
+	var controls := ""
+	for code in range(1, 32): controls += String.chr(code)
+	terminal.output = 'escaped quote " and backslashes \\\\ ' + controls
+	envelope.state_store.error_type = "bad" + String.chr(1) + "x"
+	var encoded := JSON.stringify(envelope)
+	# Godot emits non-JSON \\v for VT and literal bytes for many controls.
+	# Use the bridge's canonical JSON spellings without changing values.
+	encoded = encoded.replace("\\v", "\\u000b")
+	for code in range(1, 32): encoded = encoded.replace(String.chr(code), "\\u%04x" % code)
+	encoded = "\t\r\n " + encoded.replace(',"terminal":', ',\t\r\n "terminal":') + " \r\n\t"
+	check(peer.send_text(encoded) == OK, "send canonical escaped controls with legal exterior whitespace")
+	await heavy_frames(6)
+	var snapshot: Dictionary = client.domain_snapshot("core")
+	check(snapshot.received_cursor == "6" and snapshot.pending_control.get("request_id") == resume and snapshot.results.size() == 1 and snapshot.results[0].output == terminal.output, "escaped controls/quotes/backslashes and exterior whitespace preserve frozen terminal and exact receipt")
+	heavy_high_water = "6"
+	var done := heavy_state(resume)
+	done.merge({"type": "resume_complete", "ended": false, "high_water_mark": "6", "earliest_output_id": "1", "history_gap": false}, true)
+	peer.send_text(JSON.stringify(done))
+	await heavy_frames()
+	check(client.is_bridge_connected() and client.domain_snapshot("core").pending_control.is_empty() and not client._domain_requests.has(resume) and client.domain_snapshot("core").received_cursor == "6", "only matching completion settles resume after rejected literal controls")
