@@ -510,18 +510,25 @@ Task9 independently reviewed complete through `2e2fffd`: offline lock-respecting
 
 
 Task10 local implementation/QA handoff: the three deferred client/documentation
-minors are resolved, plus a deterministic Stop/status ordering regression found
-by the full gate. Bounded source/runtime/completeness receipts, representative/
-dense/exact64MiB probes and the [owner runbook](docs/m13-live-acceptance.md) are
-implemented. Final valid-layout Python passes2,419 +118 subtests; sequential
-pinned Godot/npm gates and static/spec checks pass. The
-[synthetic performance record](specs/evidence/m13-state-performance-linux-2026-10-26.json)
-binds actual measured bytes/runtime, made on dirty9e2911a before commit; it is not
-provider or desktop acceptance. Dense peakRSS549,883,904B and max heartbeat
-gap229.61ms are explicit review concerns, with pre-release barrier heartbeat/
-replay progress proven separately. Initial11fail and setup-invalid interrupted
-attempts remain in the private task receipt, not reclassified as passing gates.
-Independent Task10/whole-branch reviews, actual fresh33-case guards in both modes,
-owner laptop/desktop/OAuth observations, reviewed PR/tracking and merge remain
-with the controller/owner. M14/M15 remain planned; no fresh OAuth login exists in
-this cloud runtime and no token request/copy is part of acceptance.
+minors are resolved, plus deterministic Stop/status ordering and actual terminal
+wire/display-budget regressions found by final QA. Valid2MiB frames settle before
+unchanged1MiB/200-entry whole-row retention; raw oversize rejects before parsing,
+and protected unsaved notice fields stay bounded. The required scene gates include
+real saved/unsaved control-heavy wire, frozen replay and oversize negative controls.
+Bounded source/runtime/completeness receipts, representative/dense/exact64MiB
+probes and the [owner runbook](docs/m13-live-acceptance.md) are implemented.
+Full valid-layout Python passes2,419 +118 subtests on final production code;
+a later probe-only bounded read-only release-observation fix passes425 covering
+tests. Final pinned Godot/npm gates (store338/transport104, integration2+61) and
+static/spec checks pass. The [latest synthetic performance record](specs/evidence/m13-state-performance-linux-2026-10-27.json)
+binds actual measured bytes/runtime, made on dirty34d2584 before boundary-fix
+commit; the [October26 checkpoint](specs/evidence/m13-state-performance-linux-2026-10-26.json)
+is unchanged. Neither is provider or desktop acceptance. Dense cumulative peak
+RSS550,031,360B and max heartbeat gap248.09ms are explicit review concerns;
+pre-release barrier heartbeat/replay progress is proven separately. Initial11fail,
+setup-invalid interrupted and diagnosed observer-race failures remain in the
+private task receipt, not reclassified as passing gates. Independent Task10/
+whole-branch reviews, actual fresh33-case guards in both modes, owner laptop/
+desktop/OAuth observations, reviewed PR/tracking and merge remain with the
+controller/owner. M14/M15 remain planned; no fresh OAuth login exists in this
+cloud runtime and no token request/copy is part of acceptance.

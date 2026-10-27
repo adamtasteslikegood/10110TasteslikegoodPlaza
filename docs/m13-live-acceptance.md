@@ -56,16 +56,18 @@ to measure (for example `TMPDIR=/absolute/private/path python ...`). `/tmp` may 
 tmpfs. Record the actual filesystem and host load with the report; do not label a
 container/tmpfs/overlayfs run as SSD or power-loss durability evidence.
 
-The [recorded Linux container measurement](../specs/evidence/m13-state-performance-linux-2026-10-26.json)
-used a dirty source tree based on `9e2911a` before the Task 10 commit, sequentially
+The [latest Linux container measurement](../specs/evidence/m13-state-performance-linux-2026-10-27.json)
+used a dirty source tree based on `34d2584` before the boundary-fix commit, sequentially
 after QA, with images on overlayfs. Its 196-file source-map digest is
-`da0bba246cc0d0f68a81eff29344ded841c63c477b43f3b201790adc0000239d`.
+`77ace47dc2cb962b71c94205705f6724d09d48902c27ec46de56754a92aeb133`.
 The densely populated image measured 66,478,080 bytes, peak cumulative RSS
-549,883,904 bytes and five commits of 260.08–484.07 ms, with a maximum heartbeat
-gap of 229.61 ms. During the deliberate writer barrier, ten heartbeats and five
+550,031,360 bytes and five commits of 299.12–501.40 ms, with a maximum heartbeat
+gap of 248.09 ms. During the deliberate writer barrier, ten heartbeats and five
 committed replay reads completed before release. These are material costs for
 review. They establish local measurements with source/runtime bindings; provider,
-owner desktop and OAuth acceptance remain separate and pending.
+owner desktop and OAuth acceptance remain separate and pending. The
+[October 26 checkpoint receipt](../specs/evidence/m13-state-performance-linux-2026-10-26.json)
+keeps its original source binding and measurements.
 
 ## Authenticate and run the reviewed guard campaign
 

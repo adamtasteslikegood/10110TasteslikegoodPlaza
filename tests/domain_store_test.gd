@@ -173,6 +173,8 @@ func _ready() -> void:
 	persistence_v2_regressions()
 	duplicate_execution_regression()
 	stop_status_order_regression()
+	terminal_wire_cache_budget_regression()
+	unsaved_protected_metadata_regression()
 	backend_discontinuity_regression()
 	execution_control_regression()
 	catalog_receipt_bound_regression()
@@ -771,3 +773,46 @@ func stop_status_order_regression() -> void:
 			check(change.is_empty() and snapshot.execution_id == "E-B" and snapshot.state == "active" and snapshot.domain_revision == "4", "late Stop ack cannot roll back later execution or revision")
 		else:
 			check(change.get("request_id") == "pending-stop" and change.get("reason") == "domain_state" and snapshot.pending_control.is_empty() and snapshot.state == "inactive" and snapshot.execution_id == "" and snapshot.domain_revision == "3", "exact Stop ack settles after trusted inactive status without restoring old authority")
+
+
+func terminal_wire_cache_budget_regression() -> void:
+	for saved in [true, false]:
+		var s = fresh()
+		check(s.admit_command(command("domain_query", "large-valid-row")), "exact Run pending before valid large packet")
+		var packet := result("1", "A", "large-valid-row")
+		packet.future_metadata = {"detail": "m".repeat(1100000)}
+		if not saved:
+			packet.erase("output_id")
+			packet.committed = false
+			packet.memory = null
+			packet.status = "error"
+			packet.reason = "state_store_failed"
+		var bytes := JSON.stringify(packet).to_utf8_buffer().size()
+		check(bytes > 1048576 and bytes < 2097152, "server-valid full packet can exceed serialized display cache")
+		s.apply_packet(packet)
+		var snapshot: Dictionary = s.snapshot("core")
+		check(snapshot.pending_query.is_empty() and snapshot.received_cursor == ("1" if saved else "0"), "valid large packet settles exact Run and only committed receipt")
+		check(snapshot.results.is_empty() and snapshot.unsaved_results.is_empty() and snapshot.omitted_count == 1 and JSON.stringify(snapshot).to_utf8_buffer().size() <= 1048576, "oversized row omitted whole after receipt without raising1MiB budget")
+		s.apply_packet(packet)
+		check(s.snapshot("core").omitted_count == 1 and s.snapshot("core").received_cursor == ("1" if saved else "0"), "duplicate omitted terminal never inflates receipt or omission count")
+		if not saved: check(snapshot.error.get("error_type") == "state_store_failed", "omitted unsaved row preserves current fault notice")
+
+
+func unsaved_protected_metadata_regression() -> void:
+	for field in ["error_type", "reason", "future_metadata"]:
+		var s = fresh()
+		check(s.admit_command(command("domain_query", "protected-fault")), "exact unsaved Run pending before large " + field)
+		var packet := result("1", "A", "protected-fault")
+		packet.erase("output_id")
+		packet.committed = false
+		packet.status = "error"
+		packet.reason = "state_store_failed"
+		packet.memory = null
+		packet[field] = "x".repeat(1100000)
+		check(JSON.stringify(packet).to_utf8_buffer().size() < 2097152, "large " + field + " remains within approved full packet limit")
+		s.apply_packet(packet)
+		var snapshot: Dictionary = s.snapshot("core")
+		check(snapshot.pending_query.is_empty() and snapshot.received_cursor == "0" and snapshot.results.is_empty() and snapshot.unsaved_results.is_empty(), "large unsaved " + field + " settles without fabricated receipt or retained row")
+		check(snapshot.error.get("error_type") == "state_store_failed" and snapshot.error.get("unsaved_request_id") == "protected-fault" and JSON.stringify(snapshot).to_utf8_buffer().size() <= 1048576, "protected fault projects bounded documented facts for " + field)
+		s.apply_packet(packet)
+		check(s.snapshot("core").omitted_count == 1, "large protected " + field + " duplicate cannot count a second omission")

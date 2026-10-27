@@ -182,11 +182,14 @@ Shared types in `application_state.py` (all frozen dataclasses; nested packets c
 - [ ] Obtain fresh whole-branch review against approved design, including filesystem/crash/ownership and client control fencing. Resolve findings with regressions; rerun affected evidence after source changes. Record laptop acceptance separately from container tests and paid SDK guard probes; acceptance not yet obtained remains pending.
 - [ ] Commit final evidence summary and working handoff. Open a reviewed PR to dev under the repo's lifecycle gate; attach it to the task, reread all review surfaces and resolve findings before D-031 merge. Update #380/PLZG-290 with actual completion boundaries; do not mark all M13–M15 complete for this increment. Preserve branch/worktree evidence and never publish private run logs by default.
 
-Local verification receipt: final valid-layout Python **2,419 passed +118 subtests**;
-sequential `npm test` passes all nine pinned Godot scenes plus 2+61 integration
-tests; Black133 files, syntax/undefined-name lint,23-document spec gate and diff
-checks pass. Exact synthetic source/runtime-bound [performance aggregate](../../../specs/evidence/m13-state-performance-linux-2026-10-26.json)
-is preserved without claiming provider/desktop acceptance. Earlier failed and
+Local verification receipt: full valid-layout Python **2,419 passed +118 subtests**
+covers final production boundary code. A later probe-only read-only observation
+fix passes **425 covering tests**; final sequential `npm test` passes all nine
+pinned Godot scenes (store338/transport104) plus 2+61 integration tests on that
+helper. Black133 files, syntax/undefined-name lint,23-document spec gate and diff
+checks pass. The latest synthetic source/runtime-bound [performance aggregate](../../../specs/evidence/m13-state-performance-linux-2026-10-27.json)
+and unchanged [checkpoint receipt](../../../specs/evidence/m13-state-performance-linux-2026-10-26.json)
+are preserved without claiming provider/desktop acceptance. Earlier failed and
 setup-invalid attempts remain separately documented in the Task10 report.
 
 ### Task 10 execution boundary — October 26, 2026

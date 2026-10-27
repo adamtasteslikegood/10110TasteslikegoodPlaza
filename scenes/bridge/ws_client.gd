@@ -56,6 +56,9 @@ func _attempt_connect() -> void:
 	if _socket.get_ready_state() != WebSocketPeer.STATE_CLOSED:
 		return
 	_reconnect_timer.stop()
+	# Honor the approved terminal frame limit; the default 65,535-byte ring is
+	# smaller than an ordinary maximum output. Keep bounded frame headroom.
+	_socket.inbound_buffer_size = DomainState.MAX_TERMINAL_PACKET_BYTES + 4096
 	var err := _socket.connect_to_url(bridge_url)
 	if err != OK:
 		push_warning("ws_client: cannot initiate connection to %s" % bridge_url)
@@ -201,6 +204,9 @@ func _fail_request(request_id: String, kind: String, message: String) -> void:
 
 
 func _on_message(raw: String) -> void:
+	if raw.to_utf8_buffer().size() > DomainState.MAX_TERMINAL_PACKET_BYTES:
+		_protocol_diagnostic("packet exceeds the protocol byte limit")
+		return
 	var json := JSON.new()
 	if json.parse(raw) != OK or not json.data is Dictionary:
 		_protocol_diagnostic("expected a JSON object")

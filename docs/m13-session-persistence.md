@@ -95,8 +95,17 @@ the SDK-default/explicit API-key-only modes remain unchanged (D-037).
 | Replay per session | 256 terminals and 4 MiB output-text UTF-8 |
 | Each task / output | 64 KiB / 256 KiB UTF-8 |
 | Each terminal JSON packet | 2 MiB UTF-8, including escaped metadata |
+| Aggregate Godot display retention | 200 entries / 1 MiB serialized snapshot |
 | Admission completion allowance | 2 MiB logical allowance per unfinished request |
 | Offline JSON export/backup | 512 MiB UTF-8, separately from the image quota |
+
+The client admits valid terminal frames up to 2 MiB before applying its smaller
+display budget. A received saved result settles its request and advances its
+receipt cursor even when whole-row eviction omits its text; the omission notice
+remains visible. Unsaved answers never acquire a durable output ID. Raw frames
+above 2 MiB are rejected before JSON parsing. Escaped wire bytes and decoded
+display bytes differ, particularly for control characters; each bound applies
+to its own representation. Protected fault notices retain only bounded fields.
 
 There is one unfinished accepted Run per domain and one global execution slot.
 Completed duplicate recognition lasts only while its terminal remains retained;

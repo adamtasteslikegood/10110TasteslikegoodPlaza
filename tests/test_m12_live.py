@@ -1531,3 +1531,138 @@ async def test_live_capture_never_attaches_new_stop_to_older_physical_observatio
         owner["clean"] and owner["worker_done"] and owner["transport_closed"]
         for owner in later["owners"]
     )
+
+
+async def observation_service(tmp_path):
+    from dataclasses import replace
+    from bridge.config import default_config
+    from bridge.project_service import ProjectService
+    from bridge.tests.test_workspace import repository
+
+    service = ProjectService(
+        replace(default_config(), workspace_root_dir=repository(tmp_path)),
+        runtime_root=tmp_path / "runtime",
+        owner_run_id="lease-observation",
+    )
+    await service.start()
+    await service._bootstrap_task
+    work = await service.prepare_domain("core")
+    return service, work
+
+
+@pytest.mark.asyncio
+async def test_live_capture_resamples_real_release_gap_without_mutating_wire_cut(
+    tmp_path, monkeypatch
+):
+    import threading
+    from uuid import uuid4
+    from bridge import project_files
+    from bridge.workspace import WorkspaceError
+    from bridge.workspace_lease import WorkspaceLease
+
+    mod = module()
+    service, work = await observation_service(tmp_path)
+    lease = WorkspaceLease.acquire(
+        work, domain_id="core", domain_session_id=str(uuid4())
+    )
+    unlinked, observed, release = (
+        threading.Event(),
+        threading.Event(),
+        threading.Event(),
+    )
+    actual_unlink, actual_inspect = project_files.durable_unlink, mod.inspect_service
+    marker = work.git_dir / "plaza-unclean.json"
+
+    def block_after_unlink(path):
+        result = actual_unlink(path)
+        if path == marker:
+            unlinked.set()
+            assert release.wait(5), "release barrier was not unblocked"
+        return result
+
+    def observe_real_gap(*args):
+        try:
+            return actual_inspect(*args)
+        except WorkspaceError as error:
+            if error.code == "cleanup_failed":
+                observed.set()
+            raise
+
+    monkeypatch.setattr(project_files, "durable_unlink", block_after_unlink)
+    monkeypatch.setattr(mod, "inspect_service", observe_real_gap)
+    releasing = asyncio.create_task(
+        asyncio.to_thread(lease.release, cleanup_confirmed=True)
+    )
+    capturing = None
+    emitted = []
+    try:
+        assert await asyncio.to_thread(unlinked.wait, 2)
+        assert lease.held and not marker.exists()
+        capturing = asyncio.create_task(
+            mod.capture_observation(
+                service,
+                [],
+                SimpleNamespace(records=[]),
+                commands=[],
+                emitted=emitted,
+                starts=[],
+                contexts=[],
+            )
+        )
+        assert await asyncio.to_thread(observed.wait, 2)
+        done, _ = await asyncio.wait({capturing}, timeout=0.05)
+        assert not done, "transitional observation must not abort or claim release"
+        emitted.append(
+            dict(type="domain_state", request_id="later-stop", state="inactive")
+        )
+        release.set()
+        await releasing
+        snapshot = await capturing
+        assert snapshot["reservation"] is None and not snapshot["lease_marker_exists"]
+        assert snapshot["emitted"] == []
+        assert snapshot["observation_resamples"]["count"] >= 1
+        assert snapshot["observation_resamples"]["reasons"] == ["cleanup_failed"]
+        assert not lease.held
+    finally:
+        release.set()
+        await releasing
+        if capturing is not None:
+            await asyncio.gather(capturing, return_exceptions=True)
+        if lease.held:
+            lease.release(cleanup_confirmed=True)
+        await service.close()
+
+
+@pytest.mark.asyncio
+async def test_live_resampling_persistent_corruption_never_returns_acceptance(tmp_path):
+    service, work = await observation_service(tmp_path)
+    marker = work.git_dir / "plaza-unclean.json"
+    marker.write_bytes(b"{}")
+    try:
+        with pytest.raises(TimeoutError):
+            await module().inspect_observation(service, [], SimpleNamespace(records=[]))
+        assert marker.read_bytes() == b"{}"
+        assert service._capacity_owner is None
+    finally:
+        await service.close()
+
+
+@pytest.mark.asyncio
+async def test_live_resampling_unrelated_workspace_error_is_immediate(tmp_path):
+    from bridge.workspace import WorkspaceError
+
+    service, work = await observation_service(tmp_path)
+    record = work.common_git_dir / "config"
+    original = record.read_bytes()
+    record.write_bytes(b"[malformed")
+    try:
+        async with asyncio.timeout(0.5):
+            with pytest.raises(WorkspaceError) as caught:
+                await module().inspect_observation(
+                    service, [], SimpleNamespace(records=[])
+                )
+        assert caught.value.code == "workspace_invalid"
+        assert record.read_bytes() == b"[malformed"
+    finally:
+        record.write_bytes(original)
+        await service.close()

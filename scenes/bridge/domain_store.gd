@@ -5,6 +5,8 @@ extends RefCounted
 ## retained text. No transport, filesystem, UI, or provider state lives here.
 const MAX_ENTRIES := 200
 const MAX_BYTES := 1048576
+# Input validity is independent of the smaller aggregate retained display budget.
+const MAX_TERMINAL_PACKET_BYTES := 2097152
 const MAX_SPARSE := 256
 const MAX_DOMAINS := 10
 const STATES := ["inactive", "activating", "active", "background", "stopping", "cleanup_failed"]
@@ -451,10 +453,13 @@ func _apply_result(d: Dictionary, p: Dictionary) -> Dictionary:
 	if not p.get("recovered", false) and p.get("committed", true) and not p.get("truncated") is bool: return {}
 	if p.get("memory") != null and not _valid_memory(p.memory, true): return {}
 	if p.get("committed", true) and p.get("memory") == null: return {}
-	if JSON.stringify(p).to_utf8_buffer().size() > MAX_BYTES: return {}
+	if JSON.stringify(p).to_utf8_buffer().size() > MAX_TERMINAL_PACKET_BYTES: return {}
 	var current_execution: bool = p.domain_session_id == d.domain_session_id and p.execution_id == d.execution_id
 	if not p.get("committed", true):
 		if p.has("output_id"): return {}
+		# Keep the current fault notice's bounded correlation even if its text row
+		# was omitted. A repeated unsaved delivery is not another lost answer.
+		if current_execution and d.error.get("unsaved_request_id") == p.request_id and d.error.get("unsaved_execution_id") == p.execution_id: return {}
 		for existing in d.unsaved_results:
 			if existing.request_id == p.request_id and existing.execution_id == p.execution_id: return {}
 		d.unsaved_results.append(p.duplicate(true))
@@ -462,7 +467,9 @@ func _apply_result(d: Dictionary, p: Dictionary) -> Dictionary:
 			d.pending_query = {}
 			_commands.erase(p.request_id)
 			d.query_uncertain = true
-			d.error = {"error_type": p.get("error_type", "state_store_failed"), "message": "Answer is unsaved. Persistence failed; inspect storage and refresh status after operator reconciliation."}
+			var fault_type: Variant = p.get("error_type", "state_store_failed")
+			if not valid_id(fault_type): fault_type = "state_store_failed"
+			d.error = {"error_type": fault_type, "message": "Answer is unsaved. Persistence failed; inspect storage and refresh status after operator reconciliation.", "unsaved_request_id": p.request_id, "unsaved_execution_id": p.execution_id}
 		_trim(d)
 		return _change("domain", d.domain_id, "domain_result", p.request_id)
 	var n := decimal(p.get("output_id"))

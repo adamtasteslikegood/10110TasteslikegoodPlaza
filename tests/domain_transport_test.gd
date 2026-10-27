@@ -184,6 +184,7 @@ func _ready() -> void:
 	await review_transport_regressions()
 	await final_review_regressions()
 	await fix_round1_bounded_status_regression()
+	await control_heavy_terminal_wire_regression()
 	finish()
 
 func polling_and_failure_checks() -> void:
@@ -487,3 +488,144 @@ func fix_round1_bounded_status_regression() -> void:
 	await deliver(stale)
 	await frames(20)
 	check(client.sent.size() == sent_before and client._discovery_request == "" and client.domain_snapshot("core").domain_revision == "3", "unchanged rejected snapshot stops reissuing status regardless of request ID")
+
+
+var heavy_wires: Array[Dictionary] = []
+var heavy_high_water := "0"
+const HEAVY_SESSION := "00000000-0000-4000-8000-000000000011"
+const HEAVY_EXECUTION := "00000000-0000-4000-8000-000000000012"
+
+func heavy_state(id: String) -> Dictionary:
+	var packet := state(id)
+	packet.domain_session_id = HEAVY_SESSION
+	packet.execution_id = HEAVY_EXECUTION
+	packet.saved_sessions[0].domain_session_id = HEAVY_SESSION
+	packet.saved_sessions[0].high_water_mark = heavy_high_water
+	return packet
+
+func heavy_frames(n: int = 6) -> void:
+	for _i in range(n):
+		peer.poll()
+		while peer.get_available_packet_count() > 0:
+			var packet: Dictionary = JSON.parse_string(peer.get_packet().get_string_from_utf8())
+			heavy_wires.append(packet)
+			if packet.get("type") == "describe_workspace": peer.send_text(JSON.stringify(workspace(packet.request_id)))
+			elif packet.get("type") == "domain_status": peer.send_text(JSON.stringify(heavy_state(packet.request_id)))
+		await get_tree().process_frame
+
+func control_heavy_terminal_wire_regression() -> void:
+	for saved in [true, false]:
+		client.set_process(false)
+		client._reconnect_timer.stop()
+		client._socket.close()
+		client.queue_free()
+		peer.close()
+		peer = null
+		client = load("res://tests/domain_transport_fixture.gd").new()
+		client.bridge_url = "ws://127.0.0.1:%d" % server.get_local_port()
+		add_child(client)
+		await open()
+		# Fixture sender needs room for a valid server frame; client stays stock.
+		peer.outbound_buffer_size = 2097152 + 4096
+		heavy_wires.clear()
+		heavy_high_water = "0"
+		await heavy_frames()
+		var start: String = client.activate_domain("core")
+		await heavy_frames()
+		peer.send_text(JSON.stringify(heavy_state(start)))
+		await heavy_frames()
+		client.set_domain_draft("core", "wire control-heavy output")
+		var run: String = client.send_domain_query("core", "systems-architect", "wire control-heavy output")
+		await heavy_frames()
+		var accepted := heavy_state(run)
+		accepted.erase("state")
+		accepted.merge({"type": "domain_accepted", "agent_id": "systems-architect", "task": "wire control-heavy output", "execution_state": "running"}, true)
+		peer.send_text(JSON.stringify(accepted))
+		await heavy_frames()
+		check(not run.is_empty() and client.domain_snapshot("core").pending_query.get("request_id") == run, "control-heavy wire starts with exact current Run pending")
+		var terminal := {"type": "domain_result", "protocol_version": 2, "request_id": run, "project_id": "P", "workspace_id": "W", "domain_id": "core", "domain_session_id": HEAVY_SESSION, "execution_id": HEAVY_EXECUTION, "agent_id": "systems-architect", "task": "wire control-heavy output", "output": String.chr(1).repeat(262144), "status": "success", "reason": "completed", "truncated": false, "committed": saved, "memory": {"saved": true, "revision": 8, "error_type": null}}
+		var resume := ""
+		if saved:
+			terminal.output_id = "1"
+			heavy_high_water = "1"
+			# Freeze replay at server highwater1 while its live push is still held.
+			resume = client.resume_domain("core")
+			await heavy_frames()
+			check(not resume.is_empty() and heavy_wires.back().get("cursor") == "0", "frozen replay admitted from cursor0 with live Run pending")
+		else:
+			terminal.status = "error"
+			terminal.reason = "state_store_failed"
+			terminal.memory = null
+		var encoded := JSON.stringify(terminal).replace(String.chr(1), "\\u0001")
+		var packet_bytes := encoded.to_utf8_buffer().size()
+		check(terminal.output.to_utf8_buffer().size() == 262144 and packet_bytes > 1048576 and packet_bytes < 2097152, "valid output fits256KiB and terminal fits2MiB while escaped JSON exceeds1MiB cache")
+		print("CONTROL_PACKET ", JSON.stringify({"saved": saved, "bytes": packet_bytes, "client_inbound": client._socket.inbound_buffer_size, "cache_packet_bytes": JSON.stringify(terminal).to_utf8_buffer().size()}))
+		check(peer.send_text(encoded) == OK, "fixture sends complete valid control-heavy terminal")
+		await heavy_frames(12)
+		var result: Dictionary = client.domain_snapshot("core")
+		check(client.is_bridge_connected(), "valid2MiB-bounded terminal keeps actual transport connected")
+		check(result.pending_query.is_empty() and not client._domain_requests.has(run), "valid control-heavy terminal settles exact Run correlation")
+		check(result.results.size() == (1 if saved else 0) and result.unsaved_results.size() == (0 if saved else 1) and result.omitted_count == 0, "decoded control row fits actual Godot cache representation and is retained intact")
+		check(JSON.stringify(result).to_utf8_buffer().size() <= 1048576 and result.saved_sessions.size() + result.results.size() + result.unsaved_results.size() <= 200, "control-heavy terminal preserves public1MiB and200entry caps")
+		if saved:
+			check(result.received_cursor == "1" and result.selected_received_cursor == "1", "saved omitted row still advances exact durable receipt")
+			if client.is_bridge_connected():
+				peer.send_text(encoded)
+				var complete := heavy_state(resume)
+				complete.merge({"type": "resume_complete", "ended": false, "high_water_mark": "1", "earliest_output_id": "1", "history_gap": false}, true)
+				peer.send_text(JSON.stringify(complete))
+				await heavy_frames(12)
+				result = client.domain_snapshot("core")
+				check(result.pending_control.is_empty() and result.pending_query.is_empty() and result.received_cursor == "1" and result.results.size() == 1 and result.omitted_count == 0, "frozen replay duplicate settles without double render or invented omission")
+		else:
+			check(result.received_cursor == "0" and result.error.get("error_type") == "state_store_failed" and result.draft == "wire control-heavy output", "retained unsaved answer has no fabricated receipt and preserves fault/draft")
+			if client.is_bridge_connected():
+				peer.send_text(encoded)
+				await heavy_frames()
+				check(client.domain_snapshot("core").unsaved_results.size() == 1 and client.domain_snapshot("core").omitted_count == 0 and client.domain_snapshot("core").received_cursor == "0", "duplicate unsaved fitting row neither renders twice nor mints receipt")
+		if saved and client.is_bridge_connected():
+			await heavy_large_row_and_oversize_checks()
+
+
+func heavy_large_row_and_oversize_checks() -> void:
+	var run: String = client.send_domain_query("core", "systems-architect", "large valid row")
+	await heavy_frames()
+	check(not run.is_empty(), "next exact Run admitted after fitting control row")
+	var packet := {"type": "domain_result", "protocol_version": 2, "request_id": run, "project_id": "P", "workspace_id": "W", "domain_id": "core", "domain_session_id": HEAVY_SESSION, "execution_id": HEAVY_EXECUTION, "output_id": "2", "agent_id": "systems-architect", "task": "large valid row", "output": "done", "status": "success", "reason": "completed", "truncated": false, "memory": {"saved": true, "revision": 8, "error_type": null}, "future_metadata": {"detail": "m".repeat(1100000)}}
+	var encoded := JSON.stringify(packet)
+	check(encoded.to_utf8_buffer().size() > 1048576 and encoded.to_utf8_buffer().size() < 2097152, "backend-valid packet may exceed actual retained JSON budget")
+	heavy_high_water = "2"
+	var resume: String = client.resume_domain("core")
+	await heavy_frames()
+	check(not resume.is_empty(), "large-row frozen replay admitted with exact Run pending")
+	check(peer.send_text(encoded) == OK, "send valid full row above display budget")
+	await heavy_frames(12)
+	var snapshot: Dictionary = client.domain_snapshot("core")
+	check(snapshot.pending_query.is_empty() and snapshot.received_cursor == "2" and snapshot.results.is_empty() and snapshot.omitted_count == 2, "large row settles receipt then evicts both whole rows rather than raising cache budget")
+	peer.send_text(encoded)
+	var complete := heavy_state(resume)
+	complete.merge({"type": "resume_complete", "ended": false, "high_water_mark": "2", "earliest_output_id": "1", "history_gap": false}, true)
+	peer.send_text(JSON.stringify(complete))
+	await heavy_frames(12)
+	snapshot = client.domain_snapshot("core")
+	check(snapshot.pending_control.is_empty() and snapshot.received_cursor == "2" and snapshot.results.is_empty() and snapshot.omitted_count == 2, "frozen duplicate omitted row never repeats receipt or omission")
+	check(JSON.stringify(snapshot).to_utf8_buffer().size() <= 1048576 and snapshot.results.size() + snapshot.unsaved_results.size() + snapshot.saved_sessions.size() <= 200, "whole-row omission preserves original public budgets")
+	# Oversized raw input must not enter parsed domain dispatch or settle a Run.
+	run = client.send_domain_query("core", "systems-architect", "keep pending after oversized wire")
+	await heavy_frames()
+	packet.request_id = run
+	packet.task = "keep pending after oversized wire"
+	packet.output_id = "3"
+	packet.future_metadata.detail = "z".repeat(2097152)
+	encoded = JSON.stringify(packet)
+	check(encoded.to_utf8_buffer().size() > 2097152 and encoded.to_utf8_buffer().size() < 2097152 + 4096, "negative wire exceeds approved packet cap within bounded framing headroom")
+	var dispatched: int = client.parsed_domain_ids.count(run)
+	check(peer.send_text(encoded) == OK, "fixture sends oversized negative control")
+	await heavy_frames(12)
+	snapshot = client.domain_snapshot("core")
+	check(client.is_bridge_connected() and client.parsed_domain_ids.count(run) == dispatched and snapshot.pending_query.get("request_id") == run and snapshot.received_cursor == "2", "oversized raw packet is rejected before domain dispatch with pending Run/cursor intact")
+	packet.erase("future_metadata")
+	heavy_high_water = "3"
+	peer.send_text(JSON.stringify(packet))
+	await heavy_frames(12)
+	check(client.domain_snapshot("core").pending_query.is_empty() and client.domain_snapshot("core").received_cursor == "3", "valid terminal still settles same Run after oversized wire denial")

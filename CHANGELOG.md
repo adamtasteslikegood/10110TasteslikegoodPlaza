@@ -35,6 +35,10 @@ spec-set versions, and no application release existed before `v0.1.22`.
 - Settle retained duplicate Runs independently of rendering and exact Stop replies
   after a concurrent inactive status. Preserve scrolled result anchors through
   continuity notices and dialogue/pane handoff.
+- Admit approved 2 MiB terminal frames independently of the 1 MiB display cache;
+  settle receipts before whole-row omission, bound protected unsaved faults and
+  reject oversized raw input before parsing. Acceptance observations tolerate
+  the bounded marker-unlink/lock-close transition without retrying commands.
 - Record full pinned local QA and representative/dense/64 MiB measurements; final
   independent review, fresh provider guards and owner desktop/OAuth acceptance
   remain pending. Historical M12 evidence keeps its original bindings.

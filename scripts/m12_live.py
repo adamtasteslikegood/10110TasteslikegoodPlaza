@@ -627,15 +627,31 @@ async def inspect_observation(service, owners, observer):
     """A short memory checkpoint lock is not a failed model task or a retry."""
     from bridge.project_memory import MemoryError
     from bridge.readiness import owned_io
+    from bridge.workspace import WorkspaceError
 
+    resamples = 0
+    reasons = set()
     async with asyncio.timeout(2):
         while True:
             try:
-                return await owned_io(inspect_service, service, owners, observer)
+                state = await owned_io(inspect_service, service, owners, observer)
+                if resamples:
+                    state["observation_resamples"] = dict(
+                        count=resamples, reasons=sorted(reasons)
+                    )
+                return state
             except MemoryError:
-                # Only read-only observation is repeated. Permanent damage still
-                # fails this bounded deadline; no command/provider is resubmitted.
-                await asyncio.sleep(0.025)
+                reasons.add("memory_unavailable")
+            except WorkspaceError as error:
+                if error.code != "cleanup_failed":
+                    raise
+                # A confirmed release unlinks its marker before closing flock.
+                # Sampling that gap is unknown observation, never released proof.
+                reasons.add("cleanup_failed")
+            # Repeat only bounded read-only inspection. The enclosing deadline is
+            # fixed; permanent damage fails and no command/provider is repeated.
+            resamples += 1
+            await asyncio.sleep(0.025)
 
 
 async def capture_observation(
