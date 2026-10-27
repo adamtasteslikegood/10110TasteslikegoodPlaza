@@ -1,9 +1,11 @@
 """One configured project: owned bootstrap, trusted setup, cached observations."""
 
 import asyncio
+from contextlib import asynccontextmanager
 from copy import deepcopy
 from dataclasses import asdict, replace
 import json
+import os
 from pathlib import Path
 
 from bridge.context import compose_context
@@ -11,7 +13,9 @@ from bridge.agents import load_agent
 from bridge.agent_bindings import DOMAIN_IDS
 from bridge.conversation import ConversationEngine
 from bridge.conversation_backend import ExecutionMetadata
-from bridge.project_memory import MemorySnapshot, ProjectMemoryStore
+from bridge.project_memory import MemorySnapshot, ProjectMemoryStore, MemoryError
+from bridge import project_files as files
+from bridge.domain_run_state import settle_owned
 from bridge.readiness import ReadinessService, owned_io
 from bridge.repository_setup import (
     build_init_proposal,
@@ -108,13 +112,22 @@ async def review_repository(
 
 
 class ProjectService:
-    def __init__(self, config, *, runtime_root: Path, owner_run_id: str, reviewer=None):
+    def __init__(
+        self,
+        config,
+        *,
+        runtime_root: Path,
+        owner_run_id: str,
+        reviewer=None,
+        on_ready=None
+    ):
         self._config, self._runtime_root, self._owner_run_id = (
             config,
             runtime_root,
             owner_run_id,
         )
         self._reviewer = reviewer
+        self._on_ready = on_ready
         self._project = None
         self._project_common_identity = None
         self._workspaces = {}
@@ -188,12 +201,16 @@ class ProjectService:
             await self._prepare(project)
         except Exception as error:
             self._failure(error)
+            # An inspected, prepared Git project may still have readable saved
+            # application history when its independent Markdown store failed.
+            if self._project is not None and self._on_ready is not None:
+                await self._on_ready()
 
     async def _prepare(self, project, setup=None):
         def prepare():
             self._project = project
             self._project_common_identity = _identity(project.common_git_dir)
-            self._memory = ProjectMemoryStore(project)
+            self._memory = ProjectMemoryStore(project, defer_recovery=True)
             self._snapshot["project_id"] = project.project_id
             self._snapshot["memory"]["path"] = str(
                 project.common_git_dir / "plaza/session-memory"
@@ -221,6 +238,8 @@ class ProjectService:
                 )
                 self._workspace_states[domain_id] = state
         self._snapshot.update(stage="ready", reason=None)
+        if self._on_ready is not None:
+            await self._on_ready()
 
     def _observe_workspace(self, project, domain_id):
         legacy = (
@@ -465,6 +484,97 @@ class ProjectService:
                 "workspace_invalid", "Configured project identity changed"
             )
         return project
+
+    async def application_state_binding(self) -> tuple[Path, str] | None:
+        """Validated common-Git-directory/project identity, never client paths.
+
+        Observing an unprepared project does no filesystem or model work. The
+        returned binding is for application-state storage, not an execution lease.
+        A validated prepared project keeps this read-only binding when its
+        independent memory initialization failed; Start still requires ready.
+        """
+        if self._project is None or self._project.head_commit is None or self._closing:
+            return None
+        project = await owned_io(self._validated_project)
+        return project.common_git_dir, project.project_id
+
+    async def observe_application_state(self, view):
+        """Protect SQL turns from legacy notes recovery after validated open.
+
+        If SQL or notes cannot be validated, blanket recovery remains deferred.
+        This policy grants neither workspace ownership nor execution readiness.
+        """
+        if self._memory is None:
+            return
+
+        def observe():
+            project = self._validated_project()
+            if view is not None and view.project_id != project.project_id:
+                raise WorkspaceError(
+                    "workspace_invalid", "Application state binding changed"
+                )
+            self._memory.set_recovery_exclusions(
+                frozenset(r.turn_id for r in view.requests)
+                if view is not None
+                else frozenset()
+            )
+
+        try:
+            await owned_io(observe)
+        except MemoryError:
+            # Independent unreadable notes cannot hide valid committed history.
+            # The initial fail-closed exclusion policy remains in effect.
+            pass
+
+    @asynccontextmanager
+    async def domain_cleanup_guard(self, domain_id):
+        """Hold an existing read-only execution-lock probe through durable End.
+
+        SQL recovery is not cleanup evidence. Resolve the selected registration
+        afresh, reject any marker or foreign lock, and never provision ownership.
+        """
+
+        def acquire():
+            lock = None
+            try:
+                project = self._validated_project()
+                workspace = load_workspace(
+                    project, domain_id=domain_id, runtime_root=self._runtime_root
+                )
+                if workspace is None:
+                    raise ValueError("Selected workspace is unavailable")
+                validate_workspace(workspace, runtime_root=self._runtime_root)
+                path = workspace.git_dir / "plaza-execution.lock"
+                with files.directory(path.parent) as parent:
+                    fd = files._open(parent, path.name, os.O_RDONLY)
+                    lock = files.FileLock(path, fd)
+                    files.lock_exclusive(fd)
+                    lock.validate()
+                    if (
+                        files._check(parent, "plaza-unclean.json", missing=True)
+                        is not None
+                    ):
+                        raise ValueError("Selected workspace requires cleanup")
+                    validate_workspace(workspace, runtime_root=self._runtime_root)
+                    lock.validate()
+                return lock
+            except Exception:
+                if lock is not None:
+                    lock.close()
+                raise WorkspaceError(
+                    "cleanup_failed",
+                    "Workspace requires confirmed cleanup or operator inspection",
+                ) from None
+
+        lock, cancelled = await settle_owned(owned_io(acquire))
+        try:
+            if cancelled:
+                raise asyncio.CancelledError()
+            yield
+        finally:
+            _, cancelled = await settle_owned(owned_io(lock.close))
+            if cancelled:
+                raise asyncio.CancelledError()
 
     async def prepare_memory_turn(self, turn):
         """Project-only extras admission; never provisions a department worktree."""

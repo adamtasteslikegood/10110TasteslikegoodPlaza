@@ -61,6 +61,11 @@ source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -r requirements.txt   # pinned runtime, tests, lint and catalog tools
 ```
 
+SQLite session continuity additionally requires stdlib `serialize`/`deserialize`
+and the POSIX safe-file/locking primitives described in the
+[M13 operating guide](docs/m13-session-persistence.md). The Windows activation
+example alone does not establish native Windows storage support.
+
 **Claude Code authentication** — normal model execution, including every NPC
 conversation, defaults to Claude Code through the Claude Agent SDK (`D-037`). The
 pinned Python SDK supplies the CLI runtime. Keep existing supported native CLI
@@ -120,6 +125,13 @@ info — questions will show a "Bridge not connected" error until you start
 
 ## Project work and domain controls (M12)
 
+**M13 successor:** this branch implements bounded project-scoped SQLite history,
+separate **Stop work** and **End session**, fresh execution fencing and restored
+history in both work surfaces. Final M13 evidence/acceptance remains pending;
+the M12 acceptance below retains its original bindings. See the
+[M13 operating guide](docs/m13-session-persistence.md) for backend switching,
+quotas, cleartext storage, crash/note recovery and offline backup/delete.
+
 The runtime correction merged in PR #365 and has recorded Linux API-key cloud
 acceptance: both twelve-source guard modes passed 29/29 at `ec5d236`, and the Godot/plain-client
 flow passed in selected `dontAsk` mode at clean `eaba12a`, bound to 48 relevant
@@ -165,7 +177,7 @@ and reserves its session. Start may connect the SDK owner but queries zero model
 **Send** or Enter submits the draft as one Run; Enter never starts an inactive
 domain. Systems Architect and Security Auditor share Core work, retaining the
 originating representative on each result. The secondary domain pane uses the
-same draft, generation, pending request, history and reading position.
+same draft, application session, execution token, pending request, history and reading position.
 
 If work controls are disabled, read the **Readiness** notice in the NPC or domain
 transcript. Project setup can be ready while the department workspace needs
@@ -186,7 +198,15 @@ Walking away or pressing Escape backgrounds work. An explicit extra can converse
 while Core runs; another Core agent shows the shared work. Return/refocus replays
 each result once. Completion, backgrounding and disconnect retain ownership.
 **Stop work** remains available while idle or backgrounded; wait for confirmed
-release. Default caps are 20 turns/USD 1.00 per task; acceptance uses smaller caps.
+release. Stop preserves application identity and history; **End session** explicitly
+closes the session after confirmed cleanup. Next Start after End creates a new
+application ID; other fresh Starts create a new execution ID for the open session.
+Default caps are 20 turns/USD 1.00 per task; acceptance uses smaller caps.
+
+`DOMAIN_STATE_BACKEND` is startup-only (`sqlite` default, explicit `memory`), with
+`PLAZA_DOMAIN_STATE_BACKEND` overriding JSON. Memory mode leaves SQLite history
+untouched and reports process-only continuity; returning to SQLite restores that
+store's project history. Storage failures never select memory automatically.
 
 `DOMAIN_DANGEROUSLY_SKIP_PERMISSIONS` is a strict JSON boolean, default `false`:
 `false` selects `dontAsk`, `true` selects `bypassPermissions`. The environment
@@ -208,6 +228,7 @@ revisions without instruction bodies. Config path settings remain startup snapsh
 | Execution branch | `plaza/workspace-<project-key>-<domain-id>` |
 | Identity descriptor | `<git-common-dir>/plaza/workspaces/<domain-id>.json` |
 | Canonical project notes | `<git-common-dir>/plaza/session-memory/{TODO,HANDOFF,PROGRESS}.md` |
+| M13 application state | `<git-common-dir>/plaza/application-state/{state.sqlite3,manifest.json,writer.lock}` |
 | Execution reservation | Actual execution Git directory's `plaza-execution.lock` and `plaza-unclean.json` |
 | Memory ownership | `<git-common-dir>/plaza/memory.lock` and `plaza/runs/<sha256(owner_run_id)>.lock/.json` |
 | Recording | Configured `LOG_DIR/runs/<archival-run-id>/manifest.json` |
@@ -220,11 +241,13 @@ TODO/HANDOFF are at most 16 KiB each; TODO has at most 64 items. PROGRESS is at
 most 32 KiB with 12 recent entries and a bounded recap. Limits count complete
 UTF-8 files. Notes are repository data/prior context, not instruction authority,
 a complete transcript, a queue or SDK recovery. A fresh invocation loads valid
-notes; completed work is not automatically rerun. Old process-local result replay
-is not promised after bridge restart.
+notes; completed work is not automatically rerun. M13 restores bounded committed
+SQLite results after restart, preserving their IDs without resuming an SDK process.
+Domain pending notes require exact owned reconciliation; legacy turns without a
+retained request can remain pending. See the M13 guide before any specific repair.
 
 Inspect recovery state with read-only `describe_workspace` and `domain_status`:
-record identity, worktree/branch, edits, generation, reservation and memory
+record identity, worktree/branch, edits, application/execution IDs, reservation and memory
 saved/unsaved status/revision. If the owner is reachable, request normal Stop and
 wait for confirmed inactive cleanup. Preserve tracked and untracked execution
 edits on success, cancellation and failure; reuse does not reset or merge them.
@@ -235,7 +258,8 @@ manifest. PID absence, elapsed time or a free lock with an unclean marker does
 not establish safe reuse. Stable lock inodes normally remain after clean Stop.
 Never apply blanket lock/marker deletion, `git reset --hard`, `git clean`, automatic
 worktree removal or a claimed daemon-killed shortcut. There is no generic recovery
-CLI; establish actual cleanup and diagnose damaged state before manual repair.
+CLI; the M13 offline export/delete tool manages application history only. Establish
+actual cleanup and diagnose damaged ownership/notes before manual repair.
 For example, an interrupted `git worktree add` may leave a `creating` ownership
 descriptor at `<git-common-dir>/plaza/workspaces/<domain-id>.json`, with incomplete Git
 registration or an execution directory. Preserve the descriptor, registration,
@@ -732,6 +756,12 @@ attempt was deliberately authorized after inspection, with unchanged sources,
 prompts, caps and validator. The failed report remains failed. This refresh does
 not re-date the historical live flow or establish laptop/desktop acceptance.
 
+The M13 branch extends the current guard campaign to **33 cases / at most 31
+queries per permission mode**, adding committed-storage and stale-execution gates.
+Use the [M13 acceptance runbook](docs/m13-live-acceptance.md) for reviewed commands,
+source/runtime binding, pending OAuth/desktop receipt and measured performance.
+The 29-case counts in the M12 evidence descriptions retain their historical scope.
+
 The bounded runners are deliberate paid operations with **no automatic retries**:
 
 ```bash
@@ -755,7 +785,7 @@ manifests fail acceptance. Do not treat a previous output file as a new pass.
 `--help` describes the new runner without starting providers. Legacy bridge and
 Sprint 6 scripts do not implement help parsers; `--help` there may start work.
 
-The probe pins SDK 0.2.136, AnyIO 4.14.2 and bundled CLI 2.1.228. It checks 29
+The probe pins SDK 0.2.136, AnyIO 4.14.2 and bundled CLI 2.1.228. Its original M12 campaign checked 29
 Read/Edit/Bash, MCP, delegated and cancellation cases, at most 27 queries, model
 `claude-haiku-5-5`, 45 seconds and USD 0.20 **per case**, stopping at the first
 failure. MCP/delegation probe coverage does not enable them in product domains;
@@ -766,7 +796,7 @@ exact source hashes, versions and the actual local bundled binary hash.
 Fresh probes are **not automatically activated**. Product activation reads fixed
 `bridge/tool_guard_acceptance.json`, an envelope with `schema_version:1` and
 `records` keyed by `dontAsk` and `bypassPermissions`. Both complete records must
-match all twelve guarded source hashes. Each selected mode also verifies the pinned
+match the complete current `GUARD_SOURCES` inventory. Each selected mode also verifies the pinned
 SDK/AnyIO/CLI version and actual bundled binary SHA; there is no evidence override.
 
 For publication, build `acceptance_envelope(records)` from the two unchanged

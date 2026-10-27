@@ -15,6 +15,7 @@ class FakeProjectService:
 
     def __init__(self, tmp_path):
         _, runtime, self.workspace = bootstrap(tmp_path, domain_id="engineering")
+        self._runtime_root = runtime
         self.memory = ProjectMemoryStore(self.workspace)
         self.memory.initialize()
         self.memory.attach_run(self.owner_run_id)
@@ -99,6 +100,26 @@ class FakeProjectService:
     async def refresh_snapshot(self, domain_id=None):
         return self.workspace_snapshot(domain_id) if domain_id else self.snapshot()
 
+    async def application_state_binding(self):
+        from bridge.readiness import owned_io
+        from bridge.workspace import inspect_project
+
+        project = await owned_io(inspect_project, self.workspace.project_root)
+        assert project.project_id == self.workspace.project_id
+        return project.common_git_dir, project.project_id
+
+    def _validated_project(self):
+        from bridge.workspace import inspect_project
+
+        project = inspect_project(self.workspace.project_root)
+        assert project.project_id == self.workspace.project_id
+        return project
+
+    def domain_cleanup_guard(self, domain_id):
+        from bridge.project_service import ProjectService
+
+        return ProjectService.domain_cleanup_guard(self, domain_id)
+
     def close(self):
         try:
             self.memory.detach_run(self.owner_run_id)
@@ -160,6 +181,8 @@ def context(request="run", connection="origin", agent="backend-architect"):
 def query(request="run", generation="generation", **changes):
     values = dict(
         type="domain_query",
+        protocol_version=2,
+        execution_id="execution",
         domain_id="engineering",
         domain_session_id=generation,
         request_id=request,

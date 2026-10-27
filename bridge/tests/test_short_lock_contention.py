@@ -222,6 +222,7 @@ def test_unknown_marker_free_owner_remains_bounded_and_fail_closed(
 
 def test_durable_owner_and_unclean_marker_never_wait_or_clear(tmp_path, monkeypatch):
     import json
+    from types import SimpleNamespace
     from bridge.workspace import WorkspaceError
 
     root, runtime, work = bootstrap(tmp_path)
@@ -240,9 +241,12 @@ def test_durable_owner_and_unclean_marker_never_wait_or_clear(tmp_path, monkeypa
     )
     before = marker.read_bytes()
     monkeypatch.setattr(
-        files.time,
-        "sleep",
-        lambda _: pytest.fail("durable ownership must fail immediately"),
+        files,
+        "time",
+        SimpleNamespace(
+            monotonic=files.time.monotonic,
+            sleep=lambda _: pytest.fail("durable ownership must fail immediately"),
+        ),
     )
     try:
         assert observe_reservation(work) == dict(

@@ -28,6 +28,8 @@ var _refresh_workspace := false
 var _status_queue: Array[String] = []
 var _resume_queue: Array[String] = []
 var _recover_domains: Dictionary = {}
+var _history_discovered: Dictionary = {}
+var _stale_status_observations: Dictionary = {}
 # A failed observation waits for explicit retry or a new connection.
 var _failed_status_domains: Dictionary = {}
 var _workspace_poll := 0.0
@@ -54,6 +56,9 @@ func _attempt_connect() -> void:
 	if _socket.get_ready_state() != WebSocketPeer.STATE_CLOSED:
 		return
 	_reconnect_timer.stop()
+	# Honor the approved terminal frame limit; the default 65,535-byte ring is
+	# smaller than an ordinary maximum output. Keep bounded frame headroom.
+	_socket.inbound_buffer_size = DomainState.MAX_HISTORY_PACKET_BYTES + 4096
 	var err := _socket.connect_to_url(bridge_url)
 	if err != OK:
 		push_warning("ws_client: cannot initiate connection to %s" % bridge_url)
@@ -72,7 +77,7 @@ func _process(delta: float) -> void:
 				describe_workspace()
 				for agent_id in _characters: agent_status(agent_id)
 			while _socket.get_available_packet_count() > 0:
-				_on_message(_socket.get_packet().get_string_from_utf8())
+				_on_message(_socket.get_packet())
 			_workspace_poll += delta
 			if _workspace_poll >= 2.0:
 				_workspace_poll = 0.0
@@ -96,6 +101,8 @@ func _on_connection_closed() -> void:
 		GameEvents.character_changed.emit(agent_id, "connection", "")
 	_failed_status_domains.clear()
 	domains.disconnect_connection()
+	_history_discovered.clear()
+	_stale_status_observations.clear()
 	_domain_requests.clear()
 	_discovery_request = ""
 	_refresh_workspace = false
@@ -196,17 +203,49 @@ func _fail_request(request_id: String, kind: String, message: String) -> void:
 	GameEvents.agent_query_failed.emit(pending.agent_id, kind, message)
 
 
-func _on_message(raw: String) -> void:
+func _valid_json_controls(bytes: PackedByteArray) -> bool:
+	# Godot accepts literal string controls. Refuse that extension before UTF-8
+	# decoding (which replaces NUL), preserving canonical framing lower bounds.
+	# This checks lexemes only; JSON.parse validates the complete structure.
+	var in_string := false
+	var escaped := false
+	for byte in bytes:
+		if byte < 32 and (in_string or byte not in [9, 10, 13]): return false
+		if escaped:
+			escaped = false
+		elif in_string and byte == 92:
+			escaped = true
+		elif byte == 34:
+			in_string = not in_string
+	return true
+
+
+func _on_message(raw: Variant) -> void:
+	# Internal String callers share the same admission path as received bytes.
+	var bytes: PackedByteArray = raw if raw is PackedByteArray else raw.to_utf8_buffer()
+	if bytes.size() > DomainState.MAX_HISTORY_PACKET_BYTES:
+		_protocol_diagnostic("packet exceeds the protocol byte limit")
+		return
+	if not _valid_json_controls(bytes):
+		_protocol_diagnostic("literal JSON control character")
+		return
+	var text := bytes.get_string_from_utf8()
+	if text.to_utf8_buffer() != bytes:
+		_protocol_diagnostic("expected exact UTF-8 encoding")
+		return
 	var json := JSON.new()
-	if json.parse(raw) != OK or not json.data is Dictionary:
+	if json.parse(text) != OK or not json.data is Dictionary:
 		_protocol_diagnostic("expected a JSON object")
 		return
 	var parsed: Dictionary = json.data
+	if parsed.get("type") != "domain_history" and bytes.size() > DomainState.MAX_TERMINAL_PACKET_BYTES:
+		_protocol_diagnostic("packet exceeds the protocol byte limit")
+		return
 	if parsed.get("type") in ["agent_status", "project_setup"]:
 		_on_character_packet(parsed)
 		return
-	if parsed.get("type") in ["workspace_state", "domain_state", "domain_accepted", "domain_result", "domain_error", "resume_complete"]:
-		_on_domain_packet(parsed)
+	if parsed.get("type") in ["workspace_state", "domain_state", "domain_accepted", "domain_result", "domain_history", "domain_error", "resume_complete"]:
+		_on_domain_packet(parsed, bytes.size())
 		return
 	var request_id: Variant = parsed.get("request_id")
 	if not request_id is String or not _pending_requests.has(request_id):
@@ -286,7 +325,7 @@ func domain_status(domain_id: String) -> String:
 
 
 func activate_domain(domain_id: String) -> String:
-	return _send_domain_command({"type": "activate_domain", "domain_id": domain_id})
+	return _send_domain_command({"type": "activate_domain", "domain_id": domain_id, "expected_domain_revision": domain_snapshot(domain_id).get("domain_revision", "0")})
 
 
 func send_domain_query(domain_id: String, agent_id: String, task: String) -> String:
@@ -306,12 +345,28 @@ func deactivate_domain(domain_id: String) -> String:
 	return _generation_command("deactivate_domain", domain_id)
 
 
+func end_domain_session(domain_id: String) -> String:
+	var current := domain_snapshot(domain_id)
+	if current.get("read_only", true): return ""
+	return _send_domain_command({"type": "end_domain_session", "domain_id": domain_id, "domain_session_id": current.domain_session_id, "expected_domain_revision": current.domain_revision})
+
+
+func select_domain_session(domain_id: String, session_id: String) -> bool:
+	if not domains.select_session(domain_id, session_id): return false
+	GameEvents.domain_changed.emit(domain_id, "selection", "")
+	_queue_history(domain_id, true)
+	_pump_discovery()
+	return true
+
+
 func resume_domain(domain_id: String) -> String:
-	return _generation_command("resume", domain_id, {"cursor": domain_snapshot(domain_id).get("received_cursor", "0")})
+	var current := domain_snapshot(domain_id)
+	return _send_domain_command({"type": "resume", "domain_id": domain_id, "domain_session_id": current.get("selected_session_id", ""), "cursor": current.get("selected_received_cursor", "0"), "replay_format": "history_v1"})
 
 
 func _generation_command(kind: String, domain_id: String, extra: Dictionary = {}) -> String:
-	var packet := {"type": kind, "domain_id": domain_id, "domain_session_id": domain_snapshot(domain_id).get("domain_session_id", "")}
+	var current := domain_snapshot(domain_id)
+	var packet := {"type": kind, "domain_id": domain_id, "domain_session_id": current.get("domain_session_id", ""), "execution_id": current.get("execution_id", "")}
 	packet.merge(extra)
 	return _send_domain_command(packet)
 
@@ -323,6 +378,7 @@ func _send_domain_command(packet: Dictionary) -> String:
 	_request_counter += 1
 	var id := "%s:domain:%d" % [_session_id, _request_counter]
 	packet.request_id = id
+	packet.protocol_version = 2
 	var superseded: Dictionary = domain_snapshot(packet.domain_id).get("pending_control", {}) if packet.has("domain_id") else {}
 	if not domains.admit_command(packet):
 		return ""
@@ -344,11 +400,12 @@ func _send_domain_command(packet: Dictionary) -> String:
 	return id
 
 
-func _on_domain_packet(packet: Dictionary) -> void:
+func _on_domain_packet(packet: Dictionary, wire_bytes: int = -1) -> void:
 	if not _connected:
 		return
 	var command: Dictionary = _domain_requests.get(packet.get("request_id"), {}).duplicate(true)
-	var change := domains.apply_packet(packet)
+	var prior_stage: Variant = workspace_snapshot().get("stage")
+	var change := domains.apply_packet(packet, wire_bytes)
 	if change.is_empty():
 		return
 	if change.settled:
@@ -371,6 +428,10 @@ func _on_domain_packet(packet: Dictionary) -> void:
 	if change.scope == "workspace":
 		GameEvents.workspace_changed.emit(change.reason, change.request_id)
 		if change.reason == "workspace_state":
+			if workspace_snapshot().get("stage") == "ready" and prior_stage in ["preparing", "reviewing", "initializing"]:
+				for agent_id in _characters:
+					if _characters[agent_id].get("execution_kind") == "working" and agent_id not in _character_queue: _character_queue.append(agent_id)
+				for domain_id in domains.domain_ids(): _queue_status_observation(domain_id)
 			for domain_id in _recover_domains:
 				_queue_status_observation(domain_id)
 			var reservation: Variant = workspace_snapshot().get("reservation")
@@ -383,12 +444,21 @@ func _on_domain_packet(packet: Dictionary) -> void:
 			_resume_queue.erase(change.domain_id)
 		GameEvents.domain_changed.emit(change.domain_id, change.reason, change.request_id)
 		var failed_control: bool = change.reason == "domain_error" and command.get("type") != "domain_status"
-		if change.reason in ["resume_complete", "status_stale"] or failed_control:
+		if change.reason == "status_stale":
+			var current := domain_snapshot(change.domain_id)
+			var facts := JSON.stringify([packet.get("state_store"), packet.get("domain_revision"), current.get("state_store"), current.get("domain_revision"), domains.observation_fence().versions.get(change.domain_id)])
+			if _stale_status_observations.get(change.domain_id) != facts:
+				_stale_status_observations[change.domain_id] = facts
+				domain_status(change.domain_id)
+		elif change.reason == "resume_complete" or failed_control:
 			domain_status(change.domain_id)
-		if change.reason == "domain_state" and command.get("type") == "domain_status" and _recover_domains.has(change.domain_id):
+		if change.reason == "domain_state" and command.get("type") == "domain_status":
+			_stale_status_observations.erase(change.domain_id)
 			_recover_domains.erase(change.domain_id)
-			if domain_snapshot(change.domain_id).domain_session_id != "":
-				_resume_queue.append(change.domain_id)
+			_queue_history(change.domain_id)
+		if change.reason == "domain_state" and command.get("type") == "activate_domain":
+			var current := domain_snapshot(change.domain_id)
+			_history_discovered[str(current.project_id) + ":" + str(current.state_store.get("continuity_id")) + ":" + change.domain_id + ":" + current.selected_session_id] = true
 		var settled_control: bool = change.reason == "domain_state" and command.get("type") != "domain_status" and change.settled
 		if change.reason == "domain_result" or failed_control or settled_control:
 			# Lifecycle/capacity changes invalidate every observed working character.
@@ -398,6 +468,17 @@ func _on_domain_packet(packet: Dictionary) -> void:
 					_character_queue.append(agent_id)
 			describe_workspace()
 	_pump_discovery()
+
+
+func _queue_history(domain_id: String, force: bool = false) -> void:
+	var current := domain_snapshot(domain_id)
+	if current.get("authority_unavailable", false): return
+	var session: String = current.get("selected_session_id", "")
+	if session.is_empty(): return
+	var key := str(current.get("project_id", "")) + ":" + str(current.get("state_store", {}).get("continuity_id")) + ":" + domain_id + ":" + session
+	if not force and _history_discovered.has(key): return
+	_history_discovered[key] = true
+	if domain_id not in _resume_queue: _resume_queue.append(domain_id)
 
 
 func _queue_status_observation(domain_id: String) -> void:
@@ -434,6 +515,8 @@ func _reset_project_views() -> void:
 	_status_queue.clear()
 	_resume_queue.clear()
 	_recover_domains.clear()
+	_history_discovered.clear()
+	_stale_status_observations.clear()
 	_failed_status_domains.clear()
 	_notify_connection()
 	_character_requests.clear()
@@ -487,6 +570,8 @@ func _on_character_packet(packet: Dictionary) -> void:
 		if not packet.get("output") is String or packet.get("status") not in ["ok", "error"]: return
 	else:
 		if packet.get("execution_kind") not in ["working", "extra"] or not packet.get("capabilities") is Dictionary: return
+		if not (packet.capabilities.get("protocol_version") is int or packet.capabilities.get("protocol_version") is float) or packet.capabilities.protocol_version != 2: return
+		if not domains._valid_storage(packet.capabilities.get("state_store")): return
 		if packet.execution_kind == "working" and (not DomainState.valid_domain(packet.get("domain_id")) or not packet.get("domain_state") is Dictionary or not packet.get("workspace") is Dictionary): return
 		if packet.execution_kind == "extra" and packet.get("domain_id") != null: return
 		for key in ["can_start", "can_run", "can_prepare_project"]:
@@ -506,6 +591,7 @@ func _on_character_packet(packet: Dictionary) -> void:
 		if packet.execution_kind == "working":
 			if domains.observe_domain(packet.domain_state, request.fence):
 				GameEvents.domain_changed.emit(packet.domain_id, "observation", id)
+				_queue_history(packet.domain_id)
 	_characters[packet.agent_id] = data
 	GameEvents.workspace_changed.emit("workspace_state", id)
 	GameEvents.character_changed.emit(packet.agent_id, packet.type, id)

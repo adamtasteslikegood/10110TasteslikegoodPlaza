@@ -361,3 +361,209 @@ Installing `scripts/pm/requirements.txt` made all 17 publisher cases pass, witho
 source changes. The complete combined regression is rerun before merge; its final
 result is recorded on PR #376. The historical 2,013-test extraction run remains
 accurate for its original baseline rather than being overwritten with new counts.
+
+## SQLite persistence design started — October 26, 2026 Pacific
+
+Phase 1 is delivered: PR #376 merged as `a2d340a`; #373 is closed. The
+post-merge 90-case acceptance and both runtime verifications passed. Combined
+regression was 2,033 tests plus 118 subtests; historical reports remain bound
+to their original sources. PLZG-290 stays In Progress (comment 11512).
+
+Adam requested the bounded SQLite persistence design. He will configure the
+separate Confluence publisher's Actions token; that activation task does not
+block local design work. No persistence implementation or dependency changes
+are authorized by this design-start checkpoint.
+
+Confirmed inputs: stdlib SQLite; project/repository isolation; persistent
+application identity unless intentionally ended; Stop preserves that identity;
+End is separate; crash/restart does not End; reconnect alone never executes
+agent tools; cleanup uncertainty retains ownership evidence; three Markdown
+project notes remain separate from application state and diagnostic archives.
+
+Reconnaissance against the merged implementation:
+
+- `bridge/domain_store.py` owns synchronous terminal-only append/lookup/replay.
+  IDs and duplicate detection are bounded by retention; a fresh store is empty.
+- `DomainManager._new_session` currently creates a fresh UUID after a clean Stop.
+  `shutdown()` calls Stop, so durable End cannot be inferred from shutdown.
+- Query admission installs `_inflight` before suspension. Existing project-memory
+  preparation precedes acceptance/tools, but accepted-request state is not yet an
+  authoritative SQLite record. Recovery must distinguish interrupted accepted
+  work from terminal results and never silently retry it.
+- Session cleanup waits for owned work, then releases only on confirmed cleanup.
+  SQLite workers must participate in that drain; cancellation cannot leave an
+  unowned write or a falsely clean status.
+- Godot retains its domain buckets during connection uncertainty. Restored server
+  identity/history discovery must support a fresh game process as well as a
+  temporarily disconnected existing client; SQLite alone does not supply that UI.
+- `project_files.py` anchors safe metadata operations and refuses symlinks and
+  hardlinks. SQLite's own database/journal/WAL opening is a separate integration
+  concern; the existing helper is not automatically a safe SQLite filesystem VFS.
+
+Additional design items:
+
+| ID | Design requirement / open detail | Source / disposition |
+|---|---|---|
+| Q19 | Pick the SQLite location, OS writer ownership and database/sidecar safety strategy; define corrupt/unsafe/full/read-only/busy behavior without silent recreation. | Existing `project_files.py`, common-Git metadata, D-038/D-039; technical alternatives not yet selected. |
+| Q20 | Reconcile synchronous replay/admission with durable I/O and commit-before-publish. Treat SQLite and Markdown updates as distinct commits with honest reconciliation rather than claiming a cross-store transaction. | Approved phase-1 design explicitly deferred durable caller/ownership semantics; `domain_session.py` preparation/save/cleanup paths. |
+| Q21 | Decide whether reopening supplies a bounded conversation recap to the fresh SDK runtime, or only restores visible history/identity alongside existing project notes. Any recalled content remains continuity data, not authority or a task queue. | Answered October 26: Adam selects the bounded agent recap alongside project notes. Stable identity does not by itself answer model-context restoration. |
+| Q22 | Define session/history/request retention, schema migration and disk limits separately from replay's 256-entry / 4 MiB output-text window; avoid silently promising lifetime deduplication or unlimited storage. | `MemoryStore` contract and Q06. Quotas/archival details require explicit design rather than inherited assumptions. |
+
+Next: settle the pending model-context question; compare the durable-I/O
+approaches; write the bounded design with lifecycle/schema/failure/acceptance
+contracts; run a fresh builder check; obtain approval before an implementation
+plan or product changes. Existing recorded answers must not be asked again.
+
+
+### Bounded persistence design — owner recap answer and builder handoff
+
+Adam accepted the bounded conversation recap and asked to proceed/handoff. The
+[proposed SQLite design](docs/superpowers/specs/2026-10-26-m13-sqlite-session-persistence-design.md)
+covers durable identity, accepted-work recovery, explicit End, execution fencing,
+minimum client restoration and a bounded deterministic recap. Q21 is answered.
+The worker/cache split, sidecar-free serialized SQLite image, quotas, backend
+default and protocol-version proposal are **builder recommendations**, not owner
+choices or implementation approval. A fresh builder check precedes design handoff.
+
+The Confluence environment secret is owner-reported configured. A protected-dev
+publisher rerun was dispatched to verify actual activation; do not infer success
+from configuration alone. This is separate from SQLite implementation authority.
+
+
+The fresh builder check returned “nothing important left.” The draft additionally
+clarifies the initialization manifest (a lost database must not silently become
+an empty new session) and startup-only memory/SQLite discontinuities. These are
+builder recommendations for review. Q19/Q20/Q22 have proposed resolutions in the
+written design; they are not marked canonically resolved before owner approval.
+No runtime code or dependency installation was part of this design work.
+
+
+Confluence activation is now verified: protected-dev workflow dispatch
+[40285487133](https://github.com/adamtasteslikegood/10110TasteslikegoodPlaza/actions/runs/40285487133)
+completed successfully, including publisher verification and the apply job. This
+supersedes the earlier missing-secret blocker. It publishes committed dev; this
+proposed design branch is not included until its own reviewed delivery.
+
+Phase-2 tracking: [GitHub #380](https://github.com/adamtasteslikegood/10110TasteslikegoodPlaza/issues/380).
+The written design is ready for owner review, with the fresh builder check complete.
+Do not start implementation from an accepted recap preference alone; approval of
+the full written contract precedes writing-plans. No design PR or runtime change
+has been opened by this design handoff.
+
+
+### October 26 — SQLite design approved; implementation plan handoff
+
+Adam explicitly approved the complete written SQLite design and requested the
+implementation plan and handoff. This supersedes the earlier proposed/review
+status above: Q19/Q20/Q22 now have approved bounded resolutions in that design;
+Q21 remains the confirmed bounded recap. No runtime implementation is claimed.
+
+The [ten-task implementation plan](docs/superpowers/plans/2026-10-26-m13-sqlite-session-persistence.md)
+fixes module boundaries, shared record/command interfaces, initialization/crash
+proof, durable admission/publication, protocol-v2 fencing, Stop/End, recap, both
+Godot work surfaces, maintenance and the actual evidence campaign. Recommended
+execution is subagent-driven with fresh task reviews plus whole-branch review.
+The prior phase-1 native choice was specific to that extraction. Review this plan
+and confirm execution method before implementation, per writing-plans handoff.
+
+Tracking remains GitHub #380 / PLZG-290 In Progress. Confluence publisher activation
+is verified; this design/plan branch has not been published through dev. Fetch dev
+and inspect status before execution; preserve the unrelated work checkout, old
+guard evidence and private laptop logs. No cloud resources or new dependencies
+were created in this planning step.
+
+Adam approved the ten-task implementation plan and explicitly selected subagent-driven development. Execution started October 26 in the existing isolated worktree; per-task implementer/review gates and a final whole-branch review apply. Progress ledger: `.superpowers/sdd/m13-sqlite-session-persistence/progress.md` (local scratch); committed task receipts will also be recorded in the plan. No further plan/method approval is pending.
+
+SQLite implementation checkpoint: Task1 safe image ownership and Task2 bounded repository are committed and independently reviewed (`0f4209e`, `77a1b96`). Task2 focused coverage is121passes onPython3.12/3.11. No live domain persistence behavior is claimed yet; coordinator/lifecycle/protocol/recap/UI integration and acceptance remain Tasks3–10. Continue from Task3, using plan receipts and per-plan SDD ledger; do not redo completed tasks.
+
+Current SQLite execution checkpoint: Tasks1–5 independently reviewed and complete through `e2a9922`. The actual manager/server Run pipeline now commits accepted/dispatch/terminal state and replays one durable history; 588 covering tests pass onPython3.12/3.11. Next is Task6 crash/request recovery and notes/ownership reconciliation, then bounded recap, Godotv2, maintenance/docs and final actual evidence. This is not shipped acceptance. Minor R2 fixture reply handling is carried to Task8/final review. Do not redo Tasks1–5; use committed plan receipts and ignored per-plan ledger for active progress.
+
+Task6 reviewed complete through `4b9d28d`: real process crash recovery, exact owned note reconciliation and cleanup-safe End. Inherited blanket note recovery is deferred for domain turns in both backends; extras/direct-store defaults remain. Legacy domain notes without a retained SQL request may remain pending until exact/operator recovery—truthful compatibility condition, no invented outcome or automatic reset. Next Task7 bounded recap; Tasks8–10 still required. No shipped/live acceptance claim.
+
+Task7 reviewed complete through `ba17ec6`: bounded quoted conversation recap on the first actual invocation per fresh execution, exact source metadata, strict malformed-state rejection. Next Task8 Godotv2/history/End controls. BackendTasks1–7 reviewed; UI/maintenance/final actual evidence still pending. No full feature/live acceptance claim.
+
+Task8 independently reviewed complete through `dce7203`: protocol-v2 restored history, separate End controls, explicit Start/Run, full public cache limits and storage continuity ownership. Tasks1–8 implementation gates are complete; remaining Task9 offline maintenance/operator alignment and Task10 final QA/performance/fresh live acceptance are required. Two Minor client findings (duplicate pending settlement and notice-prefix scroll anchors) are assigned to Task10/final review, not silently closed. No shipped acceptance or dev merge is claimed.
+
+### Task9 resolved maintenance clarifications — October 26, 2026
+
+The implementation handoff resolves export as observational: it may include an
+open-but-stopped application session or unreconciled historical execution rows
+when the same project writer lock is exclusively held. Persisted unstopped rows
+do not establish a live owner; export performs no crash cleanup or SDK activation.
+A live writer blocks either command. The approved design's active-session
+restriction remains strict for destructive deletion: `ended_at` is required even
+after Stop, with a durable exclusive backup before commit. This is an
+implementation clarification of the approved export/delete scope, not a new
+locked decision or imported recovery path.
+
+The version-1 JSON export/backup ceiling is 512 MiB (8 × the 64 MiB image limit),
+counted incrementally in actual UTF-8 bytes before output creation. This allows
+bounded JSON quoting/envelope expansion without changing runtime image quotas;
+physical disk/fsync failures remain possible. Canonical selected records and the
+source image receive separate SHA256 metadata. There is no restore/import/reset
+command. The [operator guide](docs/m13-session-persistence.md) carries these rules
+and the approved successor for exact owned domain-note reconciliation. No new
+unresolved governing conflict was found; locked decisions, historical contracts
+and paid evidence remain unchanged. Final M13 acceptance remains Task10 work.
+
+Task9 independently reviewed complete through `2e2fffd`: offline lock-respecting export and backup-before-delete of ended sessions, plus aligned operator docs. 200 focused tests pass on Python3.12/3.11. One Minor platform-error wording correction joins the two client minors in Task10/final QA. Continue Task10 full regression/performance/fresh actual evidence; Tasks1–9 are not shipped acceptance.
+
+
+Task10 local implementation/QA handoff: the three deferred client/documentation
+minors are resolved, plus deterministic Stop/status ordering and actual terminal
+wire/display-budget regressions found by final QA. Valid2MiB frames settle before
+unchanged1MiB/200-entry whole-row retention; raw oversize rejects before parsing,
+and protected unsaved notice fields stay bounded. The required scene gates include
+real saved/unsaved control-heavy wire, frozen replay and oversize negative controls.
+Bounded source/runtime/completeness receipts, representative/dense/exact64MiB
+probes and the [owner runbook](docs/m13-live-acceptance.md) are implemented.
+Full valid-layout Python passes2,419 +118 subtests on final production code;
+a later probe-only bounded read-only release-observation fix passes425 covering
+tests. Final pinned Godot/npm gates (store338/transport104, integration2+61) and
+static/spec checks pass. The [Task 10 synthetic performance record](specs/evidence/m13-state-performance-linux-2026-10-27.json)
+binds actual measured bytes/runtime, made on dirty34d2584 before boundary-fix
+commit; the [October26 checkpoint](specs/evidence/m13-state-performance-linux-2026-10-26.json)
+is unchanged. Neither is provider or desktop acceptance. Dense cumulative peak
+RSS550,031,360B and max heartbeat gap248.09ms are explicit review concerns;
+pre-release barrier heartbeat/replay progress is proven separately. Initial11fail,
+setup-invalid interrupted and diagnosed observer-race failures remain in the
+private task receipt, not reclassified as passing gates. Independent Task10/
+whole-branch reviews, actual fresh33-case guards in both modes, owner laptop/
+desktop/OAuth observations, reviewed PR/tracking and merge remain with the
+controller/owner. M14/M15 remain planned; no fresh OAuth login exists in this
+cloud runtime and no token request/copy is part of acceptance.
+
+Task10 implementation independently reviewed through `26d49dd` with no findings. Local full production-boundary coverage is2,419 tests+118subtests, followed by425 covering observer-helper tests and final pinned npm nine scenes/2+61 integrations. Additional confirmed Stop correlation, large-frame/cache and diagnostic snapshot races were fixed with regressions. Dense66,478,080B state measured550,031,360B peak RSS high-water and248.09ms max heartbeat gap; these costs are explicit, with no invented SLO. All deferred minors are resolved. Continue controller whole-branch review, fresh33-case pair, hosted current-head CI/PR and owner desktop/OAuth; no final M13 acceptance/merge is claimed.
+
+
+Final whole-branch review fix wave (October 27): recovered and saved history now
+use a correlated project/store/application envelope independent of unavailable
+current worktrees, without changing schema v1 or frozen terminals. Current
+null↔known observations are permitted; known-workspace replacement and live
+result identity remain fenced. Both real game surfaces have crash/reopen and
+unavailable-worktree regressions. Draft prose and delivery checkboxes are corrected.
+Final full required-Godot Python passes2,435+118subtests; sequential npm passes
+nine scenes (store399/transport119) and2+67integrations; static/spec checks and
+270 isolated Python3.11 tests pass. Earlier failed/interrupted attempts remain
+preserved in the private final-fix report. The [new final-review-fix performance receipt](specs/evidence/m13-state-performance-linux-2026-10-27-final-review-fix.json)
+is a fresh measurement on dirty879e142: dense66,478,080B, peak550,002,688B,
+commits341.70–493.23ms, max heartbeat gap206.82ms; all profiles prove pre-release
+heartbeat/replay progress. Historical receipts remain unchanged. Scoped re-review,
+fresh actual33+33 guards, owner desktop/OAuth, hosted current-head CI and reviewed
+PR/tracking/merge remain pending; the old SDK acceptance envelope remains stale.
+
+
+Current handoff: implementation and independent whole-branch/fix review are resolved
+through `acf1d72`, including strict raw-byte/UTF8 history admission and hosted history
+gate alignment. The [latest source-bound measurement](specs/evidence/m13-state-performance-linux-2026-10-27-boundary-correction.json)
+preserves material ~550MB RSS/225.67ms heartbeat and ~320ms maximum-frame receiver
+observations, without an SLO claim. Actual API-key33+33 guard reports validate;
+the unchanged fresh active envelope passes both production runtime checks. One
+earlier18-case bypass attempt remains privately preserved as incomplete; a fresh
+supervised full run passed without changing source/runtime/limits. The original
+interruption's sender remains unknown. Historical evidence is unchanged.
+[PR381](https://github.com/adamtasteslikegood/10110TasteslikegoodPlaza/pull/381)
+targetsdev; current-headCI/hosted review and owner desktop/freshOAuth acceptance
+remain delivery gates. Use the [live runbook](docs/m13-live-acceptance.md) from a
+separate code checkout, leaving bridge-owned execution branches unchanged.
+PLZG-290 is In Progress; no dev merge or M14/M15 completion is claimed.

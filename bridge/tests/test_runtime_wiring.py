@@ -25,6 +25,7 @@ from bridge.tests.domain_fakes import (
 from bridge.config import ConfigError, default_config
 from bridge.conversation import ConversationEngine
 from bridge.domain_manager import DomainManager
+from bridge.state_coordinator import StateCoordinator, VolatileStateRepository
 from bridge.domain_session import DomainSession
 from bridge.observability import RequestContext
 from bridge.server import BridgeServer
@@ -185,7 +186,7 @@ async def test_conversation_failure_metadata_is_category_only(
         "{oops",
         "[]",
         '{"agent_id":"../bad","task":"private"}',
-        '{"type":"domain_query","domain_id":"d",'
+        '{"type":"domain_query","protocol_version":2,"domain_id":"d",'
         '"agent_id":"../bad","task":"private"}',
     ],
 )
@@ -273,7 +274,12 @@ async def test_late_domain_execution_keeps_origin_and_resume_does_not_record(
         other_packets.append(packet)
 
     await manager.handle(
-        dict(type="domain_status", domain_id="engineering", request_id="later"),
+        dict(
+            type="domain_status",
+            protocol_version=2,
+            domain_id="engineering",
+            request_id="later",
+        ),
         context=context("later", "new-connection"),
         emit=other,
     )
@@ -297,6 +303,7 @@ async def test_late_domain_execution_keeps_origin_and_resume_does_not_record(
         await manager.handle(
             dict(
                 type="resume",
+                protocol_version=2,
                 domain_id="engineering",
                 domain_session_id=session.domain_session_id,
                 request_id="replay",
@@ -375,6 +382,8 @@ async def test_delivery_failure_is_separate_from_successful_execution(
     async with asyncio.timeout(3):
         while len(session.replay(0)) == 1:
             await asyncio.sleep(0.001)
+    # Durable replay publication precedes recorder/delivery continuation.
+    await asyncio.gather(*tuple(session._jobs))
     assert [r["outcome"] for r in messages(writer)] == ["input", "success"]
     assert events(writer, "delivery_failed") and not events(writer, "request_failed")
     assert session.replay(0)[0]["status"] == "success"
@@ -492,7 +501,9 @@ async def test_domain_requires_client_id_and_preserves_buffered_wire_identity(
 ):
     manager, session, owner, packets, emit = domain_runtime
     _, writer = runtime_archive
-    command = query(generation=session.domain_session_id)
+    command = query(
+        generation=session.domain_session_id, execution_id=session.execution_id
+    )
     del command["request_id"]
     await manager.handle(command, context=context(), emit=emit)
     assert packets[-1]["error_type"] == "invalid_request"
@@ -629,7 +640,13 @@ async def test_stop_event_shutdown_cancel_during_child_cleanup_is_unclean(
     _, writer = runtime_archive
     owner.execute_gate = asyncio.Event()
     owner.stop_gate = asyncio.Event()
-    await server.dispatch(query("origin-request", session.domain_session_id))
+    await server.dispatch(
+        query(
+            "origin-request",
+            session.domain_session_id,
+            execution_id=session.execution_id,
+        )
+    )
     await owner.executing.wait()
     stopped = asyncio.Event()
     stopped.set()
@@ -709,6 +726,7 @@ async def test_shutdown_attempts_all_domains_and_records_before_close_after_disc
             query(
                 "origin-request",
                 session.domain_session_id,
+                execution_id=session.execution_id,
                 domain_id=session.domain_id,
                 agent_id=(
                     "systems-architect"
@@ -800,14 +818,26 @@ async def domain_runtime(tmp_path, runtime_config, runtime_archive, monkeypatch)
     monkeypatch.setattr("bridge.domain_session.DomainSDKOwner", factory)
     monkeypatch.setattr("bridge.domain_session.load_agent", lambda _: "definition")
     recorder, writer = runtime_archive
-    manager = DomainManager(runtime_config, service, recorder=recorder)
+    coordinator = StateCoordinator(
+        lambda: VolatileStateRepository(service.workspace.project_id)
+    )
+    await coordinator.open()
+    manager = DomainManager(
+        runtime_config, service, recorder=recorder, state_coordinator=coordinator
+    )
     packets = []
 
     async def emit(packet):
         packets.append(packet)
 
     await manager.handle(
-        dict(type="activate_domain", request_id="start", domain_id="engineering"),
+        dict(
+            type="activate_domain",
+            protocol_version=2,
+            expected_domain_revision="0",
+            request_id="start",
+            domain_id="engineering",
+        ),
         context=context("start"),
         emit=emit,
     )
@@ -817,13 +847,14 @@ async def domain_runtime(tmp_path, runtime_config, runtime_archive, monkeypatch)
     if owners[0].stop_gate:
         owners[0].stop_gate.set()
     await manager.shutdown()
+    await coordinator.close()
     service.close()
 
 
 async def submit_runtime(runtime, request="origin-request", emit=None):
     manager, session, owner, packets, sink = runtime
     await manager.handle(
-        query(request, session.domain_session_id),
+        query(request, session.domain_session_id, execution_id=session.execution_id),
         context=context(request, "old-connection"),
         emit=emit or sink,
     )
@@ -851,15 +882,36 @@ async def server_runtime(tmp_path, runtime_config, runtime_archive, monkeypatch)
         config=config, project_service=service, recorder=runtime_archive[0]
     )
     await server.dispatch(
-        dict(type="activate_domain", domain_id="engineering", request_id="start")
+        dict(
+            type="activate_domain",
+            protocol_version=2,
+            expected_domain_revision="0",
+            domain_id="engineering",
+            request_id="start",
+        )
     )
     session = server.domains._sessions["engineering"][-1]
     owner = session._owner
+    state_binding = await service.application_state_binding()
     yield server, session, owner
     owner.clean = True
     if owner.stop_gate:
         owner.stop_gate.set()
+    if owner.lease.held and server.application_state._closed:
+        # Failed serve already closed its writer. Reopen the same durable test
+        # image explicitly to settle confirmed fake cleanup, never restart SDK.
+        from bridge.state_coordinator import LazySQLiteStateRepository
+
+        common, project = state_binding
+        replacement = StateCoordinator(
+            lambda: LazySQLiteStateRepository(common, project)
+        )
+        await replacement.open()
+        server.application_state = replacement
+        session._coordinator = replacement
     await server._shutdown_domains()
+    if server.application_state is not None:
+        await server.application_state.close()
     await service.close()
     server.close()
 
@@ -938,7 +990,11 @@ async def test_emitted_domain_rejection_records_failure_without_duplicate_delive
 
     response = await server.dispatch(
         dict(
-            type="activate_domain", domain_id="engineering", request_id="rejected-start"
+            type="activate_domain",
+            protocol_version=2,
+            expected_domain_revision="0",
+            domain_id="engineering",
+            request_id="rejected-start",
         ),
         connection_id="connection",
         emit=emit,
@@ -985,7 +1041,13 @@ async def test_dispatch_domain_rejection_has_one_correlated_safe_terminal(
     monkeypatch.setattr("bridge.domain_session.load_agent", lambda _: "definition")
     server = BridgeServer(config=runtime_config, recorder=recorder)
     server.project = service
-    server.domains = DomainManager(runtime_config, service, recorder=recorder)
+    server.domains = DomainManager(
+        runtime_config,
+        service,
+        recorder=recorder,
+        state_provider=lambda: server.application_state,
+        state_status=server.application_state_status,
+    )
     packets = []
 
     async def emit(packet):
@@ -995,12 +1057,18 @@ async def test_dispatch_domain_rejection_has_one_correlated_safe_terminal(
         if stage == "startup":
             monkeypatch.setattr(FakeOwner, "start", reject_start)
             command = dict(
-                type="activate_domain", domain_id="engineering", request_id="rejected"
+                type="activate_domain",
+                protocol_version=2,
+                expected_domain_revision="0",
+                domain_id="engineering",
+                request_id="rejected",
             )
         else:
             await server.dispatch(
                 dict(
                     type="activate_domain",
+                    protocol_version=2,
+                    expected_domain_revision="0",
                     domain_id="engineering",
                     request_id="setup-start",
                 ),
@@ -1012,6 +1080,7 @@ async def test_dispatch_domain_rejection_has_one_correlated_safe_terminal(
             command = query(
                 "rejected",
                 generation=session.domain_session_id,
+                execution_id=session.execution_id,
                 agent_id=(
                     "systems-architect" if stage == "binding" else "backend-architect"
                 ),
@@ -1061,6 +1130,7 @@ async def test_dispatch_accepted_failure_and_resume_have_separate_event_owners(
     recorder, writer = runtime_archive
     server = BridgeServer(config=runtime_config, recorder=recorder)
     server.project, server.domains = manager._service, manager
+    server.application_state = manager.coordinator
     owner.outcome = SDKOutcome(
         "Partial café",
         "error",
@@ -1076,7 +1146,11 @@ async def test_dispatch_accepted_failure_and_resume_have_separate_event_owners(
         packets.append(packet)
 
     await server.dispatch(
-        query("accepted", generation=session.domain_session_id),
+        query(
+            "accepted",
+            generation=session.domain_session_id,
+            execution_id=session.execution_id,
+        ),
         connection_id="origin",
         emit=emit,
     )
@@ -1095,6 +1169,7 @@ async def test_dispatch_accepted_failure_and_resume_have_separate_event_owners(
     replay = await server.dispatch(
         dict(
             type="resume",
+            protocol_version=2,
             domain_id="engineering",
             domain_session_id=session.domain_session_id,
             request_id="replay",
@@ -1108,3 +1183,278 @@ async def test_dispatch_accepted_failure_and_resume_have_separate_event_owners(
     completed = events(writer, "request_completed")
     assert len(completed) == 1 and completed[0]["request_id"] == "replay"
     assert len(owner.calls) == 1
+
+
+@pytest.mark.asyncio
+async def test_application_state_opens_when_project_ready_without_start(
+    tmp_path, runtime_config, offline_clients
+):
+    from bridge.state_coordinator import StateCoordinator, LazySQLiteStateRepository
+    from bridge.tests.test_state_coordinator import start
+    from bridge.tests.test_workspace import repository
+    from bridge.workspace import inspect_project
+
+    root = repository(tmp_path)
+    facts = inspect_project(root)
+    seed = StateCoordinator(
+        lambda: LazySQLiteStateRepository(facts.common_git_dir, facts.project_id)
+    )
+    await seed.open()
+    saved = await seed.commit(start())
+    await seed.close()
+    server = BridgeServer(config=replace(runtime_config, workspace_root_dir=root))
+    try:
+        await server.project.start()
+        await server.project._bootstrap_task
+        assert server.project.snapshot()["stage"] == "ready"
+        recovered = server.application_state.snapshot()
+        assert recovered.sessions == saved.view.sessions
+        assert recovered.requests == saved.view.requests
+        assert recovered.terminals == saved.view.terminals
+        assert recovered.revision == saved.view.revision + 1
+        assert recovered.executions[0].execution_id == saved.result["execution_id"]
+        assert recovered.executions[0].stopped_at
+        assert recovered.executions[0].outcome == "interrupted"
+        assert server.domains._sessions == {}
+        assert server.application_state_status() == dict(
+            backend="sqlite",
+            durable=True,
+            continuity="project",
+            continuity_id=recovered.instance_id,
+            error_type=None,
+        )
+        assert not offline_clients[0].reply.called
+    finally:
+        await server._shutdown()
+        server.close()
+
+
+@pytest.mark.asyncio
+async def test_missing_application_state_and_unprepared_project_never_initialize(
+    tmp_path, runtime_config, offline_clients
+):
+    from bridge.tests.test_workspace import repository
+    from bridge.workspace import inspect_project
+
+    root = repository(tmp_path)
+    facts = inspect_project(root)
+    server = BridgeServer(config=replace(runtime_config, workspace_root_dir=root))
+    try:
+        await server.project.start()
+        await server.project._bootstrap_task
+        assert server.application_state.snapshot() is None
+        assert not (facts.common_git_dir / "plaza/application-state").exists()
+        await server.project.refresh_snapshot()
+        assert not (facts.common_git_dir / "plaza/application-state").exists()
+        assert not offline_clients[0].reply.called
+    finally:
+        await server._shutdown()
+        server.close()
+    new_root = tmp_path / "new"
+    new_root.mkdir()
+    server = BridgeServer(config=replace(runtime_config, workspace_root_dir=new_root))
+    try:
+        await server.project.start()
+        await server.project._bootstrap_task
+        assert await server.project.application_state_binding() is None
+        assert server.application_state is None
+        assert not (new_root / ".git").exists()
+        await server.project.refresh_snapshot()
+        assert not offline_clients[0].reply.called
+    finally:
+        await server._shutdown()
+        server.close()
+
+
+@pytest.mark.asyncio
+async def test_state_open_failure_does_not_change_ready_project(
+    tmp_path, runtime_config, offline_clients
+):
+    from bridge.state_coordinator import StateCoordinator, LazySQLiteStateRepository
+    from bridge.tests.test_state_coordinator import start
+    from bridge.tests.test_workspace import repository
+    from bridge.workspace import inspect_project
+
+    root = repository(tmp_path)
+    facts = inspect_project(root)
+    owner = StateCoordinator(
+        lambda: LazySQLiteStateRepository(facts.common_git_dir, facts.project_id)
+    )
+    await owner.open()
+    await owner.commit(start())
+    server = BridgeServer(config=replace(runtime_config, workspace_root_dir=root))
+    try:
+        await server.project.start()
+        await server.project._bootstrap_task
+        assert server.project.snapshot()["stage"] == "ready"
+        assert server.application_state_status()["error_type"] == "state_store_busy"
+        assert not server.application_state.admission_open
+        assert not offline_clients[0].reply.called
+    finally:
+        await server._shutdown()
+        server.close()
+        await owner.close()
+
+
+@pytest.mark.asyncio
+async def test_memory_backend_advertises_discontinuity_without_disk_access(
+    tmp_path, runtime_config, offline_clients, monkeypatch
+):
+    from bridge.tests.test_workspace import repository
+    import bridge.state_image as state_image
+    from bridge.tests.test_state_coordinator import start
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("memory backend accessed a durable image")
+
+    monkeypatch.setattr(state_image.StateImage, "open", forbidden)
+    server = BridgeServer(
+        config=replace(
+            runtime_config,
+            workspace_root_dir=repository(tmp_path),
+            domain_state_backend="memory",
+        )
+    )
+    try:
+        await server.project.start()
+        await server.project._bootstrap_task
+        assert server.application_state_status() == dict(
+            backend="memory",
+            durable=False,
+            continuity="process",
+            continuity_id=server.domains.boot_id,
+            error_type=None,
+        )
+        assert server.application_state.snapshot() is None
+        await server.application_state.commit(start())
+        assert server.application_state.snapshot().revision == 1
+        assert (
+            server.application_state_status()["continuity_id"] == server.domains.boot_id
+        )
+        assert not offline_clients[0].reply.called
+    finally:
+        await server._shutdown()
+        server.close()
+
+
+@pytest.mark.asyncio
+async def test_injected_ready_project_binding_opens_before_dispatch(
+    tmp_path, runtime_config, offline_clients
+):
+    from bridge.project_service import ProjectService
+    from bridge.tests.test_workspace import repository
+
+    config = replace(runtime_config, workspace_root_dir=repository(tmp_path))
+    service = ProjectService(
+        config, runtime_root=tmp_path / "runtime", owner_run_id="injected"
+    )
+    await service.start()
+    await service._bootstrap_task
+    server = BridgeServer(config=config, project_service=service)
+    try:
+        await server.dispatch(
+            dict(
+                type="domain_status",
+                protocol_version=2,
+                domain_id="engineering",
+                request_id="status",
+            )
+        )
+        assert server.application_state is not None
+        assert server.application_state.snapshot() is None
+        assert server.domains._sessions == {}
+        assert not offline_clients[0].reply.called
+    finally:
+        await server._shutdown()
+        server.close()
+
+
+@pytest.mark.asyncio
+async def test_state_worker_drains_before_project_and_recorder_close(
+    tmp_path, runtime_config, offline_clients, monkeypatch
+):
+    import threading
+    from bridge.state_coordinator import StateCoordinator, VolatileStateRepository
+    from bridge.tests.test_state_coordinator import start, wait_thread
+
+    entered, release = threading.Event(), threading.Event()
+    order = []
+
+    class SlowRepository(VolatileStateRepository):
+        def apply(self, command):
+            entered.set()
+            assert release.wait(5)
+            return super().apply(command)
+
+        def close(self):
+            order.append("state")
+            super().close()
+
+    coordinator = StateCoordinator(lambda: SlowRepository("project"))
+    await coordinator.open()
+    server = BridgeServer(config=runtime_config, state_coordinator=coordinator)
+
+    async def project_close():
+        order.append("project")
+
+    monkeypatch.setattr(server.project, "close", project_close)
+    writer = asyncio.create_task(coordinator.commit(start()))
+    await wait_thread(entered)
+    closing = asyncio.create_task(server._shutdown())
+    await asyncio.sleep(0)
+    assert not closing.done()
+    assert order == []
+    release.set()
+    await writer
+    await closing
+    server.close()
+    assert order == ["state", "project"]
+
+
+@pytest.mark.asyncio
+async def test_concurrent_dispatch_waits_for_existing_state_open(
+    tmp_path, runtime_config, offline_clients, monkeypatch
+):
+    from bridge.project_service import ProjectService
+    from bridge.state_coordinator import StateCoordinator
+    from bridge.tests.test_workspace import repository
+
+    config = replace(runtime_config, workspace_root_dir=repository(tmp_path))
+    service = ProjectService(
+        config, runtime_root=tmp_path / "runtime", owner_run_id="run"
+    )
+    await service.start()
+    await service._bootstrap_task
+    entered, release = asyncio.Event(), asyncio.Event()
+    original = StateCoordinator.open
+
+    async def blocked(coordinator):
+        entered.set()
+        await release.wait()
+        await original(coordinator)
+
+    monkeypatch.setattr(StateCoordinator, "open", blocked)
+    server = BridgeServer(config=config, project_service=service)
+    first = asyncio.create_task(server._ensure_application_state())
+    try:
+        await entered.wait()
+        second = asyncio.create_task(
+            server.dispatch(
+                dict(
+                    type="domain_status",
+                    protocol_version=2,
+                    domain_id="engineering",
+                    request_id="status",
+                )
+            )
+        )
+        await asyncio.sleep(0)
+        assert not second.done()
+        release.set()
+        await first
+        await second
+    finally:
+        release.set()
+        await first
+        await server._shutdown()
+        server.close()

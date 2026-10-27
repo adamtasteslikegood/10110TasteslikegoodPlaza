@@ -424,6 +424,22 @@
     {
       "path": "docs/superpowers/plans/2026-10-25-confluence-publisher.md",
       "reason": "Implementation plan for the owner-selected GitHub Actions publisher. Execution artifact, not a new source of product or document authority."
+    },
+    {
+      "path": "docs/superpowers/specs/2026-10-26-m13-sqlite-session-persistence-design.md",
+      "reason": "Owner-approved bounded SQLite session-persistence design; derived design contract pending implementation, not shipped behavior or a new locked decision origin."
+    },
+    {
+      "path": "docs/superpowers/plans/2026-10-26-m13-sqlite-session-persistence.md",
+      "reason": "Derived implementation plan for the owner-approved bounded SQLite design; pending plan/execution review, not runtime acceptance or a new product-decision origin."
+    },
+    {
+      "path": "docs/m13-session-persistence.md",
+      "reason": "Operational summary of the owner-approved M13 SQLite design and platform successor contract; no new authority or locked decision. Final acceptance remains pending."
+    },
+    {
+      "path": "docs/m13-live-acceptance.md",
+      "reason": "Operational acceptance runbook for the approved M13 design; separates source-bound offline probes, reviewed live guard evidence and pending owner desktop/OAuth observations; no new authority."
     }
   ]
 }

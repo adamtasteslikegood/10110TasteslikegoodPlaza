@@ -7,6 +7,8 @@ import os
 from pathlib import Path
 import stat
 
+from bridge.session_recap import Recap
+
 
 class ContextError(ValueError):
     code = "context_unavailable"
@@ -26,12 +28,14 @@ class ContextPacket:
     work: str
     runtime: str
     sources: tuple[ContextSource, ...]
+    continuity: Recap | None = None
 
     def render(self):
         return (
             self.game
             + "\n"
             + self.work
+            + ("\n" + self.continuity.text if self.continuity is not None else "")
             + "\n[Bridge runtime facts — authoritative capabilities]\n"
             + self.runtime
             + "\nCurrent runtime capabilities override narrative and role tool claims. "
@@ -40,16 +44,33 @@ class ContextPacket:
         )
 
     def diagnostics(self):
-        return [
-            dict(identity=s.identity, scope=s.scope, revision=s.revision)
-            for s in self.sources
-        ] + [
-            dict(
-                identity="bridge-runtime",
-                scope="runtime",
-                revision=hashlib.sha256(self.runtime.encode("utf-8")).hexdigest(),
-            )
-        ]
+        continuity = (
+            [
+                dict(
+                    identity="application-recap",
+                    scope="quoted-continuity",
+                    revision=hashlib.sha256(
+                        self.continuity.text.encode("utf-8")
+                    ).hexdigest(),
+                )
+            ]
+            if self.continuity is not None
+            else []
+        )
+        return (
+            continuity
+            + [
+                dict(identity=s.identity, scope=s.scope, revision=s.revision)
+                for s in self.sources
+            ]
+            + [
+                dict(
+                    identity="bridge-runtime",
+                    scope="runtime",
+                    revision=hashlib.sha256(self.runtime.encode("utf-8")).hexdigest(),
+                )
+            ]
+        )
 
 
 def _read(root, relative, limit, scope, optional=False):

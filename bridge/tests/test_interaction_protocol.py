@@ -227,7 +227,13 @@ async def test_status_membership_same_owner_and_extra_while_core_runs(
         )
         assert not owners and not service._workspaces
         started = await server.dispatch(
-            dict(type="activate_domain", domain_id="core", request_id="start")
+            dict(
+                type="activate_domain",
+                protocol_version=2,
+                expected_domain_revision=before["domain_state"]["domain_revision"],
+                domain_id="core",
+                request_id="start",
+            )
         )
         generation = started[-1]["domain_session_id"]
         architect, auditor = await status("systems-architect"), await status(
@@ -244,6 +250,8 @@ async def test_status_membership_same_owner_and_extra_while_core_runs(
 
         command = dict(
             type="domain_query",
+            protocol_version=2,
+            execution_id=started[-1]["execution_id"],
             domain_id="core",
             domain_session_id=generation,
             agent_id="backend-architect",
@@ -273,6 +281,8 @@ async def test_status_membership_same_owner_and_extra_while_core_runs(
         assert owners[0].calls[0]["agent_id"] == "security-auditor"
     finally:
         await server.domains.shutdown()
+        if server.application_state is not None:
+            await server.application_state.close()
         await service.close()
 
 

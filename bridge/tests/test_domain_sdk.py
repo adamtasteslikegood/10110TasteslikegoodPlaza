@@ -932,3 +932,45 @@ async def test_production_start_verifies_actual_mode_before_connect(
     assert verified == [mode]
     assert not clients
     assert (await sdk.stop()).clean
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "content",
+    ['"\\' * 15000, "\x00\n\t" * 15000, "🙂漢é" * 4000],
+    ids=["quotes-backslashes", "controls", "multibyte"],
+)
+async def test_recap_budget_through_actual_domain_input_builder(owner, content):
+    import json
+    from bridge.context import ContextPacket
+    from bridge.tests.test_session_recap import history, recap
+
+    continuity = recap(history(4, task=content, answer=content, agent=content))
+    packet = ContextPacket(
+        "Fresh game guidance",
+        "Fresh work guidance",
+        "Current capabilities",
+        (),
+        continuity,
+    )
+    sdk, clients = owner
+    await sdk.start()
+    try:
+        result = await sdk.execute(
+            agent_id="builder",
+            definition="Build",
+            task="Current Run",
+            prior_project_notes="Current project notes",
+            context_packet=packet,
+        )
+        assert result.status == "success"
+        encoded = json.dumps(continuity.text, ensure_ascii=False)[1:-1]
+        assert len(encoded.encode()) <= 16384
+        assert encoded in clients[0].prompt
+        payload = json.loads(clients[0].prompt)
+        assert payload["task"] == "Current Run"
+        assert payload["prior_project_notes"] == "Current project notes"
+        assert continuity.text in payload["current_context"]
+        assert [name for name, _ in clients[0].calls].count("query") == 1
+    finally:
+        await sdk.stop()

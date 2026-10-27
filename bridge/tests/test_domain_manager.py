@@ -7,6 +7,7 @@ from bridge.agent_bindings import DOMAIN_IDS
 import pytest_asyncio
 from bridge.config import default_config
 from bridge.domain_manager import DomainManager
+from bridge.state_coordinator import StateCoordinator, VolatileStateRepository
 from bridge.tests.domain_fakes import FakeProjectService, FakeOwner, context
 
 
@@ -21,20 +22,41 @@ async def setup(tmp_path, monkeypatch):
         return owner
 
     monkeypatch.setattr("bridge.domain_session.DomainSDKOwner", factory, raising=False)
-    manager = DomainManager(default_config(), service)
+    coordinator = StateCoordinator(
+        lambda: VolatileStateRepository(service.workspace.project_id)
+    )
+    await coordinator.open()
+    manager = DomainManager(default_config(), service, state_coordinator=coordinator)
     yield manager, service, owners
     await manager.shutdown()
+    await coordinator.close()
     service.close()
 
 
 async def command(manager, type, **kwargs):
     packets = []
+    current = manager.snapshot("engineering")
+    if type == "activate_domain":
+        kwargs.setdefault("expected_domain_revision", current["domain_revision"])
+    if type in (
+        "deactivate_domain",
+        "domain_query",
+        "background_domain",
+        "refocus_domain",
+    ):
+        kwargs.setdefault("execution_id", current["execution_id"])
 
     async def emit(packet):
         packets.append(packet)
 
     await manager.handle(
-        dict(type=type, request_id="request", domain_id="engineering", **kwargs),
+        dict(
+            type=type,
+            protocol_version=2,
+            request_id="request",
+            domain_id="engineering",
+            **kwargs
+        ),
         context=context(),
         emit=emit,
     )
@@ -59,7 +81,13 @@ async def test_activation_exposes_generation_before_connect(setup, monkeypatch):
 
     start = asyncio.create_task(
         manager.handle(
-            dict(type="activate_domain", domain_id="engineering", request_id="start"),
+            dict(
+                type="activate_domain",
+                protocol_version=2,
+                expected_domain_revision="0",
+                domain_id="engineering",
+                request_id="start",
+            ),
             context=context("start"),
             emit=emit,
         )
@@ -111,10 +139,11 @@ async def test_start_failure_preserves_safe_category_and_correlated_event(
 @pytest.mark.asyncio
 async def test_stale_generation_cannot_mutate(setup):
     manager, _, _ = setup
-    first = (await command(manager, "activate_domain"))[-1]["domain_session_id"]
+    initial = (await command(manager, "activate_domain"))[-1]
+    first = initial["domain_session_id"]
     await command(manager, "deactivate_domain", domain_session_id=first)
     second = (await command(manager, "activate_domain"))[-1]["domain_session_id"]
-    assert first != second
+    assert first == second
     for action in (
         "background_domain",
         "refocus_domain",
@@ -126,8 +155,14 @@ async def test_stale_generation_cannot_mutate(setup):
             if action == "domain_query"
             else {}
         )
-        reply = await command(manager, action, domain_session_id=first, **extra)
-        assert reply[-1]["error_type"] == "session_unavailable"
+        reply = await command(
+            manager,
+            action,
+            domain_session_id=first,
+            execution_id=initial["execution_id"],
+            **extra
+        )
+        assert reply[-1]["error_type"] == "stale_execution"
     assert (await command(manager, "domain_status"))[-1]["state"] == "active"
     assert (await command(manager, "resume", domain_session_id=first, cursor="0"))[-1][
         "type"
@@ -135,7 +170,7 @@ async def test_stale_generation_cannot_mutate(setup):
 
 
 @pytest.mark.asyncio
-async def test_three_generations_evict_only_clean_oldest(setup):
+async def test_three_ended_sessions_preserve_all_saved_histories(setup):
     manager, _, _ = setup
     generations = []
     for _ in range(3):
@@ -144,11 +179,31 @@ async def test_three_generations_evict_only_clean_oldest(setup):
         ]
         generations.append(generation)
         await command(manager, "deactivate_domain", domain_session_id=generation)
+        packets = []
+
+        async def emit(packet):
+            packets.append(packet)
+
+        await manager.handle(
+            dict(
+                type="end_domain_session",
+                protocol_version=2,
+                request_id="end",
+                domain_id="engineering",
+                domain_session_id=generation,
+                expected_domain_revision=manager.snapshot("engineering")[
+                    "domain_revision"
+                ],
+            ),
+            context=context(),
+            emit=emit,
+        )
+        assert packets[-1]["state"] == "inactive"
     status = (await command(manager, "domain_status"))[-1]
-    assert status["available_generations"] == generations[1:]
+    assert status["available_generations"] == generations
     assert (
         await command(manager, "resume", domain_session_id=generations[0], cursor="0")
-    )[-1]["error_type"] == "session_unavailable"
+    )[-1]["type"] == "resume_complete"
 
 
 @pytest.mark.asyncio
@@ -160,13 +215,15 @@ async def test_discovery_and_invalid_correlation_are_safe(setup):
         packets.append(packet)
 
     await manager.handle(
-        dict(type="describe_workspace", request_id="inspect"),
+        dict(type="describe_workspace", protocol_version=2, request_id="inspect"),
         context=context(),
         emit=emit,
     )
     assert packets[-1]["request_id"] == "inspect" and not owners
     await manager.handle(
-        dict(type="activate_domain", domain_id=[]), context=context(), emit=emit
+        dict(type="activate_domain", protocol_version=2, domain_id=[]),
+        context=context(),
+        emit=emit,
     )
     assert packets[-1]["error_type"] == "invalid_request"
     assert "request_id" not in packets[-1] and "domain_id" not in packets[-1]
@@ -185,6 +242,8 @@ async def test_ten_domain_ids_and_idle_reservation(setup):
         await manager.handle(
             dict(
                 type="activate_domain",
+                protocol_version=2,
+                expected_domain_revision="0",
                 request_id=str(i),
                 domain_id=(sorted(DOMAIN_IDS) + ["engineering"])[i],
             ),
@@ -294,6 +353,8 @@ async def test_eleventh_live_identity_is_rejected_without_evicting_startup(
         await manager.handle(
             dict(
                 type="activate_domain",
+                protocol_version=2,
+                expected_domain_revision="0",
                 request_id=str(index),
                 domain_id=(sorted(DOMAIN_IDS) + ["extra-limit-test"])[index],
             ),
@@ -304,8 +365,8 @@ async def test_eleventh_live_identity_is_rejected_without_evicting_startup(
     tasks = [asyncio.create_task(start(index)) for index in range(10)]
     await asyncio.sleep(0)
     await start(10)
-    assert replies[10][0]["error_type"] == "domain_busy"
-    assert len(manager._sessions) == 10
+    assert replies[10][0]["error_type"] == "capacity_limit"
+    assert len(manager._sessions) <= 10
     release.set()
     await asyncio.gather(*tasks)
     assert all(
@@ -325,7 +386,13 @@ async def test_capacity_refusal_does_not_claim_another_department_workspace(setu
         packets.append(packet)
 
     await manager.handle(
-        dict(type="activate_domain", request_id="second", domain_id="core"),
+        dict(
+            type="activate_domain",
+            protocol_version=2,
+            expected_domain_revision="0",
+            request_id="second",
+            domain_id="core",
+        ),
         context=context("second"),
         emit=emit,
     )
@@ -339,9 +406,12 @@ async def test_shutdown_drains_all_generations_before_reporting_cleanup_failure(
 ):
     manager, _, owners = setup
     first = (await command(manager, "activate_domain"))[-1]["domain_session_id"]
+    old = manager._sessions["engineering"][0]
     await command(manager, "deactivate_domain", domain_session_id=first)
     await command(manager, "activate_domain")
-    old = manager._sessions["engineering"][0]
+    # Defensive shutdown still drains every registered owner. Clean owners are
+    # normally discarded separately from the persisted session catalog.
+    manager._sessions["engineering"].insert(0, old)
 
     async def fail():
         raise RuntimeError("cleanup failed")
@@ -383,7 +453,13 @@ async def test_cancelled_activation_delivery_detaches_caller_but_keeps_startup(
 
     task = asyncio.create_task(
         manager.handle(
-            dict(type="activate_domain", request_id="start", domain_id="engineering"),
+            dict(
+                type="activate_domain",
+                protocol_version=2,
+                expected_domain_revision="0",
+                request_id="start",
+                domain_id="engineering",
+            ),
             context=context("start"),
             emit=emit,
         )

@@ -320,7 +320,13 @@ async def test_foreign_live_reservation_allows_bootstrap_memory_but_start_is_bus
         assert service.require_memory().load().revision >= 1
         server = BridgeServer(config=service._config, project_service=service)
         result = await server.dispatch(
-            dict(type="activate_domain", domain_id="core", request_id="start")
+            dict(
+                type="activate_domain",
+                protocol_version=2,
+                expected_domain_revision="0",
+                domain_id="core",
+                request_id="start",
+            )
         )
         assert result[-1]["error_type"] == "workspace_busy"
         await server._shutdown_domains()
@@ -882,3 +888,35 @@ async def test_extra_memory_admission_accepts_new_source_commit_without_worktree
             "turn", outcome="success", output="done", delta=None
         )
         await service.close()
+
+
+@pytest.mark.asyncio
+async def test_application_state_binding_uses_revalidated_project_facts(
+    tmp_path, monkeypatch
+):
+    from bridge.project_service import ProjectService
+    from bridge.workspace import WorkspaceError
+
+    root = repository(tmp_path)
+    seen = []
+
+    async def ready():
+        seen.append(await service.application_state_binding())
+
+    service = ProjectService(
+        replace(default_config(), workspace_root_dir=root),
+        runtime_root=tmp_path / "runtime",
+        owner_run_id="run",
+        on_ready=ready,
+    )
+    assert await service.application_state_binding() is None
+    await settled(service)
+    binding = await service.application_state_binding()
+    assert binding == (service._project.common_git_dir, service._project.project_id)
+    assert seen == [binding]
+    original = service._project
+    service._project = replace(original, project_id="untrusted")
+    with pytest.raises(WorkspaceError, match="identity changed"):
+        await service.application_state_binding()
+    service._project = original
+    await service.close()

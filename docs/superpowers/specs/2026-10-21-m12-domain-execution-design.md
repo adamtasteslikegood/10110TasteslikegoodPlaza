@@ -142,6 +142,27 @@ execution request IDs, workspace IDs and provider session IDs remain distinct.
 > Whether a restarted bridge resumes a prior `domain_session_id` is a separate
 > spec change against the generation rules in this document, made in that phase.
 
+### M13 successor notice — approved October 26, 2026
+
+The approved [M13 SQLite session persistence design](2026-10-26-m13-sqlite-session-persistence-design.md)
+supersedes this document's historical process-generation history/restart rules
+for its bounded application-session increment: Stop preserves application identity,
+End is explicit, and restart restores history while each explicit Start creates a
+fresh execution. Reconnect/status/replay never starts work. M12 text and evidence
+below remain the historical acceptance contract; M13 implementation is in progress
+and requires its own verification and fresh guarded-source evidence. This notice
+changes no locked decision, project-note bounds/isolation or authentication path.
+
+The [M13 operating guide](../../m13-session-persistence.md) now documents the
+implemented successor branch; final M13 acceptance remains pending. Its approved
+exact-turn/owned note reconciliation supersedes the historical blanket startup
+recovery of domain pending turns in §4.4, for both storage backends. Legacy domain
+turns without a retained SQL request can remain pending for specific operator
+inspection; extras/direct-store defaults remain. M13's bounded cleartext task/output
+records refine the earlier M12-only database exclusion above; credentials, raw SDK
+objects and complete guidance bodies remain excluded. Historical M12 text and
+acceptance evidence below are preserved, not reinterpreted as M13 proof.
+
 ## 4. Workspace selection and reservation
 
 ### 4.1 Configured project and automatic bootstrap

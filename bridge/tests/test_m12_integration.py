@@ -246,8 +246,9 @@ async def test_closed_origin_replay_and_stale_generation(
         await b.send("deactivate_domain", "stop", generation)
         assert (await b.reply("stop"))["state"] == "inactive"
         life.assert_released()
+        old_execution = terminal["execution_id"]
         newer = await b.start("new-start")
-        assert newer != generation and len(provider.owners) == 2
+        assert newer == generation and len(provider.owners) == 2
         for index, kind in enumerate(
             ("domain_query", "background_domain", "refocus_domain", "deactivate_domain")
         ):
@@ -257,8 +258,8 @@ async def test_closed_origin_replay_and_stale_generation(
                 else {}
             )
             request = f"stale-{index}"
-            await b.send(kind, request, generation, **extra)
-            assert (await b.reply(request))["error_type"] == "session_unavailable"
+            await b.send(kind, request, generation, execution_id=old_execution, **extra)
+            assert (await b.reply(request))["error_type"] == "stale_execution"
         assert await b.replay(generation, "old-history") == [terminal]
         await b.send("domain_status", "new-status")
         state = await b.reply("new-status")

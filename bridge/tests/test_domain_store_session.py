@@ -18,6 +18,7 @@ async def test_injected_store_retains_delivered_terminal_and_duplicate_identity(
     session = DomainSession(
         "engineering",
         "generation",
+        execution_id="execution",
         config=default_config(),
         project_service=service,
         store=store,
@@ -42,6 +43,7 @@ async def test_injected_store_retains_delivered_terminal_and_duplicate_identity(
             workspace_id=service.workspace.workspace_id,
             domain_id="engineering",
             domain_session_id="generation",
+            execution_id="execution",
             request_id="run",
             agent_id="backend-architect",
             task="Build something",
@@ -79,6 +81,7 @@ async def test_default_session_stores_do_not_share_history_or_sequence(setup):
     second = DomainSession(
         "engineering",
         "next-generation",
+        execution_id="execution",
         config=default_config(),
         project_service=service,
     )

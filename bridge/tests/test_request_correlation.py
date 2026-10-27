@@ -183,11 +183,16 @@ async def test_domain_validation_uses_explicit_correlation_without_fabricating_i
     request_type, runtime_config, offline_clients
 ):
     server = BridgeServer(config=runtime_config)
-    response = await server.dispatch({"type": request_type, "request_id": "metadata"})
+    legacy = await server.dispatch({"type": request_type, "request_id": "legacy"})
+    assert legacy[0]["error_type"] == "upgrade_required"
+    assert legacy[0]["request_id"] == "legacy"
+    response = await server.dispatch(
+        {"type": request_type, "protocol_version": 2, "request_id": "metadata"}
+    )
     assert response[0]["error_type"] == "invalid_request"
     assert response[0]["type"] == "domain_error"
     assert response[0]["request_id"] == "metadata"
-    missing = await server.dispatch({"type": request_type})
+    missing = await server.dispatch({"type": request_type, "protocol_version": 2})
     assert missing[0]["error_type"] == "invalid_request"
     assert "request_id" not in missing[0]
 

@@ -130,24 +130,53 @@ class Socket:
     def __init__(self, socket, domain_id="engineering"):
         self.socket, self.packets = socket, []
         self.domain_id = domain_id
+        self.pending = []
 
     async def send(self, kind, request_id, generation=None, **extra):
-        command = dict(type=kind, request_id=request_id)
+        command = dict(type=kind, protocol_version=2, request_id=request_id)
         if kind != "describe_workspace":
             command["domain_id"] = self.domain_id
         if generation is not None:
             command["domain_session_id"] = generation
         command.update(extra)
+        # The driver observes v2 authority over the same wire as a real client.
+        # Explicit values remain intact so stale/legacy negative cases are real.
+        authority = (
+            "expected_domain_revision"
+            if kind in {"activate_domain", "end_domain_session"}
+            else "execution_id"
+        )
+        if authority not in command and kind in {
+            "activate_domain",
+            "end_domain_session",
+            "domain_query",
+            "background_domain",
+            "refocus_domain",
+            "deactivate_domain",
+        }:
+            status_id = "authority-" + uuid.uuid4().hex
+            await self.send("domain_status", status_id, domain_id=command["domain_id"])
+            status = await self.reply(status_id, type="domain_state")
+            if kind in {"activate_domain", "end_domain_session"}:
+                command.setdefault(
+                    "expected_domain_revision", status["domain_revision"]
+                )
+            else:
+                command.setdefault("execution_id", status["execution_id"])
         await self.socket.send(json.dumps(command))
         return command
 
     async def receive(self, predicate):
+        for index, packet in enumerate(self.pending):
+            if predicate(packet):
+                return self.pending.pop(index)
         async with asyncio.timeout(15):
             while True:
                 packet = json.loads(await self.socket.recv())
                 self.packets.append(packet)
                 if predicate(packet):
                     return packet
+                self.pending.append(packet)
 
     async def reply(self, request_id, **expected):
         return await self.receive(
@@ -195,15 +224,21 @@ class Lifetime:
         *,
         reviewer=None,
         domain_id="engineering",
+        wait_bootstrap=True,
+        state_backend="sqlite",
     ):
         self.domain_id = domain_id
+        self.wait_bootstrap = wait_bootstrap
         self.root = root
         self.runtime = tmp_path / "runtime"
         self.runtime.mkdir()
         (self.runtime / "sentinel").write_text("runtime unsaved")
         self.run_id = uuid.uuid4().hex
         self.config = replace(
-            default_config(), workspace_root_dir=root, log_dir=tmp_path / "logs"
+            default_config(),
+            workspace_root_dir=root,
+            log_dir=tmp_path / "logs",
+            domain_state_backend=state_backend,
         )
         self.service = ProjectService(
             self.config,
@@ -258,7 +293,8 @@ class Lifetime:
     async def __aenter__(self):
         self.serving = asyncio.create_task(self.server.serve(stop_event=self.stop))
         await asyncio.wait_for(self.ready.wait(), 10)
-        await self.service._bootstrap_task
+        if self.wait_bootstrap:
+            await self.service._bootstrap_task
         port = self.listeners[0].server.sockets[0].getsockname()[1]
         self.url = f"ws://127.0.0.1:{port}"
         return self

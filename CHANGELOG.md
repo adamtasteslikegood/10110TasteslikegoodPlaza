@@ -17,6 +17,32 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
 
+### Added — bounded SQLite application sessions (PLZG-290, implementation branch)
+
+- Persist bounded project-scoped sessions and committed results in locked,
+  sidecar-free SQLite images. Stop preserves the application session; explicit
+  End records attribution after cleanup. Every fresh Start gets a new execution
+  identity; restart/replay recovers history without SDK/model/tool activation.
+- Classify accepted/dispatched crash outcomes without retrying work; reconcile
+  domain notes only with exact retained-turn ownership. Supply a bounded quoted
+  recap on the first Run of each fresh execution and restore both Godot work surfaces.
+- Add offline `scripts/domain_state.py` export and ended-session deletion using
+  safe exclusive UTF-8 JSON outputs and a durable backup before compacting commit.
+  Document startup backend switching, limits, cleartext content and safe recovery.
+- Add bounded source/runtime-bound performance and owner-acceptance receipts and a
+  strict 33-case/mode guard campaign covering storage faults and stale executions
+  through the installed callback, including transitions during awaited readiness.
+- Settle retained duplicate Runs independently of rendering and exact Stop replies
+  after a concurrent inactive status. Preserve scrolled result anchors through
+  continuity notices and dialogue/pane handoff.
+- Admit approved 2 MiB terminal frames independently of the 1 MiB display cache;
+  settle receipts before whole-row omission, bound protected unsaved faults and
+  reject oversized raw input before parsing. Acceptance observations tolerate
+  the bounded marker-unlink/lock-close transition without retrying commands.
+- Record full pinned local QA and representative/dense/64 MiB measurements; final
+  independent review, fresh provider guards and owner desktop/OAuth acceptance
+  remain pending. Historical M12 evidence keeps its original bindings.
+
 ### Changed — in-memory domain store extraction (PLZG-290, #373)
 
 - Move bounded terminal history behind `DomainSessionStore` and `MemoryStore`.

@@ -530,7 +530,13 @@ async def test_legacy_character_status_allows_only_safe_explicit_adoption(
             assert packet["workspace"]["stage"] == "migration_pending"
             assert packet["workspace"]["workspace_id"] == old.workspace_id
             response = await server.dispatch(
-                dict(type="activate_domain", domain_id="core", request_id="start")
+                dict(
+                    type="activate_domain",
+                    protocol_version=2,
+                    expected_domain_revision="0",
+                    domain_id="core",
+                    request_id="start",
+                )
             )
             assert response[-1]["state"] == "active"
             adopted = service.require_workspace("core")
@@ -543,6 +549,8 @@ async def test_legacy_character_status_allows_only_safe_explicit_adoption(
         assert (old.worktree_path / "dirty.txt").read_text() == "retain"
     finally:
         await server.domains.shutdown()
+        if server.application_state is not None:
+            await server.application_state.close()
         await service.close()
         if lock:
             lock.close()

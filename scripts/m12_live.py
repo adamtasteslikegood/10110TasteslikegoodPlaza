@@ -8,6 +8,7 @@ acceptance. Internal --child mode composes the real serve(stop_event) lifecycle.
 import argparse
 import asyncio
 from contextlib import AbstractContextManager
+from copy import deepcopy
 from datetime import datetime, timezone
 import hashlib
 import importlib.metadata
@@ -626,15 +627,44 @@ async def inspect_observation(service, owners, observer):
     """A short memory checkpoint lock is not a failed model task or a retry."""
     from bridge.project_memory import MemoryError
     from bridge.readiness import owned_io
+    from bridge.workspace import WorkspaceError
 
+    resamples = 0
+    reasons = set()
     async with asyncio.timeout(2):
         while True:
             try:
-                return await owned_io(inspect_service, service, owners, observer)
+                state = await owned_io(inspect_service, service, owners, observer)
+                if resamples:
+                    state["observation_resamples"] = dict(
+                        count=resamples, reasons=sorted(reasons)
+                    )
+                return state
             except MemoryError:
-                # Only read-only observation is repeated. Permanent damage still
-                # fails this bounded deadline; no command/provider is resubmitted.
-                await asyncio.sleep(0.025)
+                reasons.add("memory_unavailable")
+            except WorkspaceError as error:
+                if error.code != "cleanup_failed":
+                    raise
+                # A confirmed release unlinks its marker before closing flock.
+                # Sampling that gap is unknown observation, never released proof.
+                reasons.add("cleanup_failed")
+            # Repeat only bounded read-only inspection. The enclosing deadline is
+            # fixed; permanent damage fails and no command/provider is repeated.
+            resamples += 1
+            await asyncio.sleep(0.025)
+
+
+async def capture_observation(
+    service, owners, observer, *, commands, emitted, starts, contexts
+):
+    # Corroborating wire facts must precede the physical ownership inspection.
+    # A later Stop cannot be attached to an earlier, still-reserved snapshot.
+    wire = deepcopy(
+        dict(commands=commands, emitted=emitted, starts=starts, contexts=contexts)
+    )
+    state = await inspect_observation(service, owners, observer)
+    state.update(wire)
+    return state
 
 
 async def bridge_child(config_path, control, run_id):
@@ -773,15 +803,16 @@ async def bridge_child(config_path, control, run_id):
                     stop.set()
                     break
                 sequence += 1
-                state = await inspect_observation(service, owners, observer)
-                state.update(
-                    run_id=run_id,
-                    seq=sequence,
+                state = await capture_observation(
+                    service,
+                    owners,
+                    observer,
                     commands=commands,
                     emitted=emitted,
                     starts=starts,
                     contexts=contexts,
                 )
+                state.update(run_id=run_id, seq=sequence)
                 write_json(control / "state.json", state)
                 await asyncio.sleep(0.025)
             await serving
@@ -1125,22 +1156,57 @@ print("M12_RECEIPT "+json.dumps(receipt))"""
 class Plain:
     def __init__(self, socket):
         self.socket, self.packets = socket, []
+        self.pending = []
 
     async def send(self, kind, request, generation=None, **extra):
-        command = dict(type=kind, request_id=request, domain_id="core", **extra)
-        if generation:
+        command = dict(type=kind, protocol_version=2, request_id=request)
+        if kind != "describe_workspace":
+            command["domain_id"] = "core"
+        if generation is not None:
             command["domain_session_id"] = generation
+        command.update(extra)
+        authority = (
+            "expected_domain_revision"
+            if kind in {"activate_domain", "end_domain_session"}
+            else "execution_id"
+        )
+        if authority not in command and kind in {
+            "activate_domain",
+            "end_domain_session",
+            "domain_query",
+            "background_domain",
+            "refocus_domain",
+            "deactivate_domain",
+        }:
+            status_id = "authority-" + uuid4().hex
+            await self.send("domain_status", status_id, domain_id=command["domain_id"])
+            status = await self.reply(status_id, type="domain_state")
+            command[authority] = status[
+                (
+                    "domain_revision"
+                    if authority == "expected_domain_revision"
+                    else "execution_id"
+                )
+            ]
         await self.socket.send(json.dumps(command))
+        return command
 
     async def reply(self, request, **expected):
+        def matches(packet):
+            return packet.get("request_id") == request and all(
+                packet.get(k) == v for k, v in expected.items()
+            )
+
+        for index, packet in enumerate(self.pending):
+            if matches(packet):
+                return self.pending.pop(index)
         async with asyncio.timeout(STAGE_SECONDS):
             while True:
                 packet = json.loads(await self.socket.recv())
                 self.packets.append(packet)
-                if packet.get("request_id") == request and all(
-                    packet.get(k) == v for k, v in expected.items()
-                ):
+                if matches(packet):
                     return packet
+                self.pending.append(packet)
 
 
 async def initial(life, report):
@@ -1907,7 +1973,20 @@ def _proof_admission(section, permission_mode):
         "context execution facts",
     )
     sources = context["sources"]
-    require(isinstance(sources, list) and len(sources) == 6, "context sources")
+    # This proof covers the first Run after the explicit fresh Start above.
+    # M13 adds exactly one quoted recap to that invocation; the six instruction
+    # sources retain their original checks. Never rewrite the captured evidence.
+    require(isinstance(sources, list) and len(sources) == 7, "context sources")
+    recap = sources[0]
+    require(
+        isinstance(recap, dict)
+        and set(recap) == {"identity", "scope", "revision"}
+        and recap["identity"] == "application-recap"
+        and recap["scope"] == "quoted-continuity",
+        "bounded application recap source",
+    )
+    _proof_hash(recap["revision"], "application recap revision")
+    sources = sources[1:]
     scopes = (
         "shipped",
         "installation",

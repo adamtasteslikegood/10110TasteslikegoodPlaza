@@ -23,6 +23,7 @@ DEFAULTS = {
     "CONVERSATION_BACKEND": "claude_code",
     "CONVERSATION_TIER": "haiku",
     "DOMAIN_TIER": "sonnet",
+    "DOMAIN_STATE_BACKEND": "sqlite",
     "CONVERSATION_TIMEOUT_SECONDS": 60,
     "CONVERSATION_MAX_OUTPUT_TOKENS": 4096,
     "CONTEXT_MAX_MESSAGES": 40,
@@ -610,3 +611,18 @@ def test_advisor_capability_order_ignores_numeric_model_version(tmp_path):
 def test_advisor_for_rejects_unknown_caller_tier(caller):
     with pytest.raises(ConfigError, match="tier"):
         default_config().advisor_for(caller)
+
+
+def test_domain_state_backend_default_and_precedence(tmp_path):
+    assert default_config().domain_state_backend == "sqlite"
+    selected = write_config(tmp_path, {"DOMAIN_STATE_BACKEND": "memory"})
+    assert load_config(selected, environ={}).domain_state_backend == "memory"
+    settings = load_config(selected, environ={"PLAZA_DOMAIN_STATE_BACKEND": "sqlite"})
+    assert settings.domain_state_backend == "sqlite"
+    assert settings.effective_settings()["DOMAIN_STATE_BACKEND"] == "sqlite"
+
+
+@pytest.mark.parametrize("value", ["", "SQLite", "jsonl", None, True, 1, [], {}])
+def test_domain_state_backend_rejects_unknown_and_wrong_types(tmp_path, value):
+    with pytest.raises(ConfigError, match="DOMAIN_STATE_BACKEND"):
+        load_config(write_config(tmp_path, {"DOMAIN_STATE_BACKEND": value}), environ={})

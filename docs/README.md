@@ -57,6 +57,11 @@ If the doc instead tracks **active work**, lives or dies with a milestone, or ch
 
 *Last updated: October 2026*
 
+## M13 persistence operations
+
+- [Session persistence and offline maintenance](m13-session-persistence.md).
+- [Source-bound performance, live guard and owner desktop acceptance](m13-live-acceptance.md).
+
 ## M13 research reconciliation — owner review pending
 
 - [Working decisions/questions for Adam](../M13_DECISIONS_AND_QUESTIONS.md):

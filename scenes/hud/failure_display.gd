@@ -37,6 +37,9 @@ static func readiness(project: Dictionary, character: Dictionary) -> String:
 	}.get(reason, "Department readiness could not be confirmed. Ask the Chief Architect to review setup; Refresh status after inspection.")
 
 static func cause(result: Dictionary) -> String:
+	if result.get("committed") is bool and not result.committed: return "UNSAVED answer: application persistence failed. This text has no saved output ID and may be lost when the game closes. Inspect storage; no task will be retried automatically."
+	if result.get("recovered") is bool and result.recovered:
+		return "Not executed: the bridge restarted before dispatch." if result.get("reason") == "not_executed" else "Interrupted: execution outcome is unknown; external changes may have occurred. Review the workspace before another explicit Run."
 	if result.get("status") == "success": return ""
 	if result.get("status") == "cancelled": return "Stopped. The partial answer may be incomplete."
 	if result.get("readiness_category") == "cwd_mismatch":
@@ -59,9 +62,25 @@ static func notice(error: Dictionary, include_related: bool = true) -> String:
 	var text: String = error.get("message", "The command could not complete.")
 	if error.has("readiness_category"):
 		text += "\n" + cause({"status": "error", "reason": "readiness_failed", "readiness_category": error.readiness_category})
+	if error.get("unresolved_queries_omitted", 0) > 0:
+		text += "\n%d earlier unknown Run inputs were omitted to keep history bounded; their outcomes remain unknown." % error.unresolved_queries_omitted
 	if not include_related: return text
 	var command_error: Dictionary = error.get("command_error", {})
 	if not command_error.is_empty(): text += "\n" + notice(command_error)
 	for query in error.get("unresolved_queries", []):
 		text += "\nUnknown outcome for request %s:\n%s" % [query.get("request_id", ""), query.get("task", "")]
 	return text
+
+
+static func persistence(snapshot: Dictionary) -> String:
+	var notices: Array[String] = []
+	var storage: Dictionary = snapshot.get("state_store", {})
+	if storage.get("backend") == "memory": notices.append("Memory backend · history lasts only for this bridge process. SQLite history is separate; changing backend does not carry it across.")
+	if storage.get("error_type") != null: notices.append("Application persistence fault: %s. Start/Run are blocked. Have the operator inspect and reconcile storage, then Refresh status." % storage.error_type)
+	var selected: String = snapshot.get("selected_session_id", "")
+	if snapshot.get("read_only", false): notices.append("Ended/saved history · read-only. Run and End require selecting the current application. Stop current work always targets the current execution.")
+	elif snapshot.get("state") == "inactive" and not selected.is_empty(): notices.append("Stopped/restored application history · use explicit Start before Run. End session closes this application separately.")
+	for fact in snapshot.get("memory_reconciliation", []):
+		if fact.get("error_type") != null: notices.append("Project notes recovery: %s. Saved application history and notes may differ; operator inspection is required." % fact.error_type)
+		elif fact.get("note_state") != null: notices.append("Recovered project notes: %s · application recovery reports the execution outcome separately." % fact.note_state)
+	return "\n".join(notices)
