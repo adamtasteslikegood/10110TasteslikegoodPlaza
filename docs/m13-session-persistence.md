@@ -2,9 +2,9 @@
 
 The [owner-approved M13 design](superpowers/specs/2026-10-26-m13-sqlite-session-persistence-design.md)
 and the [platform successor contract](designs/platform-decisions.md#approved-m13-successor-contract--october-26-2026)
-authorize this local application-session behavior. Implementation is on the M13
-branch; local QA/performance are recorded, while independent final review, fresh
-guard/live evidence and owner acceptance remain pending.
+authorize this local application-session behavior. Current implementation,
+review and evidence outcomes are tracked in the live runbook and execution plan;
+cloud API-key guards do not establish owner desktop or OAuth acceptance.
 Historical M12 reports keep their original source/runtime/mode bindings.
 The [M13 live acceptance runbook](m13-live-acceptance.md) supplies source-bound
 performance/desktop receipts and reviewed guard-campaign commands.
