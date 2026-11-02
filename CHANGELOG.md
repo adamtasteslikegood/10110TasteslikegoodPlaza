@@ -17,6 +17,16 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
 
+### Added — opt-in relay work claims for domain sessions
+
+- With `RELAY_WORK_REPO` set, a domain generation claims `plaza:<domain_id>` on
+  the pr-gate relay's work board, beats while it lives, records a checkpoint
+  (status, workspace branch and commit) after each Run, and releases as paused
+  on Stop. A claim held by another runtime refuses Start (`work_claimed`); a
+  relay that does not answer never stops local work. Off by default. See
+  `bridge/PROTOCOL.md` § Relay work claims. `bridge/relay_work.py` is vendored
+  from codex-pr-review-gate-cc PR #59.
+
 ### Added — bounded SQLite application sessions (PLZG-290, implementation branch)
 
 - Persist bounded project-scoped sessions and committed results in locked,

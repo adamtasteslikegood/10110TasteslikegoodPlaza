@@ -38,6 +38,7 @@ from bridge.connection import ConnectionState
 from bridge.project_service import ProjectService, REFERRAL
 from bridge.project_memory import TurnIntent
 from bridge.readiness import owned_io
+from bridge.relay_claims import RelayClaims
 from bridge.application_state import StateError
 from bridge.state_coordinator import (
     StateCoordinator,
@@ -103,6 +104,7 @@ class BridgeServer:
         project_service: ProjectService | None = None,
         bindings=None,
         state_coordinator: StateCoordinator | None = None,
+        claims=None,
     ):
         self._config = config if config is not None else default_config()
         self._recorder = recorder
@@ -126,6 +128,7 @@ class BridgeServer:
             recorder=recorder,
             state_provider=lambda: self.application_state,
             state_status=self.application_state_status,
+            claims=claims,
         )
         self._connection_tasks = set()
         self._connections = set()
@@ -883,22 +886,32 @@ class BridgeServer:
                 self.close(clean=clean)
 
 
+# Relay credentials stay out of logs and transcripts (bridge.relay_claims).
+_RELAY_CREDENTIALS = ("PR_GATE_RELAY_CLIENT_SECRET", "PR_GATE_RELAY_TOKEN")
+
+
 async def serve(*, stop_event: asyncio.Event | None = None):
     """Process composition root: load once, then construct network clients."""
     try:
         config = load_config()
-    except ConfigError as exc:
+        claims = RelayClaims.from_env()
+    except (ConfigError, ValueError, OSError) as exc:
         print(f"Bridge configuration error: {exc}", file=sys.stderr)
         raise SystemExit(2) from None
     recorder = BridgeRecorder(
         config,
         Path.cwd().name,
-        redactions=tuple(os.environ.get(name, "") for name in _SDK_ENV_PASSTHROUGH),
+        redactions=tuple(
+            os.environ.get(name, "")
+            for name in (*_SDK_ENV_PASSTHROUGH, *_RELAY_CREDENTIALS)
+        ),
     )
     server = None
     clean = False
     try:
-        server = BridgeServer(config=config, recorder=recorder)
+        # Relay claims are opt-in; without them the composition is unchanged.
+        extra = {} if claims is None else dict(claims=claims)
+        server = BridgeServer(config=config, recorder=recorder, **extra)
         await server.serve(stop_event=stop_event)
         clean = True
     finally:

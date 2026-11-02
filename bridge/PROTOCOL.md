@@ -353,10 +353,44 @@ does not change an established binding.
 | `upgrade_required`, `stale_execution`, `stale_domain_revision` | Protocol version or lifecycle/execution fencing failed |
 | `state_store_busy`, `state_store_invalid`, `state_store_unsupported`, `state_store_quota`, `state_store_failed`, `state_store_uncertain` | Visible storage failure; no automatic fallback or empty recreation |
 | `cleanup_failed` | Cleanup is unconfirmed; ownership/evidence retained |
+| `work_claimed` | Opt-in relay claims: another runtime's bridge or agent holds this domain's live claim; Start is refused |
+| `relay_refused` | Opt-in relay claims: the relay refused the claim (credential, grant or request); Start is refused |
 
 Shutdown drains domains, then owned NPC/setup/IO, then detaches the memory run,
 and closes recording. Pending unsaved intent prevents clean run detach. No path
 resets, cleans, merges, deletes operator edits, or claims host/network sandboxing.
+
+### Relay work claims (opt-in)
+
+Off unless `RELAY_WORK_REPO` (`owner/name`) is set when the bridge starts. Then
+each domain is one work claim, ref `plaza:<domain_id>`, on that repo's board at
+the pr-gate relay (`pr-lifecycle-relay`, adamtasteslikegood/codex-pr-review-gate-cc).
+The settings are pr-lifecycle's own: `PR_GATE_RELAY_URL`, and either
+`PR_GATE_RELAY_CLIENT_ID` with `PR_GATE_RELAY_CLIENT_SECRET` (an Access service
+token) or `PR_GATE_RELAY_TOKEN`. Optional: `RELAY_RUNTIME` (default `bridge`),
+`RELAY_WORK_HOLDER` (default `bridge@<host>`), `RELAY_WORK_BEAT_SECONDS`
+(default 30, at least 5) and `RELAY_WORK_SECRET_FILE` (default
+`~/.config/plaza/relay-work-secret`, made once with mode 0600, so a restarted
+bridge renews its own claim at once instead of waiting for the lease to lapse).
+A half-made setting stops the bridge at startup with a configuration error.
+
+- Start claims the domain after the workspace lease, naming the workspace
+  branch. A claim live under another holder refuses Start (`work_claimed`); a
+  refused credential or grant does too (`relay_refused`). A relay that does not
+  answer never stops local work: the generation runs unclaimed.
+- While the generation lives, a background task beats the claim. If the relay
+  says it was lost (lapsed or taken over), the bridge stops beating and records
+  nothing more to it; the Run itself is not interrupted.
+- After each Run's terminal is delivered, the claim gets a checkpoint step:
+  `<status> (<reason>): <task>`, with the workspace branch and its `HEAD`.
+  Another runtime can resume from that commit only once the branch is pushed;
+  the bridge does not push.
+- A clean Stop releases the claim as `paused`. Cleanup failure leaves it to lapse.
+  End does not mark it done yet.
+
+The relay holds coordination only. SQLite stays the record of the session, its
+results and recap; no transcript goes to the relay. Relay credentials are
+redacted from archives like provider credentials.
 
 ## Current configuration and local observability (M10)
 
