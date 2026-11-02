@@ -44,6 +44,8 @@ ERROR_MESSAGES = {
     "invalid_request": "The domain command or its identifiers are invalid.",
     "sdk_error": "The SDK session is unavailable; Stop before starting again.",
     "cleanup_failed": "Cleanup could not be confirmed; workspace ownership remains.",
+    "work_claimed": "Another runtime holds this domain's relay work claim.",
+    "relay_refused": "The relay refused this domain's work claim; check its settings.",
 }
 
 

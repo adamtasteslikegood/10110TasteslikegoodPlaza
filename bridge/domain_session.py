@@ -34,6 +34,8 @@ from bridge.failure_diagnostics import (
 from bridge.observability import BridgeRecorder, RequestContext
 from bridge.project_memory import MemorySaveResult, TurnIntent
 from bridge.readiness import owned_io, denial
+from bridge.relay_claims import ClaimRefused
+from bridge.workspace import git_without_filters
 from bridge.workspace_lease import WorkspaceLease
 
 if TYPE_CHECKING:
@@ -160,6 +162,7 @@ class DomainSession:
         execution_id: str | None = None,
         coordinator=None,
         authority_check=None,
+        claims=None,
     ):
         self.domain_id, self.domain_session_id = domain_id, domain_session_id
         self.execution_id = execution_id or str(uuid4())
@@ -202,6 +205,10 @@ class DomainSession:
         # failures from unrelated NPC/process actors and storage faults.
         self._memory_lock = asyncio.Lock()
         self._background_checkpoint = None
+        # Opt-in relay work claim (bridge.relay_claims); None runs as before.
+        self._claim = (
+            claims.for_domain(domain_id, recorder) if claims is not None else None
+        )
 
     @property
     def model(self):
@@ -303,6 +310,11 @@ class DomainSession:
 
         await owned_io(acquire)
         self._service.publish_reservation(self._lease)
+        if self._claim is not None:
+            try:
+                await self._claim.claim(branch=self._workspace.branch)
+            except ClaimRefused as error:
+                raise DomainCommandError(error.code) from None
         if self._coordinator is not None:
             view = self._coordinator.snapshot()
             terminals = {(t.session_id, t.request_id): t for t in view.terminals}
@@ -833,7 +845,22 @@ class DomainSession:
                 tool_use_id=outcome.tool_use_id,
             )
         await settle_owned(deliver(run.emit, terminal, self._recorder, run.context))
+        if self._claim is not None:
+            await settle_owned(self._claim_checkpoint(run, terminal))
         return terminal
+
+    async def _claim_checkpoint(self, run, terminal):
+        try:
+            commit = await owned_io(
+                git_without_filters, self._workspace.worktree_path, "rev-parse", "HEAD"
+            )
+        except Exception:
+            commit = None
+        await self._claim.checkpoint(
+            f"{terminal['status']} ({terminal['reason']}): {run.command['task']}",
+            branch=self._workspace.branch,
+            commit=commit,
+        )
 
     async def _checkpoint(self, event):
         async with self._memory_lock:
@@ -913,6 +940,8 @@ class DomainSession:
                 await owned_io(self._lease.release, cleanup_confirmed=True)
         except Exception:
             clean = False
+        if self._claim is not None:
+            await settle_owned(self._claim.close(release=clean))
         if self._lease:
             self._service.publish_cleanup(self._lease, clean=clean)
         if clean:
