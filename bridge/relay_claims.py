@@ -343,11 +343,13 @@ class DomainClaim:
                 pass
             self._beats = None
         held, self.held = self.held, False
+        if not (held and release):
+            return
         if not drained:
             # A checkpoint may still be in flight; a release now could race it.
             # The claim lapses on its own after the relay's lease instead.
             self._event("failure", "release_skipped")
-        elif held and release:
+        else:
             try:
                 await asyncio.to_thread(
                     self.work.release, self.ref, "paused", "stopped"
