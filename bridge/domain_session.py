@@ -816,11 +816,12 @@ class DomainSession:
                 run.disposition = "terminal"
             except StateError as error:
                 terminal = self._uncommitted(run, error.code, output, saved)
+        checkpoint = None
         if self._claim is not None:
-            # Read HEAD and queue the checkpoint while this Run still holds the
-            # session, so the next Run can't move the worktree first. The claim
-            # sends queued checkpoints in order, off the terminal's path.
-            await settle_owned(self._claim_checkpoint(run, terminal))
+            # Read HEAD and reserve this Run's place in the send order while it
+            # still holds the session, so the next Run can't move the worktree
+            # first. The checkpoint is filled in after the delivery attempt.
+            checkpoint, _ = await settle_owned(self._claim_checkpoint(run, terminal))
         self._inflight = None
         if self._recorder:
             record_outcome = (
@@ -852,7 +853,11 @@ class DomainSession:
                 tool_name=outcome.tool_name,
                 tool_use_id=outcome.tool_use_id,
             )
-        await settle_owned(deliver(run.emit, terminal, self._recorder, run.context))
+        try:
+            await settle_owned(deliver(run.emit, terminal, self._recorder, run.context))
+        finally:
+            if checkpoint is not None:
+                checkpoint()
         return terminal
 
     async def _claim_checkpoint(self, run, terminal):
@@ -862,11 +867,9 @@ class DomainSession:
             )
         except Exception:
             commit = None
-        self._claim.queue_checkpoint(
-            f"{terminal['status']} ({terminal['reason']}): {run.command['task']}",
-            branch=self._workspace.branch,
-            commit=commit,
-        )
+        fill = self._claim.reserve_checkpoint()
+        text = f"{terminal['status']} ({terminal['reason']}): {run.command['task']}"
+        return lambda: fill(text, branch=self._workspace.branch, commit=commit)
 
     async def _checkpoint(self, event):
         async with self._memory_lock:

@@ -222,18 +222,36 @@ class DomainClaim:
             self.held, self.lost = False, True
             self._event("failure", "lost")
 
-    def queue_checkpoint(self, text: str, *, branch=None, commit=None):
-        """Queue a checkpoint behind any still being sent; returns at once."""
+    def reserve_checkpoint(self):
+        """Hold a place in the send order now; fill it later with ``fill(...)``.
+
+        A Run reserves while it still holds the session and fills after its
+        terminal's delivery attempt, so checkpoints stay in Run order and never
+        reach the relay before the client was sent the result. ``fill()`` with no
+        text gives the place up. Returns at once; never raises.
+        """
         if not self.held:
-            return
+            return lambda *args, **kwargs: None
+        slot = asyncio.get_running_loop().create_future()
         previous = self._sending
 
         async def send():
             if previous is not None:
                 await asyncio.gather(previous, return_exceptions=True)
-            await self.checkpoint(text, branch=branch, commit=commit)
+            text, branch, commit = await slot
+            if text is not None:
+                await self.checkpoint(text, branch=branch, commit=commit)
+
+        def fill(text=None, *, branch=None, commit=None):
+            if not slot.done():
+                slot.set_result((text, branch, commit))
 
         self._sending = asyncio.create_task(send())
+        return fill
+
+    def queue_checkpoint(self, text: str, *, branch=None, commit=None):
+        """Queue a checkpoint behind any still being sent; returns at once."""
+        self.reserve_checkpoint()(text, branch=branch, commit=commit)
 
     async def flush(self):
         """Wait until every queued checkpoint has been sent or given up."""

@@ -232,6 +232,33 @@ def head(path):
 
 
 @pytest.mark.asyncio
+async def test_the_checkpoint_follows_the_terminals_delivery(claimed):
+    session, _, _, work = claimed
+    await session.start()
+    delivering, release = asyncio.Event(), asyncio.Event()
+    packets = []
+
+    async def emit(packet):
+        if packet["type"] == "domain_result":
+            delivering.set()
+            await release.wait()
+        packets.append(packet)
+
+    await session.admit_query(query(), context=context(), emit=emit)
+    async with asyncio.timeout(3):
+        await delivering.wait()
+    await asyncio.sleep(0.05)
+    assert "checkpoint" not in work.ops()  # nothing reaches the relay yet
+    release.set()
+    await collect_until(session, packets)
+    async with asyncio.timeout(3):
+        while any(not job.done() for job in session._jobs):
+            await asyncio.sleep(0.001)
+    await session._claim.flush()
+    assert work.ops().count("checkpoint") == 1
+
+
+@pytest.mark.asyncio
 async def test_checkpoints_keep_each_runs_head_and_arrive_in_order(claimed):
     session, service, _, work = claimed
     await session.start()
