@@ -15,14 +15,18 @@ A claim live under another holder, or a refused credential, refuses Start.
 """
 
 import asyncio
+import math
 import os
 import socket
+import stat
+import tempfile
 from collections.abc import Mapping
 from pathlib import Path
 
 from bridge.relay_work import RelayDown, RelayRefused, RelayWork, new_secret
 
 REF_PREFIX = "plaza:"
+MAX_BEAT_SECONDS = 60
 DEFAULT_SECRET_FILE = Path.home() / ".config" / "plaza" / "relay-work-secret"
 
 
@@ -35,16 +39,32 @@ class ClaimRefused(Exception):
 
 
 def _secret(path: Path) -> str:
-    """One secret per machine, made once, so a restarted bridge renews its claims."""
+    """One secret per machine, made once, so a restarted bridge renews its claims.
+
+    A new secret is written whole to a private temp file and linked into place,
+    so a second bridge starting at the same moment never reads a partial file.
+    An existing file must be a regular file; its mode is tightened to 0600.
+    """
     path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    fd, temp = tempfile.mkstemp(dir=path.parent, prefix=".relay-work-secret.")
     try:
-        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-    except FileExistsError:
-        pass
-    else:
         with os.fdopen(fd, "w") as file:
             file.write(new_secret())
-    return path.read_text().strip()
+        try:
+            os.link(temp, path)
+        except FileExistsError:
+            pass
+    finally:
+        os.unlink(temp)
+    info = os.lstat(path)
+    if not stat.S_ISREG(info.st_mode):
+        raise ValueError(f"{path} must be a regular file")
+    if stat.S_IMODE(info.st_mode) & 0o077:
+        os.chmod(path, 0o600)
+    secret = path.read_text().strip()
+    if len(secret) < 32:
+        raise ValueError(f"{path} must hold a secret of 32 characters or more")
+    return secret
 
 
 def _headers(environ: Mapping[str, str]) -> dict[str, str]:
@@ -79,9 +99,15 @@ class RelayClaims:
         url = environ.get("PR_GATE_RELAY_URL", "").strip()
         if not url:
             raise ValueError("RELAY_WORK_REPO needs PR_GATE_RELAY_URL")
+        if not url.lower().startswith("https://"):
+            # The credential travels in headers; never send it in cleartext.
+            raise ValueError("PR_GATE_RELAY_URL must be https")
         every = float(environ.get("RELAY_WORK_BEAT_SECONDS") or 30)
-        if not every >= 5:
-            raise ValueError("RELAY_WORK_BEAT_SECONDS is at least 5")
+        # Beats must land well inside the relay's 120 s lease, or it lapses.
+        if not (math.isfinite(every) and 5 <= every <= MAX_BEAT_SECONDS):
+            raise ValueError(
+                f"RELAY_WORK_BEAT_SECONDS is between 5 and {MAX_BEAT_SECONDS}"
+            )
         secret_file = environ.get("RELAY_WORK_SECRET_FILE")
         work = RelayWork(
             url,

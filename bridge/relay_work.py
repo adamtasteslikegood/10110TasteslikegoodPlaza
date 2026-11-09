@@ -1,5 +1,6 @@
 # Vendored from adamtasteslikegood/codex-pr-review-gate-cc, pr-lifecycle-relay/client/relay_work.py at main f10c59a (PR #59).
-# Keep it in step with that file rather than editing it here.
+# Keep it in step with that file rather than editing it here. One local change: the
+# error contract below now says what _send does (a non-JSON body is RelayRefused).
 """relay_work: the relay's work claims from Python, for the game bridge (stdlib only, Python 3.10 or later).
 
 The same API as client/relay-work.ts, and the same variables as pr-lifecycle: PR_GATE_RELAY_URL, then PR_GATE_RELAY_CLIENT_ID and
@@ -13,8 +14,8 @@ through SSL_CERT_FILE, which its env files set.
         work.checkpoint("gh#12", "parser done", commit=sha, branch="work/gh-12", notes="notes/gh-12.md")
     work.release("gh#12", "done", "PR opened")
 
-Every call returns the relay's JSON answer, or raises RelayRefused (held, lost, not allowed, not found, bad request) or RelayDown (no
-answer, a 5xx, a timeout, or a body that isn't JSON). The secret is the caller's: keep one per checkout or session, 32 characters or more,
+Every call returns the relay's JSON answer, or raises RelayRefused (held, lost, not allowed, not found, bad request, or a
+non-JSON answer such as Access's login page for a missing or expired credential) or RelayDown (no answer, a 5xx or a timeout). The secret is the caller's: keep one per checkout or session, 32 characters or more,
 and pass the same one again after a restart so a renewal works.
 """
 

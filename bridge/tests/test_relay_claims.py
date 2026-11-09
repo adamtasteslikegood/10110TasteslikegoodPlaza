@@ -71,10 +71,38 @@ def test_from_env_is_off_unless_repo_is_set(tmp_path):
         dict(RELAY_WORK_REPO="owner/name", PR_GATE_RELAY_URL="https://relay.test"),
         dict(RELAY_WORK_REPO="no-slash", **CREDENTIAL),
         dict(RELAY_WORK_REPO="owner/name", RELAY_WORK_BEAT_SECONDS="1", **CREDENTIAL),
+        dict(RELAY_WORK_REPO="owner/name", RELAY_WORK_BEAT_SECONDS="inf", **CREDENTIAL),
+        dict(RELAY_WORK_REPO="owner/name", RELAY_WORK_BEAT_SECONDS="nan", **CREDENTIAL),
+        dict(RELAY_WORK_REPO="owner/name", RELAY_WORK_BEAT_SECONDS="61", **CREDENTIAL),
+        dict(
+            RELAY_WORK_REPO="owner/name",
+            PR_GATE_RELAY_URL="http://relay.test",
+            PR_GATE_RELAY_TOKEN="t",
+        ),
     ],
 )
 def test_from_env_refuses_a_half_made_setting(tmp_path, environ):
     environ["RELAY_WORK_SECRET_FILE"] = str(tmp_path / "secret")
+    with pytest.raises(ValueError):
+        RelayClaims.from_env(environ)
+
+
+def test_an_existing_secret_file_is_made_private_and_checked(tmp_path):
+    secret = tmp_path / "secret"
+    secret.write_text("s" * 40)
+    secret.chmod(0o644)
+    environ = dict(
+        RELAY_WORK_REPO="owner/name", RELAY_WORK_SECRET_FILE=str(secret), **CREDENTIAL
+    )
+    assert RelayClaims.from_env(environ).work.secret == "s" * 40
+    assert secret.stat().st_mode & 0o777 == 0o600
+    assert [p.name for p in tmp_path.iterdir()] == ["secret"]
+    secret.write_text("short")
+    with pytest.raises(ValueError):
+        RelayClaims.from_env(environ)
+    secret.unlink()
+    secret.symlink_to(tmp_path / "elsewhere")
+    (tmp_path / "elsewhere").write_text("s" * 40)
     with pytest.raises(ValueError):
         RelayClaims.from_env(environ)
 
