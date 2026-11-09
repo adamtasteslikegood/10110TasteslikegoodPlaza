@@ -208,7 +208,7 @@ class DomainClaim:
             # Start is refused rather than risk two runtimes on one domain.
             self._event("failure", "relay_unreadable")
             raise ClaimRefused("relay_refused", "unreadable relay answer") from None
-        if not isinstance(answer, dict) or not isinstance(answer.get("token"), int):
+        if not isinstance(answer, dict) or type(answer.get("token")) is not int:
             self._event("failure", "relay_unreadable")
             raise ClaimRefused("relay_refused", "relay answer without a claim token")
         self.held = True

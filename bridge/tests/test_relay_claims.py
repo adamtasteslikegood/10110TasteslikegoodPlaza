@@ -398,7 +398,8 @@ async def test_a_refused_credential_refuses_start(claimed):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "answer", [dict(ok=True), dict(token="1"), ValueError("unexpected shape")]
+    "answer",
+    [dict(ok=True), dict(token="1"), dict(token=True), ValueError("unexpected shape")],
 )
 async def test_an_unreadable_claim_answer_refuses_start(claimed, monkeypatch, answer):
     session, service, _, work = claimed
