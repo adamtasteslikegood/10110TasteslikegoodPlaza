@@ -19,6 +19,7 @@ import copy
 import hashlib
 import math
 import os
+import re
 import socket
 import stat
 import tempfile
@@ -30,6 +31,8 @@ from bridge.relay_work import RelayDown, RelayRefused, RelayWork, new_secret
 
 REF_PREFIX = "plaza:"
 MAX_BEAT_SECONDS = 60
+# GitHub's own name rules, so the repo can't reshape the claim endpoint's path.
+REPO = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})/[A-Za-z0-9._-]{1,100}")
 DEFAULT_SECRET_FILE = Path.home() / ".config" / "plaza" / "relay-work-secret"
 
 
@@ -123,8 +126,9 @@ class RelayClaims:
         repo = environ.get("RELAY_WORK_REPO", "").strip()
         if not repo:
             return None
-        if repo.count("/") != 1 or not all(repo.split("/")):
-            raise ValueError("RELAY_WORK_REPO must be owner/name")
+        name = repo.partition("/")[2]
+        if REPO.fullmatch(repo) is None or name in (".", ".."):
+            raise ValueError("RELAY_WORK_REPO must be a GitHub owner/name")
         url = environ.get("PR_GATE_RELAY_URL", "").strip()
         if not url:
             raise ValueError("RELAY_WORK_REPO needs PR_GATE_RELAY_URL")
