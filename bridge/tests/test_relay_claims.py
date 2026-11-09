@@ -68,7 +68,7 @@ class FakeWork:
         return [op for op, _, _ in self.calls]
 
 
-def test_from_env_is_off_unless_repo_is_set(tmp_path):
+def test_from_env_is_off_unless_repo_is_set():
     assert RelayClaims.from_env({}) is None
     assert RelayClaims.from_env(dict(CREDENTIAL)) is None
 
@@ -110,6 +110,11 @@ def test_from_env_is_off_unless_repo_is_set(tmp_path):
         ),
         dict(
             RELAY_WORK_REPO="owner/name",
+            PR_GATE_RELAY_URL="https://relay.test/v1",
+            PR_GATE_RELAY_TOKEN="t",
+        ),
+        dict(
+            RELAY_WORK_REPO="owner/name",
             PR_GATE_RELAY_URL="https://relay.test:99999",
             PR_GATE_RELAY_TOKEN="t",
         ),
@@ -144,6 +149,15 @@ def test_an_existing_secret_file_is_made_private_and_checked(tmp_path):
     (tmp_path / "elsewhere").write_text("s" * 40)
     with pytest.raises(ValueError):
         RelayClaims.from_env(environ)
+
+
+def test_relay_redactions_cover_secrets_and_only_a_real_client_id():
+    from bridge.server import _relay_redactions
+
+    short = dict(PR_GATE_RELAY_CLIENT_ID="bridge", PR_GATE_RELAY_CLIENT_SECRET="s" * 40)
+    assert _relay_redactions(short) == ("s" * 40, "")
+    real = dict(short, PR_GATE_RELAY_CLIENT_ID="0123456789abcdef.access")
+    assert "0123456789abcdef.access" in _relay_redactions(real)
 
 
 def test_from_env_accepts_an_https_origin_with_a_port(tmp_path):

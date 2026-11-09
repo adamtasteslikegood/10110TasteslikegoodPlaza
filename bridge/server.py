@@ -890,6 +890,19 @@ class BridgeServer:
 _RELAY_CREDENTIALS = ("PR_GATE_RELAY_CLIENT_SECRET", "PR_GATE_RELAY_TOKEN")
 
 
+def _relay_redactions(environ):
+    """Relay secrets always; the client ID too, once it is long enough to be one.
+
+    Redaction is a plain text replace, so a short dev ID such as ``bridge`` would
+    blank out ordinary words and paths. Real Access client IDs are long.
+    """
+    values = [environ.get(name, "") for name in _RELAY_CREDENTIALS]
+    client_id = environ.get("PR_GATE_RELAY_CLIENT_ID", "")
+    if len(client_id) >= 16:
+        values.append(client_id)
+    return tuple(values)
+
+
 async def serve(*, stop_event: asyncio.Event | None = None):
     """Process composition root: load once, then construct network clients."""
     try:
@@ -901,9 +914,9 @@ async def serve(*, stop_event: asyncio.Event | None = None):
     recorder = BridgeRecorder(
         config,
         Path.cwd().name,
-        redactions=tuple(
-            os.environ.get(name, "")
-            for name in (*_SDK_ENV_PASSTHROUGH, *_RELAY_CREDENTIALS)
+        redactions=(
+            *(os.environ.get(name, "") for name in _SDK_ENV_PASSTHROUGH),
+            *_relay_redactions(os.environ),
         ),
     )
     server = None

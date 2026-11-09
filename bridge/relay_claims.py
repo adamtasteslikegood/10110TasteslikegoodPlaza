@@ -74,7 +74,8 @@ def _check_url(url: str) -> None:
     """An https origin with a host, so a bad pin fails at startup, not as 'relay down'.
 
     The credential travels in headers: never send it in cleartext. The client
-    appends /v1/<repo>/work, so a query, fragment or user-info has no place here.
+    appends /v1/<repo>/work, and pr-lifecycle pins the same value as an origin,
+    so a path, query, fragment or user-info has no place here.
     """
     try:
         parts = urlsplit(url)
@@ -83,7 +84,13 @@ def _check_url(url: str) -> None:
         raise ValueError("PR_GATE_RELAY_URL is not a valid URL") from None
     if parts.scheme.lower() != "https" or not parts.hostname:
         raise ValueError("PR_GATE_RELAY_URL must be an https URL with a host")
-    if parts.query or parts.fragment or "@" in parts.netloc or port == 0:
+    if (
+        parts.path not in ("", "/")
+        or parts.query
+        or parts.fragment
+        or "@" in parts.netloc
+        or port == 0
+    ):
         raise ValueError(
             "PR_GATE_RELAY_URL must be a plain https origin, such as https://relay.example"
         )
