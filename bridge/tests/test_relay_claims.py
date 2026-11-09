@@ -27,11 +27,13 @@ class FakeWork:
     """RelayWork's surface, recording calls; ``refuse`` and ``down`` script failures."""
 
     def __init__(self):
+        self.holder = "bridge@test"
         self.calls = []
         self.tokens = {}
         self.refuse = {}
         self.down = set()
         self.hold_first_checkpoint = None
+        self.holders = []
 
     def _call(self, op, ref, **fields):
         self.calls.append((op, ref, fields))
@@ -42,6 +44,7 @@ class FakeWork:
 
     def claim(self, ref, title=None, branch=None, reopen=False):
         self._call("claim", ref, branch=branch, reopen=reopen)
+        self.holders.append(self.holder)
         self.tokens[ref] = 1
         return dict(token=1, tookOver=False, resume=dict(branch=None, steps=[]))
 
@@ -290,6 +293,24 @@ async def test_a_claim_held_elsewhere_refuses_start_and_frees_the_workspace(clai
     await session.stop()
     assert session.clean_inactive and service.capacity is None
     assert "release" not in work.ops()
+
+
+@pytest.mark.asyncio
+async def test_the_holder_names_the_checkout_so_two_checkouts_never_share(claimed):
+    session, service, _, work = claimed
+    await session.start()
+    await session.stop()
+    claims = RelayClaims(work, every=60)
+    again = claims.for_domain("engineering")
+    other = claims.for_domain("engineering")
+    await again.claim(place=str(service.workspace.project_root))
+    await other.claim(place="/elsewhere/another-checkout")
+    first, renewed, elsewhere = work.holders
+    assert first == renewed and first.startswith("bridge@test:")
+    assert elsewhere != first and elsewhere.startswith("bridge@test:")
+    assert work.holder == "bridge@test"  # the shared settings are untouched
+    for claim in (again, other):
+        await claim.close(release=False)
 
 
 @pytest.mark.asyncio

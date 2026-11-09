@@ -312,7 +312,10 @@ class DomainSession:
         self._service.publish_reservation(self._lease)
         if self._claim is not None:
             try:
-                await self._claim.claim(branch=self._workspace.branch)
+                await self._claim.claim(
+                    branch=self._workspace.branch,
+                    place=str(self._workspace.project_root),
+                )
             except ClaimRefused as error:
                 raise DomainCommandError(error.code) from None
         if self._coordinator is not None:

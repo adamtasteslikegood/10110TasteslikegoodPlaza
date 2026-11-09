@@ -15,6 +15,8 @@ A claim live under another holder, or a refused credential, refuses Start.
 """
 
 import asyncio
+import copy
+import hashlib
 import math
 import os
 import socket
@@ -162,7 +164,20 @@ class DomainClaim:
             except Exception:
                 pass
 
-    async def claim(self, branch: str | None = None) -> dict | None:
+    async def claim(
+        self, branch: str | None = None, place: str | None = None
+    ) -> dict | None:
+        """Claim the domain; ``place`` (the project checkout) joins the holder.
+
+        Same machine and same checkout is the same holder, so a restarted bridge
+        renews at once; the workspace lease already keeps one bridge per checkout.
+        Another checkout of the repo on this machine is another holder and waits.
+        """
+        if place is not None:
+            mark = hashlib.sha256(place.encode("utf-8", "surrogatepass")).hexdigest()
+            self.work = copy.copy(self.work)
+            self.work.holder = f"{self.work.holder}:{mark[:12]}"
+            self.work.tokens = {}
         try:
             answer = await asyncio.to_thread(
                 self.work.claim, self.ref, branch=branch, reopen=True
