@@ -823,37 +823,43 @@ class DomainSession:
             # first. The checkpoint is filled in after the delivery attempt.
             checkpoint, _ = await settle_owned(self._claim_checkpoint(run, terminal))
         self._inflight = None
-        if self._recorder:
-            record_outcome = (
-                "failure" if terminal["status"] == "error" else terminal["status"]
-            )
-            self._recorder.message(
-                run.context,
-                "assistant" if terminal["status"] == "success" else "error",
-                (
-                    output
-                    if outcome.status in ("success", "error")
-                    else "cancelled" if outcome.status == "cancelled" else "sdk_error"
-                ),
-                record_outcome,
-                output_id=terminal.get("output_id"),
-                provider_session_id=outcome.provider_session_id,
-            )
-            self._recorder.event(
-                {
-                    "success": "request_completed",
-                    "error": "request_failed",
-                    "cancelled": "request_cancelled",
-                }[terminal["status"]],
-                run.context,
-                outcome=record_outcome,
-                duration_ms=(time.monotonic() - started) * 1000,
-                terminal_reason=terminal["reason"],
-                readiness_category=outcome.readiness_category,
-                tool_name=outcome.tool_name,
-                tool_use_id=outcome.tool_use_id,
-            )
+        # The reserved place is always filled, even if recording or delivery
+        # raises, so a later checkpoint never waits on this one.
         try:
+            if self._recorder:
+                record_outcome = (
+                    "failure" if terminal["status"] == "error" else terminal["status"]
+                )
+                self._recorder.message(
+                    run.context,
+                    "assistant" if terminal["status"] == "success" else "error",
+                    (
+                        output
+                        if outcome.status in ("success", "error")
+                        else (
+                            "cancelled"
+                            if outcome.status == "cancelled"
+                            else "sdk_error"
+                        )
+                    ),
+                    record_outcome,
+                    output_id=terminal.get("output_id"),
+                    provider_session_id=outcome.provider_session_id,
+                )
+                self._recorder.event(
+                    {
+                        "success": "request_completed",
+                        "error": "request_failed",
+                        "cancelled": "request_cancelled",
+                    }[terminal["status"]],
+                    run.context,
+                    outcome=record_outcome,
+                    duration_ms=(time.monotonic() - started) * 1000,
+                    terminal_reason=terminal["reason"],
+                    readiness_category=outcome.readiness_category,
+                    tool_name=outcome.tool_name,
+                    tool_use_id=outcome.tool_use_id,
+                )
             await settle_owned(deliver(run.emit, terminal, self._recorder, run.context))
         finally:
             if checkpoint is not None:

@@ -232,6 +232,37 @@ def head(path):
 
 
 @pytest.mark.asyncio
+async def test_a_recorder_failure_never_stalls_later_checkpoints(claimed):
+    session, _, _, work = claimed
+    await session.start()
+
+    class Recorder:
+        def event(self, *args, **kwargs):
+            return True
+
+        def message(self, context, role, *args, **kwargs):
+            if role != "user":
+                raise RuntimeError("recording failed after the terminal")
+
+    session._recorder = Recorder()
+    packets = []
+
+    async def emit(packet):
+        packets.append(packet)
+
+    await session.admit_query(query("run-1"), context=context("run-1"), emit=emit)
+    async with asyncio.timeout(3):
+        while any(not job.done() for job in session._jobs):
+            await asyncio.sleep(0.001)
+    session._recorder = None
+    assert (await run_once(session, "run-2"))["status"] == "success"
+    async with asyncio.timeout(3):
+        await session._claim.flush()
+    texts = [f["text"] for op, _, f in work.calls if op == "checkpoint"]
+    assert texts[-1] == "success (completed): Build run-2"
+
+
+@pytest.mark.asyncio
 async def test_the_checkpoint_follows_the_terminals_delivery(claimed):
     session, _, _, work = claimed
     await session.start()
