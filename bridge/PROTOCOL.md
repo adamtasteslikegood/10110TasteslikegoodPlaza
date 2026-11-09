@@ -368,7 +368,7 @@ the pr-gate relay (`pr-lifecycle-relay`, adamtasteslikegood/codex-pr-review-gate
 The settings are pr-lifecycle's own: `PR_GATE_RELAY_URL`, and either
 `PR_GATE_RELAY_CLIENT_ID` with `PR_GATE_RELAY_CLIENT_SECRET` (an Access service
 token) or `PR_GATE_RELAY_TOKEN`. Optional: `RELAY_RUNTIME` (default `bridge`),
-`RELAY_WORK_HOLDER` (default `bridge@<host>`, at most 187 characters; the bridge
+`RELAY_WORK_HOLDER` (default `bridge@<host>`, printable ASCII, at most 187 characters; the bridge
 appends a digest of the project checkout, so two checkouts on one machine are two holders), `RELAY_WORK_BEAT_SECONDS`
 (default 30, from 5 to 60, inside the relay's 120 s lease) and `RELAY_WORK_SECRET_FILE` (default
 `~/.config/plaza/relay-work-secret`, made once with mode 0600, so a restarted
@@ -388,6 +388,8 @@ A half-made setting stops the bridge at startup with a configuration error.
   `<status> (<reason>): <task>`, with the workspace branch and its `HEAD`.
   Another runtime can resume from that commit only once the branch is pushed;
   the bridge does not push.
+- At most 20 checkpoints wait to be sent; beyond that a Run's step is dropped
+  and logged. Stop waits up to 15 s for them, then releases anyway.
 - A clean Stop releases the claim as `paused`. Cleanup failure leaves it to lapse.
   End does not mark it done yet.
 

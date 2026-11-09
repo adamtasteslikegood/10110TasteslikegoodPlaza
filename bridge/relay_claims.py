@@ -36,6 +36,10 @@ MAX_BEAT_SECONDS = 60
 # holder setting leaves room for the ":<12 hex>" checkout digest.
 TEXT_MAX = 300
 HOLDER_MAX = 200 - 13
+# A relay outage must neither grow the queue without bound nor stall Stop: at
+# most this many checkpoints wait to be sent, and Stop waits this long for them.
+QUEUE_MAX = 20
+FLUSH_SECONDS = 15.0
 # GitHub's own name rules, so the repo can't reshape the claim endpoint's path.
 REPO = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})/[A-Za-z0-9._-]{1,100}")
 DEFAULT_SECRET_FILE = Path.home() / ".config" / "plaza" / "relay-work-secret"
@@ -145,6 +149,10 @@ class RelayClaims:
                 f"RELAY_WORK_BEAT_SECONDS is between 5 and {MAX_BEAT_SECONDS}"
             )
         holder = environ.get("RELAY_WORK_HOLDER") or f"bridge@{socket.gethostname()}"
+        # The relay counts UTF-16 units; printable ASCII keeps one unit per
+        # character, so the checkout digest always survives its cut.
+        if not (holder.isascii() and holder.isprintable()):
+            raise ValueError("RELAY_WORK_HOLDER must be printable ASCII")
         if len(holder) > HOLDER_MAX:
             raise ValueError(f"RELAY_WORK_HOLDER is at most {HOLDER_MAX} characters")
         secret_file = environ.get("RELAY_WORK_SECRET_FILE")
@@ -174,6 +182,7 @@ class DomainClaim:
         self._beats = None
         # Checkpoints go to the relay one at a time, in the order Runs finished.
         self._sending = None
+        self._queued = 0
 
     def _event(self, outcome: str, reason: str):
         if self._recorder is not None:
@@ -256,15 +265,23 @@ class DomainClaim:
         """
         if not self.held:
             return lambda *args, **kwargs: None
+        if self._queued >= QUEUE_MAX:
+            # The relay is not keeping up; this Run's step is dropped, not queued.
+            self._event("failure", "checkpoint_dropped")
+            return lambda *args, **kwargs: None
+        self._queued += 1
         slot = asyncio.get_running_loop().create_future()
         previous = self._sending
 
         async def send():
-            if previous is not None:
-                await asyncio.gather(previous, return_exceptions=True)
-            text, branch, commit = await slot
-            if text is not None:
-                await self.checkpoint(text, branch=branch, commit=commit)
+            try:
+                if previous is not None:
+                    await asyncio.gather(previous, return_exceptions=True)
+                text, branch, commit = await slot
+                if text is not None:
+                    await self.checkpoint(text, branch=branch, commit=commit)
+            finally:
+                self._queued -= 1
 
         def fill(text=None, *, branch=None, commit=None):
             if not slot.done():
@@ -277,10 +294,17 @@ class DomainClaim:
         """Queue a checkpoint behind any still being sent; returns at once."""
         self.reserve_checkpoint()(text, branch=branch, commit=commit)
 
-    async def flush(self):
-        """Wait until every queued checkpoint has been sent or given up."""
-        if self._sending is not None:
-            await asyncio.gather(self._sending, return_exceptions=True)
+    async def flush(self, timeout: float | None = None):
+        """Wait until every queued checkpoint is sent or given up, or ``timeout``."""
+        if self._sending is None:
+            return
+        try:
+            await asyncio.wait_for(
+                asyncio.shield(asyncio.gather(self._sending, return_exceptions=True)),
+                timeout,
+            )
+        except TimeoutError:
+            self._event("failure", "flush_timeout")
 
     async def checkpoint(self, text: str, *, branch=None, commit=None):
         if not self.held:
@@ -303,8 +327,9 @@ class DomainClaim:
     async def close(self, *, release: bool):
         """Stop beating; a clean Stop releases as paused, anything else lets it lapse."""
         # Queued checkpoints land before the release, so the relay's last step
-        # is the last Run, then the pause.
-        await self.flush()
+        # is the last Run, then the pause. A relay outage can't hold Stop longer
+        # than FLUSH_SECONDS; checkpoints still waiting then are dropped.
+        await self.flush(FLUSH_SECONDS)
         if self._beats is not None:
             self._beats.cancel()
             try:

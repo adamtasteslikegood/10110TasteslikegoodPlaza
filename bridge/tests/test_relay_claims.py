@@ -79,6 +79,10 @@ def test_from_env_is_off_unless_repo_is_set():
         dict(RELAY_WORK_REPO="owner/name", PR_GATE_RELAY_TOKEN="t"),
         dict(RELAY_WORK_REPO="owner/name", PR_GATE_RELAY_URL="https://relay.test"),
         dict(RELAY_WORK_REPO="no-slash", **CREDENTIAL),
+        dict(
+            RELAY_WORK_REPO="owner/name", RELAY_WORK_HOLDER="bridge@hôte", **CREDENTIAL
+        ),
+        dict(RELAY_WORK_REPO="owner/name", RELAY_WORK_HOLDER="bridge\nx", **CREDENTIAL),
         dict(RELAY_WORK_REPO="owner/name", RELAY_WORK_HOLDER="h" * 188, **CREDENTIAL),
         dict(RELAY_WORK_REPO="owner/..", **CREDENTIAL),
         dict(RELAY_WORK_REPO="owner/.", **CREDENTIAL),
@@ -181,6 +185,40 @@ def test_from_env_accepts_an_https_origin_with_a_port(tmp_path):
     )
     work = RelayClaims.from_env(environ).work
     assert work.endpoint == "https://127.0.0.1:8443/v1/owner/name/work"
+
+
+@pytest.mark.asyncio
+async def test_a_slow_relay_never_queues_checkpoints_without_bound(claimed):
+    session, _, _, work = claimed
+    await session.start()
+    # Start swapped in the claim's own copy of the client (holder digest).
+    live = session._claim.work
+    live.hold_first_checkpoint = threading.Event()
+    for n in range(25):
+        session._claim.queue_checkpoint(f"step {n}")
+    live.hold_first_checkpoint.set()
+    await session._claim.flush()
+    sent = [f["text"] for op, _, f in work.calls if op == "checkpoint"]
+    assert sent == [f"step {n}" for n in range(20)]
+
+
+@pytest.mark.asyncio
+async def test_a_relay_outage_cannot_hold_stop_past_its_limit(claimed, monkeypatch):
+    session, _, _, work = claimed
+    monkeypatch.setattr("bridge.relay_claims.FLUSH_SECONDS", 0.2)
+    await session.start()
+    # Start swapped in the claim's own copy of the client (holder digest).
+    live = session._claim.work
+    live.hold_first_checkpoint = threading.Event()
+    session._claim.queue_checkpoint("stuck")
+    session._claim.queue_checkpoint("behind it")
+    started = asyncio.get_running_loop().time()
+    await session.stop()
+    assert asyncio.get_running_loop().time() - started < 3
+    assert session.clean_inactive
+    live.hold_first_checkpoint.set()
+    await asyncio.sleep(0.05)
+    assert "behind it" not in [f.get("text") for _, _, f in work.calls]
 
 
 @pytest.mark.asyncio
@@ -329,7 +367,9 @@ async def test_the_checkpoint_follows_the_terminals_delivery(claimed):
 async def test_checkpoints_keep_each_runs_head_and_arrive_in_order(claimed):
     session, service, _, work = claimed
     await session.start()
-    work.hold_first_checkpoint = threading.Event()
+    # Start swapped in the claim's own copy of the client (holder digest).
+    live = session._claim.work
+    live.hold_first_checkpoint = threading.Event()
     path = service.workspace.worktree_path
     first_head = head(path)
     assert (await run_once(session, "run-1", flush=False))["status"] == "success"
@@ -341,7 +381,7 @@ async def test_checkpoints_keep_each_runs_head_and_arrive_in_order(claimed):
     )
     second_head = head(path)
     assert (await run_once(session, "run-2", flush=False))["status"] == "success"
-    work.hold_first_checkpoint.set()
+    live.hold_first_checkpoint.set()
     await session._claim.flush()
     sent = [f for op, _, f in work.calls if op == "checkpoint"]
     assert [f["commit"] for f in sent] == [first_head, second_head]
