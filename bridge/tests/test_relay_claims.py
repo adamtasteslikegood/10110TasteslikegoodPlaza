@@ -305,7 +305,9 @@ async def test_the_holder_names_the_checkout_so_two_checkouts_never_share(claime
     other = claims.for_domain("engineering")
     await again.claim(place=str(service.workspace.project_root))
     await other.claim(place="/elsewhere/another-checkout")
-    first, renewed, elsewhere = work.holders
+    await again.claim(place=str(service.workspace.project_root))
+    first, renewed, elsewhere, repeated = work.holders
+    assert repeated == renewed  # a repeated claim never stacks suffixes
     assert first == renewed and first.startswith("bridge@test:")
     assert elsewhere != first and elsewhere.startswith("bridge@test:")
     assert work.holder == "bridge@test"  # the shared settings are untouched

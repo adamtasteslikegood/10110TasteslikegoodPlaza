@@ -148,6 +148,7 @@ class DomainClaim:
 
     def __init__(self, work: RelayWork, ref: str, every: float, recorder=None):
         self.work, self.ref, self.every, self._recorder = work, ref, every, recorder
+        self._settings = work  # the shared RelayWork; never changed here
         self.held = False
         self.lost = False
         self.resume = None
@@ -175,9 +176,13 @@ class DomainClaim:
         """
         if place is not None:
             mark = hashlib.sha256(place.encode("utf-8", "surrogatepass")).hexdigest()
-            self.work = copy.copy(self.work)
-            self.work.holder = f"{self.work.holder}:{mark[:12]}"
-            self.work.tokens = {}
+            # Always from the shared settings, so a repeated claim never stacks.
+            work = copy.copy(self._settings)
+            work.holder = f"{self._settings.holder}:{mark[:12]}"
+            work.tokens = (
+                dict(self.work.tokens) if self.work is not self._settings else {}
+            )
+            self.work = work
         try:
             answer = await asyncio.to_thread(
                 self.work.claim, self.ref, branch=branch, reopen=True
