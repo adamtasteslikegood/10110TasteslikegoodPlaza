@@ -22,6 +22,7 @@ import stat
 import tempfile
 from collections.abc import Mapping
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from bridge.relay_work import RelayDown, RelayRefused, RelayWork, new_secret
 
@@ -67,6 +68,25 @@ def _secret(path: Path) -> str:
     return secret
 
 
+def _check_url(url: str) -> None:
+    """An https origin with a host, so a bad pin fails at startup, not as 'relay down'.
+
+    The credential travels in headers: never send it in cleartext. The client
+    appends /v1/<repo>/work, so a query, fragment or user-info has no place here.
+    """
+    try:
+        parts = urlsplit(url)
+        port = parts.port  # raises on a malformed port
+    except ValueError:
+        raise ValueError("PR_GATE_RELAY_URL is not a valid URL") from None
+    if parts.scheme.lower() != "https" or not parts.hostname:
+        raise ValueError("PR_GATE_RELAY_URL must be an https URL with a host")
+    if parts.query or parts.fragment or "@" in parts.netloc or port == 0:
+        raise ValueError(
+            "PR_GATE_RELAY_URL must be a plain https origin, such as https://relay.example"
+        )
+
+
 def _headers(environ: Mapping[str, str]) -> dict[str, str]:
     cid = environ.get("PR_GATE_RELAY_CLIENT_ID", "")
     csecret = environ.get("PR_GATE_RELAY_CLIENT_SECRET", "")
@@ -99,9 +119,7 @@ class RelayClaims:
         url = environ.get("PR_GATE_RELAY_URL", "").strip()
         if not url:
             raise ValueError("RELAY_WORK_REPO needs PR_GATE_RELAY_URL")
-        if not url.lower().startswith("https://"):
-            # The credential travels in headers; never send it in cleartext.
-            raise ValueError("PR_GATE_RELAY_URL must be https")
+        _check_url(url)
         every = float(environ.get("RELAY_WORK_BEAT_SECONDS") or 30)
         # Beats must land well inside the relay's 120 s lease, or it lapses.
         if not (math.isfinite(every) and 5 <= every <= MAX_BEAT_SECONDS):

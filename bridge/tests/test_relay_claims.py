@@ -79,6 +79,36 @@ def test_from_env_is_off_unless_repo_is_set(tmp_path):
             PR_GATE_RELAY_URL="http://relay.test",
             PR_GATE_RELAY_TOKEN="t",
         ),
+        dict(
+            RELAY_WORK_REPO="owner/name",
+            PR_GATE_RELAY_URL="https://",
+            PR_GATE_RELAY_TOKEN="t",
+        ),
+        dict(
+            RELAY_WORK_REPO="owner/name",
+            PR_GATE_RELAY_URL="https:///v1",
+            PR_GATE_RELAY_TOKEN="t",
+        ),
+        dict(
+            RELAY_WORK_REPO="owner/name",
+            PR_GATE_RELAY_URL="https://user:pw@relay.test",
+            PR_GATE_RELAY_TOKEN="t",
+        ),
+        dict(
+            RELAY_WORK_REPO="owner/name",
+            PR_GATE_RELAY_URL="https://relay.test?x=1",
+            PR_GATE_RELAY_TOKEN="t",
+        ),
+        dict(
+            RELAY_WORK_REPO="owner/name",
+            PR_GATE_RELAY_URL="https://relay.test:99999",
+            PR_GATE_RELAY_TOKEN="t",
+        ),
+        dict(
+            RELAY_WORK_REPO="owner/name",
+            PR_GATE_RELAY_URL="relay.test",
+            PR_GATE_RELAY_TOKEN="t",
+        ),
     ],
 )
 def test_from_env_refuses_a_half_made_setting(tmp_path, environ):
@@ -105,6 +135,17 @@ def test_an_existing_secret_file_is_made_private_and_checked(tmp_path):
     (tmp_path / "elsewhere").write_text("s" * 40)
     with pytest.raises(ValueError):
         RelayClaims.from_env(environ)
+
+
+def test_from_env_accepts_an_https_origin_with_a_port(tmp_path):
+    environ = dict(
+        RELAY_WORK_REPO="owner/name",
+        RELAY_WORK_SECRET_FILE=str(tmp_path / "secret"),
+        PR_GATE_RELAY_URL="https://127.0.0.1:8443/",
+        PR_GATE_RELAY_TOKEN="t",
+    )
+    work = RelayClaims.from_env(environ).work
+    assert work.endpoint == "https://127.0.0.1:8443/v1/owner/name/work"
 
 
 def test_from_env_keeps_one_secret_per_machine(tmp_path):
