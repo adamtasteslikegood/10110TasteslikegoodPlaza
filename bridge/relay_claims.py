@@ -150,6 +150,8 @@ class DomainClaim:
         self.lost = False
         self.resume = None
         self._beats = None
+        # Checkpoints go to the relay one at a time, in the order Runs finished.
+        self._sending = None
 
     def _event(self, outcome: str, reason: str):
         if self._recorder is not None:
@@ -200,6 +202,24 @@ class DomainClaim:
             self.held, self.lost = False, True
             self._event("failure", "lost")
 
+    def queue_checkpoint(self, text: str, *, branch=None, commit=None):
+        """Queue a checkpoint behind any still being sent; returns at once."""
+        if not self.held:
+            return
+        previous = self._sending
+
+        async def send():
+            if previous is not None:
+                await asyncio.gather(previous, return_exceptions=True)
+            await self.checkpoint(text, branch=branch, commit=commit)
+
+        self._sending = asyncio.create_task(send())
+
+    async def flush(self):
+        """Wait until every queued checkpoint has been sent or given up."""
+        if self._sending is not None:
+            await asyncio.gather(self._sending, return_exceptions=True)
+
     async def checkpoint(self, text: str, *, branch=None, commit=None):
         if not self.held:
             return
@@ -216,6 +236,9 @@ class DomainClaim:
 
     async def close(self, *, release: bool):
         """Stop beating; a clean Stop releases as paused, anything else lets it lapse."""
+        # Queued checkpoints land before the release, so the relay's last step
+        # is the last Run, then the pause.
+        await self.flush()
         if self._beats is not None:
             self._beats.cancel()
             try:

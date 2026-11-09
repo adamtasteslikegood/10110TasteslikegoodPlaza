@@ -1,6 +1,8 @@
 """Opt-in relay work claims: settings, and a domain generation's claim lifecycle."""
 
 import asyncio
+import subprocess
+import threading
 
 import pytest
 import pytest_asyncio
@@ -29,6 +31,7 @@ class FakeWork:
         self.tokens = {}
         self.refuse = {}
         self.down = set()
+        self.hold_first_checkpoint = None
 
     def _call(self, op, ref, **fields):
         self.calls.append((op, ref, fields))
@@ -48,6 +51,9 @@ class FakeWork:
 
     def checkpoint(self, ref, text, commit=None, branch=None, notes=None):
         self._call("checkpoint", ref, text=text, commit=commit, branch=branch)
+        first = self.ops().count("checkpoint") == 1
+        if first and self.hold_first_checkpoint is not None:
+            assert self.hold_first_checkpoint.wait(5)
         return dict(ok=True)
 
     def release(self, ref, outcome, text=None):
@@ -193,21 +199,61 @@ async def claimed(tmp_path, monkeypatch):
     service.close()
 
 
-async def run_once(session):
+async def run_once(session, request="run", flush=True):
     packets = []
 
     async def emit(packet):
         packets.append(packet)
 
-    await session.admit_query(query(), context=context(), emit=emit)
+    await session.admit_query(
+        query(request, task=f"Build {request}"), context=context(request), emit=emit
+    )
     await collect_until(session, packets)
-    # The claim's checkpoint follows the terminal's delivery in the same Run job.
     async with asyncio.timeout(3):
         while session._inflight is not None or any(
             not job.done() for job in session._jobs
         ):
             await asyncio.sleep(0.001)
+        if flush and session._claim is not None:
+            await session._claim.flush()
     return packets[-1]
+
+
+def head(path):
+    return subprocess.run(
+        ["git", "-C", str(path), "rev-parse", "HEAD"],
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.strip()
+
+
+@pytest.mark.asyncio
+async def test_checkpoints_keep_each_runs_head_and_arrive_in_order(claimed):
+    session, service, _, work = claimed
+    await session.start()
+    work.hold_first_checkpoint = threading.Event()
+    path = service.workspace.worktree_path
+    first_head = head(path)
+    assert (await run_once(session, "run-1", flush=False))["status"] == "success"
+    # The next Run moves the worktree while the first checkpoint is in flight.
+    subprocess.run(
+        ["git", "-C", str(path), "-c", "user.name=t", "-c", "user.email=t@t"]
+        + ["-c", "core.hooksPath=/dev/null", "commit", "--allow-empty", "-qm", "b"],
+        check=True,
+    )
+    second_head = head(path)
+    assert (await run_once(session, "run-2", flush=False))["status"] == "success"
+    work.hold_first_checkpoint.set()
+    await session._claim.flush()
+    sent = [f for op, _, f in work.calls if op == "checkpoint"]
+    assert [f["commit"] for f in sent] == [first_head, second_head]
+    assert [f["text"] for f in sent] == [
+        "success (completed): Build run-1",
+        "success (completed): Build run-2",
+    ]
+    await session.stop()
+    assert work.ops()[-1] == "release"
 
 
 @pytest.mark.asyncio
@@ -223,7 +269,7 @@ async def test_start_claims_runs_checkpoint_and_stop_releases_paused(claimed):
     result = await run_once(session)
     assert result["status"] == "success"
     checkpoint = next(f for op, _, f in work.calls if op == "checkpoint")
-    assert checkpoint["text"] == "success (completed): Build something"
+    assert checkpoint["text"] == "success (completed): Build run"
     assert checkpoint["branch"] == service.workspace.branch
     assert checkpoint["commit"] and len(checkpoint["commit"]) == 40
     await session.stop()

@@ -813,6 +813,11 @@ class DomainSession:
                 run.disposition = "terminal"
             except StateError as error:
                 terminal = self._uncommitted(run, error.code, output, saved)
+        if self._claim is not None:
+            # Read HEAD and queue the checkpoint while this Run still holds the
+            # session, so the next Run can't move the worktree first. The claim
+            # sends queued checkpoints in order, off the terminal's path.
+            await settle_owned(self._claim_checkpoint(run, terminal))
         self._inflight = None
         if self._recorder:
             record_outcome = (
@@ -845,8 +850,6 @@ class DomainSession:
                 tool_use_id=outcome.tool_use_id,
             )
         await settle_owned(deliver(run.emit, terminal, self._recorder, run.context))
-        if self._claim is not None:
-            await settle_owned(self._claim_checkpoint(run, terminal))
         return terminal
 
     async def _claim_checkpoint(self, run, terminal):
@@ -856,7 +859,7 @@ class DomainSession:
             )
         except Exception:
             commit = None
-        await self._claim.checkpoint(
+        self._claim.queue_checkpoint(
             f"{terminal['status']} ({terminal['reason']}): {run.command['task']}",
             branch=self._workspace.branch,
             commit=commit,
