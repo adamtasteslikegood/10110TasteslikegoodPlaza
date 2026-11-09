@@ -303,7 +303,7 @@ class DomainClaim:
                 asyncio.shield(asyncio.gather(self._sending, return_exceptions=True)),
                 timeout,
             )
-        except TimeoutError:
+        except (asyncio.TimeoutError, TimeoutError):  # distinct before 3.11
             self._event("failure", "flush_timeout")
 
     async def checkpoint(self, text: str, *, branch=None, commit=None):
