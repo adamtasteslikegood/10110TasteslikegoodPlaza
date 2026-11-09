@@ -79,6 +79,7 @@ def test_from_env_is_off_unless_repo_is_set():
         dict(RELAY_WORK_REPO="owner/name", PR_GATE_RELAY_TOKEN="t"),
         dict(RELAY_WORK_REPO="owner/name", PR_GATE_RELAY_URL="https://relay.test"),
         dict(RELAY_WORK_REPO="no-slash", **CREDENTIAL),
+        dict(RELAY_WORK_REPO="owner/name", RELAY_WORK_HOLDER="h" * 188, **CREDENTIAL),
         dict(RELAY_WORK_REPO="owner/..", **CREDENTIAL),
         dict(RELAY_WORK_REPO="owner/.", **CREDENTIAL),
         dict(RELAY_WORK_REPO="own er/name", **CREDENTIAL),
@@ -180,6 +181,16 @@ def test_from_env_accepts_an_https_origin_with_a_port(tmp_path):
     )
     work = RelayClaims.from_env(environ).work
     assert work.endpoint == "https://127.0.0.1:8443/v1/owner/name/work"
+
+
+@pytest.mark.asyncio
+async def test_a_checkpoint_sends_no_more_text_than_the_relay_keeps(claimed):
+    session, _, _, work = claimed
+    await session.start()
+    session._claim.queue_checkpoint("x" * 400)
+    await session._claim.flush()
+    sent = [f["text"] for op, _, f in work.calls if op == "checkpoint"]
+    assert sent == ["x" * 300]
 
 
 def test_from_env_keeps_one_secret_per_machine(tmp_path):

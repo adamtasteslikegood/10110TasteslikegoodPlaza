@@ -368,8 +368,8 @@ the pr-gate relay (`pr-lifecycle-relay`, adamtasteslikegood/codex-pr-review-gate
 The settings are pr-lifecycle's own: `PR_GATE_RELAY_URL`, and either
 `PR_GATE_RELAY_CLIENT_ID` with `PR_GATE_RELAY_CLIENT_SECRET` (an Access service
 token) or `PR_GATE_RELAY_TOKEN`. Optional: `RELAY_RUNTIME` (default `bridge`),
-`RELAY_WORK_HOLDER` (default `bridge@<host>`; the bridge appends a digest of the
-project checkout, so two checkouts on one machine are two holders), `RELAY_WORK_BEAT_SECONDS`
+`RELAY_WORK_HOLDER` (default `bridge@<host>`, at most 187 characters; the bridge
+appends a digest of the project checkout, so two checkouts on one machine are two holders), `RELAY_WORK_BEAT_SECONDS`
 (default 30, from 5 to 60, inside the relay's 120 s lease) and `RELAY_WORK_SECRET_FILE` (default
 `~/.config/plaza/relay-work-secret`, made once with mode 0600, so a restarted
 bridge renews its own claim at once instead of waiting for the lease to lapse).
@@ -393,7 +393,7 @@ A half-made setting stops the bridge at startup with a configuration error.
 
 The relay holds coordination only. SQLite stays the record of the session, its
 results and recap; no transcript goes to the relay. Each checkpoint does send
-the Run's task text, cut to 500 characters, and `PR_GATE_RELAY_URL` must be https. Relay credentials are
+the Run's task text; the step is cut to 300 characters, as the relay stores it, and `PR_GATE_RELAY_URL` must be https. Relay credentials are
 redacted from archives like provider credentials.
 
 ## Current configuration and local observability (M10)

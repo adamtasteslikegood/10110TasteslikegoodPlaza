@@ -31,6 +31,11 @@ from bridge.relay_work import RelayDown, RelayRefused, RelayWork, new_secret
 
 REF_PREFIX = "plaza:"
 MAX_BEAT_SECONDS = 60
+# The relay cuts a step's text at 300 characters and a holder at 200 (work.ts
+# TEXT_MAX, FIELD_MAX). The bridge sends no more than the relay keeps, and its
+# holder setting leaves room for the ":<12 hex>" checkout digest.
+TEXT_MAX = 300
+HOLDER_MAX = 200 - 13
 # GitHub's own name rules, so the repo can't reshape the claim endpoint's path.
 REPO = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})/[A-Za-z0-9._-]{1,100}")
 DEFAULT_SECRET_FILE = Path.home() / ".config" / "plaza" / "relay-work-secret"
@@ -139,13 +144,16 @@ class RelayClaims:
             raise ValueError(
                 f"RELAY_WORK_BEAT_SECONDS is between 5 and {MAX_BEAT_SECONDS}"
             )
+        holder = environ.get("RELAY_WORK_HOLDER") or f"bridge@{socket.gethostname()}"
+        if len(holder) > HOLDER_MAX:
+            raise ValueError(f"RELAY_WORK_HOLDER is at most {HOLDER_MAX} characters")
         secret_file = environ.get("RELAY_WORK_SECRET_FILE")
         work = RelayWork(
             url,
             _headers(environ),
             repo,
             environ.get("RELAY_RUNTIME") or "bridge",
-            environ.get("RELAY_WORK_HOLDER") or f"bridge@{socket.gethostname()}",
+            holder,
             _secret(Path(secret_file) if secret_file else DEFAULT_SECRET_FILE),
         )
         return cls(work, every=every)
@@ -279,7 +287,11 @@ class DomainClaim:
             return
         try:
             await asyncio.to_thread(
-                self.work.checkpoint, self.ref, text[:500], commit=commit, branch=branch
+                self.work.checkpoint,
+                self.ref,
+                text[:TEXT_MAX],
+                commit=commit,
+                branch=branch,
             )
         except (RelayRefused, KeyError):
             self._lose()
