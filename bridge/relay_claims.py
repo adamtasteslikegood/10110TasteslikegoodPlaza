@@ -203,9 +203,14 @@ class DomainClaim:
                 "work_claimed" if error.status == 423 else "relay_refused", str(error)
             ) from None
         except Exception:
-            # An answer this client can't read is treated as no answer.
+            # Only no answer (RelayDown) runs unclaimed. An answer this client
+            # can't use may still have recorded a claim nothing would beat, so
+            # Start is refused rather than risk two runtimes on one domain.
             self._event("failure", "relay_unreadable")
-            return None
+            raise ClaimRefused("relay_refused", "unreadable relay answer") from None
+        if not isinstance(answer, dict) or not isinstance(answer.get("token"), int):
+            self._event("failure", "relay_unreadable")
+            raise ClaimRefused("relay_refused", "relay answer without a claim token")
         self.held = True
         self.resume = answer.get("resume")
         self._event("success", "took_over" if answer.get("tookOver") else "claimed")

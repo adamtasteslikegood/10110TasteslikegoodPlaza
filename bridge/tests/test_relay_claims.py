@@ -397,6 +397,26 @@ async def test_a_refused_credential_refuses_start(claimed):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "answer", [dict(ok=True), dict(token="1"), ValueError("unexpected shape")]
+)
+async def test_an_unreadable_claim_answer_refuses_start(claimed, monkeypatch, answer):
+    session, service, _, work = claimed
+
+    def claim(ref, title=None, branch=None, reopen=False):
+        if isinstance(answer, Exception):
+            raise answer
+        return answer
+
+    monkeypatch.setattr(work, "claim", claim)
+    with pytest.raises(DomainCommandError) as error:
+        await session.start()
+    assert error.value.code == "relay_refused"
+    await session.stop()
+    assert session.clean_inactive and service.capacity is None
+
+
+@pytest.mark.asyncio
 async def test_a_relay_that_does_not_answer_never_stops_local_work(claimed):
     session, _, owners, work = claimed
     work.down.add("claim")

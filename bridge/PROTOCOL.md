@@ -354,7 +354,7 @@ does not change an established binding.
 | `state_store_busy`, `state_store_invalid`, `state_store_unsupported`, `state_store_quota`, `state_store_failed`, `state_store_uncertain` | Visible storage failure; no automatic fallback or empty recreation |
 | `cleanup_failed` | Cleanup is unconfirmed; ownership/evidence retained |
 | `work_claimed` | Opt-in relay claims: another runtime's bridge or agent holds this domain's live claim; Start is refused |
-| `relay_refused` | Opt-in relay claims: the relay refused the claim (credential, grant or request); Start is refused |
+| `relay_refused` | Opt-in relay claims: the relay refused the claim (credential, grant or request) or gave an answer the bridge can't use; Start is refused |
 
 Shutdown drains domains, then owned NPC/setup/IO, then detaches the memory run,
 and closes recording. Pending unsaved intent prevents clean run detach. No path
@@ -377,8 +377,10 @@ A half-made setting stops the bridge at startup with a configuration error.
 
 - Start claims the domain after the workspace lease, naming the workspace
   branch. A claim live under another holder refuses Start (`work_claimed`); a
-  refused credential or grant does too (`relay_refused`). A relay that does not
-  answer never stops local work: the generation runs unclaimed.
+  refused credential or grant does too (`relay_refused`), and so does an answer
+  the bridge can't use, since the relay may have recorded a claim nothing would
+  keep alive. A relay that does not answer at all (no connection, a 5xx or a
+  timeout) never stops local work: the generation runs unclaimed.
 - While the generation lives, a background task beats the claim. If the relay
   says it was lost (lapsed or taken over), the bridge stops beating and records
   nothing more to it; the Run itself is not interrupted.
