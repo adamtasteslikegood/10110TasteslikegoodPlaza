@@ -294,10 +294,13 @@ class DomainClaim:
         """Queue a checkpoint behind any still being sent; returns at once."""
         self.reserve_checkpoint()(text, branch=branch, commit=commit)
 
-    async def flush(self, timeout: float | None = None):
-        """Wait until every queued checkpoint is sent or given up, or ``timeout``."""
+    async def flush(self, timeout: float | None = None) -> bool:
+        """Wait until every queued checkpoint is sent or given up, or ``timeout``.
+
+        True when the queue drained; False when a relay call may still be in flight.
+        """
         if self._sending is None:
-            return
+            return True
         try:
             await asyncio.wait_for(
                 asyncio.shield(asyncio.gather(self._sending, return_exceptions=True)),
@@ -305,6 +308,8 @@ class DomainClaim:
             )
         except (asyncio.TimeoutError, TimeoutError):  # distinct before 3.11
             self._event("failure", "flush_timeout")
+            return False
+        return True
 
     async def checkpoint(self, text: str, *, branch=None, commit=None):
         if not self.held:
@@ -329,7 +334,7 @@ class DomainClaim:
         # Queued checkpoints land before the release, so the relay's last step
         # is the last Run, then the pause. A relay outage can't hold Stop longer
         # than FLUSH_SECONDS; checkpoints still waiting then are dropped.
-        await self.flush(FLUSH_SECONDS)
+        drained = await self.flush(FLUSH_SECONDS)
         if self._beats is not None:
             self._beats.cancel()
             try:
@@ -338,7 +343,11 @@ class DomainClaim:
                 pass
             self._beats = None
         held, self.held = self.held, False
-        if held and release:
+        if not drained:
+            # A checkpoint may still be in flight; a release now could race it.
+            # The claim lapses on its own after the relay's lease instead.
+            self._event("failure", "release_skipped")
+        elif held and release:
             try:
                 await asyncio.to_thread(
                     self.work.release, self.ref, "paused", "stopped"

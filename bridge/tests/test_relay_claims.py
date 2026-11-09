@@ -219,6 +219,8 @@ async def test_a_relay_outage_cannot_hold_stop_past_its_limit(claimed, monkeypat
     live.hold_first_checkpoint.set()
     await asyncio.sleep(0.05)
     assert "behind it" not in [f.get("text") for _, _, f in work.calls]
+    # A checkpoint may still have been in flight, so Stop let the claim lapse.
+    assert "release" not in work.ops()
 
 
 @pytest.mark.asyncio

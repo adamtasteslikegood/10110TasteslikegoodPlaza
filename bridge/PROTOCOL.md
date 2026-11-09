@@ -389,7 +389,8 @@ A half-made setting stops the bridge at startup with a configuration error.
   Another runtime can resume from that commit only once the branch is pushed;
   the bridge does not push.
 - At most 20 checkpoints wait to be sent; beyond that a Run's step is dropped
-  and logged. Stop waits up to 15 s for them, then releases anyway.
+  and logged. Stop waits up to 15 s for them; if one may still be in flight
+  then, it doesn't release, and the claim lapses after the lease instead.
 - A clean Stop releases the claim as `paused`. Cleanup failure leaves it to lapse.
   End does not mark it done yet.
 
