@@ -747,12 +747,13 @@ async def test_a_stop_while_a_run_reclaims_after_a_lost_checkpoint(claimed):
     await session.start()
     claim = session._claim
     await lose_by_checkpoint(claim, work)
-    gate = asyncio.Event()
+    gate, ending = asyncio.Event(), asyncio.Event()
 
     async def slow_to_end():
         try:
             await asyncio.sleep(3600)
         except asyncio.CancelledError:
+            ending.set()
             await gate.wait()
 
     claim._beats.cancel()
@@ -766,7 +767,8 @@ async def test_a_stop_while_a_run_reclaims_after_a_lost_checkpoint(claimed):
     admitting = asyncio.create_task(
         session.admit_query(query("late"), context=context("late"), emit=emit)
     )
-    await asyncio.sleep(0.02)
+    async with asyncio.timeout(3):
+        await ending.wait()  # the Run's re-claim is stopping the old beats
     stopping = asyncio.create_task(session.stop())
     await asyncio.sleep(0.05)
     assert not stopping.done()  # Stop waits for the re-claim it overlapped
