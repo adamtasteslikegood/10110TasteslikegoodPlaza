@@ -175,7 +175,13 @@ class RelayClaims:
 
 
 class DomainClaim:
-    """One generation's hold on its domain's claim. Never raises after Start."""
+    """One generation's hold on its domain's claim.
+
+    Only ``claim`` and ``ensure`` raise, and only ClaimRefused: at Start, and
+    before a later Run when the claim is live under another holder or the relay
+    refuses it. Callers of both must handle it. Beats, checkpoints, ``flush``
+    and ``close`` never raise.
+    """
 
     def __init__(self, work: RelayWork, ref: str, every: float, recorder=None):
         self.work, self.ref, self.every, self._recorder = work, ref, every, recorder

@@ -384,6 +384,8 @@ class DomainManager:
             raise DomainCommandError("session_unavailable")
         window = self.coordinator.replay(session_id, command["cursor"])
         packet = self.snapshot(domain)
+        # A domain_state fact only: clients refuse it on resume_complete.
+        packet.pop("work_claim", None)
         if packet["domain_session_id"] != session_id:
             packet.update(
                 domain_session_id=session_id,

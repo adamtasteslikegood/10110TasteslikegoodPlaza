@@ -627,3 +627,41 @@ async def test_a_claim_lost_while_a_run_prepares_is_asked_again_before_acceptanc
     session._readiness.prepare_turn = prepare
     del work.refuse["claim"]
     assert (await run_once(session, "run-2"))["status"] == "success"
+
+
+@pytest.mark.asyncio
+async def test_a_live_claimed_sessions_resume_complete_carries_no_work_claim(
+    tmp_path, monkeypatch
+):
+    """The manager builds resume_complete from its own snapshot, not the session's."""
+    from bridge.domain_manager import DomainManager
+    from bridge.state_coordinator import LazySQLiteStateRepository, StateCoordinator
+    from bridge.tests.test_domain_lifecycle_v2 import send
+
+    service = FakeProjectService(tmp_path)
+    monkeypatch.setattr("bridge.domain_session.DomainSDKOwner", FakeOwner)
+    common, project = await service.application_state_binding()
+    coordinator = StateCoordinator(lambda: LazySQLiteStateRepository(common, project))
+    await coordinator.open()
+    manager = DomainManager(
+        default_config(),
+        service,
+        state_coordinator=coordinator,
+        claims=RelayClaims(FakeWork(), every=60),
+    )
+    try:
+        started = await send(manager, "activate_domain")
+        assert started["type"] == "domain_state" and started["work_claim"] == "held"
+        assert manager.snapshot("engineering")["work_claim"] == "held"
+        resumed = await send(
+            manager,
+            "resume",
+            domain_session_id=started["domain_session_id"],
+            cursor="0",
+        )
+        assert resumed["type"] == "resume_complete" and resumed["state"] == "active"
+        assert "work_claim" not in resumed
+    finally:
+        await manager.shutdown()
+        await coordinator.close()
+        service.close()
