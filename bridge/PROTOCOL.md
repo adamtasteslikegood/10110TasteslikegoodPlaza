@@ -353,8 +353,8 @@ does not change an established binding.
 | `upgrade_required`, `stale_execution`, `stale_domain_revision` | Protocol version or lifecycle/execution fencing failed |
 | `state_store_busy`, `state_store_invalid`, `state_store_unsupported`, `state_store_quota`, `state_store_failed`, `state_store_uncertain` | Visible storage failure; no automatic fallback or empty recreation |
 | `cleanup_failed` | Cleanup is unconfirmed; ownership/evidence retained |
-| `work_claimed` | Opt-in relay claims: another runtime's bridge or agent holds this domain's live claim; Start is refused |
-| `relay_refused` | Opt-in relay claims: the relay refused the claim (credential, grant or request) or gave an answer the bridge can't use; Start is refused |
+| `work_claimed` | Opt-in relay claims: another runtime's bridge or agent holds this domain's live claim; Start is refused, or a later Run once the claim was lost (the session stays up) |
+| `relay_refused` | Opt-in relay claims: the relay refused the claim (credential, grant or request) or gave an answer the bridge can't use; Start is refused, or a later Run needing a re-claim (the session stays up) |
 
 Shutdown drains domains, then owned NPC/setup/IO, then detaches the memory run,
 and closes recording. Pending unsaved intent prevents clean run detach. No path
