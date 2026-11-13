@@ -392,9 +392,10 @@ A half-made setting stops the bridge at startup with a configuration error.
   runtime: that Run is refused with `work_claimed`, and so is a refused credential
   or an unusable answer (`relay_refused`); the session stays up, so results stay
   readable, Stop works, and a later Run tries again. No answer: the Run goes
-  ahead unclaimed, as at Start, and the next Run tries again. A Stop during that
-  claim call waits for the relay's answer (up to 15 s) and releases a claim it
-  recorded; past that, the claim lapses after the lease.
+  ahead unclaimed, as at Start, and the next Run tries again. A Stop at any point
+  in that re-claim, including while the old beats are being stopped, waits for
+  the relay's answer (up to 15 s) and releases a claim it recorded; past that,
+  the claim lapses after the lease and is never beaten.
 - With claims on, `domain_state` and `resume_complete` for an activating,
   active or background generation carry `work_claim`: `held`, `lost` (the relay
   said so) or `unclaimed` (no answer yet). The field is absent when claims are

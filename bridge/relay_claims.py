@@ -274,11 +274,15 @@ class DomainClaim:
         if self.held or not self._claimed_once:
             return None
         if self._claiming is None or self._claiming.done():
-            await self._stop_beats()
-            self._claiming = asyncio.ensure_future(
-                self.claim(branch=self._branch, place=self._place)
-            )
+            # Installed before any await, so a Stop that lands while the old
+            # beat loop is ending still sees the re-claim and waits for it; and
+            # a Stop's cancel lands on the shield, not inside _stop_beats.
+            self._claiming = asyncio.ensure_future(self._reclaim())
         return await asyncio.shield(self._claiming)
+
+    async def _reclaim(self):
+        await self._stop_beats()
+        return await self.claim(branch=self._branch, place=self._place)
 
     async def _stop_beats(self):
         if self._beats is not None:
