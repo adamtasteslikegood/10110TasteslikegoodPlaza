@@ -188,6 +188,9 @@ class DomainClaim:
         # Bumped on each claim, so a beat or checkpoint begun under an older
         # claim can't mark the newer one lost.
         self._generation = 0
+        # A re-claim runs as its own task, so a Stop that cancels the Run
+        # waiting on it can still wait for the relay's answer and release.
+        self._claiming = None
         # Checkpoints go to the relay one at a time, in the order Runs finished.
         self._sending = None
         self._queued = 0
@@ -270,8 +273,12 @@ class DomainClaim:
         """
         if self.held or not self._claimed_once:
             return None
-        await self._stop_beats()
-        return await self.claim(branch=self._branch, place=self._place)
+        if self._claiming is None or self._claiming.done():
+            await self._stop_beats()
+            self._claiming = asyncio.ensure_future(
+                self.claim(branch=self._branch, place=self._place)
+            )
+        return await asyncio.shield(self._claiming)
 
     async def _stop_beats(self):
         if self._beats is not None:
@@ -380,6 +387,17 @@ class DomainClaim:
         # is the last Run, then the pause. A relay outage can't hold Stop longer
         # than FLUSH_SECONDS; checkpoints still waiting then are dropped.
         drained = await self.flush(FLUSH_SECONDS)
+        if self._claiming is not None and not self._claiming.done():
+            # A Stop during a re-claim waits for the relay's answer, so a claim
+            # it records is released below rather than left to lapse.
+            try:
+                await asyncio.wait_for(
+                    asyncio.gather(self._claiming, return_exceptions=True),
+                    FLUSH_SECONDS,
+                )
+            except (asyncio.TimeoutError, TimeoutError):
+                self._event("failure", "reclaim_timeout")
+        self._claiming = None
         await self._stop_beats()
         held, self.held = self.held, False
         if not (held and release):

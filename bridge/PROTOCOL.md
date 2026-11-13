@@ -393,7 +393,8 @@ A half-made setting stops the bridge at startup with a configuration error.
   or an unusable answer (`relay_refused`); the session stays up, so results stay
   readable, Stop works, and a later Run tries again. No answer: the Run goes
   ahead unclaimed, as at Start, and the next Run tries again. A Stop during that
-  claim call can leave a claim nothing beats; it lapses after the lease.
+  claim call waits for the relay's answer (up to 15 s) and releases a claim it
+  recorded; past that, the claim lapses after the lease.
 - With claims on, `domain_state` and `resume_complete` for an activating,
   active or background generation carry `work_claim`: `held`, `lost` (the relay
   said so) or `unclaimed` (no answer yet). The field is absent when claims are

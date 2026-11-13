@@ -637,6 +637,46 @@ async def test_a_relay_down_at_admission_runs_unclaimed_and_retries_next_time(
 
 
 @pytest.mark.asyncio
+async def test_a_stop_during_a_reclaim_waits_and_releases_what_it_claimed(
+    claimed, monkeypatch
+):
+    session, _, owners, work = claimed
+    await session.start()
+    await lose(session, work)
+    # A re-claim copies the shared settings client, so patch that one.
+    answer, entered = threading.Event(), threading.Event()
+    claim = work.claim
+
+    def slow_claim(*args, **kwargs):
+        entered.set()
+        assert answer.wait(5)
+        return claim(*args, **kwargs)
+
+    monkeypatch.setattr(work, "claim", slow_claim)
+    packets = []
+
+    async def emit(packet):
+        packets.append(packet)
+
+    admitting = asyncio.create_task(
+        session.admit_query(query("late"), context=context("late"), emit=emit)
+    )
+    assert await asyncio.to_thread(entered.wait, 5)
+    stopping = asyncio.create_task(session.stop())
+    await asyncio.sleep(0.05)
+    assert not stopping.done()  # Stop waits for the relay's answer
+    answer.set()
+    await stopping
+    await admitting
+    assert session.clean_inactive
+    assert owners[0].calls == []  # the Run never started
+    assert work.ops()[-1] == "release"  # the late claim was released, not leaked
+    beats = work.ops().count("beat")
+    await asyncio.sleep(0.05)
+    assert work.ops().count("beat") == beats
+
+
+@pytest.mark.asyncio
 async def test_a_stale_failure_never_marks_a_newer_claim_lost(claimed):
     session, _, _, work = claimed
     await session.start()
@@ -722,3 +762,44 @@ def test_the_client_names_itself_so_cloudflare_does_not_block_it(tmp_path):
     own.opener = Opener()
     assert own.list() == {"claims": []}
     assert sent["user-agent"] == "plaza-bridge/9"
+
+
+@pytest.mark.asyncio
+async def test_an_older_generations_replay_never_carries_the_live_claim(
+    tmp_path, monkeypatch
+):
+    from bridge.domain_manager import DomainManager
+    from bridge.state_coordinator import StateCoordinator, LazySQLiteStateRepository
+    from bridge.tests.test_domain_lifecycle_v2 import send
+
+    service = FakeProjectService(tmp_path)
+    monkeypatch.setattr("bridge.domain_session.DomainSDKOwner", FakeOwner)
+    common, project = await service.application_state_binding()
+    coordinator = StateCoordinator(lambda: LazySQLiteStateRepository(common, project))
+    await coordinator.open()
+    manager = DomainManager(
+        default_config(),
+        service,
+        state_coordinator=coordinator,
+        claims=RelayClaims(FakeWork(), every=60),
+    )
+    try:
+        first = await send(manager, "activate_domain")
+        assert first["work_claim"] == "held"
+        await send(
+            manager,
+            "end_domain_session",
+            domain_session_id=first["domain_session_id"],
+        )
+        second = await send(manager, "activate_domain")
+        assert second["domain_session_id"] != first["domain_session_id"]
+        assert manager.snapshot("engineering")["work_claim"] == "held"
+        packet = await send(
+            manager, "resume", domain_session_id=first["domain_session_id"], cursor="0"
+        )
+        assert packet["type"] == "resume_complete" and packet["state"] == "inactive"
+        assert "work_claim" not in packet
+    finally:
+        await manager.shutdown()
+        await coordinator.close()
+        service.close()

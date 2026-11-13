@@ -80,7 +80,7 @@ static func persistence(snapshot: Dictionary) -> String:
 	var selected: String = snapshot.get("selected_session_id", "")
 	if snapshot.get("read_only", false): notices.append("Ended/saved history · read-only. Run and End require selecting the current application. Stop current work always targets the current execution.")
 	elif snapshot.get("state") == "inactive" and not selected.is_empty(): notices.append("Stopped/restored application history · use explicit Start before Run. End session closes this application separately.")
-	if snapshot.get("state") in ["active", "background"]:
+	if snapshot.get("state") in ["activating", "active", "background"]:
 		var claim: Variant = snapshot.get("work_claim", "")
 		if claim == "lost": notices.append("Relay work claim lost (lapsed or taken over). The next Run claims it again first; if another runtime holds it, that Run is refused. Results and Stop stay available.")
 		elif claim == "unclaimed": notices.append("Relay did not answer · this session runs unclaimed. Each Run tries to claim the domain first.")
