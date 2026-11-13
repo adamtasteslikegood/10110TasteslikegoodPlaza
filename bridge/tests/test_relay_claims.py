@@ -548,3 +548,18 @@ def test_the_client_names_itself_so_cloudflare_does_not_block_it(tmp_path):
     assert sent["user-agent"] == "relay-work-py/1"
     assert not sent["user-agent"].lower().startswith("python-urllib")
     assert sent["cf-access-token"] == "t"
+
+    # A caller's own User-Agent wins, in its usual casing, and is sent once.
+    sent.clear()
+    own = RelayWork(
+        "https://relay.test",
+        {"User-Agent": "plaza-bridge/9", "cf-access-token": "t"},
+        "owner/name",
+        "bridge",
+        "bridge@test",
+        "s" * 32,
+    )
+    assert [k for k in own.headers if k.lower() == "user-agent"] == ["User-Agent"]
+    own.opener = Opener()
+    assert own.list() == {"claims": []}
+    assert sent["user-agent"] == "plaza-bridge/9"

@@ -73,8 +73,10 @@ class RelayWork:
         if len(secret) < 32:
             raise ValueError("the secret must be at least 32 characters")
         self.endpoint = f"{url.rstrip('/')}/v1/{repo.lower()}/work"
+        # A caller's own User-Agent wins, whatever its casing; else the default.
+        named = any(key.lower() == "user-agent" for key in headers)
         self.headers = {
-            "user-agent": USER_AGENT,
+            **({} if named else {"user-agent": USER_AGENT}),
             **headers,
             "content-type": "application/json",
         }
