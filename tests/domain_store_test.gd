@@ -208,6 +208,20 @@ func work_claim_fact() -> void:
 	bad.work_claim = "stolen"
 	s.apply_packet(bad)
 	check(s.snapshot("core").work_claim == "unclaimed", "an unknown work_claim value is refused whole")
+	var i = fresh()
+	check(i.admit_command(command("domain_status", "claim-idle")), "status admitted for an inactive state")
+	var idle := state("claim-idle", "A", "inactive")
+	idle.work_claim = "held"
+	check(i.apply_packet(idle).is_empty() and i.snapshot("core").state == "active", "work_claim on an inactive domain_state is refused whole")
+	var r = fresh()
+	replay(r, "claim-replay")
+	var done := complete("claim-replay", "0", null)
+	done.work_claim = "held"
+	r.apply_packet(done)
+	check(r.snapshot("core").received_cursor == "0" and r.snapshot("core").work_claim == "", "work_claim on resume_complete is refused")
+	var clean = fresh()
+	replay(clean, "claim-replay-ok")
+	check(not clean.apply_packet(complete("claim-replay-ok", "0", null)).is_empty(), "the same resume_complete without work_claim is accepted")
 
 func dict_accepted() -> Dictionary:
 	var p := state("run")

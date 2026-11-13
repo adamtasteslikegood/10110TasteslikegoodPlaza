@@ -492,13 +492,15 @@ async def test_a_relay_that_does_not_answer_never_stops_local_work(claimed):
 
 
 @pytest.mark.asyncio
-async def test_a_lost_claim_stops_beating_and_records_nothing_more(claimed):
+async def test_a_claim_lost_to_another_holder_records_nothing_more(claimed):
     session, _, _, work = claimed
     work.refuse["beat"] = 409
     await session.start()
+    work.refuse["claim"] = 423  # another runtime holds it from here on
     await asyncio.sleep(0.05)
-    assert work.ops().count("beat") == 1
-    assert (await run_once(session))["status"] == "success"
+    assert work.ops().count("beat") == 1  # beating stopped with the loss
+    packet = await refused_run(session, "run-1")
+    assert packet["error_type"] == "work_claimed"
     await session.stop()
     assert "checkpoint" not in work.ops() and "release" not in work.ops()
 
@@ -585,7 +587,8 @@ async def test_a_relay_still_down_is_asked_again_only_after_a_wait(
     assert work.ops().count("claim") == 1  # not asked again inside the wait
     monkeypatch.setattr("bridge.relay_claims.RETRY_SECONDS", 0)
     assert (await run_once(session, "run-2"))["status"] == "success"
-    assert work.ops().count("claim") == 2 and "checkpoint" not in work.ops()
+    # With no wait, it is asked before preparing and again before acceptance.
+    assert work.ops().count("claim") == 3 and "checkpoint" not in work.ops()
     work.down.discard("claim")
     assert (await run_once(session, "run-3"))["status"] == "success"
     assert session.snapshot()["work_claim"] == "held" and "checkpoint" in work.ops()
@@ -600,3 +603,27 @@ async def test_work_claim_is_a_domain_state_fact_of_a_live_claimed_session(claim
     assert "work_claim" not in session.replay(0)[-1]
     await session.stop()
     assert "work_claim" not in session.snapshot()
+
+
+@pytest.mark.asyncio
+async def test_a_claim_lost_while_a_run_prepares_is_asked_again_before_acceptance(
+    claimed,
+):
+    session, service, owners, work = claimed
+    await session.start()
+    prepare = session._readiness.prepare_turn
+
+    async def losing(intent):
+        snapshot = await prepare(intent)
+        # Taken over elsewhere while this Run was still preparing.
+        session._claim._lose()
+        work.refuse["claim"] = 423
+        return snapshot
+
+    session._readiness.prepare_turn = losing
+    packet = await refused_run(session, "run-1")
+    assert packet["type"] == "domain_error" and packet["error_type"] == "work_claimed"
+    assert not owners[0].calls and "pending" not in service.memory.load().todo
+    session._readiness.prepare_turn = prepare
+    del work.refuse["claim"]
+    assert (await run_once(session, "run-2"))["status"] == "success"

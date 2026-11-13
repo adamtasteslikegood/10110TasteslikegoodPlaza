@@ -682,7 +682,8 @@ func _valid_state(p: Dictionary) -> bool:
 		for fact in p.memory_reconciliation:
 			if not fact is Dictionary or not valid_id(fact.get("request_id")) or not fact.get("saved") is bool: return false
 	# Opt-in relay work claims (bridge/PROTOCOL.md); absent when claims are off.
-	if p.has("work_claim") and p.work_claim not in ["held", "lost", "unclaimed"]: return false
+	# It belongs only to a live (active or background) domain_state, never to resume_complete.
+	if p.has("work_claim") and (p.get("type") != "domain_state" or p.state not in ["active", "background"] or p.work_claim not in ["held", "lost", "unclaimed"]): return false
 	return true
 
 

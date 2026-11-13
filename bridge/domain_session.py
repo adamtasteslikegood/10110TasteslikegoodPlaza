@@ -623,6 +623,13 @@ class DomainSession:
                 )
             # The owner may have failed while checkpoint IO was awaiting.
             await self._require_owner_ready()
+            if self._claim is not None:
+                # The claim may have been lost while this Run was preparing: ask
+                # once more, immediately before the acceptance commit.
+                try:
+                    await self._claim.ensure()
+                except ClaimRefused as error:
+                    raise DomainCommandError(error.code) from None
             cancelled = False
             if self._run_state is not None:
                 _, cancelled = await self._run_state.accept(
