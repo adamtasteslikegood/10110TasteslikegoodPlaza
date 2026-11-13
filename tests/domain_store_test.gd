@@ -184,7 +184,30 @@ func _ready() -> void:
 	fix_round1_namespace_validation_regressions()
 	fix_round1_metadata_budget_regressions()
 	fix_round2_unavailable_owner_regressions()
+	work_claim_fact()
 	finish()
+
+func work_claim_fact() -> void:
+	# Opt-in relay work claims (PLZG-300): a domain_state fact, shown as a notice.
+	var Display = load("res://scenes/hud/failure_display.gd")
+	var s = fresh()
+	check(s.snapshot("core").work_claim == "", "work_claim is empty when the bridge sends none")
+	check(Display.persistence(s.snapshot("core")).find("Relay work claim") == -1, "no claim notice without the fact")
+	for value in ["held", "lost", "unclaimed"]:
+		var id: String = "claim-" + value
+		check(s.admit_command(command("domain_status", id)), "status admitted for " + value)
+		var p := state(id)
+		p.work_claim = value
+		s.apply_packet(p)
+		check(s.snapshot("core").work_claim == value, "work_claim %s is kept" % value)
+		var text: String = Display.persistence(s.snapshot("core"))
+		check((text.find("Relay work claim lost") != -1) == (value == "lost"), "lost notice only when lost: " + value)
+		check((text.find("Relay work claim not held") != -1) == (value == "unclaimed"), "unclaimed notice only when unclaimed: " + value)
+	check(s.admit_command(command("domain_status", "claim-bad")), "status admitted for a bad value")
+	var bad := state("claim-bad")
+	bad.work_claim = "stolen"
+	s.apply_packet(bad)
+	check(s.snapshot("core").work_claim == "unclaimed", "an unknown work_claim value is refused whole")
 
 func dict_accepted() -> Dictionary:
 	var p := state("run")

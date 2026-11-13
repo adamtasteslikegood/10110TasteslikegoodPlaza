@@ -511,3 +511,92 @@ async def test_relay_trouble_after_start_never_fails_a_run(claimed):
     assert (await run_once(session))["status"] == "success"
     await session.stop()
     assert session.clean_inactive
+
+
+async def lose_claim(session, work):
+    """The relay refuses the next beat, as after a lapse or a takeover."""
+    work.refuse["beat"] = 409
+    async with asyncio.timeout(3):
+        while session._claim.held:
+            await asyncio.sleep(0.005)
+    del work.refuse["beat"]
+    assert session.snapshot()["work_claim"] == "lost"
+
+
+async def refused_run(session, request):
+    packets = []
+
+    async def emit(packet):
+        packets.append(packet)
+
+    await session.admit_query(
+        query(request, task=f"Build {request}"), context=context(request), emit=emit
+    )
+    async with asyncio.timeout(3):
+        while not packets or session._inflight is not None:
+            await asyncio.sleep(0.001)
+    return packets[-1]
+
+
+@pytest.mark.asyncio
+async def test_a_lost_claim_is_claimed_again_before_the_next_run(claimed):
+    session, service, _, work = claimed
+    await session.start()
+    assert session.snapshot()["work_claim"] == "held"
+    await lose_claim(session, work)
+    before = len(work.calls)
+    assert (await run_once(session, "run-1"))["status"] == "success"
+    later = [(op, f) for op, _, f in work.calls[before:]]
+    assert later[0] == ("claim", dict(branch=service.workspace.branch, reopen=True))
+    assert "checkpoint" in [op for op, _ in later]
+    assert work.holders[-1] == work.holders[0]  # the same holder, not a stacked one
+    assert session.snapshot()["work_claim"] == "held"
+    await asyncio.sleep(0.05)
+    assert "beat" in [op for op, _, _ in work.calls[before:]]
+    await session.stop()
+    assert work.ops()[-1] == "release"
+
+
+@pytest.mark.asyncio
+async def test_a_claim_taken_elsewhere_refuses_the_next_run_not_the_session(claimed):
+    session, service, owners, work = claimed
+    await session.start()
+    await lose_claim(session, work)
+    work.refuse["claim"] = 423
+    revision = service.memory.load().revision
+    packet = await refused_run(session, "run-1")
+    assert packet["type"] == "domain_error" and packet["error_type"] == "work_claimed"
+    assert not owners[0].calls and service.memory.load().revision == revision
+    assert session.can_run and session.snapshot()["work_claim"] == "lost"
+    del work.refuse["claim"]
+    assert (await run_once(session, "run-2"))["status"] == "success"
+    assert session.snapshot()["work_claim"] == "held"
+
+
+@pytest.mark.asyncio
+async def test_a_relay_still_down_is_asked_again_only_after_a_wait(
+    claimed, monkeypatch
+):
+    session, _, _, work = claimed
+    work.down.add("claim")
+    await session.start()
+    assert session.snapshot()["work_claim"] == "unclaimed"
+    assert (await run_once(session, "run-1"))["status"] == "success"
+    assert work.ops().count("claim") == 1  # not asked again inside the wait
+    monkeypatch.setattr("bridge.relay_claims.RETRY_SECONDS", 0)
+    assert (await run_once(session, "run-2"))["status"] == "success"
+    assert work.ops().count("claim") == 2 and "checkpoint" not in work.ops()
+    work.down.discard("claim")
+    assert (await run_once(session, "run-3"))["status"] == "success"
+    assert session.snapshot()["work_claim"] == "held" and "checkpoint" in work.ops()
+
+
+@pytest.mark.asyncio
+async def test_work_claim_is_a_domain_state_fact_of_a_live_claimed_session(claimed):
+    session, _, _, _ = claimed
+    assert "work_claim" not in session.snapshot()
+    await session.start()
+    assert session.snapshot()["work_claim"] == "held"
+    assert "work_claim" not in session.replay(0)[-1]
+    await session.stop()
+    assert "work_claim" not in session.snapshot()

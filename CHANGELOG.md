@@ -17,6 +17,15 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
 
+### Changed — a lost relay work claim is claimed again before the next Run (PLZG-300)
+
+- With relay claims on, a claim the relay reported lost (or never answered for
+  at Start) is claimed again before each later Run. Held by another runtime,
+  that Run is refused with `work_claimed` and the session stays up; before,
+  every later Run in the session ran unclaimed until Stop.
+- A live session's `domain_state` now carries `work_claim` (`held`, `lost` or
+  `unclaimed`), and the Godot panels show a notice for the last two.
+
 ### Added — opt-in relay work claims for domain sessions
 
 - With `RELAY_WORK_REPO` set, a domain generation claims `plaza:<domain_id>` on

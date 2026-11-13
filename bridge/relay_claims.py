@@ -21,6 +21,7 @@ import math
 import os
 import re
 import socket
+import time
 import stat
 import tempfile
 from collections.abc import Mapping
@@ -40,6 +41,9 @@ HOLDER_MAX = 200 - 13
 # most this many checkpoints wait to be sent, and Stop waits this long for them.
 QUEUE_MAX = 20
 FLUSH_SECONDS = 15.0
+# After the relay failed to answer, a Run waits this long before asking again,
+# so an outage costs one client timeout, not one per Run.
+RETRY_SECONDS = 30.0
 # GitHub's own name rules, so the repo can't reshape the claim endpoint's path.
 REPO = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})/[A-Za-z0-9._-]{1,100}")
 DEFAULT_SECRET_FILE = Path.home() / ".config" / "plaza" / "relay-work-secret"
@@ -180,6 +184,8 @@ class DomainClaim:
         self.lost = False
         self.resume = None
         self._beats = None
+        self._branch = self._place = None
+        self._asked = None  # when the relay last failed to answer a claim
         # Checkpoints go to the relay one at a time, in the order Runs finished.
         self._sending = None
         self._queued = 0
@@ -202,6 +208,7 @@ class DomainClaim:
         renews at once; the workspace lease already keeps one bridge per checkout.
         Another checkout of the repo on this machine is another holder and waits.
         """
+        self._branch, self._place = branch, place
         if place is not None:
             mark = hashlib.sha256(place.encode("utf-8", "surrogatepass")).hexdigest()
             # Always from the shared settings, so a repeated claim never stacks.
@@ -216,9 +223,11 @@ class DomainClaim:
                 self.work.claim, self.ref, branch=branch, reopen=True
             )
         except RelayDown:
+            self._asked = time.monotonic()
             self._event("failure", "relay_down")
             return None
         except RelayRefused as error:
+            self._asked = None
             self._event("failure", f"refused_{error.status}")
             raise ClaimRefused(
                 "work_claimed" if error.status == 423 else "relay_refused", str(error)
@@ -232,11 +241,33 @@ class DomainClaim:
         if not isinstance(answer, dict) or type(answer.get("token")) is not int:
             self._event("failure", "relay_unreadable")
             raise ClaimRefused("relay_refused", "relay answer without a claim token")
-        self.held = True
+        self._asked = None
+        self.held, self.lost = True, False
         self.resume = answer.get("resume")
         self._event("success", "took_over" if answer.get("tookOver") else "claimed")
+        if self._beats is not None:
+            self._beats.cancel()  # a beat task left from before a lost claim
         self._beats = asyncio.create_task(self._beat())
         return answer
+
+    @property
+    def status(self) -> str:
+        """``held``, ``lost`` (the relay said so) or ``unclaimed`` (never answered)."""
+        return "held" if self.held else "lost" if self.lost else "unclaimed"
+
+    async def ensure(self) -> None:
+        """Before a Run: a claim that is not held is claimed again.
+
+        A lapsed claim nobody took, or a relay that was down at Start, is simply
+        claimed. A claim now live under another holder raises ClaimRefused, as at
+        Start. A relay that still does not answer leaves the Run unclaimed, and
+        is asked again at most every RETRY_SECONDS.
+        """
+        if self.held:
+            return
+        if self._asked is not None and time.monotonic() - self._asked < RETRY_SECONDS:
+            return
+        await self.claim(branch=self._branch, place=self._place)
 
     async def _beat(self):
         while self.held:

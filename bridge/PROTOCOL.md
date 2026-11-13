@@ -383,7 +383,19 @@ A half-made setting stops the bridge at startup with a configuration error.
   timeout) never stops local work: the generation runs unclaimed.
 - While the generation lives, a background task beats the claim. If the relay
   says it was lost (lapsed or taken over), the bridge stops beating and records
-  nothing more to it; the Run itself is not interrupted.
+  nothing more to it; the Run in progress is not interrupted.
+- Before each later Run is admitted, a claim that is not held is claimed again
+  with the same holder. A lapsed claim nobody took, or a relay that was down at
+  Start, is simply claimed and work carries on. A claim now live under another
+  holder refuses that Run (`work_claimed`, or `relay_refused`) before it touches
+  memory; the generation stays up, so results can be read and Stop works. A
+  relay that still does not answer leaves the Run unclaimed and is asked again
+  at most every 30 s, so an outage costs one 10 s client timeout, not one per Run.
+- A live generation's `domain_state` carries `work_claim`: `held`, `lost` (the
+  relay said so) or `unclaimed` (the relay never answered). It is absent when
+  claims are off, when the generation is not active, and from
+  `resume_complete`. The Godot client keeps it and shows a notice for `lost`
+  and `unclaimed`; the fact changes only when a later `domain_state` arrives.
 - After each Run's terminal is delivered, the claim gets a checkpoint step:
   `<status> (<reason>): <task>`, with the workspace branch and its `HEAD`.
   Another runtime can resume from that commit only once the branch is pushed;
@@ -393,6 +405,8 @@ A half-made setting stops the bridge at startup with a configuration error.
   then, it doesn't release, and the claim lapses after the lease instead.
 - A clean Stop releases the claim as `paused`. Cleanup failure leaves it to lapse.
   End does not mark it done yet.
+- The relay's resume facts for a takeover (branch, commit, steps) are kept on
+  the claim but not acted on; SQLite stays the record the bridge resumes from.
 
 The relay holds coordination only. SQLite stays the record of the session, its
 results and recap; no transcript goes to the relay. Each checkpoint does send

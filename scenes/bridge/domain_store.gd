@@ -112,7 +112,7 @@ func _domain(id: String) -> Dictionary:
 	if not valid_domain(id): return {}
 	if not _domains.has(id):
 		if _domains.size() >= MAX_DOMAINS: return {}
-		_domains[id] = {"project_id": _project_id, "domain_id": id, "domain_session_id": "", "workspace_id": "", "state": "inactive", "execution_state": "idle", "pending_query": {}, "pending_control": {}, "draft": "", "results": [], "omitted_count": 0, "uncertain": false, "error": {}, "memory": {}, "buckets": {}, "version": 0, "lifecycle_uncertain": false, "query_uncertain": false, "cleanup_confirmed": false, "execution_id": "", "domain_revision": "0", "saved_sessions": [], "selected_session_id": "", "unsaved_results": [], "state_store": {}, "memory_reconciliation": [], "authority_unavailable": false, "omitted_unknown_count": 0, "cache_owner": {}}
+		_domains[id] = {"project_id": _project_id, "domain_id": id, "domain_session_id": "", "workspace_id": "", "state": "inactive", "execution_state": "idle", "pending_query": {}, "pending_control": {}, "draft": "", "results": [], "omitted_count": 0, "uncertain": false, "error": {}, "memory": {}, "buckets": {}, "version": 0, "lifecycle_uncertain": false, "query_uncertain": false, "cleanup_confirmed": false, "execution_id": "", "domain_revision": "0", "saved_sessions": [], "selected_session_id": "", "unsaved_results": [], "state_store": {}, "memory_reconciliation": [], "work_claim": "", "authority_unavailable": false, "omitted_unknown_count": 0, "cache_owner": {}}
 	return _domains[id]
 
 
@@ -681,6 +681,8 @@ func _valid_state(p: Dictionary) -> bool:
 		if not p.memory_reconciliation is Array or p.memory_reconciliation.size() > 256: return false
 		for fact in p.memory_reconciliation:
 			if not fact is Dictionary or not valid_id(fact.get("request_id")) or not fact.get("saved") is bool: return false
+	# Opt-in relay work claims (bridge/PROTOCOL.md); absent when claims are off.
+	if p.has("work_claim") and p.work_claim not in ["held", "lost", "unclaimed"]: return false
 	return true
 
 
@@ -706,6 +708,7 @@ func _adopt_catalog(d: Dictionary, packet: Dictionary) -> void:
 	d.state_store = _storage_facts(packet.state_store)
 	_remember_cache_owner(d, packet.state_store)
 	d.memory_reconciliation = packet.get("memory_reconciliation", []).duplicate(true)
+	d.work_claim = packet.get("work_claim", "")
 	for item in d.saved_sessions:
 		var id: String = item.domain_session_id
 		if not d.buckets.has(id):
@@ -920,6 +923,7 @@ func _reset_namespace(d: Dictionary, request_id: String) -> void:
 	d.unsaved_results = []
 	d.saved_sessions = []
 	d.memory_reconciliation = []
+	d.work_claim = ""
 	d.state_store = {}
 	d.cache_owner = {}
 	d.omitted_count = 0

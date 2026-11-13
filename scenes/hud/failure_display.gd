@@ -83,4 +83,6 @@ static func persistence(snapshot: Dictionary) -> String:
 	for fact in snapshot.get("memory_reconciliation", []):
 		if fact.get("error_type") != null: notices.append("Project notes recovery: %s. Saved application history and notes may differ; operator inspection is required." % fact.error_type)
 		elif fact.get("note_state") != null: notices.append("Recovered project notes: %s · application recovery reports the execution outcome separately." % fact.note_state)
+	if snapshot.get("work_claim") == "lost": notices.append("Relay work claim lost · another runtime may be working this department. The next Run asks the relay again and is refused while the claim is held elsewhere; Refresh status.")
+	elif snapshot.get("work_claim") == "unclaimed": notices.append("Relay work claim not held · the relay did not answer. Work continues locally and is not recorded on the relay; the next Run asks again.")
 	return "\n".join(notices)
