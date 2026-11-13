@@ -481,14 +481,50 @@ async def test_an_unreadable_claim_answer_refuses_start(claimed, monkeypatch, an
     assert session.clean_inactive and service.capacity is None
 
 
+async def refused_run(session, request):
+    """Admit a Run the bridge refuses; admission settles once the error is sent."""
+    packets = []
+
+    async def emit(packet):
+        packets.append(packet)
+
+    await session.admit_query(
+        query(request, task=f"Build {request}"), context=context(request), emit=emit
+    )
+    assert session._inflight is None
+    return packets[-1]
+
+
+async def lose(session, work):
+    """Have the relay refuse a beat, as for a lapsed or taken-over claim."""
+    work.refuse["beat"] = 409
+    async with asyncio.timeout(3):
+        while session._claim.state != "lost":
+            await asyncio.sleep(0.005)
+    del work.refuse["beat"]
+
+
 @pytest.mark.asyncio
 async def test_a_relay_that_does_not_answer_never_stops_local_work(claimed):
     session, _, owners, work = claimed
     work.down.add("claim")
     await session.start()
+    assert session.snapshot()["work_claim"] == "unclaimed"
     assert (await run_once(session))["status"] == "success"
     await session.stop()
-    assert work.ops() == ["claim"]
+    # The Run tried to claim before it started, and ran unclaimed all the same.
+    assert work.ops() == ["claim", "claim"]
+
+
+@pytest.mark.asyncio
+async def test_a_relay_that_answers_later_is_claimed_before_the_next_run(claimed):
+    session, _, _, work = claimed
+    work.down.add("claim")
+    await session.start()
+    work.down.clear()
+    assert (await run_once(session))["status"] == "success"
+    assert session.snapshot()["work_claim"] == "held"
+    assert "checkpoint" in work.ops()
 
 
 @pytest.mark.asyncio
@@ -498,9 +534,132 @@ async def test_a_lost_claim_stops_beating_and_records_nothing_more(claimed):
     await session.start()
     await asyncio.sleep(0.05)
     assert work.ops().count("beat") == 1
+    assert session.snapshot()["work_claim"] == "lost"
+    work.down.add("claim")  # so the next Run can't take it back
     assert (await run_once(session))["status"] == "success"
     await session.stop()
     assert "checkpoint" not in work.ops() and "release" not in work.ops()
+
+
+@pytest.mark.asyncio
+async def test_a_lost_claim_never_interrupts_the_running_run(claimed):
+    session, _, owners, work = claimed
+    await session.start()
+    packets = []
+
+    async def emit(packet):
+        packets.append(packet)
+
+    gate = owners[0].execute_gate = asyncio.Event()
+    await session.admit_query(query("long"), context=context("long"), emit=emit)
+    await owners[0].executing.wait()
+    await lose(session, work)
+    claims = work.ops().count("claim")
+    gate.set()
+    await collect_until(session, packets)
+    assert packets[-1]["type"] == "domain_result"
+    assert packets[-1]["status"] == "success"
+    # Nothing tried to claim again while that Run was going.
+    assert work.ops().count("claim") == claims
+
+
+@pytest.mark.asyncio
+async def test_a_lost_claim_is_claimed_again_before_the_next_run(claimed):
+    session, service, _, work = claimed
+    await session.start()
+    first = work.holders[0]
+    await lose(session, work)
+    assert session.snapshot()["work_claim"] == "lost"
+    assert (await run_once(session))["status"] == "success"
+    assert work.ops().count("claim") == 2
+    op, _, fields = [c for c in work.calls if c[0] == "claim"][1]
+    assert fields == dict(branch=service.workspace.branch, reopen=True)
+    assert work.holders[1] == first  # same holder and place as Start
+    assert session.snapshot()["work_claim"] == "held"
+    assert "checkpoint" in work.ops()  # the Run after the re-claim records again
+    # One beat loop only: at every=0.01 s, two loops would beat about twice as often.
+    before = work.ops().count("beat")
+    await asyncio.sleep(0.2)
+    assert work.ops().count("beat") - before <= 25
+    assert session._claim._beats is not None and not session._claim._beats.done()
+    await session.stop()
+    assert work.ops()[-1] == "release"
+
+
+@pytest.mark.asyncio
+async def test_a_claim_taken_by_another_runtime_refuses_the_run_not_the_session(
+    claimed,
+):
+    session, _, owners, work = claimed
+    await session.start()
+    await lose(session, work)
+    work.refuse["claim"] = 423
+    packet = await refused_run(session, "refused")
+    assert packet["type"] == "domain_error"
+    assert packet["error_type"] == "work_claimed"
+    assert owners[0].calls == []  # the refused Run never reached the SDK
+    assert session.can_run and session.snapshot()["state"] == "active"
+    assert session.snapshot()["work_claim"] == "lost"
+    # Once the other runtime lets go, the next Run claims it and runs.
+    del work.refuse["claim"]
+    assert (await run_once(session, "after"))["status"] == "success"
+    assert session.snapshot()["work_claim"] == "held"
+    await session.stop()
+    assert session.clean_inactive
+
+
+@pytest.mark.asyncio
+async def test_a_refused_credential_at_admission_refuses_the_run(claimed):
+    session, _, _, work = claimed
+    await session.start()
+    await lose(session, work)
+    work.refuse["claim"] = 403
+    packet = await refused_run(session, "refused")
+    assert packet["error_type"] == "relay_refused"
+    assert session.can_run
+
+
+@pytest.mark.asyncio
+async def test_a_relay_down_at_admission_runs_unclaimed_and_retries_next_time(
+    claimed,
+):
+    session, _, _, work = claimed
+    await session.start()
+    await lose(session, work)
+    work.down.add("claim")
+    assert (await run_once(session, "one"))["status"] == "success"
+    assert session.snapshot()["work_claim"] == "lost"
+    assert work.ops().count("claim") == 2
+    work.down.clear()
+    assert (await run_once(session, "two"))["status"] == "success"
+    assert work.ops().count("claim") == 3
+    assert session.snapshot()["work_claim"] == "held"
+
+
+@pytest.mark.asyncio
+async def test_a_stale_failure_never_marks_a_newer_claim_lost(claimed):
+    session, _, _, work = claimed
+    await session.start()
+    claim = session._claim
+    stale = claim._generation
+    await lose(session, work)
+    await claim.reclaim()
+    claim._lose(stale)  # a beat or checkpoint begun under the old claim
+    assert claim.state == "held"
+
+
+@pytest.mark.asyncio
+async def test_without_relay_claims_domain_state_has_no_claim_field(tmp_path):
+    service = FakeProjectService(tmp_path)
+    session = DomainSession(
+        "engineering",
+        "generation",
+        execution_id="execution",
+        config=default_config(),
+        project_service=service,
+    )
+    assert "work_claim" not in session.snapshot()
+    service.close()
 
 
 @pytest.mark.asyncio

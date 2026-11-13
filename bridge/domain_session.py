@@ -261,13 +261,22 @@ class DomainSession:
             execution = self._state.value
         elif self._inflight is not None:
             execution = "running"
-        return dict(
+        packet = dict(
             type="domain_state",
             protocol_version=2,
             **self._identity(),
             state=self._state.value,
             execution_state=execution,
         )
+        if self._claim is not None and self._state in (
+            SessionState.ACTIVATING,
+            SessionState.ACTIVE,
+            SessionState.BACKGROUND,
+        ):
+            # Only with relay claims on, for a live generation: held, lost or
+            # unclaimed (no answer).
+            packet["work_claim"] = self._claim.state
+        return packet
 
     def _transition(self, state):
         if self._state is state:
@@ -574,6 +583,16 @@ class DomainSession:
             if self._stopping:
                 raise DomainCommandError("session_unavailable")
             run.preparing = True
+            if self._claim is not None:
+                # A claim lost since the last Run is taken again before this
+                # one starts. No answer runs unclaimed, as at Start; a claim
+                # held elsewhere refuses this Run only, and the session stays.
+                try:
+                    await self._claim.reclaim()
+                except ClaimRefused as error:
+                    raise DomainCommandError(error.code) from None
+                if self._stopping:
+                    raise DomainCommandError("session_unavailable")
             async with self._memory_lock:
                 await self._require_owner_ready()
                 prepare_attempted = True

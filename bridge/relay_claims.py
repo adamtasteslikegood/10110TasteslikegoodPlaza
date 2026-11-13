@@ -12,6 +12,8 @@ domain across runtimes; SQLite stays the bridge's record of the session.
 
 A relay that does not answer never stops local work: the session runs unclaimed.
 A claim live under another holder, or a refused credential, refuses Start.
+A claim lost later never interrupts the running Run; the next Run claims again
+first, and is refused alone, not the session, when another runtime holds it.
 """
 
 import asyncio
@@ -180,6 +182,12 @@ class DomainClaim:
         self.lost = False
         self.resume = None
         self._beats = None
+        # Where the first claim was made, so a re-claim asks for the same thing.
+        self._branch = self._place = None
+        self._claimed_once = False
+        # Bumped on each claim, so a beat or checkpoint begun under an older
+        # claim can't mark the newer one lost.
+        self._generation = 0
         # Checkpoints go to the relay one at a time, in the order Runs finished.
         self._sending = None
         self._queued = 0
@@ -202,6 +210,7 @@ class DomainClaim:
         renews at once; the workspace lease already keeps one bridge per checkout.
         Another checkout of the repo on this machine is another holder and waits.
         """
+        self._branch, self._place, self._claimed_once = branch, place, True
         if place is not None:
             mark = hashlib.sha256(place.encode("utf-8", "surrogatepass")).hexdigest()
             # Always from the shared settings, so a repeated claim never stacks.
@@ -232,26 +241,61 @@ class DomainClaim:
         if not isinstance(answer, dict) or type(answer.get("token")) is not int:
             self._event("failure", "relay_unreadable")
             raise ClaimRefused("relay_refused", "relay answer without a claim token")
-        self.held = True
+        reclaimed = self.lost
+        self._generation += 1
+        self.held, self.lost = True, False
+        # Kept for the record; the bridge does not act on it (PROTOCOL.md).
         self.resume = answer.get("resume")
-        self._event("success", "took_over" if answer.get("tookOver") else "claimed")
-        self._beats = asyncio.create_task(self._beat())
+        if answer.get("tookOver"):
+            reason = "took_over"
+        else:
+            reason = "reclaimed" if reclaimed else "claimed"
+        self._event("success", reason)
+        self._beats = asyncio.create_task(self._beat(self._generation))
         return answer
 
-    async def _beat(self):
-        while self.held:
+    @property
+    def state(self) -> str:
+        """``held``, ``lost`` (the relay said so) or ``unclaimed`` (no answer)."""
+        if self.held:
+            return "held"
+        return "lost" if self.lost else "unclaimed"
+
+    async def reclaim(self) -> dict | None:
+        """Before a Run: claim again if not held, as Start did; never interrupts.
+
+        Same holder, place and branch as Start. Held already: nothing to do.
+        No answer: None, and the Run goes ahead unclaimed. Held by another
+        runtime, or refused: ClaimRefused, and this Run must not start.
+        """
+        if self.held or not self._claimed_once:
+            return None
+        await self._stop_beats()
+        return await self.claim(branch=self._branch, place=self._place)
+
+    async def _stop_beats(self):
+        if self._beats is not None:
+            self._beats.cancel()
+            try:
+                await self._beats
+            except (asyncio.CancelledError, Exception):
+                pass
+            self._beats = None
+
+    async def _beat(self, generation):
+        while self.held and generation == self._generation:
             await asyncio.sleep(self.every)
             try:
                 await asyncio.to_thread(self.work.beat, self.ref)
             except (RelayRefused, KeyError):
                 # Lapsed, taken over or released meanwhile: stop beating for it.
-                self._lose()
+                self._lose(generation)
                 return
             except Exception:
                 continue
 
-    def _lose(self):
-        if self.held:
+    def _lose(self, generation):
+        if self.held and generation == self._generation:
             self.held, self.lost = False, True
             self._event("failure", "lost")
 
@@ -314,6 +358,7 @@ class DomainClaim:
     async def checkpoint(self, text: str, *, branch=None, commit=None):
         if not self.held:
             return
+        generation = self._generation
         try:
             await asyncio.to_thread(
                 self.work.checkpoint,
@@ -323,7 +368,7 @@ class DomainClaim:
                 branch=branch,
             )
         except (RelayRefused, KeyError):
-            self._lose()
+            self._lose(generation)
         except RelayDown:
             self._event("failure", "checkpoint_relay_down")
         except Exception:
@@ -335,13 +380,7 @@ class DomainClaim:
         # is the last Run, then the pause. A relay outage can't hold Stop longer
         # than FLUSH_SECONDS; checkpoints still waiting then are dropped.
         drained = await self.flush(FLUSH_SECONDS)
-        if self._beats is not None:
-            self._beats.cancel()
-            try:
-                await self._beats
-            except (asyncio.CancelledError, Exception):
-                pass
-            self._beats = None
+        await self._stop_beats()
         held, self.held = self.held, False
         if not (held and release):
             return
