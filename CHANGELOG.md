@@ -25,6 +25,12 @@ spec-set versions, and no application release existed before `v0.1.22`.
   every later Run in the session ran unclaimed until Stop.
 - A live session's `domain_state` now carries `work_claim` (`held`, `lost` or
   `unclaimed`), and the Godot panels show a notice for the last two.
+### Fixed — relay work claims against the relay on Cloudflare (PLZG-303)
+
+- The bridge's relay client now sends its own `User-Agent`. Cloudflare answered
+  urllib's default one with 403 `error code: 1010`, so with `RELAY_WORK_REPO`
+  set against the deployed relay every Start was refused and no claim was
+  recorded. The local dev relay has no such check, so it did not show there.
 
 ### Added — opt-in relay work claims for domain sessions
 
