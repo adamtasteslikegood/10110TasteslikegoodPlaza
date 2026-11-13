@@ -511,3 +511,40 @@ async def test_relay_trouble_after_start_never_fails_a_run(claimed):
     assert (await run_once(session))["status"] == "success"
     await session.stop()
     assert session.clean_inactive
+
+
+def test_the_client_names_itself_so_cloudflare_does_not_block_it(tmp_path):
+    """urllib's default User-Agent is answered 403 "error code: 1010" (PLZG-303)."""
+    from bridge.relay_work import RelayWork
+
+    sent = {}
+
+    class Answer:
+        status = 200
+
+        def read(self):
+            return b'{"claims": []}'
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+    class Opener:
+        def open(self, request, timeout=None):
+            sent.update({k.lower(): v for k, v in request.header_items()})
+            return Answer()
+
+    environ = dict(
+        RELAY_WORK_REPO="owner/name",
+        RELAY_WORK_SECRET_FILE=str(tmp_path / "secret"),
+        **CREDENTIAL,
+    )
+    work = RelayClaims.from_env(environ).work
+    assert isinstance(work, RelayWork)
+    work.opener = Opener()
+    assert work.list() == {"claims": []}
+    assert sent["user-agent"] == "relay-work-py/1"
+    assert not sent["user-agent"].lower().startswith("python-urllib")
+    assert sent["cf-access-token"] == "t"

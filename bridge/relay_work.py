@@ -1,6 +1,7 @@
 # Vendored from adamtasteslikegood/codex-pr-review-gate-cc, pr-lifecycle-relay/client/relay_work.py at main f10c59a (PR #59).
 # Keep it in step with that file rather than editing it here. One local change: the
 # error contract below now says what _send does (a non-JSON body is RelayRefused).
+# A second, to be sent upstream too: the client names itself in User-Agent (PLZG-303).
 """relay_work: the relay's work claims from Python, for the game bridge (stdlib only, Python 3.10 or later).
 
 The same API as client/relay-work.ts, and the same variables as pr-lifecycle: PR_GATE_RELAY_URL, then PR_GATE_RELAY_CLIENT_ID and
@@ -49,6 +50,11 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 
 
+# Cloudflare's Browser Integrity Check answers urllib's default User-Agent
+# ("Python-urllib/3.x") with 403 "error code: 1010", before Access or the Worker.
+USER_AGENT = "relay-work-py/1"
+
+
 def new_secret() -> str:
     return secrets.token_hex(32)
 
@@ -67,7 +73,11 @@ class RelayWork:
         if len(secret) < 32:
             raise ValueError("the secret must be at least 32 characters")
         self.endpoint = f"{url.rstrip('/')}/v1/{repo.lower()}/work"
-        self.headers = {**headers, "content-type": "application/json"}
+        self.headers = {
+            "user-agent": USER_AGENT,
+            **headers,
+            "content-type": "application/json",
+        }
         self.runtime = runtime
         self.holder = holder
         self.secret = secret
