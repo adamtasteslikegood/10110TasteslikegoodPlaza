@@ -191,6 +191,9 @@ class DomainClaim:
         # A re-claim runs as its own task, so a Stop that cancels the Run
         # waiting on it can still wait for the relay's answer and release.
         self._claiming = None
+        # Set once close() stops waiting for a re-claim: nothing claimed after
+        # that would be released, so no later re-claim is made or held.
+        self._closed = False
         # Checkpoints go to the relay one at a time, in the order Runs finished.
         self._sending = None
         self._queued = 0
@@ -244,6 +247,10 @@ class DomainClaim:
         if not isinstance(answer, dict) or type(answer.get("token")) is not int:
             self._event("failure", "relay_unreadable")
             raise ClaimRefused("relay_refused", "relay answer without a claim token")
+        if self._closed:
+            # Stop gave up waiting for this answer; it lapses at the relay.
+            self._event("failure", "claimed_after_stop")
+            return None
         reclaimed = self.lost
         self._generation += 1
         self.held, self.lost = True, False
@@ -271,7 +278,7 @@ class DomainClaim:
         No answer: None, and the Run goes ahead unclaimed. Held by another
         runtime, or refused: ClaimRefused, and this Run must not start.
         """
-        if self.held or not self._claimed_once:
+        if self.held or not self._claimed_once or self._closed:
             return None
         if self._claiming is None or self._claiming.done():
             # Installed before any await, so a Stop that lands while the old
@@ -282,6 +289,8 @@ class DomainClaim:
 
     async def _reclaim(self):
         await self._stop_beats()
+        if self._closed:
+            return None
         return await self.claim(branch=self._branch, place=self._place)
 
     async def _stop_beats(self):
@@ -401,6 +410,7 @@ class DomainClaim:
                 )
             except (asyncio.TimeoutError, TimeoutError):
                 self._event("failure", "reclaim_timeout")
+        self._closed = True
         self._claiming = None
         await self._stop_beats()
         held, self.held = self.held, False
