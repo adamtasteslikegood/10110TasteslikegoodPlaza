@@ -391,6 +391,8 @@ class DomainManager:
                 state="inactive",
                 execution_state="idle",
             )
+            # The live generation's relay claim is not this older one's.
+            packet.pop("work_claim", None)
         packet.update(
             type="resume_complete",
             ended=record.ended_at is not None,

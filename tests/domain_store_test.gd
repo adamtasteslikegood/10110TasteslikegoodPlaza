@@ -171,6 +171,7 @@ func _ready() -> void:
 	final_rebinding_regression()
 	diagnostic_command_regressions()
 	persistence_v2_regressions()
+	work_claim_regression()
 	duplicate_execution_regression()
 	stop_status_order_regression()
 	historical_envelope_regression()
@@ -436,6 +437,27 @@ func diagnostic_command_regressions() -> void:
 		var untrusted: Dictionary = s.snapshot("core").error.get("command_error", {})
 		check(not untrusted.has("terminal_reason") and not untrusted.has("readiness_category"), "unknown or non-string diagnostic metadata omitted")
 
+
+func work_claim_regression() -> void:
+	var s = fresh()
+	check(s.snapshot("core").work_claim == "", "no relay claim fact without the field")
+	check(s.admit_command(command("domain_status", "claim-lost")), "claim status admitted")
+	var lost := state("claim-lost")
+	lost.work_claim = "lost"
+	s.apply_packet(lost)
+	check(s.snapshot("core").work_claim == "lost", "lost relay claim adopted from domain_state")
+	check(s.admit_command(command("domain_status", "claim-off")), "claims-off status admitted")
+	s.apply_packet(state("claim-off"))
+	check(s.snapshot("core").work_claim == "", "claims off clears the relay claim fact")
+	check(s.admit_command(command("domain_status", "claim-held")), "held claim status admitted")
+	var held := state("claim-held")
+	held.work_claim = "held"
+	s.apply_packet(held)
+	check(s.admit_command(command("domain_status", "claim-bad")), "malformed claim status admitted")
+	var bad := state("claim-bad")
+	bad.work_claim = "stolen"
+	s.apply_packet(bad)
+	check(s.snapshot("core").work_claim == "held", "unknown relay claim value is rejected, prior fact kept")
 
 func persistence_v2_regressions() -> void:
 	# Old execution A has a retained terminal; B owns the same application now.

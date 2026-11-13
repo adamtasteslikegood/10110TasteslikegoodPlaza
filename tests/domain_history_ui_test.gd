@@ -11,12 +11,18 @@ var capabilities_version: Variant = 2
 var last_character_reply: Dictionary = {}
 var storage_error: Variant = null
 var backend := "sqlite"
+var work_claim: Variant = null
 
 func check(ok: bool, message: String) -> void:
 	checks += 1
 	if not ok: failures.append(message)
 
 func state(id: String) -> Dictionary:
+	var packet := _state(id)
+	if work_claim != null: packet.work_claim = work_claim
+	return packet
+
+func _state(id: String) -> Dictionary:
 	return {"type": "domain_state", "protocol_version": 2, "request_id": id, "project_id": "P", "workspace_id": "W", "domain_id": "core", "domain_session_id": null if ended_only else "A", "execution_id": null if ended_only else "E-B", "domain_revision": "3", "state": "inactive" if ended_only else "active", "execution_state": "idle", "state_store": {"backend": backend, "continuity_id": "00000000-0000-4000-8000-000000000001" if backend == "sqlite" else "00000000-0000-4000-8000-000000000002", "durable": backend == "sqlite", "continuity": "project" if backend == "sqlite" else "process", "error_type": storage_error}, "saved_sessions": [{"domain_session_id": "C", "created_at": "1", "ended_at": "2", "ended_by": "user", "high_water_mark": "1"}, {"domain_session_id": "A", "created_at": "3", "ended_at": "4" if ended_only else null, "ended_by": "user" if ended_only else null, "high_water_mark": "1"}]}
 
 func workspace(id: String) -> Dictionary:
@@ -114,6 +120,18 @@ func _ready() -> void:
 	BridgeClient.domain_status("core")
 	await frames(25)
 	check(body.get_parsed_text().contains("Memory backend") and pane.get_node("Panel/Scroll/Rows/ResultsLabel").text.contains("history lasts only"), "both surfaces explain memory backend discontinuity")
+	work_claim = "lost"
+	BridgeClient.domain_status("core")
+	await frames(25)
+	check(BridgeClient.domain_snapshot("core").get("work_claim") == "lost", "lost relay claim reaches the domain store")
+	for label in [body, pane.get_node("Panel/Scroll/Rows/ResultsLabel")]:
+		check(label.get_parsed_text().contains("Relay work claim lost") and label.get_parsed_text().contains("claims it again"), "both surfaces show a lost relay work claim")
+	work_claim = "held"
+	BridgeClient.domain_status("core")
+	await frames(25)
+	for label in [body, pane.get_node("Panel/Scroll/Rows/ResultsLabel")]:
+		check(not label.get_parsed_text().contains("Relay work claim lost"), "a renewed claim clears the notice on both surfaces")
+	work_claim = null
 	capabilities_version = "2"
 	BridgeClient.agent_status("systems-architect")
 	await frames(20)

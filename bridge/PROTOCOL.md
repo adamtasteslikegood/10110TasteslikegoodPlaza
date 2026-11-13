@@ -353,8 +353,8 @@ does not change an established binding.
 | `upgrade_required`, `stale_execution`, `stale_domain_revision` | Protocol version or lifecycle/execution fencing failed |
 | `state_store_busy`, `state_store_invalid`, `state_store_unsupported`, `state_store_quota`, `state_store_failed`, `state_store_uncertain` | Visible storage failure; no automatic fallback or empty recreation |
 | `cleanup_failed` | Cleanup is unconfirmed; ownership/evidence retained |
-| `work_claimed` | Opt-in relay claims: another runtime's bridge or agent holds this domain's live claim; Start is refused |
-| `relay_refused` | Opt-in relay claims: the relay refused the claim (credential, grant or request) or gave an answer the bridge can't use; Start is refused |
+| `work_claimed` | Opt-in relay claims: another runtime's bridge or agent holds this domain's live claim; Start is refused, or a later Run once the claim was lost (the session stays up) |
+| `relay_refused` | Opt-in relay claims: the relay refused the claim (credential, grant or request) or gave an answer the bridge can't use; Start is refused, or a later Run needing a re-claim (the session stays up) |
 
 Shutdown drains domains, then owned NPC/setup/IO, then detaches the memory run,
 and closes recording. Pending unsaved intent prevents clean run detach. No path
@@ -383,7 +383,31 @@ A half-made setting stops the bridge at startup with a configuration error.
   timeout) never stops local work: the generation runs unclaimed.
 - While the generation lives, a background task beats the claim. If the relay
   says it was lost (lapsed or taken over), the bridge stops beating and records
-  nothing more to it; the Run itself is not interrupted.
+  nothing more to it; the running Run is not interrupted. The usual cause is a
+  laptop sleep or a network drop longer than the lease.
+- Before each later Run is admitted, a claim that is not held (lost, or never
+  obtained because the relay did not answer at Start) is claimed again with the
+  same holder, checkout and branch. Claimed: the Run goes ahead, beats resume and
+  its checkpoint is recorded (logged `reclaimed`, or `took_over`). Held by another
+  runtime: that Run is refused with `work_claimed`, and so is a refused credential
+  or an unusable answer (`relay_refused`); the session stays up, so results stay
+  readable, Stop works, and a later Run tries again. No answer: the Run goes
+  ahead unclaimed, as at Start, and the next Run tries again. A Stop during that
+  claim call waits for the relay's answer (up to 15 s) and releases a claim it
+  recorded; past that, the claim lapses after the lease.
+- With claims on, `domain_state` and `resume_complete` for an activating,
+  active or background generation carry `work_claim`: `held`, `lost` (the relay
+  said so) or `unclaimed` (no answer yet). The field is absent when claims are
+  off and once the generation is stopping or inactive. A client sees a claim
+  lost during a Run right after that Run's result, since Godot then refreshes
+  each working character's `agent_status`, which embeds `domain_state`; a
+  refused Run makes it ask for `domain_status`.
+- On a takeover the relay's `resume` (branch, commit, steps) is kept and not
+  acted on: the bridge does not push, and the local worktree and SQLite stay the
+  record of its own work. The workspace branch is
+  `plaza/workspace-<project_id>-<domain>`, where `project_id` is a digest of the
+  checkout's git directory path, so two machines share a branch name only when
+  their checkouts sit at the same path.
 - After each Run's terminal is delivered, the claim gets a checkpoint step:
   `<status> (<reason>): <task>`, with the workspace branch and its `HEAD`.
   Another runtime can resume from that commit only once the branch is pushed;

@@ -17,6 +17,18 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
 
+### Changed — a lost relay work claim is claimed again before the next Run (PLZG-300)
+
+- When the relay says a domain's claim was lost (lapsed or taken over), the
+  running Run still finishes undisturbed, but the next Run now claims the domain
+  again first, with the same holder, checkout and branch. If another runtime
+  holds it, that Run is refused with `work_claimed` and the session stays up; if
+  the relay does not answer, the Run goes ahead unclaimed and the next one tries
+  again. A session whose relay did not answer at Start now also claims at its
+  first Run.
+- `domain_state` carries `work_claim` (`held`, `lost`, `unclaimed`) when claims
+  are on, and both Godot surfaces show a notice for a lost or unclaimed domain.
+
 ### Fixed — relay work claims against the relay on Cloudflare (PLZG-303)
 
 - The bridge's relay client now sends its own `User-Agent`. Cloudflare answered

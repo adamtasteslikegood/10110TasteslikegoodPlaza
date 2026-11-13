@@ -13,6 +13,7 @@ const MAX_SPARSE := 256
 const MAX_DOMAINS := 10
 const STATES := ["inactive", "activating", "active", "background", "stopping", "cleanup_failed"]
 const EXECUTION := ["idle", "running", "stopping", "cleanup_failed"]
+const WORK_CLAIMS := ["held", "lost", "unclaimed"]
 const COMMANDS := ["describe_workspace", "domain_status", "activate_domain", "domain_query", "background_domain", "refocus_domain", "deactivate_domain", "end_domain_session", "resume"]
 const TERMINAL_REASONS := ["sdk_error", "assistant_error", "permission_denied", "readiness_failed", "max_turns", "max_budget_usd", "max_tokens", "output_limit", "missing_terminal", "transport_error", "deferred_tool_use", "completed", "stopped", "not_executed"]
 const READINESS_CATEGORIES := ["cwd_mismatch", "branch_changed", "workspace_invalid", "lease_invalid", "memory_unavailable", "tool_correlation_invalid", "readiness_timeout", "readiness_error", "readiness_cancelled", "workspace_not_ready", "workspace_busy", "cleanup_failed", "context_unavailable"]
@@ -112,7 +113,7 @@ func _domain(id: String) -> Dictionary:
 	if not valid_domain(id): return {}
 	if not _domains.has(id):
 		if _domains.size() >= MAX_DOMAINS: return {}
-		_domains[id] = {"project_id": _project_id, "domain_id": id, "domain_session_id": "", "workspace_id": "", "state": "inactive", "execution_state": "idle", "pending_query": {}, "pending_control": {}, "draft": "", "results": [], "omitted_count": 0, "uncertain": false, "error": {}, "memory": {}, "buckets": {}, "version": 0, "lifecycle_uncertain": false, "query_uncertain": false, "cleanup_confirmed": false, "execution_id": "", "domain_revision": "0", "saved_sessions": [], "selected_session_id": "", "unsaved_results": [], "state_store": {}, "memory_reconciliation": [], "authority_unavailable": false, "omitted_unknown_count": 0, "cache_owner": {}}
+		_domains[id] = {"project_id": _project_id, "domain_id": id, "domain_session_id": "", "workspace_id": "", "state": "inactive", "execution_state": "idle", "pending_query": {}, "pending_control": {}, "draft": "", "results": [], "omitted_count": 0, "uncertain": false, "error": {}, "memory": {}, "buckets": {}, "version": 0, "lifecycle_uncertain": false, "query_uncertain": false, "cleanup_confirmed": false, "execution_id": "", "domain_revision": "0", "saved_sessions": [], "selected_session_id": "", "unsaved_results": [], "state_store": {}, "memory_reconciliation": [], "work_claim": "", "authority_unavailable": false, "omitted_unknown_count": 0, "cache_owner": {}}
 	return _domains[id]
 
 
@@ -677,6 +678,7 @@ func _valid_state(p: Dictionary) -> bool:
 		if not p.available_generations is Array or p.available_generations.size() > 128: return false
 		for generation in p.available_generations:
 			if not valid_id(generation): return false
+	if p.has("work_claim") and p.work_claim not in WORK_CLAIMS: return false
 	if p.has("memory_reconciliation"):
 		if not p.memory_reconciliation is Array or p.memory_reconciliation.size() > 256: return false
 		for fact in p.memory_reconciliation:
@@ -706,6 +708,8 @@ func _adopt_catalog(d: Dictionary, packet: Dictionary) -> void:
 	d.state_store = _storage_facts(packet.state_store)
 	_remember_cache_owner(d, packet.state_store)
 	d.memory_reconciliation = packet.get("memory_reconciliation", []).duplicate(true)
+	# Relay work claim (held, lost, unclaimed); absent when the bridge has claims off.
+	d.work_claim = packet.get("work_claim", "")
 	for item in d.saved_sessions:
 		var id: String = item.domain_session_id
 		if not d.buckets.has(id):
@@ -920,6 +924,7 @@ func _reset_namespace(d: Dictionary, request_id: String) -> void:
 	d.unsaved_results = []
 	d.saved_sessions = []
 	d.memory_reconciliation = []
+	d.work_claim = ""
 	d.state_store = {}
 	d.cache_owner = {}
 	d.omitted_count = 0
