@@ -34,6 +34,8 @@ from bridge.failure_diagnostics import (
 from bridge.observability import BridgeRecorder, RequestContext
 from bridge.project_memory import MemorySaveResult, TurnIntent
 from bridge.readiness import owned_io, denial
+from bridge.relay_claims import ClaimRefused
+from bridge.workspace import git_without_filters
 from bridge.workspace_lease import WorkspaceLease
 
 if TYPE_CHECKING:
@@ -160,6 +162,7 @@ class DomainSession:
         execution_id: str | None = None,
         coordinator=None,
         authority_check=None,
+        claims=None,
     ):
         self.domain_id, self.domain_session_id = domain_id, domain_session_id
         self.execution_id = execution_id or str(uuid4())
@@ -202,6 +205,10 @@ class DomainSession:
         # failures from unrelated NPC/process actors and storage faults.
         self._memory_lock = asyncio.Lock()
         self._background_checkpoint = None
+        # Opt-in relay work claim (bridge.relay_claims); None runs as before.
+        self._claim = (
+            claims.for_domain(domain_id, recorder) if claims is not None else None
+        )
 
     @property
     def model(self):
@@ -303,6 +310,14 @@ class DomainSession:
 
         await owned_io(acquire)
         self._service.publish_reservation(self._lease)
+        if self._claim is not None:
+            try:
+                await self._claim.claim(
+                    branch=self._workspace.branch,
+                    place=str(self._workspace.project_root),
+                )
+            except ClaimRefused as error:
+                raise DomainCommandError(error.code) from None
         if self._coordinator is not None:
             view = self._coordinator.snapshot()
             terminals = {(t.session_id, t.request_id): t for t in view.terminals}
@@ -801,39 +816,66 @@ class DomainSession:
                 run.disposition = "terminal"
             except StateError as error:
                 terminal = self._uncommitted(run, error.code, output, saved)
+        checkpoint = None
+        if self._claim is not None:
+            # Read HEAD and reserve this Run's place in the send order while it
+            # still holds the session, so the next Run can't move the worktree
+            # first. The checkpoint is filled in after the delivery attempt.
+            checkpoint, _ = await settle_owned(self._claim_checkpoint(run, terminal))
         self._inflight = None
-        if self._recorder:
-            record_outcome = (
-                "failure" if terminal["status"] == "error" else terminal["status"]
-            )
-            self._recorder.message(
-                run.context,
-                "assistant" if terminal["status"] == "success" else "error",
-                (
-                    output
-                    if outcome.status in ("success", "error")
-                    else "cancelled" if outcome.status == "cancelled" else "sdk_error"
-                ),
-                record_outcome,
-                output_id=terminal.get("output_id"),
-                provider_session_id=outcome.provider_session_id,
-            )
-            self._recorder.event(
-                {
-                    "success": "request_completed",
-                    "error": "request_failed",
-                    "cancelled": "request_cancelled",
-                }[terminal["status"]],
-                run.context,
-                outcome=record_outcome,
-                duration_ms=(time.monotonic() - started) * 1000,
-                terminal_reason=terminal["reason"],
-                readiness_category=outcome.readiness_category,
-                tool_name=outcome.tool_name,
-                tool_use_id=outcome.tool_use_id,
-            )
-        await settle_owned(deliver(run.emit, terminal, self._recorder, run.context))
+        # The reserved place is always filled, even if recording or delivery
+        # raises, so a later checkpoint never waits on this one.
+        try:
+            if self._recorder:
+                record_outcome = (
+                    "failure" if terminal["status"] == "error" else terminal["status"]
+                )
+                self._recorder.message(
+                    run.context,
+                    "assistant" if terminal["status"] == "success" else "error",
+                    (
+                        output
+                        if outcome.status in ("success", "error")
+                        else (
+                            "cancelled"
+                            if outcome.status == "cancelled"
+                            else "sdk_error"
+                        )
+                    ),
+                    record_outcome,
+                    output_id=terminal.get("output_id"),
+                    provider_session_id=outcome.provider_session_id,
+                )
+                self._recorder.event(
+                    {
+                        "success": "request_completed",
+                        "error": "request_failed",
+                        "cancelled": "request_cancelled",
+                    }[terminal["status"]],
+                    run.context,
+                    outcome=record_outcome,
+                    duration_ms=(time.monotonic() - started) * 1000,
+                    terminal_reason=terminal["reason"],
+                    readiness_category=outcome.readiness_category,
+                    tool_name=outcome.tool_name,
+                    tool_use_id=outcome.tool_use_id,
+                )
+            await settle_owned(deliver(run.emit, terminal, self._recorder, run.context))
+        finally:
+            if checkpoint is not None:
+                checkpoint()
         return terminal
+
+    async def _claim_checkpoint(self, run, terminal):
+        try:
+            commit = await owned_io(
+                git_without_filters, self._workspace.worktree_path, "rev-parse", "HEAD"
+            )
+        except Exception:
+            commit = None
+        fill = self._claim.reserve_checkpoint()
+        text = f"{terminal['status']} ({terminal['reason']}): {run.command['task']}"
+        return lambda: fill(text, branch=self._workspace.branch, commit=commit)
 
     async def _checkpoint(self, event):
         async with self._memory_lock:
@@ -913,6 +955,8 @@ class DomainSession:
                 await owned_io(self._lease.release, cleanup_confirmed=True)
         except Exception:
             clean = False
+        if self._claim is not None:
+            await settle_owned(self._claim.close(release=clean))
         if self._lease:
             self._service.publish_cleanup(self._lease, clean=clean)
         if clean:
