@@ -17,6 +17,19 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
 
+### Fixed — real domain sessions start again: fresh tool-guard evidence (PLZG-309)
+
+- Every real domain Start failed with `sdk_error` since relay work claims landed
+  (PLZG-299, PLZG-300): those changes touched four guarded sources
+  (`bridge/server.py`, `domain_manager.py`, `domain_session.py`,
+  `domain_protocol.py`) without new guard evidence, so the bridge refused to
+  launch the SDK. The guard probe was run again on the current source in both
+  permission modes (33 cases each, all accepted) and
+  `bridge/tool_guard_acceptance.json` is replaced from the two unchanged reports.
+- `bridge/tests/test_guard_evidence_current.py` now fails when a guarded source
+  no longer matches the committed evidence. Other suites use a stand-in SDK
+  client that skips that check, which is why nothing caught this.
+
 ### Fixed — a Stop during a relay re-claim always releases what it claims (PLZG-305)
 
 - A re-claim is now registered before it stops the old beat loop, so a Stop that
