@@ -17,6 +17,16 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
 
+### Fixed — a Stop during a relay re-claim always releases what it claims (PLZG-305)
+
+- A re-claim is now registered before it stops the old beat loop, so a Stop that
+  lands in that window still waits for the relay's answer and releases the claim,
+  rather than leaving one that keeps being beaten with nothing to release it. A
+  Stop's cancellation of the waiting Run is no longer swallowed while the old
+  beats are being stopped. Through a domain session this window was already
+  covered because Stop waits for the Run first; the fix makes the claim itself
+  safe on its own.
+
 ### Changed — a lost relay work claim is claimed again before the next Run (PLZG-300)
 
 - When the relay says a domain's claim was lost (lapsed or taken over), the

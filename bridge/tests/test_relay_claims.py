@@ -676,6 +676,167 @@ async def test_a_stop_during_a_reclaim_waits_and_releases_what_it_claimed(
     assert work.ops().count("beat") == beats
 
 
+async def lose_by_checkpoint(claim, work):
+    """Lose the claim through a refused checkpoint: the beat loop is still asleep."""
+    work.refuse["checkpoint"] = 409
+    await claim.checkpoint("step")
+    del work.refuse["checkpoint"]
+    assert claim.state == "lost"
+    assert claim._beats is not None and not claim._beats.done()
+
+
+@pytest.mark.asyncio
+async def test_a_stop_while_a_reclaim_stops_old_beats_still_releases():
+    # DomainClaim on its own: close() lands while reclaim() waits for the old
+    # beat loop to end, before any relay call. It must still see the re-claim.
+    work = FakeWork()
+    claim = RelayClaims(work, every=0.01).for_domain("engineering")
+    await claim.claim(branch="b", place="/tmp/place")
+    await lose_by_checkpoint(claim, work)
+    reclaiming = asyncio.create_task(claim.reclaim())
+    await asyncio.sleep(0)  # parked while the old beat loop is cancelled
+    await claim.close(release=True)
+    await reclaiming
+    assert not claim.held
+    assert work.ops()[-1] == "release"
+    beats = work.ops().count("beat")
+    await asyncio.sleep(0.05)
+    assert work.ops().count("beat") == beats
+
+
+@pytest.mark.asyncio
+async def test_a_claim_answered_after_stop_gave_up_waiting_is_not_beaten(
+    monkeypatch,
+):
+    # Stop waits FLUSH_SECONDS for a re-claim, then cancels it, so an answer
+    # after that is never held or beaten; the claim lapses at the relay.
+    monkeypatch.setattr("bridge.relay_claims.FLUSH_SECONDS", 0.05)
+    work = FakeWork()
+    claim = RelayClaims(work, every=0.01).for_domain("engineering")
+    await claim.claim(branch="b", place="/tmp/place")
+    await lose_by_checkpoint(claim, work)
+    answer = threading.Event()
+    slow = work.claim
+
+    def slow_claim(*args, **kwargs):
+        assert answer.wait(5)
+        return slow(*args, **kwargs)
+
+    monkeypatch.setattr(work, "claim", slow_claim)
+    reclaiming = asyncio.create_task(claim.reclaim())
+    await asyncio.sleep(0.01)
+    await claim.close(release=True)
+    answer.set()
+    with pytest.raises(asyncio.CancelledError):
+        await reclaiming
+    await asyncio.sleep(0.05)  # the relay's answer arrives
+    assert work.ops().count("claim") == 2
+    assert not claim.held and claim._beats is None
+    beats = work.ops().count("beat")
+    await asyncio.sleep(0.05)
+    assert work.ops().count("beat") == beats
+
+
+@pytest.mark.asyncio
+async def test_a_reclaim_that_starts_after_stop_claims_nothing():
+    work = FakeWork()
+    claim = RelayClaims(work, every=0.01).for_domain("engineering")
+    await claim.claim(branch="b", place="/tmp/place")
+    await lose_by_checkpoint(claim, work)
+    reclaiming = asyncio.create_task(claim.reclaim())  # not started yet
+    await claim.close(release=True)
+    assert await reclaiming is None
+    await asyncio.sleep(0.05)
+    assert work.ops().count("claim") == 1
+    assert not claim.held and claim._beats is None
+
+
+@pytest.mark.asyncio
+async def test_a_reclaim_stop_gave_up_on_while_beats_end_is_never_left_held(
+    monkeypatch,
+):
+    # Stop's timeout cancels the re-claim while the old beats are still ending,
+    # and _stop_beats swallows that cancel: whatever the re-claim does next must
+    # end released or unclaimed, never held and beating.
+    monkeypatch.setattr("bridge.relay_claims.FLUSH_SECONDS", 0.05)
+    work = FakeWork()
+    claim = RelayClaims(work, every=0.01).for_domain("engineering")
+    await claim.claim(branch="b", place="/tmp/place")
+    await lose_by_checkpoint(claim, work)
+    gate = asyncio.Event()
+
+    async def slow_to_end():
+        try:
+            await asyncio.sleep(3600)
+        except asyncio.CancelledError:
+            await gate.wait()
+
+    claim._beats.cancel()
+    claim._beats = asyncio.create_task(slow_to_end())
+    await asyncio.sleep(0)
+    reclaiming = asyncio.create_task(claim.reclaim())
+    await asyncio.sleep(0)
+    closing = asyncio.create_task(claim.close(release=True))
+    await asyncio.sleep(0.1)
+    gate.set()
+    await closing
+    await asyncio.gather(reclaiming, return_exceptions=True)  # cancel swallowed
+    # Either nothing was claimed again, or what was claimed was released.
+    assert work.ops().count("claim") == 1 or work.ops()[-1] == "release"
+    assert not claim.held and claim._beats is None
+    ops = list(work.ops())
+    await asyncio.sleep(0.05)
+    assert work.ops() == ops
+
+
+@pytest.mark.asyncio
+async def test_a_stop_while_a_run_reclaims_after_a_lost_checkpoint(claimed):
+    # Through DomainSession, _cleanup awaits every Run before close(), so close()
+    # can't overtake reclaim() there. A slow-to-end old beat loop checks that
+    # Stop's cancel of the Run is not swallowed while the loop is ending, and
+    # that the beat loop is ended rather than orphaned.
+    session, _, owners, work = claimed
+    await session.start()
+    claim = session._claim
+    await lose_by_checkpoint(claim, work)
+    gate, ending = asyncio.Event(), asyncio.Event()
+
+    async def slow_to_end():
+        try:
+            await asyncio.sleep(3600)
+        except asyncio.CancelledError:
+            ending.set()
+            await gate.wait()
+
+    claim._beats.cancel()
+    claim._beats = old = asyncio.create_task(slow_to_end())
+    await asyncio.sleep(0)
+    packets = []
+
+    async def emit(packet):
+        packets.append(packet)
+
+    admitting = asyncio.create_task(
+        session.admit_query(query("late"), context=context("late"), emit=emit)
+    )
+    async with asyncio.timeout(3):
+        await ending.wait()  # the Run's re-claim is stopping the old beats
+    stopping = asyncio.create_task(session.stop())
+    await asyncio.sleep(0.05)
+    assert not stopping.done()  # Stop waits for the re-claim it overlapped
+    assert "claim" not in work.ops()[1:]  # nothing reached the relay yet
+    gate.set()
+    await stopping
+    await admitting
+    assert old.done()
+    assert session.clean_inactive
+    assert owners[0].calls == []  # the Run never started
+    assert work.ops()[-1] == "release"
+    beats = work.ops().count("beat")
+    await asyncio.sleep(0.05)
+    assert work.ops().count("beat") == beats
+
+
 @pytest.mark.asyncio
 async def test_a_stale_failure_never_marks_a_newer_claim_lost(claimed):
     session, _, _, work = claimed
