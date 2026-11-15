@@ -3,7 +3,7 @@
 // test-only routes on. Usage:
 //
 //   RUNNER_CALLER_SECRET=... TEST_REPO=https://github.com/OWNER/REPO TEST_BRANCH=BRANCH \
-//     [AI_GATEWAY_TOKEN=... GITHUB_TOKEN=...] [ONLY=H,1,3,4] node scripts/acceptance.mjs <url>
+//     [AI_GATEWAY_TOKEN=... GITHUB_TOKEN=...] [ONLY=H,1,T,3,4] node scripts/acceptance.mjs <url>
 //
 // Prints one line per check, `PASS n name` or `FAIL n name: why`, plus NOTE
 // lines with what was observed, and exits 1 on any FAIL. The two tokens are
@@ -164,6 +164,7 @@ const shared = { check1Events: [] }
 
 async function main() {
 	note(`workspaces ${A} and ${B}, branch ${branch}`)
+	await noteMain("before the checks")
 	const made = await create(A)
 	note(`PUT ${A}: generation ${made.generation}, state ${made.state}`)
 
@@ -171,6 +172,13 @@ async function main() {
 		const help = await inBox(A, ["claude", "--help"])
 		const version = await inBox(A, ["claude", "--version"])
 		note(`claude --version: ${version.stdout.trim()}`)
+		// A hidden flag is accepted; an unknown one is refused. With --print and empty stdin neither reaches the model:
+		// option parsing fails first, or the CLI stops on the missing prompt. (--version would exit before parsing.)
+		const flag = (f) => inBox(A, ["/bin/sh", "-c", `timeout 20 claude -p ${f} < /dev/null`])
+		const hidden = await flag("--max-turns 1")
+		const unknown = await flag("--no-such-flag-xyz")
+		note(`claude -p --max-turns 1 </dev/null: exit ${hidden.exitCode} ${(hidden.stdout + hidden.stderr).trim().split("\n")[0]}`)
+		note(`claude -p --no-such-flag-xyz </dev/null: exit ${unknown.exitCode} ${(unknown.stdout + unknown.stderr).trim().split("\n")[0]}`)
 		const missing = ["--session-id", "--resume", "--max-turns"].filter((flag) => !help.stdout.includes(flag))
 		if (missing.length) throw new Error(`not in --help: ${missing.join(" ")}`)
 	})
@@ -192,6 +200,22 @@ async function main() {
 		const head = remote.stdout.split(/\s+/)[0]
 		note(`pushed.commit ${s.pushed.commit}; ls-remote ${head}`)
 		if (head !== s.pushed.commit) throw new Error(`ls-remote shows ${head}, not ${s.pushed.commit}`)
+	})
+
+	await check("T", "maxTurns 1 stops a run that needs two tool calls (result subtype error_max_turns)", async () => {
+		const runNumber = await startRun(
+			A,
+			"Use your Bash tool to run `date`. Then, in a second and separate Bash call, run `uname -a`. Then reply with both outputs.",
+			1,
+		)
+		const s = await waitEnd(A)
+		const events = (await allEvents(A)).filter((e) => e.run === runNumber)
+		costNote("check T", events, runNumber)
+		const result = events.filter((e) => e.type === "result").at(-1)?.payload
+		const tools = events.filter((e) => e.type === "assistant").flatMap((e) => (e.payload?.message?.content ?? []).filter((c) => c.type === "tool_use"))
+		note(`check T: state ${s.state}, error ${JSON.stringify(s.error ?? null)}, result subtype ${result?.subtype}, is_error ${result?.is_error}, num_turns ${result?.num_turns}, tool calls ${tools.length}`)
+		if (result?.subtype !== "error_max_turns") throw new Error(`result subtype ${result?.subtype}, not error_max_turns`)
+		if (s.state !== "failed") throw new Error(`state ${s.state}, not failed`)
 	})
 
 	await check(2, "events read twice agree, after=next never repeats, a second start answers 409", async () => {
@@ -226,12 +250,19 @@ async function main() {
 		note(`check 2: ${seen.length} events read incrementally, same as one full read; run ended ${(await status(A)).state}`)
 	})
 
-	await check(3, "egress: unlisted host 403, push elsewhere refused, own repository reachable, no raw TCP or UDP", async () => {
+	await check(3, "egress: unlisted host 403, plain HTTP refused, push elsewhere refused, own repository reachable, no raw TCP, no direct UDP (DNS name leakage not tested)", async () => {
 		const get = await nodeIn(A, "fetch('https://example.com/').then(r=>console.log(r.status),e=>console.log('error',e.cause?.code??e.message))")
 		if (get.stdout.trim() !== "403") throw new Error(`https://example.com answered ${get.stdout.trim()} ${get.stderr.slice(0, 200)}`)
 		const plain = await nodeIn(A, "fetch('http://example.com/').then(r=>console.log(r.status),e=>console.log('error',e.cause?.code??e.message))")
 		note(`http://example.com: ${plain.stdout.trim()}`)
 		if (plain.stdout.trim() === "200") throw new Error("plain HTTP reached example.com")
+		// registry.npmjs.org is on the allow list over HTTPS; the policy accepts https:// only. (Not the bare root: the
+		// intercept hands the Worker "https://registry.npmjs.org" without its slash, which the normal-form rule refuses.)
+		const npmHttps = await nodeIn(A, "fetch('https://registry.npmjs.org/left-pad').then(r=>console.log(r.status),e=>console.log('error',e.cause?.code??e.message))")
+		const npmHttp = await nodeIn(A, "fetch('http://registry.npmjs.org/left-pad').then(r=>console.log(r.status),e=>console.log('error',e.cause?.code??e.message))")
+		note(`https://registry.npmjs.org/left-pad: ${npmHttps.stdout.trim()}; http://registry.npmjs.org/left-pad: ${npmHttp.stdout.trim()}`)
+		if (npmHttps.stdout.trim() !== "200") throw new Error(`https://registry.npmjs.org answered ${npmHttps.stdout.trim()}: the allowed host is not reachable, so the HTTP refusal proves nothing`)
+		if (npmHttp.stdout.trim() !== "403") throw new Error(`http://registry.npmjs.org answered ${npmHttp.stdout.trim()}, not 403`)
 		const other = await inBox(A, ["git", "push", "https://github.com/octocat/Hello-World", "HEAD:refs/heads/x"])
 		note(`push to octocat/Hello-World: exit ${other.exitCode}, ${other.stderr.trim().split("\n").at(-1)}`)
 		if (other.exitCode === 0) throw new Error("a push to another repository succeeded")
@@ -256,6 +287,10 @@ async function main() {
 			).then((r) => r.stdout.trim())
 		const viaPublic = await dns("1.1.1.1", "example.com")
 		const viaTestNet = await dns("192.0.2.1", "example.com")
+		const viaGoogle = await dns("8.8.8.8", "example.com")
+		note(`UDP DNS example.com via 8.8.8.8: ${viaGoogle}`)
+		const resolv = await inBox(A, ["cat", "/etc/resolv.conf"])
+		note(`/etc/resolv.conf: ${JSON.stringify(resolv.stdout.trim())}`)
 		const invalid = await dns("1.1.1.1", `nx-${id}.example.invalid`)
 		note(`UDP DNS example.com via 1.1.1.1: ${viaPublic}; via 192.0.2.1 (TEST-NET): ${viaTestNet}; nx-${id}.example.invalid via 1.1.1.1: ${invalid}`)
 		if (invalid.includes("ENOTFOUND")) throw new Error("a .invalid name got NXDOMAIN: a real resolver answered over UDP")
@@ -266,18 +301,29 @@ async function main() {
 		)
 		note(`UDP NTP to 162.159.200.1:123: ${udp.stdout.trim()}`)
 		if (udp.stdout.includes("reply ")) throw new Error("a UDP NTP query to 162.159.200.1 got a reply")
+		const odd = await nodeIn(
+			A,
+			"const s=require('dgram').createSocket('udp4');s.on('message',m=>{console.log('reply',m.length);s.close()});s.send(Buffer.from('ping'),9999,'1.1.1.1');setTimeout(()=>{console.log('no reply');s.close()},3000)",
+		)
+		note(`UDP to 1.1.1.1:9999: ${odd.stdout.trim()}`)
+		if (odd.stdout.includes("reply ")) throw new Error("a UDP datagram to 1.1.1.1:9999 got a reply")
 		const lookup = await nodeIn(A, "require('dns').lookup('example.com',(e,a)=>console.log(e?'error '+e.code:'resolved '+a))")
 		note(`system resolver for example.com: ${lookup.stdout.trim()}`)
 	})
 
-	await check(4, "no credential in env, .git/config, ~/.gitconfig, home, /workspace or check 1's events", async () => {
+	await check(4, "no credential in env, any process's environ, .git/config, ~/.gitconfig, home, /workspace or the workspace's events", async () => {
 		if (secrets.length < 3) note(`only ${secrets.length} of 3 secret values given; the token patterns are checked anyway`)
 		const looked = await inBox(A, ["/bin/sh", "-c", "env; cat .git/config; cat ~/.gitconfig 2>/dev/null; ls -la ~ /workspace"])
 		scan(looked.stdout + looked.stderr, "the container")
 		if (!looked.stdout.includes("[remote \"origin\"]")) throw new Error("the output has no .git/config: the scan saw too little")
-		if (shared.check1Events.length === 0) throw new Error("no events from check 1 to scan")
-		scan(JSON.stringify(shared.check1Events), "check 1's events")
-		note(`scanned ${looked.stdout.length} bytes of container output and ${shared.check1Events.length} events`)
+		const environ = await inBox(A, ["/bin/sh", "-c", "for f in /proc/[0-9]*/environ; do echo \"== $f\"; tr '\\000' '\\n' < \"$f\" 2>/dev/null; done"])
+		scan(environ.stdout + environ.stderr, "a process's environ")
+		const processes = (environ.stdout.match(/^== /gm) ?? []).length
+		if (processes < 2) throw new Error(`only ${processes} /proc/*/environ files read: the scan saw too little`)
+		const events = await allEvents(A)
+		if (events.length === 0) throw new Error("no events to scan")
+		scan(JSON.stringify(events), "the workspace's events")
+		note(`scanned ${looked.stdout.length} bytes of container output, the environ of ${processes} processes (${environ.stdout.length} bytes) and ${events.length} events (check 1's: ${shared.check1Events.length})`)
 	})
 
 	await check(5, "two workspaces run at once and do not see each other's files", async () => {
@@ -350,6 +396,16 @@ async function main() {
 	})
 }
 
+// The runs push only to TEST_BRANCH; main must not move.
+async function noteMain(when) {
+	try {
+		const remote = await runFile("git", ["ls-remote", repo, "refs/heads/main"], { timeout: 60_000 })
+		note(`ls-remote main ${when}: ${remote.stdout.split(/\s+/)[0] || "(no main)"}`)
+	} catch (error) {
+		note(`ls-remote main ${when}: ${error instanceof Error ? error.message : error}`)
+	}
+}
+
 async function cleanup() {
 	for (const name of [A, B]) {
 		try {
@@ -367,6 +423,7 @@ async function cleanup() {
 
 try {
 	await main()
+	await noteMain("after the checks")
 } catch (error) {
 	failed += 1
 	say(`FAIL setup: ${error instanceof Error ? error.message : error}`)

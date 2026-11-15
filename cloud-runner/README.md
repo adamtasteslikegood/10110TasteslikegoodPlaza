@@ -33,6 +33,12 @@ only the git-ignored `wrangler.dev.jsonc` sets; `wrangler.jsonc` does not, and
 without it both answer 404. They sit behind the same bearer check as every
 other route.
 
+**While they are on, anyone holding the caller secret can run any command in a
+workspace's container from the public URL.** That includes reading the clone and
+acting with whatever the container can reach. To turn them off, remove
+`ALLOW_TEST_ROUTES` from `vars` in `wrangler.dev.jsonc` and redeploy (see
+"Deploy or redeploy"). Both routes then answer 404.
+
 - `POST /workspaces/:name/replace-instance` destroys the container and leaves
   the object's storage alone, as a platform replacement would. A run in progress
   is then reported `lost`, and the next request starts a new instance from the
@@ -155,7 +161,8 @@ that allowed `example.com` could reach it. No fallback was needed.
 ## The development deploy
 
 Up since 2026-11-15: Worker `plaza-cloud-runner-dev` at
-`https://plaza-cloud-runner-dev.adamschoen3.workers.dev`, with test routes on.
+`https://plaza-cloud-runner-dev.adamschoen3.workers.dev`, with test routes on (see "Test-only routes"
+for what that allows and how to turn it off). Preview URLs are off (`preview_urls: false`).
 Evidence and the acceptance output are in
 [spike-c.md](../docs/research/cloudflare-durable-objects/spike-c.md).
 
@@ -211,7 +218,10 @@ credential store does not work, run the deploy with a throwaway
 `DOCKER_CONFIG` holding `{}` (and `DOCKER_HOST` set to the daemon's socket if
 a Docker context was in use), then delete that directory: it ends up holding
 the registry login in plain text. A redeploy with an unchanged image skips the
-push and does not disturb a running task (spike C, check d).
+push and does not disturb a running task (spike C, check d). To repeat that check, run
+`node scripts/redeploy.mjs <url>` with `RUNNER_CALLER_SECRET`, `TEST_REPO` and `TEST_BRANCH` set. It starts a
+`sleep 150` run, redeploys 20 s in, waits for the run to end, checks the exit code and deletes its workspace.
+Each run of it makes a new Worker version.
 
 Acceptance, against the deploy (pushes go to the test branch only; the script refuses `main` and `master`):
 
@@ -237,8 +247,14 @@ the deploy.
 
 ### Results of the former "to verify on the deploy" list
 
-- With Internet off, raw TCP (22, 25, 53, 8080) and UDP other than DNS do not leave the container. DNS is answered by
-  a local platform stub with one synthetic address, whatever the destination or name.
+- With Internet off, raw TCP (22, 25, 53 and 8080) does not leave the container.
+- Neither UDP probe got a reply: NTP to 162.159.200.1:123 and a datagram to 1.1.1.1:9999. That is all the evidence for
+  UDP other than DNS.
+- DNS is answered by a local platform stub with one synthetic address, whatever the destination or the name. So no
+  query reaches a real resolver directly, but whether query names leave the platform is **unverified** (see the
+  known gaps).
+- Plain HTTP is refused, also to an allowed host.
+- `maxTurns` is enforced: a run with `maxTurns: 1` that needed two tool calls ended `failed` with `error_max_turns`.
 - The detached task survived a Worker redeploy mid-run, and its exit code was written.
 - A second start during a run answers 409.
 - Two containers ran at once.
@@ -262,7 +278,16 @@ From the whole-branch review and its re-review (2026-11-15). None blocks the dev
 - **The first PUT after an image build answered 500 once** under `wrangler dev`. It did not recur on the deploy
   (every first PUT answered 200), but the cause, an exec before the new instance was running, is not fixed.
 - **A run longer than the 15-minute idle timeout** has not been tried on the deploy.
-- **`--max-turns` is a hidden flag** of Claude Code 2.1.308. It works today; a later version could drop it without notice.
+- **`--max-turns` is a hidden flag** of Claude Code 2.1.308. It is accepted and enforced (spike C, check T), but it is
+  not in `--help`, so a later version could drop it without notice. Check T in `scripts/acceptance.mjs` would catch that.
+- **DNS name leakage is unverified.** Every UDP/53 query gets one synthetic answer from a platform stub, so no packet
+  reaches a real resolver directly. If the stub logs or forwards query names upstream, a process could carry data
+  out in the labels of the names it looks up. To settle it, resolve a fresh random label under a zone the owner
+  controls, then look for it in that zone's authoritative query log. This needs an owner-controlled zone and is owed.
+- **The bare root of an allowed host is refused.** The intercept passes `https://host` without its slash, and the
+  normal-form rule refuses it; `https://host/path` is allowed. This fails closed.
+- **A ten-minute run and an idle hour were not measured** (design §8 item 8). The idle cost is computed from
+  published rates only, and the dashboard's billed figures are owed by the owner.
 - **Older AI Gateway header names** without the `cf-aig-` prefix (for example `cf-skip-cache`) are not stripped.
   Check the gateway documentation and strip them if the gateway still honours them.
 - **Any ref of the workspace repository can be pushed or deleted** with the token. Branch rules on GitHub are the control.
