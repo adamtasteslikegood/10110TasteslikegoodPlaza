@@ -176,8 +176,7 @@ export class ContainerHost implements Host {
 	}
 
 	async exitCode(): Promise<number | undefined> {
-		const text = await readTaskFile(this.files, exitCodePath)
-		return text === undefined ? undefined : Number.parseInt(text, 10)
+		return parseExitCode(await readTaskFile(this.files, exitCodePath))
 	}
 
 	async readOutput(offset: number, max: number): Promise<Uint8Array> {
@@ -234,6 +233,21 @@ export class ContainerHost implements Host {
 export function probeFailure(what: string, exitCode: number, stderr: string): Error {
 	const message = `Could not ${what}: the probe exited ${exitCode}: ${tail(stderr, 500)}`
 	return exitCode === TASK_FILE_REFUSED ? new TaskFileError(message) : new Error(message)
+}
+
+// The exit-code file as the runner writes it: "$?" and a newline, put in place
+// with a temp file and a rename, so it is never seen empty or half written (G6).
+// undefined while it does not exist. Anything else, empty included, is not what
+// the runner wrote: a TaskFileError, so no NaN or prefix ("0abc") reaches judgeRun.
+export function parseExitCode(text: string | undefined): number | undefined {
+	if (text === undefined) return undefined
+	const digits = text.endsWith("\n") ? text.slice(0, -1) : text
+
+	if (!/^(0|[1-9]\d{0,2})$/.test(digits) || Number(digits) > 255) {
+		throw new TaskFileError(`${exitCodePath} is not an exit status: ${JSON.stringify(text.slice(0, 40))}`)
+	}
+
+	return Number(digits)
 }
 
 // The SandboxFileError codes (native Linux errnos) that mean the path exists

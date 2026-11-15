@@ -342,15 +342,16 @@ the stale snapshot after a lost run (b5df279), `finish()` leaving the task's gro
 - **Three counted task-file failures end the run untrusted, and its work is lost on purpose.** A task-file failure
   (`TaskFileError`) is an answer from the container showing a file is not what the runner wrote: a read of the pid or
   exit-code file that fails with one of a listed set of file-level errors (`EISDIR`, `ENOTDIR`, `ELOOP`, `ENXIO`,
-  `EACCES`, `EPERM`), or a `stdout.log` probe script that exits with its own refusal code, `TASK_FILE_REFUSED` (64),
-  because the file exists but is not a regular file (a directory, a FIFO) or fails its `test -r`. Any other exit of a
-  probe (137, 143, 126, 127 and the rest) and any other error code (`EIO`, `ENOSPC`, `UNKNOWN`) is a plain error. A
-  check that ends in a task-file failure counts at most once per check interval (60 s), however often status is
-  polled, and a check whose probes all answer resets the count. At `TASK_FILE_FAILURE_LIMIT` (3) counted failures the
-  run ends `failed` with `TASK_FILES_ERROR`; one inside a stop ends it `stopped` at once. Either way the stored group
-  is KILLed, the instance is replaced with no push or snapshot, and the stored snapshot is marked stale. Nothing the
-  task wrote is trusted, and a snapshot holds the whole root filesystem the next run starts from, so saving it would
-  carry whatever the agent planted into later runs. No plain error leads to this end.
+  `EACCES`, `EPERM`), an exit-code file that is not one decimal status from 0 to 255 and a newline (G6), or a
+  `stdout.log` probe script that exits with its own refusal code, `TASK_FILE_REFUSED` (64), because the file exists
+  but is not a regular file (a directory, a FIFO) or fails its `test -r`. Any other exit of a probe (137, 143, 126,
+  127 and the rest) and any other error code (`EIO`, `ENOSPC`, `UNKNOWN`) is a plain error. A check that ends in a
+  task-file failure counts at most once per check interval (60 s), however often status is polled, and a check whose
+  probes all answer resets the count. At `TASK_FILE_FAILURE_LIMIT` (3) counted failures the run ends `failed` with
+  `TASK_FILES_ERROR`; one inside a stop ends it `stopped` at once. Either way the stored group is KILLed, the instance
+  is replaced with no push or snapshot, and the stored snapshot is marked stale. Nothing the task wrote is trusted,
+  and a snapshot holds the whole root filesystem the next run starts from, so saving it would carry whatever the agent
+  planted into later runs. No plain error leads to this end.
 - **Every other failure is retried, and the 60-minute cap ends the run.** An exec timeout, a container that is
   stopping or restarting, or a transport error leaves the run `running` and destroys nothing; the next check or alarm
   tries again, and a stop answers 409 "try again" rather than report a task stopped that may be alive. A run that
@@ -364,6 +365,14 @@ the stale snapshot after a lost run (b5df279), `finish()` leaving the task's gro
   (G4). An agent can still stay `running` until the cap without a task-file failure, for example by starving the
   container so execs time out, or by making a read hang. A failed `stdout.log` read in `events()` answers 500, and one
   in the alarm's ingest while the run is live is logged and re-armed; neither counts toward either limit.
+- **The agent can write the run's control files.** The agent runs as root in the container, so the files under
+  `/workspace/task` (`pid`, `exit-code`, `stdout.log`) are within its reach, as stage 1 accepts: an agent can end its
+  own run early or misreport its exit code. What bounds the damage: `finish()` KILLs the task's process group before
+  it reads the output, pushes or snapshots, when a task id is known (best-effort, see the `setsid` gap above; with
+  none, nothing is signalled and the instance is replaced after the push); the push can update only the workspace's
+  own branch; and the result the caller sees was always the agent's own report. The stage 2 fix is to run the agent as
+  a non-root user with the control files owned by root, or to report the exit status over a channel the agent cannot
+  write.
 - **The Copilot fixes are not on the deploy yet** (see "The development deploy"); their evidence is the local check.
 
 ### Notes on the evidence itself (from the last review, 2026-11-15)

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { TASK_FILE_REFUSED } from "../src/container"
-import { ContainerHost, probeFailure, readFailure, TaskFileError } from "../src/host"
+import { ContainerHost, parseExitCode, probeFailure, readFailure, TaskFileError } from "../src/host"
 
 // G2: only the probe scripts' own refusal code, and only the listed file-level
 // read errors, mean a task file is not what the runner wrote.
@@ -64,5 +64,28 @@ describe("task file read errors (G2)", () => {
 	it("keeps an error that is not a file error as it was", () => {
 		const error = new Error("transport closed")
 		expect(readFailure("/workspace/task/pid", error)).toBe(error)
+	})
+})
+
+// G6: the runner writes exit-code with a temp file and a rename, so the file is
+// one decimal exit status and a newline, or it is not what the runner wrote.
+describe("exit-code file (G6)", () => {
+	it.each([
+		["0\n", 0],
+		["0", 0],
+		["143", 143],
+		["255\n", 255],
+		["1\n", 1],
+	])("reads %j as %i", (text, code) => {
+		expect(parseExitCode(text)).toBe(code)
+	})
+
+	it.each(["0abc", "abc", "-1", "256", "1e2", " 0", "00", "", "\n", "0\n\n", "0 ", "+1", "0x1", "1.0", "1000"])("refuses %j as a TaskFileError", (text) => {
+		expect(() => parseExitCode(text)).toThrow(TaskFileError)
+	})
+
+	// readOptionalText answers undefined for ENOENT; that stays "no exit code yet".
+	it("reads no exit code while the file does not exist", () => {
+		expect(parseExitCode(undefined)).toBeUndefined()
 	})
 })
