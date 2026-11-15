@@ -72,14 +72,9 @@ function expectStatus(answer, status, what) {
 	return answer
 }
 
+// No retry: a new instance is probed until it answers before the clone (Copilot C9).
 async function create(name) {
-	const body = { repo, branch }
-	let answer = await api("PUT", `/workspaces/${name}`, body)
-	if (answer.status === 500) {
-		note(`first PUT /workspaces/${name} answered 500 (${answer.text.trim().slice(0, 200)}); retrying once`)
-		answer = await api("PUT", `/workspaces/${name}`, body)
-	}
-	return expectStatus(answer, 200, `PUT ${name}`).json
+	return expectStatus(await api("PUT", `/workspaces/${name}`, { repo, branch }), 200, `PUT ${name}`).json
 }
 
 const status = async (name) => expectStatus(await api("GET", `/workspaces/${name}`), 200, `GET ${name}`).json

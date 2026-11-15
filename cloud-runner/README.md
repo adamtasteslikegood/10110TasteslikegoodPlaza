@@ -18,9 +18,18 @@ status keeps the last pushed commit (`pushed`) or the end of git's stderr
 the stored snapshot, with the files and Claude Code's session (`restored:
 "snapshot"`). With no snapshot, or one that does not start, it clones the
 branch again, starts a new conversation and says so (`restored: "branch"`,
-`uncommittedLost: true` after an earlier instance). A failed snapshot drops the
-stored one, so a later instance never restores files older than the pushed
-branch. Every replacing instance appends a `runner` event naming its path.
+`uncommittedLost: true` after an earlier instance). The push is stored before
+the snapshot is taken, and each snapshot try is cut off after 3 minutes; one
+that times out is tried again by the alarm, at most 3 times. A snapshot that
+fails, times out 3 times or can no longer be taken (the container is gone)
+drops the stored one, so a later instance never restores files older than the
+pushed branch. A run lost with its container already gone pushes nothing: the
+stored snapshot is then the best copy there is, so it is kept but marked stale,
+and the next restore from it reports `uncommittedLost: true` and starts a new
+conversation. Every replacing instance appends a `runner` event naming its path.
+
+A run's stdout is kept up to 64 MiB; a run that writes more is ended `failed`
+with `run output exceeded 64 MiB`. Only the last 1 MiB of its stderr is kept.
 
 Snapshots are in public beta. The Durable Object Container API has no method
 to delete a snapshot, so `DELETE /workspaces/:name` only forgets the stored id;
@@ -125,7 +134,7 @@ After the review fixes (2026-11-15), same setup, workspaces `fix1`, `fix2` and
 | `c GET /workspaces/fix1/diff` during the run, after editing `README` and adding `NEW.txt` | 200 in 0.18 s, both in the diff |
 | a 2 MB `BIG.txt` added, the diff again, during and after the run | 200, 1,048,521 bytes of diff cut at a line, then `[The diff is longer than 1 MiB and was cut here.]`; `.git/index` unchanged (same md5), no temp file left |
 | the run left to end | `failed` with the 401, `pushError` as above |
-| `c POST /workspaces/fix2/runs ...` and `c POST /workspaces/fix2/stop` at once | 200 `stopped` in 2.2 s; exit code 143; no live process in the container but `sleep infinity` (the task's processes are zombies: PID 1 does not reap) |
+| `c POST /workspaces/fix2/runs ...` and `c POST /workspaces/fix2/stop` at once | 200 `stopped` in 2.2 s; exit code 143; no live process in the container but `sleep infinity` (the task's processes are zombies: PID 1 does not reap; measured before tini became PID 1, 9cb4a90) |
 | run 2 on `fix2`; three seconds in, `kill -KILL` of the task's session leader (`sh`), `claude` still alive in its group | status stays `running`; when `claude` ended, `lost` with `The agent process ended without writing an exit code`; its `assistant` and `result` events were read in, then `push failed` and `snapshot saved` |
 | on `nopid`: the pid file moved aside right after the start, then `c POST /workspaces/nopid/stop` | 409 `The run could not be stopped: its task is still running. Try again.` after 5.6 s (no task to signal, so no TERM and KILL waits); status `running`, a new run 409, the task alive |
 | the pid file moved back, then the stop again | 200 `stopped` in 1.8 s; exit code 143, the group gone |
@@ -156,7 +165,37 @@ through any route of the Worker:
 The props passed with `ctx.exports.Outbound({ props: { repoPath, allow } })`
 reach the intercept under wrangler dev: the clone of the workspace's own
 repository passed, another repository was refused, and only the workspace
-that allowed `example.com` could reach it. No fallback was needed.
+that allowed `example.com` could reach it. No fallback was needed. Since the
+push guard (f8c9d0a) the props are `{ repoPath, branch, allow }`; the check
+below shows `branch` reaching the intercept too.
+
+After the Copilot fixes (2026-11-15), same setup, with the image rebuilt (tini
+as PID 1), Hello-World `master`, an empty `GITHUB_TOKEN` and `ALLOW_TEST_ROUTES`
+on, workspaces `t1` to `t4`. Commands inside the container ran through the
+`exec` test route.
+
+| Step | Answer |
+|---|---|
+| the first `c PUT` of each of `t1`–`t4`, each a fresh instance from the image | 200 `generation: 1` at the first try, in about 1.3–1.5 s, 4 of 4 (the earlier first-PUT 500 did not recur) |
+| `/proc/1/comm` and `/proc/1/cmdline`, fresh and after a restore | `tini`; `/usr/bin/tini -- sleep infinity` |
+| `/bin/sh` | dash; every run's task script ran under it |
+| `t1`: a run left to end, then `ps` | `failed` with the 401, `push failed`, `snapshot saved` (1,194,738,763 bytes); only `tini`, `sleep` and the exec's `sh` left, no zombie |
+| `t2`: `c POST .../runs` and `c POST .../stop` at once | 200 `stopped` in 2.2 s; nothing left but `tini` and `sleep` |
+| `t2`, `t4`: the container removed, then the next request | 200 at the first try, `generation: 2`, `restored: "snapshot"` |
+| `t4`: a fake `mv` that removes itself, so the pid file never appears while `claude` runs | after 60 s `lost`, `The agent did not write its pid file within 60 seconds`; events `run lost`, `push failed`, `snapshot saved`; the container was then destroyed, the next request restored from the snapshot (`generation: 2`) and only `tini`, `sh` and `sleep` ran (no leftover `claude`) |
+| `t3` (no `allow`): `https://example.com/` from the container | 403 `example.com is not reachable from this sandbox` |
+| `t1`: a hand-built `git-receive-pack` POST updating `refs/heads/master` | forwarded; GitHub answered 401 `No anonymous write access.` |
+| the same POST updating `refs/heads/other` | 403 `github.com refused this push: only the workspace branch may be pushed` |
+| `t3`: 70 MB of lines written to the run's stdout | the writer got SIGPIPE (exit 141); `stdout.log` 67,108,865 bytes; the run ended `failed`, `run output exceeded 64 MiB`; no process left |
+| `t3`: 3 MB written to stderr | `stderr.log` exactly 1,048,576 bytes |
+
+One slip during this check: looking for `t1`'s container by `hostname`, I
+removed its proxy sidecar (the Workspace container's hostname matched the
+sidecar's id) instead of the agent container. `t1`'s next requests then
+answered 500 after about 119 s (`The new instance did not answer after 120
+attempts`) and a later GET showed `generation: 3`. That is the local Docker
+setup broken by hand, not a runner path; the restore check was repeated on
+`t2` and `t4`, finding the container by a marker file.
 
 ## The development deploy
 
@@ -165,6 +204,10 @@ Up since 2026-11-15: Worker `plaza-cloud-runner-dev` at
 for what that allows and how to turn it off). Preview URLs are off (`preview_urls: false`).
 Evidence and the acceptance output are in
 [spike-c.md](../docs/research/cloudflare-durable-objects/spike-c.md).
+
+**The deploy runs the code and image from before the Copilot fixes** (tini,
+the push guard, bounded snapshots and output, lost-run settling). They are
+checked under `wrangler dev` only, until the Worker is redeployed.
 
 ### Parts
 
@@ -262,21 +305,15 @@ the deploy.
 
 ## Known gaps to close before stage 2
 
-From the whole-branch review and its re-review (2026-11-15). None blocks the development deploy.
+From the whole-branch review and its re-review (2026-11-15), reconciled with the Copilot fixes the same day. None
+blocks the development deploy. Closed since, and so removed: the leftover agent and pid 0 or 1 (762df32, b5df279),
+the stale snapshot after a lost run (b5df279), `finish()` leaving the task's group (b5df279), PID 1 not reaping
+(9cb4a90), the first PUT answering 500 (b5df279), and unbounded run output (b5df279).
 
-- **Leftover agent when the pid file never appears or is removed.** The never-started path ends the run as lost
-  without a KILL, and `parseTask` accepts pid 0 or 1. Refuse a pid of 1 or less, and before a start either kill
-  every non-init process or restart the instance.
-- **Stale snapshot after a lost run on a gone container.** `endLost` keeps the pre-run snapshot id, so a later
-  restore reports `uncommittedLost: false` for files that are behind the run.
-- **`finish()` does not kill the task's group**, so background processes can change the tree during push and snapshot.
-- **Every route can wait behind a slow push and snapshot** (up to 5 minutes for the push; the snapshot call has no
-  timeout because the SDK offers none). Add a race wrapper.
+- **Routes can still wait behind a slow push and snapshot.** Each snapshot try is now cut off after 3 minutes and
+  tried at most 3 times, one try per alarm, but a route queued behind the alarm can still wait for the push (up to
+  5 minutes) and one snapshot try. A timed-out snapshot is not cancelled; its late result is ignored.
 - **A timed-out exec may keep running in the container**, and `diff` can leave its temp index lock behind.
-- **PID 1 is `sleep infinity`**, which never reaps finished processes. Add an init such as tini; this also closes
-  process-group id reuse within one boot.
-- **The first PUT after an image build answered 500 once** under `wrangler dev`. It did not recur on the deploy
-  (every first PUT answered 200), but the cause, an exec before the new instance was running, is not fixed.
 - **A run longer than the 15-minute idle timeout** has not been tried on the deploy.
 - **`--max-turns` is a hidden flag** of Claude Code 2.1.308. It is accepted and enforced (spike C, check T), but it is
   not in `--help`, so a later version could drop it without notice. Check T in `scripts/acceptance.mjs` would catch that.
@@ -290,16 +327,18 @@ From the whole-branch review and its re-review (2026-11-15). None blocks the dev
   published rates only, and the dashboard's billed figures are owed by the owner.
 - **Older AI Gateway header names** without the `cf-aig-` prefix (for example `cf-skip-cache`) are not stripped.
   Check the gateway documentation and strip them if the gateway still honours them.
-- **Any ref of the workspace repository can be pushed or deleted** with the token. Branch rules on GitHub are the control.
+- **The workspace branch can still be force-pushed.** The push guard (f8c9d0a) lets a push update only
+  `refs/heads/<workspace branch>` and never delete it, but it does not check that the update is a fast-forward, and it
+  trusts git's wire format as GitHub reads it. GitHub branch rules remain the control for both.
 - **Git LFS is refused** by the smart-HTTP-only rule.
 - **The 409 text for a changed host list** says "another repo or branch".
 - **The shell scripts in `container.ts`** have no automated test; they were checked by hand and under `wrangler dev`.
+- **The Copilot fixes are not on the deploy yet** (see "The development deploy"); their evidence is the local check.
 
 ### Notes on the evidence itself (from the last review, 2026-11-15)
 
 - `scripts/redeploy.mjs` is a rewrite of the scratch script that produced the redeploy log; the committed version
-  has not been run. It also does not check that the deploy succeeded, so it can print a pass after a failed deploy.
-  Run it under the same memory cap as any deploy.
+  has not been run. Run it under the same memory cap as any deploy.
 - The cause given for the refused bare host root (the intercept passing `https://host` without its slash) is inferred
   from the code and a local reproduction, not seen in a log.
 - The raw TCP and UDP probes target IPv4 only, although the container's resolver configuration lists an IPv6 server.
