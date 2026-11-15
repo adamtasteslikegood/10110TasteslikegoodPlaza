@@ -1,6 +1,8 @@
 # M14: department sessions on Cloudflare (cloud runner)
 
-**Status:** proposed 2026-11-14; awaiting Adam's approval. Nothing is built or deployed.
+**Status:** approved by Adam 2026-11-14, including the API-key route in §5 (his Anthropic
+API key, through the AI Gateway already on his account unless its setup makes a fresh one
+better) and use of his Workers Paid plan. Nothing is built or deployed yet.
 **Baseline:** dev `eb6b170`. Cloudflare facts were read from developers.cloudflare.com on
 2026-11-14 (pages listed in §11); `@cloudflare/sandbox` latest is 1.0.3.
 
@@ -75,7 +77,7 @@ the VM. That is needed for permission prompts and is deferred with them; the run
 outside contract (commands in, numbered events out) is the one in that note, so the
 inside can change later.
 
-## 5. Login and billing: disposition (needs Adam's decision)
+## 5. Login and billing: disposition (approved 2026-11-14)
 
 Cloudflare's documented route sends Claude Code's model calls through AI Gateway. The
 Worker adds the gateway token after the request leaves the container. The gateway holds
