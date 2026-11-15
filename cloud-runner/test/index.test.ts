@@ -109,6 +109,13 @@ describe("parseRoute", () => {
     expect(parseRoute("POST", "/workspaces/a/diff")).toEqual({ error: 405 })
   })
 
+  it("answers 405 for a method named like an Object.prototype key", () => {
+    for (const method of ["constructor", "toString", "__proto__", "hasOwnProperty", "valueOf"]) {
+      expect(parseRoute(method, "/workspaces/a"), method).toEqual({ error: 405 })
+      expect(parseRoute(method, "/workspaces/a/runs"), method).toEqual({ error: 405 })
+    }
+  })
+
   it("answers 404 and 405 through fetch", async () => {
     expect((await call(req("GET", "/nope"))).status).toBe(404)
     expect((await call(req("POST", "/workspaces/a"))).status).toBe(405)
@@ -149,12 +156,31 @@ describe("CreateBody", () => {
       { ...good, allow: ["*.example.com"] },
       { ...good, allow: [""] },
       { ...good, allow: "example.com" },
+      // IP literals and single-label names (final review m2)
+      { ...good, allow: ["127.0.0.1"] },
+      { ...good, allow: ["169.254.169.254"] },
+      { ...good, allow: ["10.0.0.1"] },
+      { ...good, allow: ["0x7f.1"] },
+      { ...good, allow: ["example.0x10"] },
+      { ...good, allow: ["example.123"] },
+      { ...good, allow: ["::1"] },
+      { ...good, allow: ["[::1]"] },
+      { ...good, allow: ["[fd00::1]"] },
+      { ...good, allow: ["localhost"] },
+      { ...good, allow: ["LOCALHOST"] },
+      { ...good, allow: ["internal"] },
       { branch: "main" },
       { repo: good.repo },
       null,
       "text",
     ]
     for (const body of bad) expect(CreateBody.safeParse(body).success, JSON.stringify(body)).toBe(false)
+  })
+
+  it("accepts dotted names, a leading digit in a label included", () => {
+    for (const host of ["example.com", "a.b.example.org", "1password.com", "xn--bcher-kva.example", "x1.io"]) {
+      expect(CreateBody.safeParse({ ...good, allow: [host] }).success, host).toBe(true)
+    }
   })
 
   it("accepts the limits: 200-char branch and 20 hosts", () => {
@@ -218,6 +244,34 @@ describe("run requests", () => {
 
   it("answers 413 for a body over the 1 MiB request cap", async () => {
     expect((await run({ prompt: "a", pad: "x".repeat(1024 * 1024) })).status).toBe(413)
+  })
+
+  it("answers 400 for a prompt with a NUL", async () => {
+    const calls: Call[] = []
+    expect((await run({ prompt: "before\u0000after" }, calls)).status).toBe(400)
+    expect(calls).toEqual([])
+    expect(RunBody.safeParse({ prompt: "a\0" }).success).toBe(false)
+  })
+
+  it("stops reading a body with no content-length at the cap", async () => {
+    // FINITE on purpose: 64 chunks of 64 KiB (4 MiB). An endless stream here once grew the
+    // test runner to 23 GB and took the machine down while the cap was not yet implemented.
+    let pulled = 0
+    const oversized = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        pulled += 1
+        if (pulled > 64) return controller.close()
+        controller.enqueue(new Uint8Array(64 * 1024).fill(0x20))
+      },
+    })
+    const request = new Request("https://runner.example/workspaces/a/runs", {
+      method: "POST",
+      headers: { authorization: `Bearer ${SECRET}` },
+      body: oversized,
+    })
+    expect(request.headers.get("content-length")).toBeNull()
+    expect((await call(request)).status).toBe(413)
+    expect(pulled).toBeLessThan(40)
   })
 })
 

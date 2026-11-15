@@ -9,6 +9,45 @@ const missing = "No such workspace: create it with PUT first"
 
 const text = (body: string, status: number) => new Response(`${body}\n`, { status, headers: { "content-type": "text/plain" } })
 
+// Reads the body as text, stopping as soon as it passes MAX_BODY_BYTES, so a
+// body with no content-length is never buffered whole. Answers undefined when too large.
+async function readCapped(request: Request): Promise<string | undefined> {
+	if (request.body === null) {
+		return ""
+	}
+
+	const reader = request.body.getReader()
+	const chunks: Uint8Array[] = []
+	let size = 0
+
+	for (;;) {
+		const { done, value } = await reader.read()
+
+		if (done) {
+			break
+		}
+
+		size += value.byteLength
+
+		if (size > MAX_BODY_BYTES) {
+			await reader.cancel()
+			return undefined
+		}
+
+		chunks.push(value)
+	}
+
+	const bytes = new Uint8Array(size)
+	let offset = 0
+
+	for (const chunk of chunks) {
+		bytes.set(chunk, offset)
+		offset += chunk.byteLength
+	}
+
+	return new TextDecoder().decode(bytes)
+}
+
 // Reads a JSON body. Answers a Response when the body is too large or is not JSON.
 async function readJson(request: Request): Promise<{ value: unknown } | { response: Response }> {
 	const declared = Number(request.headers.get("content-length"))
@@ -17,9 +56,9 @@ async function readJson(request: Request): Promise<{ value: unknown } | { respon
 		return { response: text("The request body is too large", 413) }
 	}
 
-	const raw = await request.text()
+	const raw = await readCapped(request)
 
-	if (new TextEncoder().encode(raw).byteLength > MAX_BODY_BYTES) {
+	if (raw === undefined) {
 		return { response: text("The request body is too large", 413) }
 	}
 

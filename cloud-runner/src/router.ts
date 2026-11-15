@@ -35,7 +35,8 @@ export function parseRoute(method: string, pathname: string): Route | { error: 4
 		return { error: 400 }
 	}
 
-	const action = methods[resource][method]
+	// Own keys only: "constructor" or "__proto__" must not reach Object.prototype.
+	const action = Object.hasOwn(methods[resource], method) ? methods[resource][method] : undefined
 
 	return action === undefined ? { error: 405 } : { name, action }
 }
@@ -68,7 +69,13 @@ export function authorized(request: Request, secret: string): boolean {
 const hostname = z
 	.string()
 	.max(253)
-	.regex(/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*$/i)
+	.regex(/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/i)
+	// A name, not an address: at least two labels, and a last label that is not a
+	// number or hex, so 127.0.0.1, 0x7f.1 and single-label names like localhost fail.
+	.refine((host) => {
+		const last = host.slice(host.lastIndexOf(".") + 1)
+		return /[a-z]/i.test(last) && !/^0x[0-9a-f]*$/i.test(last)
+	})
 	.transform((host) => host.toLowerCase())
 
 export const CreateBody = z.object({
@@ -85,6 +92,8 @@ export const RunBody = z.object({
 	prompt: z
 		.string()
 		.refine((prompt) => prompt.trim() !== "")
+		// A command argument cannot carry a NUL; it would cut the prompt short.
+		.refine((prompt) => !prompt.includes("\0"))
 		.refine((prompt) => new TextEncoder().encode(prompt).byteLength <= MAX_PROMPT_BYTES),
 	fresh: z.boolean().default(false),
 	maxTurns: z.number().int().min(1).max(100).default(20),
