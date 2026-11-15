@@ -36,9 +36,13 @@ echo "$?" >"$0/exit-code.tmp" && mv "$0/exit-code.tmp" "$0/exit-code"' "$dir" "$
 // What the pid file holds: the group ID and the boot it started in.
 export type Task = { pid: number; boot: string }
 
+// A group ID of 0 or 1 is refused: `kill -SIG -0` signals the caller's own
+// group and `kill -SIG -1` every process it may signal.
 export function parseTask(text: string): Task | undefined {
 	const match = /^(\d+) (\S+)\s*$/.exec(text)
-	return match === null ? undefined : { pid: Number(match[1]), boot: match[2] }
+	if (match === null) return undefined
+	const pid = Number(match[1])
+	return pid > 1 ? { pid, boot: match[2] } : undefined
 }
 
 // Succeeds while a process of group $1 that is not a zombie runs, and only in

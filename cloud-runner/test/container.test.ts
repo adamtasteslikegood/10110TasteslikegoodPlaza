@@ -64,6 +64,10 @@ describe("parseTask", () => {
 	it("refuses a partial or odd pid file", () => {
 		for (const text of ["", "123", "123 ", "x 1", "12 a b", "-1 a"]) expect(parseTask(text), text).toBeUndefined()
 	})
+	it("refuses group ID 0 or 1, which kill would read as every process (Copilot C2)", () => {
+		for (const text of ["0 a", "1 a", "00 a", "01 a"]) expect(parseTask(text), text).toBeUndefined()
+		expect(parseTask("2 a")).toEqual({ pid: 2, boot: "a" })
+	})
 })
 
 describe("exec timeouts", () => {
