@@ -143,3 +143,26 @@ as well:
 - A run longer than the 15-minute idle timeout stays alive.
 - A second start during a run answers 409.
 - Two containers can run at once (`wrangler.jsonc` sets no instance limit).
+
+## Known gaps to close before stage 2
+
+From the whole-branch review and its re-review (2026-11-15). None blocks the development deploy.
+
+- **Leftover agent when the pid file never appears or is removed.** The never-started path ends the run as lost
+  without a KILL, and `parseTask` accepts pid 0 or 1. Refuse a pid of 1 or less, and before a start either kill
+  every non-init process or restart the instance.
+- **Stale snapshot after a lost run on a gone container.** `endLost` keeps the pre-run snapshot id, so a later
+  restore reports `uncommittedLost: false` for files that are behind the run.
+- **`finish()` does not kill the task's group**, so background processes can change the tree during push and snapshot.
+- **Every route can wait behind a slow push and snapshot** (up to 5 minutes for the push; the snapshot call has no
+  timeout because the SDK offers none). Add a race wrapper.
+- **A timed-out exec may keep running in the container**, and `diff` can leave its temp index lock behind.
+- **PID 1 is `sleep infinity`**, which never reaps finished processes. Add an init such as tini; this also closes
+  process-group id reuse within one boot.
+- **The first PUT after an image build answered 500 once** under `wrangler dev`. Watch for it on the deploy.
+- **Older AI Gateway header names** without the `cf-aig-` prefix (for example `cf-skip-cache`) are not stripped.
+  Check the gateway documentation and strip them if the gateway still honours them.
+- **Any ref of the workspace repository can be pushed or deleted** with the token. Branch rules on GitHub are the control.
+- **Git LFS is refused** by the smart-HTTP-only rule.
+- **The 409 text for a changed host list** says "another repo or branch".
+- **The shell scripts in `container.ts`** have no automated test; they were checked by hand and under `wrangler dev`.
