@@ -294,3 +294,15 @@ From the whole-branch review and its re-review (2026-11-15). None blocks the dev
 - **Git LFS is refused** by the smart-HTTP-only rule.
 - **The 409 text for a changed host list** says "another repo or branch".
 - **The shell scripts in `container.ts`** have no automated test; they were checked by hand and under `wrangler dev`.
+
+### Notes on the evidence itself (from the last review, 2026-11-15)
+
+- `scripts/redeploy.mjs` is a rewrite of the scratch script that produced the redeploy log; the committed version
+  has not been run. It also does not check that the deploy succeeded, so it can print a pass after a failed deploy.
+  Run it under the same memory cap as any deploy.
+- The cause given for the refused bare host root (the intercept passing `https://host` without its slash) is inferred
+  from the code and a local reproduction, not seen in a log.
+- The raw TCP and UDP probes target IPv4 only, although the container's resolver configuration lists an IPv6 server.
+- The process-environment scan in check 4 ran while no agent was alive, so the agent process's own environment was
+  scanned only in the local check.
+- Check 3 now needs the live npm registry to answer.
