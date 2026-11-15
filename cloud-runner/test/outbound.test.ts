@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { inspectPush, policyFor, refusal, withCredential } from "../src/outbound"
-import { checkPush, MAX_COMMAND_BYTES } from "../src/pushguard"
+import { checkPush, MAX_COMMAND_BYTES, MAX_PUSH_BYTES } from "../src/pushguard"
 import type { Env } from "../src/types"
 
 const env = { AI_GATEWAY_TOKEN: "gw-token-value", GITHUB_TOKEN: "gh-token-value" } as Env
@@ -186,6 +186,18 @@ describe("inspectPush", () => {
 	it("refuses a compressed body, which it cannot read", async () => {
 		const out = await inspectPush(post(pushBody("refs/heads/work"), { "content-encoding": "gzip" }), "work")
 		expect((out as Response).status).toBe(403)
+	})
+
+	// F3: FixedLengthStream throws on an absurd length, which answered 500.
+	it("refuses a Content-Length that is not a safe integer or is over 2 GiB, and keeps a normal one", async () => {
+		expect(MAX_PUSH_BYTES).toBe(2 * 1024 ** 3)
+		for (const length of ["9".repeat(20), String(MAX_PUSH_BYTES + 1)]) {
+			const out = await inspectPush(post(pushBody("refs/heads/work"), { "content-length": length }), "work")
+			expect(out).toBeInstanceOf(Response)
+			expect((out as Response).status).toBe(403)
+		}
+		const data = pushBody("refs/heads/work")
+		expect(await forwarded(await inspectPush(post(data, { "content-length": String(data.length) }), "work"))).toEqual(data)
 	})
 
 	it("refuses an invalid Content-Length, a missing body, and a workspace with no branch", async () => {

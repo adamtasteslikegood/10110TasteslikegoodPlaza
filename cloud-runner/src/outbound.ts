@@ -1,6 +1,6 @@
 import { WorkerEntrypoint } from "cloudflare:workers"
 import { decide, isContainerCredentialHeader, type Credential, type Policy } from "./egress"
-import { checkPush, MAX_COMMAND_BYTES } from "./pushguard"
+import { checkPush, MAX_COMMAND_BYTES, MAX_PUSH_BYTES } from "./pushguard"
 import type { Env } from "./types"
 
 // Set by the workspace when it registers the intercept. branch is the only ref
@@ -79,7 +79,8 @@ export async function inspectPush(request: Request, branch: string, check: typeo
 
 	const stated = request.headers.get("content-length")
 
-	if (stated !== null && !/^\d+$/.test(stated)) {
+	// FixedLengthStream throws on an absurd length (F3), so only a safe integer up to the cap is kept.
+	if (stated !== null && (!/^\d+$/.test(stated) || !Number.isSafeInteger(Number(stated)) || Number(stated) > MAX_PUSH_BYTES)) {
 		return pushRefused("the Content-Length is not valid")
 	}
 

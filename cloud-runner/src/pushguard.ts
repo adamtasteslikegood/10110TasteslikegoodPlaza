@@ -11,6 +11,8 @@
 // format, so it reads strictly rather than guessing.
 
 export const MAX_COMMAND_BYTES = 64 * 1024
+// The largest Content-Length a push may state (F3); a larger one is refused.
+export const MAX_PUSH_BYTES = 2 * 1024 ** 3
 
 export type PushVerdict = { allow: true } | { allow: false; reason: string }
 
