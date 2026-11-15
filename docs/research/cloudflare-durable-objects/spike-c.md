@@ -12,6 +12,9 @@ Run on 2026-11-15 against the development deploy of `cloud-runner/` (PLZG-310).
   version `6b2f1b8a-d7b7-4e94-885c-5593922e6fd9` (same code, same image). Review fix round 1 set
   `preview_urls: false` and redeployed once: version `374b2faf-a019-4a19-b52d-86b814d14029` is live
   (same runner code and image; the image push was skipped). Its checks ran on that version.
+- After the Copilot review fixes (2026-11-15) the Worker was redeployed from the branch at 330bea3 with a new
+  image (tini as PID 1): version `d63bf26b-17a7-45f8-aa05-0e1ee1af5e00`, on which log 6 ran. The redeploy check
+  (log 7) then made version `2aad8fcd-30fd-42df-a66e-d4a09bc07b4f`, which is live (same code and image).
 - One container application, `plaza-cloud-runner-dev-workspace` (class `Workspace`, `durable_object`
   scheduling, instance `standard-1`, Internet off), image built from `cloud-runner/Dockerfile`:
   `node:24-trixie-slim`, git, ripgrep, `@anthropic-ai/claude-code@2.1.308`, the sandbox shim 1.0.3.
@@ -182,6 +185,86 @@ then `pushed` and `snapshot saved`.
 
 The first PUT after a deploy answered 200 every time (seven workspaces), so the one-time 500 seen under
 `wrangler dev` did not appear here.
+
+**Log 6, `acc-r2.log`: the full suite after the Copilot review fixes** (branch at 330bea3, version d63bf26b,
+new image with tini as PID 1). Same outcome as log 1 with its corrected check 3: checks 1 to 7 and T pass, H fails
+because `--max-turns` is not in `--help`, and the script exited 1 for that alone. Check 1's push went through the
+new push guard (`src/pushguard.ts`); the commit the runner reported is the one `ls-remote` shows.
+
+```
+NOTE workspaces acc-84b8ce-a and acc-84b8ce-b, branch cloud-runner/acceptance
+NOTE ls-remote main before the checks: 80f5ccb8968eacd2f6d68740e1990d2076671c10
+NOTE PUT acc-84b8ce-a: generation 1, state idle
+NOTE claude --version: 2.1.308 (Claude Code)
+NOTE claude -p --max-turns 1 </dev/null: exit 1 Error: Input must be provided either through stdin or as a prompt argument when using --print
+NOTE claude -p --no-such-flag-xyz </dev/null: exit 1 error: unknown option '--no-such-flag-xyz'
+FAIL H claude --help in the image lists --session-id, --resume, --max-turns: not in --help: --max-turns
+NOTE cost check 1 run 1: events span 17.152 s; result duration_ms=9129 num_turns=4 input=6 output=575 cache_read=32961 cache_write=16994 total_cost_usd=0.0515431 model=claude-sonnet-5-5
+NOTE pushed.commit 5b25bc970402ea72d2e50d1b4ac37713e2b41745; ls-remote 5b25bc970402ea72d2e50d1b4ac37713e2b41745
+PASS 1 a prompt runs to completion, writes and pushes NOTES.md
+NOTE cost check T run 2: events span 8.557 s; result duration_ms=3002 num_turns=2 input=2 output=47 cache_read=16994 cache_write=258 total_cost_usd=0.0543615 model=claude-sonnet-5-5
+NOTE check T: state failed, error "error_max_turns", result subtype error_max_turns, is_error true, num_turns 2, tool calls 1
+PASS T maxTurns 1 stops a run that needs two tool calls (result subtype error_max_turns)
+NOTE cost check 2 run 3: events span 55.219 s; result duration_ms=49933 num_turns=2 input=4 output=145 cache_read=34657 cache_write=334 total_cost_usd=0.0601202 model=claude-sonnet-5-5
+NOTE check 2: 15 events read incrementally, same as one full read; run ended succeeded
+PASS 2 events read twice agree, after=next never repeats, a second start answers 409
+NOTE http://example.com: 403
+NOTE https://registry.npmjs.org/left-pad: 200; http://registry.npmjs.org/left-pad: 403
+NOTE push to octocat/Hello-World: exit 128, fatal: unable to access 'https://github.com/octocat/Hello-World/': The requested URL returned error: 403
+NOTE raw TCP 1.1.1.1:53: timeout
+NOTE raw TCP 1.1.1.1:22: timeout
+NOTE raw TCP 1.1.1.1:25: timeout
+NOTE raw TCP 1.1.1.1:8080: timeout
+NOTE UDP DNS example.com via 8.8.8.8: answered 11.9.0.1
+NOTE /etc/resolv.conf: "nameserver 1.1.1.1\nnameserver 9.9.9.9\nnameserver 2606:4700:4700::1111"
+NOTE UDP DNS example.com via 1.1.1.1: answered 11.9.0.1; via 192.0.2.1 (TEST-NET): answered 11.9.0.1; nx-84b8ce.example.invalid via 1.1.1.1: answered 11.9.0.1
+NOTE UDP NTP to 162.159.200.1:123: no reply
+NOTE UDP to 1.1.1.1:9999: no reply
+NOTE system resolver for example.com: resolved fd00::119:1
+PASS 3 egress: unlisted host 403, plain HTTP refused, push elsewhere refused, own repository reachable, no raw TCP, no direct UDP (DNS name leakage not tested)
+NOTE scanned 1343 bytes of container output, the environ of 3 processes (1302 bytes) and 38 events (check 1's: 15)
+PASS 4 no credential in env, any process's environ, .git/config, ~/.gitconfig, home, /workspace or the workspace's events
+NOTE right after both starts: acc-84b8ce-a running, acc-84b8ce-b running
+NOTE cost check 5 a run 4: events span 8.743 s; result duration_ms=2598 num_turns=1 input=2 output=4 cache_read=17586 cache_write=48 total_cost_usd=0.0620428 model=claude-sonnet-5-5
+NOTE cost check 5 b run 1: events span 8.999 s; result duration_ms=1687 num_turns=1 input=2 output=4 cache_read=12565 cache_write=3801 total_cost_usd=0.010803 model=claude-sonnet-5-5
+PASS 5 two workspaces run at once and do not see each other's files
+NOTE scratch.txt before replacement: "42"; pushError none
+NOTE run 5 runner notices: run started, run ended, pushed, snapshot saved
+NOTE cost check 6 run 6: events span 15.055 s; result duration_ms=2452 num_turns=1 input=2 output=28 cache_read=18516 cache_write=267 total_cost_usd=0.07827630000000001 model=claude-sonnet-5-5
+NOTE check 6: restored=snapshot uncommittedLost=false instance note={"notice":"instance started","generation":2,"from":"snapshot"}; session same (a8ac3dbb-686a-4bd6-9f9f-662586f5fa9a); reports 42: true; reports heliotrope: true; state succeeded
+NOTE check 6 answer: "The word is **heliotrope**, and `scratch.txt` contains `42`."
+PASS 6 after replace-instance the snapshot restores an uncommitted file
+NOTE stop answered stopped in 3.532 s
+NOTE after replace-instance mid-run: lost (The container stopped before the run ended), pushError none
+NOTE run after lost: generation 3, restored snapshot, uncommittedLost true
+PASS 7 stop interrupts a run; a replaced instance mid-run reports lost; both accept the next run
+NOTE ls-remote main after the checks: 80f5ccb8968eacd2f6d68740e1990d2076671c10
+NOTE DELETE acc-84b8ce-a: 204; then GET 200 {"state":"none","run":0,"generation":0}
+NOTE DELETE acc-84b8ce-b: 204; then GET 200 {"state":"none","run":0,"generation":0}
+exit=1
+```
+
+**Log 7, `redeploy-r2.log`: check (d) again, by the committed `scripts/redeploy.mjs`** (its first run as committed).
+The deploy made version 2aad8fcd from the same code and image; the run stayed on generation 1 and ended
+`succeeded` with exit code 0, then `pushed` and `snapshot saved`.
+
+```
+1s version before d63bf26b-17a7-45f8-aa05-0e1ee1af5e00
+1s PUT 200
+3s run 202 {"run":1}
+24s before redeploy running generation 1
+36s redeploy ok version after 2aad8fcd-30fd-42df-a66e-d4a09bc07b4f image unchanged
+37s after redeploy running generation 1
+168s ended succeeded generation 1
+169s task exit-code file: "0"
+runner notices: run started, run ended, pushed, snapshot saved
+result: duration_ms 155375 turns 2 total_cost_usd 0.0134998
+169s DELETE 204 then state none
+PASS d the run survived the redeploy on the same instance and wrote exit code 0
+exit=0
+```
+
+After both, `git ls-remote <repo> refs/heads/main` still gave `80f5ccb8968eacd2f6d68740e1990d2076671c10`.
 
 ### Owed: does a query name leave the platform?
 

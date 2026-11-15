@@ -206,9 +206,11 @@ for what that allows and how to turn it off). Preview URLs are off (`preview_url
 Evidence and the acceptance output are in
 [spike-c.md](../docs/research/cloudflare-durable-objects/spike-c.md).
 
-**The deploy runs the code and image from before the Copilot fixes** (tini,
-the push guard, bounded snapshots and output, lost-run settling). They are
-checked under `wrangler dev` only, until the Worker is redeployed.
+**The deploy runs the code and image with the Copilot review fixes** (redeployed 2026-11-15 from the branch at
+330bea3: tini, the push guard, bounded snapshots and output, lost-run settling, the task-file rules). The full
+acceptance suite and the redeploy check were re-run on it (spike C, logs 6 and 7): same outcome as before the fixes.
+The fixes' own failure paths (an unreadable task file, a snapshot that times out, an oversized result) were not
+provoked on the deploy; they rest on the unit tests and the `wrangler dev` checks.
 
 ### Parts
 
