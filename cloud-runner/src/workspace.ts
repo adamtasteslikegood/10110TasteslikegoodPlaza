@@ -361,8 +361,9 @@ export class Workspace extends DurableObject<Env> {
 		})
 	}
 
-	// Test-only (ALLOW_TEST_ROUTES): runs one command in the clone.
-	exec(argv: string[]): Promise<CommandResult | "missing"> {
+	// Test-only (ALLOW_TEST_ROUTES): runs one command in the clone, as the agent
+	// user or, when asked, as root.
+	exec(argv: string[], root = false): Promise<CommandResult | "missing"> {
 		return this.exclusive(async () => {
 			const record = await this.refresh()
 
@@ -371,7 +372,7 @@ export class Workspace extends DurableObject<Env> {
 			}
 
 			await this.ensureStarted(record)
-			return this.host.exec(argv)
+			return this.host.exec(argv, root)
 		})
 	}
 

@@ -1,10 +1,10 @@
 import { Files, SandboxFileError } from "@cloudflare/sandbox"
 import {
+	asAgent,
 	capDiff,
 	capOutput,
 	type CommandResult,
 	chunkScript,
-	copyScript,
 	diffScript,
 	eventsPath,
 	execOutput,
@@ -17,14 +17,16 @@ import {
 	pidPath,
 	readOptionalText,
 	repositoryDirectory,
+	resetTaskCommand,
 	run,
 	signalScript,
 	TASK_FILE_REFUSED,
 	stderrPath,
 	tail,
 	taskAliveScript,
+	taskCommand,
 	taskDirectory,
-	taskScript,
+	trustEnv,
 	type Task,
 } from "./container"
 import type { OutboundProps } from "./outbound"
@@ -58,9 +60,10 @@ export interface Host {
 	push(branch: string): Promise<Pushed>
 	snapshot(): Promise<Saved>
 	diff(): Promise<{ ok: boolean; text: string }>
-	// Removes and recreates the task directory.
+	// Removes and recreates the task directory, root's alone.
 	resetTask(): Promise<void>
-	// Starts the detached task. Can throw after the task has started.
+	// Starts the detached task: argv runs as the agent user, under a leader that
+	// is root's. Can throw after the task has started.
 	startTask(argv: string[], env: Record<string, string>): Promise<void>
 	// The task the pid file names, if it has been written; "invalid" when the file
 	// exists but names no usable group.
@@ -79,7 +82,8 @@ export interface Host {
 	outputDone(): Promise<boolean>
 	stderrTail(): Promise<string>
 	// Test-only: runs argv in the clone with the git trust env, each stream capped.
-	exec(argv: string[]): Promise<CommandResult>
+	// As the agent user, or as root when asked.
+	exec(argv: string[], root?: boolean): Promise<CommandResult>
 }
 
 export class ContainerHost implements Host {
@@ -140,17 +144,20 @@ export class ContainerHost implements Host {
 	}
 
 	async diff(): Promise<{ ok: boolean; text: string }> {
-		const diff = await execOutput(this.c, ["/bin/sh", "-c", diffScript, "diff"], { cwd: repositoryDirectory, env: {} }, execTimeout.short)
+		const diff = await execOutput(this.c, asAgent(["/bin/sh", "-c", diffScript, "diff"]), { cwd: repositoryDirectory, env: gitEnv }, execTimeout.short)
 		return diff.exitCode === 0 ? { ok: true, text: capDiff(new Uint8Array(diff.stdout)) } : { ok: false, text: tail(new TextDecoder().decode(diff.stderr)) }
 	}
 
 	async resetTask(): Promise<void> {
-		await this.files.remove(taskDirectory, { recursive: true, force: true })
-		await this.files.mkdir(taskDirectory, { recursive: true })
+		const reset = await run(this.c, resetTaskCommand, "/", {})
+
+		if (reset.exitCode !== 0) {
+			throw new Error(`Could not make ${taskDirectory}: ${tail(reset.stderr, 500)}`)
+		}
 	}
 
 	async startTask(argv: string[], env: Record<string, string>): Promise<void> {
-		const started = await run(this.c, ["/bin/sh", "-c", taskScript, "agent", taskDirectory, copyScript, ...argv], repositoryDirectory, env)
+		const started = await run(this.c, taskCommand(argv), repositoryDirectory, env)
 
 		if (started.exitCode !== 0) {
 			throw new Error(`The task launcher exited with ${started.exitCode}: ${tail(started.stderr, 500)}`)
@@ -220,9 +227,10 @@ export class ContainerHost implements Host {
 		return (await run(this.c, ["tail", "-c", "2000", stderrPath], "/", {})).stdout
 	}
 
-	async exec(argv: string[]): Promise<CommandResult> {
+	async exec(argv: string[], root = false): Promise<CommandResult> {
 		// No credential: the trust env only, and git never waits at a prompt.
-		const output = await execOutput(this.c, argv, { cwd: repositoryDirectory, env: { ...gitEnv, GIT_TERMINAL_PROMPT: "0" } }, execTimeout.short)
+		const env = { ...(root ? { ...trustEnv, HOME: "/root" } : gitEnv), GIT_TERMINAL_PROMPT: "0" }
+		const output = await execOutput(this.c, root ? argv : asAgent(argv), { cwd: repositoryDirectory, env }, execTimeout.short)
 		return { exitCode: output.exitCode, stdout: capOutput(output.stdout), stderr: capOutput(output.stderr) }
 	}
 }

@@ -265,8 +265,10 @@ jobs:
     name: Cloud Runner
     runs-on: ubuntu-latest
     # The M14 Worker in cloud-runner/. Its tests run in the Workers runtime
-    # (workerd) under vitest; no Docker, no Cloudflare account and no secrets
-    # are involved. Actions are pinned to commit SHAs, with the tag in a comment.
+    # (workerd) under vitest. The container tests build the agent image with the
+    # runner's Docker and run the Worker's commands in it, with no network. No
+    # Cloudflare account and no secrets are involved. Actions are pinned to
+    # commit SHAs, with the tag in a comment.
     defaults:
       run:
         working-directory: cloud-runner
@@ -288,3 +290,6 @@ jobs:
 
       - name: Typecheck
         run: npm run typecheck
+
+      - name: Container tests
+        run: npm run test:container

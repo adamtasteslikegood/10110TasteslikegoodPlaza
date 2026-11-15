@@ -419,12 +419,22 @@ describe("test-only routes", () => {
     const res = await callWith(req("POST", "/workspaces/a/exec", { body: { argv: ["git", "status"] } }), enabled, calls)
     expect(res.status).toBe(200)
     expect(await res.json()).toEqual({ exitCode: 0, stdout: "out", stderr: "" })
-    expect(calls).toEqual([{ method: "exec", args: [["git", "status"]] }])
+    expect(calls).toEqual([{ method: "exec", args: [["git", "status"], false] }])
     expect((await callWith(req("POST", "/workspaces/a/exec", { body: { argv: ["true"] } }), enabled, [], { exec: "missing" })).status).toBe(404)
   })
 
+  it("exec: runs as root only when the body says so (PLZG-311)", async () => {
+    const calls: Call[] = []
+    expect((await callWith(req("POST", "/workspaces/a/exec", { body: { argv: ["id"], root: true } }), enabled, calls)).status).toBe(200)
+    expect((await callWith(req("POST", "/workspaces/a/exec", { body: { argv: ["id"], root: false } }), enabled, calls)).status).toBe(200)
+    expect(calls).toEqual([
+      { method: "exec", args: [["id"], true] },
+      { method: "exec", args: [["id"], false] },
+    ])
+  })
+
   it("exec: answers 400 for a bad argv", async () => {
-    for (const body of [{}, { argv: [] }, { argv: "ls" }, { argv: [1] }, { argv: ["a\0b"] }, { argv: Array(MAX_EXEC_ARGS + 1).fill("x") }]) {
+    for (const body of [{}, { argv: [] }, { argv: "ls" }, { argv: [1] }, { argv: ["a\0b"] }, { argv: Array(MAX_EXEC_ARGS + 1).fill("x") }, { argv: ["id"], root: "yes" }]) {
       const calls: Call[] = []
       expect((await callWith(req("POST", "/workspaces/a/exec", { body }), enabled, calls)).status, JSON.stringify(body).slice(0, 40)).toBe(400)
       expect(calls).toEqual([])

@@ -112,9 +112,10 @@ async function allEvents(name, after = 0) {
 
 const lastSeq = async (name) => (await allEvents(name)).at(-1)?.seq ?? 0
 
-// Runs argv in the workspace's container through the test-only route.
-async function inBox(name, argv) {
-	return expectStatus(await api("POST", `/workspaces/${name}/exec`, { argv }, 60_000), 200, `exec ${argv[0]}`).json
+// Runs argv in the workspace's container through the test-only route: as the
+// agent user, or as root to look at what the agent cannot.
+async function inBox(name, argv, root = false) {
+	return expectStatus(await api("POST", `/workspaces/${name}/exec`, { argv, root }, 60_000), 200, `exec ${argv[0]}`).json
 }
 
 const nodeIn = (name, code) => inBox(name, ["node", "-e", code])
@@ -195,6 +196,24 @@ async function main() {
 		const head = remote.stdout.split(/\s+/)[0]
 		note(`pushed.commit ${s.pushed.commit}; ls-remote ${head}`)
 		if (head !== s.pushed.commit) throw new Error(`ls-remote shows ${head}, not ${s.pushed.commit}`)
+	})
+
+	// After a run, so the task directory exists. No model call.
+	await check("U", "the agent is not root, and /workspace and the task directory are out of its reach (PLZG-311)", async () => {
+		const who = await inBox(A, ["/bin/sh", "-c", "id -u; id -un; grep NoNewPrivs /proc/self/status"])
+		const [uid, user, noNewPrivs] = who.stdout.trim().split("\n")
+		note(`an exec as the agent: uid ${uid} (${user}), ${noNewPrivs}`)
+		if (!/^[1-9]\d*$/.test(uid ?? "")) throw new Error(`the agent's uid is ${JSON.stringify(uid)}`)
+		if (noNewPrivs !== "NoNewPrivs:\t1") throw new Error(`no-new-privs is not set: ${JSON.stringify(noNewPrivs)}`)
+		for (const attempt of ["ls /workspace/task", "touch /workspace/task/exit-code", "touch /workspace/planted", "mv /workspace/task /workspace/gone"]) {
+			const tried = await inBox(A, ["/bin/sh", "-c", attempt])
+			if (tried.exitCode === 0) throw new Error(`the agent could: ${attempt}`)
+		}
+		const owners = await inBox(A, ["stat", "-c", "%n %U %a", "/workspace", "/workspace/task", "/workspace/task/exit-code", "/workspace/repo"], true)
+		note(`owners: ${owners.stdout.trim().split("\n").join("; ")}`)
+		const lines = owners.stdout.trim().split("\n")
+		const wanted = [/^\/workspace root 755$/, /^\/workspace\/task root 700$/, /^\/workspace\/task\/exit-code root \d+$/, new RegExp(`^/workspace/repo ${user} \\d+$`)]
+		if (lines.length !== wanted.length || !wanted.every((w, i) => w.test(lines[i]))) throw new Error(`unexpected owners: ${owners.stdout} ${owners.stderr}`)
 	})
 
 	await check("T", "maxTurns 1 stops a run that needs two tool calls (result subtype error_max_turns)", async () => {
@@ -311,7 +330,12 @@ async function main() {
 		const looked = await inBox(A, ["/bin/sh", "-c", "env; cat .git/config; cat ~/.gitconfig 2>/dev/null; ls -la ~ /workspace"])
 		scan(looked.stdout + looked.stderr, "the container")
 		if (!looked.stdout.includes("[remote \"origin\"]")) throw new Error("the output has no .git/config: the scan saw too little")
-		const environ = await inBox(A, ["/bin/sh", "-c", "for f in /proc/[0-9]*/environ; do echo \"== $f\"; tr '\\000' '\\n' < \"$f\" 2>/dev/null; done"])
+		const rootHome = await inBox(A, ["/bin/sh", "-c", "cat /root/.gitconfig 2>/dev/null; ls -la /root"], true)
+		scan(rootHome.stdout + rootHome.stderr, "root's home")
+		// As root and as the agent: a user without CAP_SYS_PTRACE reads only its own processes' environ.
+		const environScript = "for f in /proc/[0-9]*/environ; do [ -r \"$f\" ] || continue; echo \"== $f\"; tr '\\000' '\\n' < \"$f\" 2>/dev/null; done"
+		const environs = [await inBox(A, ["/bin/sh", "-c", environScript], true), await inBox(A, ["/bin/sh", "-c", environScript])]
+		const environ = { stdout: environs.map((e) => e.stdout).join(""), stderr: environs.map((e) => e.stderr).join("") }
 		scan(environ.stdout + environ.stderr, "a process's environ")
 		const processes = (environ.stdout.match(/^== /gm) ?? []).length
 		if (processes < 2) throw new Error(`only ${processes} /proc/*/environ files read: the scan saw too little`)
@@ -332,7 +356,7 @@ async function main() {
 		costNote("check 5 a", await allEvents(A), ra)
 		costNote("check 5 b", await allEvents(B), rb)
 		if (ea.state !== "succeeded" || eb.state !== "succeeded") throw new Error(`ended ${ea.state} (${ea.error ?? ""}) and ${eb.state} (${eb.error ?? ""})`)
-		await inBox(A, ["/bin/sh", "-c", `echo ${id} > /workspace/only-in-a.txt`])
+		await inBox(A, ["/bin/sh", "-c", `echo ${id} > /workspace/only-in-a.txt`], true) // /workspace is root's
 		const inA = await inBox(A, ["cat", "/workspace/only-in-a.txt"])
 		const inB = await inBox(B, ["test", "-e", "/workspace/only-in-a.txt"])
 		if (inA.stdout.trim() !== id) throw new Error("the file was not written in a")

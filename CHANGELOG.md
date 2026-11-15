@@ -17,6 +17,23 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
 
+### Changed — the cloud runner's agent is no longer root (PLZG-311)
+
+- In `cloud-runner/`, Claude Code now runs as a user of its own (`agent`) in
+  the container, with no-new-privs. The files the runner trusts about a run
+  (its pid, exit code and logs, in `/workspace/task`) are root's alone, so an
+  agent can no longer end its own run early or misreport its exit code by
+  writing them. Owner's decision for stage 2, 2026-11-15.
+- Every git command the runner runs in the clone (clone, push, diff, the
+  restore probe) runs as the agent, so a hook or diff driver the agent plants
+  never runs as root.
+- A snapshot taken from an image with another layout is not restored; the next
+  instance clones the branch. Workspaces from before this change start that way.
+- The test-only `exec` route runs as the agent; `"root": true` asks for root.
+- New `npm run test:container` runs the runner's commands in a container built
+  from the Dockerfile (needs Docker). CI's `Cloud Runner` job runs it.
+- Not deployed: the development Worker still runs the earlier image.
+
 ### Fixed — real domain sessions start again: fresh tool-guard evidence (PLZG-309)
 
 - Every real domain Start failed with `sdk_error` since relay work claims landed

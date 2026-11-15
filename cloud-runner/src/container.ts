@@ -12,6 +12,23 @@ export const stderrPath = `${taskDirectory}/stderr.log`
 export const exitCodePath = `${taskDirectory}/exit-code`
 export const pidPath = `${taskDirectory}/pid`
 
+// The agent is this user, never root (PLZG-311). The runner's own commands run
+// as root, the user every exec gets by default; the clone and the agent's home
+// are the agent's, and /workspace and the task directory are root's.
+export const agentUser = "agent"
+export const agentHome = "/home/agent"
+
+// argv as the agent user. no-new-privs keeps a setuid binary from giving the
+// privileges back. Git in the clone always runs this way: the clone's config,
+// hooks and drivers are the agent's to write, so root must never run them.
+export const asAgent = (argv: string[]): string[] => ["setpriv", `--reuid=${agentUser}`, `--regid=${agentUser}`, "--init-groups", "--no-new-privs", "--", ...argv]
+
+// What the image writes at layoutPath: who owns what in it. A snapshot holds a
+// whole root filesystem, so one taken from an image with another mark (or none:
+// the agent was root then) is not restored. Change both this and the Dockerfile.
+export const layoutPath = "/etc/plaza-runner-layout"
+export const imageLayout = "2"
+
 const caPath = "/etc/cloudflare/certs/cloudflare-containers-ca.crt"
 // The CA alone replaces the system trust store. This works because
 // Outbound intercepts every HTTPS request from the container.
@@ -42,16 +59,32 @@ export const copyScript = `"$@" <"$0.fifo" >"$0.log"; : >"$0.done"`
 // directory $1, with copyScript as $2. The leader writes the pid file, then the agent's exit code once
 // argv returns. Both streams go through fifos to capped copiers (Copilot C10):
 // stdout through head, stderr through tail. A failed setup still writes an exit
-// code, so the run ends instead of hanging.
+// code, so the run ends instead of hanging. The leader and the copiers are
+// root's and so is everything they write; argv is the one part that runs as the
+// agent (taskCommand), holding only the two fifos the leader opened for it.
 export const taskScript = `dir=$1; copy=$2; shift 2
 exec setsid -f sh -c 'trap : TERM
 echo "$$ $(cat /proc/sys/kernel/random/boot_id)" >"$0/pid.tmp" && mv "$0/pid.tmp" "$0/pid"
 copy=$1; shift
-mkfifo "$0/stdout.fifo" "$0/stderr.fifo" &&
+mkfifo -m 600 "$0/stdout.fifo" "$0/stderr.fifo" &&
 setsid -f sh -c "$copy" "$0/stdout" head -c ${MAX_STDOUT_FILE_BYTES} </dev/null &&
 setsid -f sh -c "$copy" "$0/stderr" tail -c ${MAX_STDERR_BYTES} </dev/null &&
 "$@" >"$0/stdout.fifo" 2>"$0/stderr.fifo"
 echo "$?" >"$0/exit-code.tmp" && mv "$0/exit-code.tmp" "$0/exit-code"' "$dir" "$copy" "$@" </dev/null >/dev/null 2>&1`
+
+// The launcher exec for a task: root starts the leader, and argv runs as the agent.
+export const taskCommand = (argv: string[]): string[] => ["/bin/sh", "-c", taskScript, "agent", taskDirectory, copyScript, ...asAgent(argv)]
+
+// Removes directory $1 and makes it again, empty, as user $2 with mode $3.
+export const freshDirectoryScript = `rm -rf -- "$1" && install -d -o "$2" -g "$2" -m "$3" -- "$1"`
+
+// The task directory, empty and root's alone: the agent cannot list it, write
+// in it or replace it, since /workspace is root's too.
+export const resetTaskCommand = ["/bin/sh", "-c", freshDirectoryScript, "reset", taskDirectory, "root", "700"]
+
+// An empty directory of the agent's for git to clone into. /workspace is
+// root's, so the agent cannot make it.
+export const emptyCloneCommand = ["/bin/sh", "-c", freshDirectoryScript, "clone", repositoryDirectory, agentUser, "755"]
 
 // The exit code of a probe script that refuses a task file: it exists, but is
 // not a regular file or can't be read. Only this code means the file is not
@@ -163,7 +196,9 @@ type Output = { exitCode: number; stdout: ArrayBuffer | Uint8Array; stderr: Arra
 // stops the process; the race makes sure the promise ends even if it does not.
 export async function execOutput(container: Container, command: string[], options: ContainerExecOptions, timeoutMs: number): Promise<Output> {
 	const signal = AbortSignal.timeout(timeoutMs)
-	const name = command[0] === "/bin/sh" && command[1] === "-c" ? `sh ${command[3] ?? ""}`.trim() : command.slice(0, 2).join(" ")
+	// Named without the asAgent prefix, which says nothing about the command.
+	const plain = command[0] === "setpriv" ? command.slice(command.indexOf("--") + 1) : command
+	const name = plain[0] === "/bin/sh" && plain[1] === "-c" ? `sh ${plain[3] ?? ""}`.trim() : plain.slice(0, 2).join(" ")
 	const aborted = new Promise<never>((_resolve, reject) => {
 		signal.addEventListener("abort", () => reject(new Error(`${name} timed out after ${timeoutMs / 1000} s`)), { once: true })
 	})

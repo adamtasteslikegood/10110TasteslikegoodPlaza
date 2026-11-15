@@ -1,10 +1,10 @@
-import { Files } from "@cloudflare/sandbox"
-import { execTimeout, repositoryDirectory, run, tail, trustEnv } from "./container"
+import { agentHome, asAgent, emptyCloneCommand, execTimeout, imageLayout, layoutPath, repositoryDirectory, run, tail, trustEnv } from "./container"
 
 // What outlives a container instance: the pushed branch and the snapshot. The
 // git commands and the snapshot call live here; what they mean for the record
-// is decided in runstate.ts.
-export const gitEnv = { ...trustEnv, HOME: "/root" }
+// is decided in runstate.ts. Every git command runs as the agent (asAgent), in
+// the agent's home: the clone is the agent's, and so is what git runs from it.
+export const gitEnv = { ...trustEnv, HOME: agentHome }
 
 // A push that is refused must fail, never wait at a prompt for a user name.
 const pushEnv = { ...gitEnv, GIT_TERMINAL_PROMPT: "0" }
@@ -86,21 +86,23 @@ export async function within<T>(work: Promise<T>, ms: number): Promise<T | "time
 	}
 }
 
-// undefined on success, else the end of git's stderr. A failed clone leaves no directory.
+// undefined on success, else the end of git's stderr. Root makes the empty
+// directory, the agent's, and git clones into it as the agent. A failed clone
+// leaves no directory.
 export async function clone(container: Container, repo: string, branch: string): Promise<string | undefined> {
-	const files = new Files(container)
-	await files.remove(repositoryDirectory, { recursive: true, force: true })
 	let failed: string | undefined
 
 	try {
-		const cloned = await run(container, ["git", "clone", "--branch", branch, "--", repo, repositoryDirectory], "/workspace", gitEnv, execTimeout.clone)
+		const emptied = await run(container, emptyCloneCommand, "/", {})
+		if (emptied.exitCode !== 0) throw new Error(`Could not make ${repositoryDirectory}: ${tail(emptied.stderr, 500)}`)
+		const cloned = await run(container, asAgent(["git", "clone", "--branch", branch, "--", repo, repositoryDirectory]), "/workspace", gitEnv, execTimeout.clone)
 		if (cloned.exitCode !== 0) failed = tail(cloned.stderr) || `git clone exited with ${cloned.exitCode}`
 	} catch (error) {
 		failed = messageOf(error)
 	}
 
 	if (failed !== undefined) {
-		await files.remove(repositoryDirectory, { recursive: true, force: true })
+		await run(container, ["rm", "-rf", "--", repositoryDirectory], "/", {})
 		return failed
 	}
 
@@ -108,7 +110,7 @@ export async function clone(container: Container, repo: string, branch: string):
 		["user.name", "Plaza cloud agent"],
 		["user.email", "plaza-cloud-agent@users.noreply.github.com"],
 	]) {
-		await run(container, ["git", "config", key, value], repositoryDirectory, gitEnv)
+		await run(container, asAgent(["git", "config", key, value]), repositoryDirectory, gitEnv)
 	}
 
 	return undefined
@@ -117,13 +119,13 @@ export async function clone(container: Container, repo: string, branch: string):
 // Pushes the clone's HEAD to the branch. Never throws.
 export async function push(container: Container, branch: string): Promise<Pushed> {
 	try {
-		const pushed = await run(container, ["git", "push", "origin", `HEAD:refs/heads/${branch}`], repositoryDirectory, pushEnv, execTimeout.push)
+		const pushed = await run(container, asAgent(["git", "push", "origin", `HEAD:refs/heads/${branch}`]), repositoryDirectory, pushEnv, execTimeout.push)
 
 		if (pushed.exitCode !== 0) {
 			return { error: pushErrorText(pushed.stderr, pushed.exitCode) }
 		}
 
-		const head = await run(container, ["git", "rev-parse", "HEAD"], repositoryDirectory, gitEnv)
+		const head = await run(container, asAgent(["git", "rev-parse", "HEAD"]), repositoryDirectory, gitEnv)
 		return head.exitCode === 0 ? { commit: head.stdout.trim() } : { error: tail(head.stderr) || "git rev-parse HEAD failed" }
 	} catch (error) {
 		return { error: pushErrorText(messageOf(error), -1) }
@@ -171,20 +173,36 @@ export async function startFromImage(container: Container, wait = imageReadiness
 	throw new Error(`The new instance did not answer after ${wait.attempts} attempts: ${last}`)
 }
 
-// undefined once an instance runs from the snapshot and holds the clone, else
-// why not; a failed instance is destroyed. start() returns before the instance
-// is up, so a snapshot that cannot be restored shows in the first exec.
+// Why an instance restored from a snapshot cannot be used, or undefined. Its
+// layout mark must be this image's: a snapshot from before the agent user has
+// none, a clone that is root's and the conversation in root's home (PLZG-311).
+// Then it must hold the clone, as the agent sees it.
+export async function restoredProblem(container: Container, timeoutMs = execTimeout.short): Promise<string | undefined> {
+	const mark = await run(container, ["cat", "--", layoutPath], "/", {}, timeoutMs)
+
+	if (mark.exitCode !== 0 || mark.stdout.trim() !== imageLayout) {
+		const found = mark.exitCode === 0 ? JSON.stringify(mark.stdout.trim().slice(0, 40)) : "none"
+		return `The snapshot's image layout is ${found}, not ${JSON.stringify(imageLayout)}: it is from another version of the image`
+	}
+
+	const probe = await run(container, asAgent(["git", "rev-parse", "--git-dir"]), repositoryDirectory, gitEnv)
+	return probe.exitCode === 0 ? undefined : `The restored instance has no clone: ${tail(probe.stderr, 200)}`
+}
+
+// undefined once an instance runs from the snapshot and can be used, else why
+// not; a failed instance is destroyed. start() returns before the instance is
+// up, so a snapshot that cannot be restored shows in the first exec.
 export async function startFromSnapshot(container: Container, id: string): Promise<string | undefined> {
 	try {
 		container.start({ containerSnapshot: { id }, instance, enableInternet: false })
 		// The first exec on a new instance waits for it to boot.
-		const probe = await run(container, ["git", "rev-parse", "--git-dir"], repositoryDirectory, gitEnv, execTimeout.restore)
+		const problem = await restoredProblem(container, execTimeout.restore)
 
-		if (probe.exitCode === 0) {
+		if (problem === undefined) {
 			return undefined
 		}
 
-		throw new Error(`The restored instance has no clone: ${tail(probe.stderr, 200)}`)
+		throw new Error(problem)
 	} catch (error) {
 		if (container.running) await container.destroy()
 		return messageOf(error)

@@ -339,6 +339,8 @@ describe("Workspace test-only routes", () => {
 		fake.execResult = { exitCode: 3, stdout: "a", stderr: "b" }
 		expect(await stub.exec(["git", "status"])).toEqual({ exitCode: 3, stdout: "a", stderr: "b" })
 		expect(fake.calls.at(-1)).toBe("exec git status")
+		await stub.exec(["id"], true)
+		expect(fake.calls.at(-1)).toBe("exec as root id")
 
 		await stub.replaceInstance()
 		await stub.exec(["true"])
