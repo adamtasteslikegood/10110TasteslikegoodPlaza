@@ -58,19 +58,18 @@ export function policyFor(props: Partial<OutboundProps> | undefined, env: Env): 
 
 const pushRefused = (reason: string) => new Response(`github.com refused this push: ${reason}\n`, { status: 403 })
 
-function joined(a: Uint8Array, b: Uint8Array): Uint8Array {
-	const out = new Uint8Array(a.length + b.length)
-	out.set(a)
-	out.set(b, a.length)
-	return out
-}
+// New head bytes between two checks (F2): checkPush parses from offset 0, so a
+// check per chunk is quadratic for a body sent in tiny chunks.
+const CHECK_STEP_BYTES = 4 * 1024
 
 // Reads a git-receive-pack body only as far as its command list and asks
 // checkPush whether every ref it updates is the workspace branch (Copilot C11).
 // What is held before the decision: the chunks read so far, by reference and
 // uncopied, to send on unchanged; and a copy of at most MAX_COMMAND_BYTES of
-// their start, which is all the parser sees (Copilot E5). checkPush decides by
-// the time that copy is full, so reading stops there. Allowed, the request goes
+// their start, which is all the parser sees (Copilot E5). The copy is one
+// buffer filled in place, checked once per CHECK_STEP_BYTES of new bytes, when
+// it is full and at the end of the body (F2). checkPush decides by the time
+// the copy is full, so reading stops there. Allowed, the request goes
 // on with the held chunks, then the rest of the stream as it arrives. Refused,
 // nothing is fetched and the container gets 403. `check` is a seam for tests.
 export async function inspectPush(request: Request, branch: string, check: typeof checkPush = checkPush): Promise<Request | Response> {
@@ -90,12 +89,14 @@ export async function inspectPush(request: Request, branch: string, check: typeo
 
 	const reader = request.body.getReader()
 	const held: Uint8Array[] = []
-	let head: Uint8Array = new Uint8Array(0)
+	const head = new Uint8Array(MAX_COMMAND_BYTES)
+	let filled = 0
+	let checked = 0 // filled at the last check
 	let ended = false
-	let verdict = check(head, branch, ended)
+	let verdict = check(head.subarray(0, 0), branch, ended)
 
 	while (verdict === "more") {
-		if (head.length >= MAX_COMMAND_BYTES) {
+		if (checked >= MAX_COMMAND_BYTES) {
 			// checkPush never asks for more past the cap; refuse rather than read on.
 			verdict = { allow: false, reason: "the push command list is over 64 KiB" }
 			break
@@ -107,10 +108,15 @@ export async function inspectPush(request: Request, branch: string, check: typeo
 			ended = true
 		} else if (chunk.value.length > 0) {
 			held.push(chunk.value)
-			head = joined(head, chunk.value.subarray(0, MAX_COMMAND_BYTES - head.length))
+			const taken = chunk.value.subarray(0, MAX_COMMAND_BYTES - filled)
+			head.set(taken, filled)
+			filled += taken.length
 		}
 
-		verdict = check(head, branch, ended)
+		if (ended || filled >= MAX_COMMAND_BYTES || filled - checked >= CHECK_STEP_BYTES) {
+			checked = filled
+			verdict = check(head.subarray(0, filled), branch, ended)
+		}
 	}
 
 	if (!verdict.allow) {

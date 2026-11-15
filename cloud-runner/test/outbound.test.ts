@@ -264,8 +264,33 @@ describe("inspectPush", () => {
 			const data = encoder.encode(commands + "0000" + "PACK" + "p".repeat(300))
 			const { seen, check } = watched()
 			const out = await inspectPush(post(chunked(data, 3)), "work", check)
-			expect(seen.length).toBeGreaterThan(30)
+			expect(seen.length).toBeGreaterThan(0)
 			expect(await forwarded(out)).toEqual(data)
+		})
+
+		// F2: the head is filled in place and checked once per 4 KiB, at the cap
+		// and at the end, not once per chunk from offset 0.
+		it("allows a push of 1-byte chunks, forwards it byte for byte, and checks it a bounded number of times", async () => {
+			const first = pkt(`${A} ${B} refs/heads/work\0report-status agent=git/2`)
+			const data = encoder.encode(first + pkt(`${B} ${A} refs/heads/work`).repeat(50) + "0000" + "PACK" + "p".repeat(300))
+			expect(data.length).toBeGreaterThan(4096)
+			const { seen, check } = watched()
+			const out = await inspectPush(post(chunked(data, 1)), "work", check)
+			expect(await forwarded(out)).toEqual(data)
+			expect(seen.length).toBeLessThanOrEqual(Math.ceil(data.length / 4096) + 2)
+		})
+
+		it("allows a command list whose flush lands just under the cap, read in odd-sized chunks", async () => {
+			const first = pkt(`${A} ${B} refs/heads/work\0report-status agent=git/2`)
+			const line = pkt(`${B} ${A} refs/heads/work`)
+			const lines = Math.floor((MAX_COMMAND_BYTES - first.length - 4) / line.length)
+			const commands = first + line.repeat(lines) + "0000"
+			expect(MAX_COMMAND_BYTES - commands.length).toBeLessThan(line.length)
+			const data = encoder.encode(commands + "PACK" + "p".repeat(300))
+			for (const size of [997, 4099]) {
+				const out = await inspectPush(post(chunked(data, size)), "work")
+				expect(await forwarded(out)).toEqual(data)
+			}
 		})
 
 		it("refuses a command list with no flush within the cap and stops reading there", async () => {
