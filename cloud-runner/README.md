@@ -339,11 +339,24 @@ the stale snapshot after a lost run (b5df279), `finish()` leaving the task's gro
   the next run. Only replacing the instance ends it for certain.
 - **A process-group id can be reused within one boot** after the group dies, so a late KILL could hit an unrelated
   group. The chance is low.
-- **A broken task file ends the run untrusted, and its work is lost.** A probe that throws (the agent made a log, the
-  pid file or the exit code file a directory or a FIFO) ends the run `failed` (`stopped` when it happens inside a
-  stop), KILLs the stored group and replaces the instance with no push or snapshot. A failure of the `stdout.log`
-  read alone, during `events()` or the alarm's ingest, is not routed there: `events()` answers 500 and the alarm logs
-  it and re-arms, until the 60-minute cap ends the run.
+- **Three broken task-file checks in a row end the run untrusted, and its work is lost on purpose.** A task-file
+  failure (`TaskFileError`) is an answer from the container showing a file is not what the runner wrote: a read of the
+  pid or exit code file that fails with a file-level error other than not-found (a directory, no permission), or a
+  probe script that runs and refuses `stdout.log` because it is not a regular file (a directory, a FIFO) or cannot be
+  read. A status check that ends in one adds to a count in the record, and any check whose probes all succeed resets
+  it. At `TASK_FILE_FAILURE_LIMIT` (3) in a row the run ends `failed` with `TASK_FILES_ERROR`; one inside a stop ends
+  it `stopped` at once. Either way the stored group is KILLed, the instance is replaced with no push or snapshot, and
+  the stored snapshot is marked stale. Nothing the task wrote is trusted, and a snapshot holds the whole root
+  filesystem the next run starts from, so saving it would carry whatever the agent planted into later runs.
+- **Every other probe failure is retried until the 60-minute cap.** An exec timeout, a container that is stopping
+  or restarting, or a transport error leaves the run `running` and destroys nothing; the next check or alarm tries
+  again, and a stop answers 409 "try again" rather than report a task stopped that may be alive. A run that exited
+  and hit such a failure while finishing ends normally, pushed, on the retry. The cap ends an overdue run whatever
+  fails, but an overdue run whose exit code can be read is finished as usual. A failure while ending an overdue run
+  falls back to the untrusted end, so a blip at the cap can still lose a finished run's work. An agent can still stay
+  `running` until the cap without a task-file failure, for example by starving the container so execs time out, or by
+  making a read hang. A failed `stdout.log` read in `events()` answers 500, and one in the alarm's ingest while the
+  run is live is logged and re-armed; neither counts toward the limit.
 - **The Copilot fixes are not on the deploy yet** (see "The development deploy"); their evidence is the local check.
 
 ### Notes on the evidence itself (from the last review, 2026-11-15)
