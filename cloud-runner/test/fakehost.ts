@@ -1,3 +1,4 @@
+import type { CommandResult } from "../src/container"
 import type { Host, Signal, Task } from "../src/host"
 import type { OutboundProps } from "../src/outbound"
 import type { Pushed, Saved } from "../src/persist"
@@ -19,6 +20,7 @@ export class FakeHost implements Host {
 	stdout: Uint8Array = new Uint8Array()
 	results: string[] = []
 	snapshots = 0
+	execResult: CommandResult = { exitCode: 0, stdout: "", stderr: "" }
 
 	// How the next startTask behaves.
 	startMode: "spawn" | "spawn-then-throw" | "throw" | "no-pid" = "spawn"
@@ -158,6 +160,11 @@ export class FakeHost implements Host {
 
 	async resultLines(): Promise<string[]> {
 		return this.results
+	}
+
+	async exec(argv: string[]): Promise<CommandResult> {
+		this.calls.push(`exec ${argv.join(" ")}`)
+		return this.execResult
 	}
 
 	async stderrTail(): Promise<string> {

@@ -33,4 +33,6 @@ export type Env = {
 	AI_GATEWAY_ACCOUNT_ID: string
 	AI_GATEWAY_ID: string
 	MODEL: string
+	// "1" only in the git-ignored wrangler.dev.jsonc: turns on the test-only routes.
+	ALLOW_TEST_ROUTES?: string
 }

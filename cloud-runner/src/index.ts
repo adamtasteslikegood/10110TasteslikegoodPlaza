@@ -1,4 +1,4 @@
-import { CreateBody, MAX_BODY_BYTES, MAX_PROMPT_BYTES, RunBody, authorized, parseRoute } from "./router"
+import { CreateBody, ExecBody, MAX_BODY_BYTES, MAX_PROMPT_BYTES, RunBody, authorized, parseRoute } from "./router"
 import type { Env } from "./types"
 
 export { Workspace } from "./workspace"
@@ -88,7 +88,7 @@ export default {
 		}
 
 		const url = new URL(request.url)
-		const route = parseRoute(request.method, url.pathname)
+		const route = parseRoute(request.method, url.pathname, env.ALLOW_TEST_ROUTES === "1")
 
 		if ("error" in route) {
 			const messages = { 400: "Bad workspace name", 404: "Not found", 405: "Method not allowed" }
@@ -195,6 +195,28 @@ export default {
 				case "delete":
 					await workspace.destroyWorkspace()
 					return new Response(null, { status: 204 })
+
+				case "replace-instance": {
+					const status = await workspace.replaceInstance()
+					return status === "missing" ? text(missing, 404) : Response.json(status)
+				}
+
+				case "exec": {
+					const read = await readJson(request)
+
+					if ("response" in read) {
+						return read.response
+					}
+
+					const body = ExecBody.safeParse(read.value)
+
+					if (!body.success) {
+						return text('Send {"argv": ["command", "arg"]}', 400)
+					}
+
+					const result = await workspace.exec(body.data.argv)
+					return result === "missing" ? text(missing, 404) : Response.json(result)
+				}
 			}
 		} catch (error) {
 			console.error("Workspace request failed", error)

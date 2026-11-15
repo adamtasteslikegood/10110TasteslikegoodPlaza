@@ -2,6 +2,8 @@ import { Files } from "@cloudflare/sandbox"
 import { parseLine } from "./agent"
 import {
 	capDiff,
+	capOutput,
+	type CommandResult,
 	chunkScript,
 	diffScript,
 	eventsPath,
@@ -25,7 +27,7 @@ import {
 	type Task,
 } from "./container"
 import type { OutboundProps } from "./outbound"
-import { clone, push, snapshot, startFromImage, startFromSnapshot, type Pushed, type Saved } from "./persist"
+import { clone, gitEnv, push, snapshot, startFromImage, startFromSnapshot, type Pushed, type Saved } from "./persist"
 
 export type { Task } from "./container"
 export type Signal = "TERM" | "KILL"
@@ -60,6 +62,8 @@ export interface Host {
 	lineLength(offset: number): Promise<{ bytes: number; ended: boolean }>
 	resultLines(): Promise<string[]>
 	stderrTail(): Promise<string>
+	// Test-only: runs argv in the clone with the git trust env, each stream capped.
+	exec(argv: string[]): Promise<CommandResult>
 }
 
 export class ContainerHost implements Host {
@@ -177,5 +181,11 @@ export class ContainerHost implements Host {
 
 	async stderrTail(): Promise<string> {
 		return (await run(this.c, ["tail", "-c", "2000", stderrPath], "/", {})).stdout
+	}
+
+	async exec(argv: string[]): Promise<CommandResult> {
+		// No credential: the trust env only, and git never waits at a prompt.
+		const output = await execOutput(this.c, argv, { cwd: repositoryDirectory, env: { ...gitEnv, GIT_TERMINAL_PROMPT: "0" } }, execTimeout.short)
+		return { exitCode: output.exitCode, stdout: capOutput(output.stdout), stderr: capOutput(output.stderr) }
 	}
 }

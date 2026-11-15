@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { parseLine } from "../src/agent"
-import { capDiff, completeLines, diffCutLine, leadingType, lineEvent, MAX_DIFF_BYTES, parseTask, run, runBytes } from "../src/container"
+import { capDiff, capOutput, MAX_EXEC_OUTPUT_BYTES, completeLines, diffCutLine, leadingType, lineEvent, MAX_DIFF_BYTES, parseTask, run, runBytes } from "../src/container"
 import { MAX_PAYLOAD_BYTES } from "../src/events"
 
 const bytes = (text: string) => new TextEncoder().encode(text)
@@ -129,5 +129,16 @@ describe("capDiff", () => {
 	it("cuts at the limit when there is no newline, and never splits the cut line", () => {
 		const out = capDiff(new Uint8Array(MAX_DIFF_BYTES + 1).fill(0x61))
 		expect(out).toBe(`${"a".repeat(MAX_DIFF_BYTES)}\n${diffCutLine}`)
+	})
+})
+
+describe("capOutput", () => {
+	const bytes = (text: string) => new TextEncoder().encode(text)
+
+	it("keeps output up to the cap and cuts the bytes past it", () => {
+		expect(capOutput(bytes("hello"))).toBe("hello")
+		expect(capOutput(new Uint8Array(MAX_EXEC_OUTPUT_BYTES).fill(0x61))).toHaveLength(MAX_EXEC_OUTPUT_BYTES)
+		expect(capOutput(new Uint8Array(MAX_EXEC_OUTPUT_BYTES + 10).fill(0x61))).toHaveLength(MAX_EXEC_OUTPUT_BYTES)
+		expect(capOutput(new ArrayBuffer(3))).toBe("\0\0\0")
 	})
 })

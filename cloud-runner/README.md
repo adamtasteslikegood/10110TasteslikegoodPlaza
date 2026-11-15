@@ -26,6 +26,28 @@ Snapshots are in public beta. The Durable Object Container API has no method
 to delete a snapshot, so `DELETE /workspaces/:name` only forgets the stored id;
 the snapshot itself expires 30 days after it was taken or last restored.
 
+## Test-only routes (development deploy only)
+
+Two routes exist only when the Worker var `ALLOW_TEST_ROUTES` is `"1"`, which
+only the git-ignored `wrangler.dev.jsonc` sets; `wrangler.jsonc` does not, and
+without it both answer 404. They sit behind the same bearer check as every
+other route.
+
+- `POST /workspaces/:name/replace-instance` destroys the container and leaves
+  the object's storage alone, as a platform replacement would. A run in progress
+  is then reported `lost`, and the next request starts a new instance from the
+  snapshot or the branch.
+- `POST /workspaces/:name/exec` with `{ "argv": ["cmd", "arg", ...] }` runs that
+  command (no shell unless `argv` names one) in `/workspace/repo` with the
+  container trust env and `GIT_TERMINAL_PROMPT=0`, and no credential, for at most
+  30 s. It answers `{ exitCode, stdout, stderr }`, each stream cut at 64 KiB.
+
+Why: the acceptance checks (`scripts/acceptance.mjs`) must look inside the
+container (egress, credentials, files of two workspaces) and replace an instance
+on demand, without a model call and without `docker exec`, which a deployed
+container does not offer. Running arbitrary commands is not something a caller of
+a production runner should be able to do, so these routes stay off there.
+
 ## Local check
 
 Run on 2026-11-14 with Docker 29.9.2, from `cloud-runner/`. `.dev.vars`

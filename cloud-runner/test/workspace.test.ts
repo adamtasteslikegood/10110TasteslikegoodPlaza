@@ -265,3 +265,37 @@ describe("Workspace lost run (I4, m6)", () => {
 		expect(fake.count("push work")).toBe(0)
 	})
 })
+
+describe("Workspace test-only routes", () => {
+	it("replaceInstance destroys the container and keeps the record, so a running run is judged lost", async () => {
+		const { stub, fake } = await started()
+		const before = await stored(stub)
+
+		expect(await stub.replaceInstance()).toMatchObject({ state: "running", run: 1 })
+		expect(fake.count("destroy")).toBe(1)
+		expect(fake.running).toBe(false)
+		expect(await stored(stub)).toMatchObject({ state: before.state, startedAt: before.startedAt })
+		expect(await stub.status()).toMatchObject({ state: "lost", error: "The container stopped before the run ended" })
+		expect(await stub.startRun("next", false, 5)).toEqual({ run: 2 })
+		expect(fake.count("startFromImage")).toBe(2)
+	})
+
+	it("replaceInstance and exec answer missing for a workspace never created", async () => {
+		const { stub, fake } = await open()
+		expect(await stub.replaceInstance()).toBe("missing")
+		expect(await stub.exec(["true"])).toBe("missing")
+		expect(fake.calls).toEqual([])
+	})
+
+	it("exec runs the command in a running instance, starting one when there is none", async () => {
+		const { stub, fake } = await created()
+		fake.execResult = { exitCode: 3, stdout: "a", stderr: "b" }
+		expect(await stub.exec(["git", "status"])).toEqual({ exitCode: 3, stdout: "a", stderr: "b" })
+		expect(fake.calls.at(-1)).toBe("exec git status")
+
+		await stub.replaceInstance()
+		await stub.exec(["true"])
+		expect(fake.running).toBe(true)
+		expect(fake.count("startFromImage")).toBe(2)
+	})
+})

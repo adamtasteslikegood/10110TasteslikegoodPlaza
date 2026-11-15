@@ -11,7 +11,7 @@ export const MAX_PROMPT_BYTES = 128 * 1024 - 1
 // can grow to six times that ("\u0001"). Anything over this is refused unread.
 export const MAX_BODY_BYTES = 1024 * 1024
 
-export type Action = "create" | "status" | "run" | "events" | "stop" | "diff" | "delete"
+export type Action = "create" | "status" | "run" | "events" | "stop" | "diff" | "delete" | "replace-instance" | "exec"
 export type Route = { name: string; action: Action }
 
 const methods: Record<string, Partial<Record<string, Action>>> = {
@@ -20,16 +20,26 @@ const methods: Record<string, Partial<Record<string, Action>>> = {
 	events: { GET: "events" },
 	stop: { POST: "stop" },
 	diff: { GET: "diff" },
+	"replace-instance": { POST: "replace-instance" },
+	exec: { POST: "exec" },
 }
 
-export function parseRoute(method: string, pathname: string): Route | { error: 404 | 405 | 400 } {
-	const match = /^\/workspaces\/([^/]+)(?:\/(runs|events|stop|diff))?$/.exec(pathname)
+// Routes for the acceptance checks on the development deploy only: they do not
+// exist (404) unless the caller passes testRoutes, set from ALLOW_TEST_ROUTES.
+const testResources = new Set(["replace-instance", "exec"])
+
+export function parseRoute(method: string, pathname: string, testRoutes = false): Route | { error: 404 | 405 | 400 } {
+	const match = /^\/workspaces\/([^/]+)(?:\/(runs|events|stop|diff|replace-instance|exec))?$/.exec(pathname)
 
 	if (!match) {
 		return { error: 404 }
 	}
 
 	const [, name, resource = ""] = match
+
+	if (testResources.has(resource) && !testRoutes) {
+		return { error: 404 }
+	}
 
 	if (!workspaceName.test(name)) {
 		return { error: 400 }
@@ -97,4 +107,17 @@ export const RunBody = z.object({
 		.refine((prompt) => new TextEncoder().encode(prompt).byteLength <= MAX_PROMPT_BYTES),
 	fresh: z.boolean().default(false),
 	maxTurns: z.number().int().min(1).max(100).default(20),
+})
+
+export const MAX_EXEC_ARGS = 64
+
+// The test-only exec route's body: a command and its arguments, run with no shell
+// unless argv names one. Bounded like a prompt: no NUL, under 128 KiB in all.
+export const ExecBody = z.object({
+	argv: z
+		.array(z.string().refine((arg) => !arg.includes("\0")))
+		.min(1)
+		.max(MAX_EXEC_ARGS)
+		.refine((argv) => argv[0] !== "")
+		.refine((argv) => new TextEncoder().encode(argv.join("\0")).byteLength <= MAX_PROMPT_BYTES),
 })

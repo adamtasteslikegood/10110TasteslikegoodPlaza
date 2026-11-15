@@ -1,17 +1,17 @@
 import { describe, expect, it } from "vitest"
 import worker from "../src/index"
-import { CreateBody, RunBody, authorized, parseRoute } from "../src/router"
+import { CreateBody, ExecBody, MAX_EXEC_ARGS, RunBody, authorized, parseRoute } from "../src/router"
 import type { Env } from "../src/types"
 
 const SECRET = "s3cret-value"
 
 type Call = { method: string; args: unknown[] }
 
-type Results = Partial<Record<"create" | "status" | "startRun" | "events" | "stop" | "diff" | "destroyWorkspace", unknown>>
+type Results = Partial<Record<"create" | "status" | "startRun" | "events" | "stop" | "diff" | "destroyWorkspace" | "replaceInstance" | "exec", unknown>>
 
 // A fake namespace: records which Workspace method the router called, and
 // answers with `results` where given.
-function fakeEnv(calls: Call[] = [], results: Results = {}): Env {
+function fakeEnv(calls: Call[] = [], results: Results = {}, vars: Partial<Env> = {}): Env {
   const record = (method: keyof Results, result: unknown) => async (...args: unknown[]) => {
     calls.push({ method, args })
     return method in results ? results[method] : result
@@ -24,6 +24,8 @@ function fakeEnv(calls: Call[] = [], results: Results = {}): Env {
     stop: record("stop", { state: "stopped", run: 1, generation: 1 }),
     diff: record("diff", { ok: true, text: "diff text" }),
     destroyWorkspace: record("destroyWorkspace", undefined),
+    replaceInstance: record("replaceInstance", { state: "idle", run: 0, generation: 1 }),
+    exec: record("exec", { exitCode: 0, stdout: "out", stderr: "" }),
   }
   return {
     WORKSPACE: { getByName: () => stub },
@@ -33,6 +35,7 @@ function fakeEnv(calls: Call[] = [], results: Results = {}): Env {
     AI_GATEWAY_ACCOUNT_ID: "acct",
     AI_GATEWAY_ID: "gw",
     MODEL: "claude-sonnet-5-5",
+    ...vars,
   } as unknown as Env
 }
 
@@ -373,5 +376,60 @@ describe("Workspace answers", () => {
       throw new Error("boom")
     }
     expect((await worker.fetch(req("GET", "/workspaces/a"), env)).status).toBe(500)
+  })
+})
+
+describe("test-only routes", () => {
+  const enabled = { ALLOW_TEST_ROUTES: "1" }
+  const callWith = (r: Request, vars: Partial<Env>, calls: Call[] = [], results: Results = {}) => worker.fetch(r, fakeEnv(calls, results, vars))
+
+  it("parseRoute knows them only when enabled", () => {
+    expect(parseRoute("POST", "/workspaces/a/replace-instance")).toEqual({ error: 404 })
+    expect(parseRoute("POST", "/workspaces/a/exec")).toEqual({ error: 404 })
+    expect(parseRoute("POST", "/workspaces/a/replace-instance", true)).toEqual({ name: "a", action: "replace-instance" })
+    expect(parseRoute("POST", "/workspaces/a/exec", true)).toEqual({ name: "a", action: "exec" })
+    expect(parseRoute("GET", "/workspaces/a/exec", true)).toEqual({ error: 405 })
+  })
+
+  it("answer 404 when ALLOW_TEST_ROUTES is unset or not \"1\", and reach no Workspace method", async () => {
+    for (const vars of [{}, { ALLOW_TEST_ROUTES: "" }, { ALLOW_TEST_ROUTES: "true" }, { ALLOW_TEST_ROUTES: "0" }]) {
+      const calls: Call[] = []
+      expect((await callWith(req("POST", "/workspaces/a/replace-instance"), vars, calls)).status).toBe(404)
+      expect((await callWith(req("POST", "/workspaces/a/exec", { body: { argv: ["true"] } }), vars, calls)).status).toBe(404)
+      expect(calls).toEqual([])
+    }
+  })
+
+  it("still need the bearer when enabled", async () => {
+    expect((await callWith(req("POST", "/workspaces/a/exec", { body: { argv: ["true"] }, auth: null }), enabled)).status).toBe(401)
+    expect((await callWith(req("POST", "/workspaces/a/replace-instance", { auth: "Bearer x" }), enabled)).status).toBe(401)
+  })
+
+  it("replace-instance: 200 with the Status, 404 for a missing workspace", async () => {
+    const calls: Call[] = []
+    const res = await callWith(req("POST", "/workspaces/a/replace-instance"), enabled, calls)
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ state: "idle", run: 0, generation: 1 })
+    expect(calls).toEqual([{ method: "replaceInstance", args: [] }])
+    expect((await callWith(req("POST", "/workspaces/a/replace-instance"), enabled, [], { replaceInstance: "missing" })).status).toBe(404)
+  })
+
+  it("exec: passes argv, answers the result, 404 for a missing workspace", async () => {
+    const calls: Call[] = []
+    const res = await callWith(req("POST", "/workspaces/a/exec", { body: { argv: ["git", "status"] } }), enabled, calls)
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ exitCode: 0, stdout: "out", stderr: "" })
+    expect(calls).toEqual([{ method: "exec", args: [["git", "status"]] }])
+    expect((await callWith(req("POST", "/workspaces/a/exec", { body: { argv: ["true"] } }), enabled, [], { exec: "missing" })).status).toBe(404)
+  })
+
+  it("exec: answers 400 for a bad argv", async () => {
+    for (const body of [{}, { argv: [] }, { argv: "ls" }, { argv: [1] }, { argv: ["a\0b"] }, { argv: Array(MAX_EXEC_ARGS + 1).fill("x") }]) {
+      const calls: Call[] = []
+      expect((await callWith(req("POST", "/workspaces/a/exec", { body }), enabled, calls)).status, JSON.stringify(body).slice(0, 40)).toBe(400)
+      expect(calls).toEqual([])
+    }
+    expect(ExecBody.safeParse({ argv: Array(MAX_EXEC_ARGS).fill("x") }).success).toBe(true)
+    expect(ExecBody.safeParse({ argv: ["x".repeat(128 * 1024)] }).success).toBe(false)
   })
 })

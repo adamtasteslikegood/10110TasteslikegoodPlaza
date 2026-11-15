@@ -103,6 +103,14 @@ export function capDiff(stdout: Uint8Array): string {
 
 export type CommandResult = { exitCode: number; stdout: string; stderr: string }
 
+// The test-only exec route answers at most this many bytes of each stream.
+export const MAX_EXEC_OUTPUT_BYTES = 64 * 1024
+
+export function capOutput(bytes: ArrayBuffer | Uint8Array): string {
+	const all = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes)
+	return new TextDecoder().decode(all.subarray(0, MAX_EXEC_OUTPUT_BYTES))
+}
+
 // How long each kind of exec may take before it is aborted.
 export const execTimeout = { short: 30 * 1000, clone: 10 * 60 * 1000, push: 5 * 60 * 1000, restore: 5 * 60 * 1000 }
 

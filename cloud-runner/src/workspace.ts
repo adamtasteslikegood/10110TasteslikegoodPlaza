@@ -17,6 +17,7 @@ import {
 	restorePath,
 	stopOutcome,
 } from "./runstate"
+import type { CommandResult } from "./container"
 import type { Env, Event, RunState, Status } from "./types"
 
 const inactivityTimeout = 15 * 60 * 1000
@@ -259,6 +260,39 @@ export class Workspace extends DurableObject<Env> {
 			// deleteAll() drops the events table too.
 			this.eventLog = new EventLog(this.ctx.storage.sql)
 			this.ready = false
+		})
+	}
+
+	// Test-only (ALLOW_TEST_ROUTES): destroys the container and leaves storage
+	// alone, as a platform replacement would. The next request judges the run.
+	replaceInstance(): Promise<Status | "missing"> {
+		return this.exclusive(async () => {
+			const record = await this.refresh()
+
+			if (record.repo === undefined) {
+				return "missing"
+			}
+
+			if (this.host.running) {
+				await this.host.destroy()
+			}
+
+			this.ready = false
+			return statusOf(record)
+		})
+	}
+
+	// Test-only (ALLOW_TEST_ROUTES): runs one command in the clone.
+	exec(argv: string[]): Promise<CommandResult | "missing"> {
+		return this.exclusive(async () => {
+			const record = await this.refresh()
+
+			if (record.repo === undefined) {
+				return "missing"
+			}
+
+			await this.ensureStarted(record)
+			return this.host.exec(argv)
 		})
 	}
 
