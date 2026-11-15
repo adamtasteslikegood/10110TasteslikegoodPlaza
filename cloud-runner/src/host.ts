@@ -1,9 +1,12 @@
 import { Files } from "@cloudflare/sandbox"
 import { parseLine } from "./agent"
 import {
+	capDiff,
 	chunkScript,
 	diffScript,
 	eventsPath,
+	execOutput,
+	execTimeout,
 	exitCodePath,
 	longLineScript,
 	parseTask,
@@ -117,8 +120,8 @@ export class ContainerHost implements Host {
 	}
 
 	async diff(): Promise<{ ok: boolean; text: string }> {
-		const diff = await run(this.c, ["/bin/sh", "-c", diffScript], repositoryDirectory, {})
-		return diff.exitCode === 0 ? { ok: true, text: diff.stdout } : { ok: false, text: tail(diff.stderr) }
+		const diff = await execOutput(this.c, ["/bin/sh", "-c", diffScript, "diff"], { cwd: repositoryDirectory, env: {} }, execTimeout.short)
+		return diff.exitCode === 0 ? { ok: true, text: capDiff(new Uint8Array(diff.stdout)) } : { ok: false, text: tail(new TextDecoder().decode(diff.stderr)) }
 	}
 
 	async resetTask(): Promise<void> {

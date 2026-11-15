@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { parseLine } from "../src/agent"
-import { completeLines, leadingType, lineEvent, parseTask, runBytes } from "../src/container"
+import { capDiff, completeLines, diffCutLine, leadingType, lineEvent, MAX_DIFF_BYTES, parseTask, run, runBytes } from "../src/container"
 import { MAX_PAYLOAD_BYTES } from "../src/events"
 
 const bytes = (text: string) => new TextEncoder().encode(text)
@@ -63,5 +63,71 @@ describe("parseTask", () => {
 	})
 	it("refuses a partial or odd pid file", () => {
 		for (const text of ["", "123", "123 ", "x 1", "12 a b", "-1 a"]) expect(parseTask(text), text).toBeUndefined()
+	})
+})
+
+describe("exec timeouts", () => {
+	// A command that never ends on its own. The fallback timer ends the test
+	// even if the timeout were missing; it is far longer than the timeout.
+	const hung = () => {
+		const seen: { signal?: AbortSignal } = {}
+		const container = {
+			exec: async (_command: string[], options: { signal?: AbortSignal }) => {
+				seen.signal = options.signal
+				return { output: () => new Promise((resolve) => setTimeout(() => resolve({ exitCode: 0, stdout: bytes("late"), stderr: bytes("") }), 2000)) }
+			},
+		} as unknown as Container
+		return { container, seen }
+	}
+
+	it("rejects a command past its timeout and aborts its signal", async () => {
+		const { container, seen } = hung()
+		const started = Date.now()
+		await expect(run(container, ["git", "push", "origin"], "/", {}, 20)).rejects.toThrow("git push timed out after 0.02 s")
+		expect(Date.now() - started).toBeLessThan(1000)
+		expect(seen.signal?.aborted).toBe(true)
+	})
+
+	it("names a shell script by its $0", async () => {
+		const { container } = hung()
+		await expect(runBytes(container, ["/bin/sh", "-c", "tail", "ingest"], "/", {}, 20)).rejects.toThrow("sh ingest timed out")
+	})
+
+	it("passes a signal to every exec", async () => {
+		const seen: unknown[] = []
+		const container = {
+			exec: async (_command: string[], options: { signal?: AbortSignal }) => {
+				seen.push(options.signal)
+				return { output: async () => ({ exitCode: 0, stdout: bytes(""), stderr: bytes("") }) }
+			},
+		} as unknown as Container
+		await run(container, ["true"], "/", {})
+		await runBytes(container, ["true"])
+		expect(seen).toHaveLength(2)
+		for (const signal of seen) expect(signal).toBeInstanceOf(AbortSignal)
+	})
+})
+
+describe("capDiff", () => {
+	it("keeps a diff within the limit as it is", () => {
+		expect(capDiff(bytes("diff --git a/x b/x\n+é\n"))).toBe("diff --git a/x b/x\n+é\n")
+		const full = new Uint8Array(MAX_DIFF_BYTES).fill(0x61)
+		expect(capDiff(full)).toHaveLength(MAX_DIFF_BYTES)
+	})
+
+	it("cuts a longer diff after its last whole line and says so", () => {
+		const line = "+".padEnd(99, "x") + "\n" // 100 bytes
+		const input = bytes(line.repeat(Math.ceil(MAX_DIFF_BYTES / 100) + 5))
+		const out = capDiff(input)
+		const kept = out.slice(0, -diffCutLine.length)
+		expect(out.endsWith(diffCutLine)).toBe(true)
+		expect(kept.length % 100).toBe(0)
+		expect(bytes(kept).byteLength).toBeLessThanOrEqual(MAX_DIFF_BYTES)
+		expect(bytes(kept).byteLength).toBeGreaterThan(MAX_DIFF_BYTES - 100)
+	})
+
+	it("cuts at the limit when there is no newline, and never splits the cut line", () => {
+		const out = capDiff(new Uint8Array(MAX_DIFF_BYTES + 1).fill(0x61))
+		expect(out).toBe(`${"a".repeat(MAX_DIFF_BYTES)}\n${diffCutLine}`)
 	})
 })

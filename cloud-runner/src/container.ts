@@ -68,18 +68,67 @@ export const longLineScript = `n=$(tail -c +"$1" "$2" | head -n 1 | wc -c)
 t=$(tail -c +"$1" "$2" | head -n 1 | tail -c 1 | wc -l)
 echo "$n $t"`
 
-export const diffScript = "git add --intent-to-add . && git diff HEAD"
+export const MAX_DIFF_BYTES = 1024 * 1024
+
+// The diff against HEAD, new files included, read-only for the clone: the
+// intent-to-add goes to a copy of the index, so a diff during a run never takes
+// the clone's index.lock. Prints at most MAX_DIFF_BYTES + 1 bytes, so a cut
+// diff shows as one byte too many; git's SIGPIPE from head (141) is not an error.
+export const diffScript = `tmp=$(mktemp) || exit 1
+trap 'rm -f "$tmp" "$tmp.rc"' EXIT
+index="$(git rev-parse --git-dir)/index" || exit 1
+if [ -f "$index" ]; then cp "$index" "$tmp" || exit 1; else rm -f "$tmp"; fi
+export GIT_INDEX_FILE="$tmp" GIT_OPTIONAL_LOCKS=0
+git add --intent-to-add . || exit 1
+{ git diff HEAD; echo "$?" >"$tmp.rc"; } | head -c ${MAX_DIFF_BYTES + 1}
+rc=$(cat "$tmp.rc")
+[ "$rc" = 0 ] || [ "$rc" = 141 ] || exit "$rc"`
+
+export const diffCutLine = "[The diff is longer than 1 MiB and was cut here.]\n"
+
+// The diff as text, at most MAX_DIFF_BYTES of it. A longer one is cut after
+// its last whole line within the limit and ends with diffCutLine.
+export function capDiff(stdout: Uint8Array): string {
+	const decoder = new TextDecoder()
+
+	if (stdout.byteLength <= MAX_DIFF_BYTES) {
+		return decoder.decode(stdout)
+	}
+
+	const head = stdout.subarray(0, MAX_DIFF_BYTES)
+	const end = head.lastIndexOf(0x0a)
+	const kept = decoder.decode(end < 0 ? head : head.subarray(0, end + 1))
+	return `${kept}${kept.endsWith("\n") ? "" : "\n"}${diffCutLine}`
+}
 
 export type CommandResult = { exitCode: number; stdout: string; stderr: string }
 
-export async function run(container: Container, command: string[], cwd: string, env: Record<string, string>): Promise<CommandResult> {
-	const output = await (await container.exec(command, { cwd, env })).output()
+// How long each kind of exec may take before it is aborted.
+export const execTimeout = { short: 30 * 1000, clone: 10 * 60 * 1000, push: 5 * 60 * 1000, restore: 5 * 60 * 1000 }
+
+type Output = { exitCode: number; stdout: ArrayBuffer | Uint8Array; stderr: ArrayBuffer | Uint8Array }
+
+// Runs a command to its end, or rejects once timeoutMs has passed. The signal
+// stops the process; the race makes sure the promise ends even if it does not.
+export async function execOutput(container: Container, command: string[], options: ContainerExecOptions, timeoutMs: number): Promise<Output> {
+	const signal = AbortSignal.timeout(timeoutMs)
+	const name = command[0] === "/bin/sh" && command[1] === "-c" ? `sh ${command[3] ?? ""}`.trim() : command.slice(0, 2).join(" ")
+	const aborted = new Promise<never>((_resolve, reject) => {
+		signal.addEventListener("abort", () => reject(new Error(`${name} timed out after ${timeoutMs / 1000} s`)), { once: true })
+	})
+	aborted.catch(() => undefined) // a timer that fires after the command ended is no error
+
+	return Promise.race([(async () => (await container.exec(command, { ...options, signal })).output())(), aborted])
+}
+
+export async function run(container: Container, command: string[], cwd: string, env: Record<string, string>, timeoutMs = execTimeout.short): Promise<CommandResult> {
+	const output = await execOutput(container, command, { cwd, env }, timeoutMs)
 	const decoder = new TextDecoder()
 	return { exitCode: output.exitCode, stdout: decoder.decode(output.stdout), stderr: decoder.decode(output.stderr) }
 }
 
-export async function runBytes(container: Container, command: string[]): Promise<Uint8Array> {
-	const output = await (await container.exec(command, { cwd: "/" })).output()
+export async function runBytes(container: Container, command: string[], cwd = "/", env: Record<string, string> = {}, timeoutMs = execTimeout.short): Promise<Uint8Array> {
+	const output = await execOutput(container, command, { cwd, env }, timeoutMs)
 
 	if (output.exitCode !== 0) {
 		throw new Error(`${command[0]} exited with ${output.exitCode}: ${tail(new TextDecoder().decode(output.stderr))}`)

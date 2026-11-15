@@ -2,6 +2,8 @@ import type { Event } from "./types"
 
 export const MAX_EVENTS = 10_000
 export const MAX_PAYLOAD_BYTES = 262_144
+// Payload bytes one read returns at most, past its first event.
+export const MAX_READ_BYTES = 4 * 1024 * 1024
 
 const DEFAULT_LIMIT = 500
 const MAX_LIMIT = 1000
@@ -53,8 +55,18 @@ export class EventLog {
 
 	readAfter(after: number, limit = DEFAULT_LIMIT): { events: Event[]; next: number } {
 		const n = Number.isFinite(limit) ? Math.min(MAX_LIMIT, Math.max(1, Math.floor(limit))) : DEFAULT_LIMIT
-		const rows = this.sql.exec<Row>("SELECT seq, run, generation, at, type, payload FROM events WHERE seq > ? ORDER BY seq ASC LIMIT ?", after, n).toArray()
-		const events = rows.map((r): Event => ({ seq: r.seq, run: r.run, generation: r.generation, at: r.at, type: r.type, payload: JSON.parse(r.payload) }))
+		const rows = this.sql.exec<Row>("SELECT seq, run, generation, at, type, payload FROM events WHERE seq > ? ORDER BY seq ASC LIMIT ?", after, n)
+		const events: Event[] = []
+		let bytes = 0
+
+		// Stops before the event that would pass MAX_READ_BYTES, but always returns
+		// one, so a reader can always move past `after`.
+		for (const r of rows) {
+			bytes += encoder.encode(r.payload).length
+			if (events.length > 0 && bytes > MAX_READ_BYTES) break
+			events.push({ seq: r.seq, run: r.run, generation: r.generation, at: r.at, type: r.type, payload: JSON.parse(r.payload) })
+		}
+
 		return { events, next: events.length > 0 ? events[events.length - 1].seq : after }
 	}
 

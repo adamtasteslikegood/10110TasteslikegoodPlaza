@@ -1,5 +1,5 @@
 import { Files } from "@cloudflare/sandbox"
-import { repositoryDirectory, run, tail, trustEnv } from "./container"
+import { execTimeout, repositoryDirectory, run, tail, trustEnv } from "./container"
 
 // What outlives a container instance: the pushed branch and the snapshot. The
 // git commands and the snapshot call live here; what they mean for the record
@@ -51,11 +51,18 @@ export function afterAbandon(run: number) {
 export async function clone(container: Container, repo: string, branch: string): Promise<string | undefined> {
 	const files = new Files(container)
 	await files.remove(repositoryDirectory, { recursive: true, force: true })
-	const cloned = await run(container, ["git", "clone", "--branch", branch, "--", repo, repositoryDirectory], "/workspace", gitEnv)
+	let failed: string | undefined
 
-	if (cloned.exitCode !== 0) {
+	try {
+		const cloned = await run(container, ["git", "clone", "--branch", branch, "--", repo, repositoryDirectory], "/workspace", gitEnv, execTimeout.clone)
+		if (cloned.exitCode !== 0) failed = tail(cloned.stderr) || `git clone exited with ${cloned.exitCode}`
+	} catch (error) {
+		failed = messageOf(error)
+	}
+
+	if (failed !== undefined) {
 		await files.remove(repositoryDirectory, { recursive: true, force: true })
-		return tail(cloned.stderr) || `git clone exited with ${cloned.exitCode}`
+		return failed
 	}
 
 	for (const [key, value] of [
@@ -71,7 +78,7 @@ export async function clone(container: Container, repo: string, branch: string):
 // Pushes the clone's HEAD to the branch. Never throws.
 export async function push(container: Container, branch: string): Promise<Pushed> {
 	try {
-		const pushed = await run(container, ["git", "push", "origin", `HEAD:refs/heads/${branch}`], repositoryDirectory, pushEnv)
+		const pushed = await run(container, ["git", "push", "origin", `HEAD:refs/heads/${branch}`], repositoryDirectory, pushEnv, execTimeout.push)
 
 		if (pushed.exitCode !== 0) {
 			return { error: pushErrorText(pushed.stderr, pushed.exitCode) }
@@ -107,7 +114,8 @@ export function startFromImage(container: Container): void {
 export async function startFromSnapshot(container: Container, id: string): Promise<string | undefined> {
 	try {
 		container.start({ containerSnapshot: { id }, instance, enableInternet: false })
-		const probe = await run(container, ["git", "rev-parse", "--git-dir"], repositoryDirectory, gitEnv)
+		// The first exec on a new instance waits for it to boot.
+		const probe = await run(container, ["git", "rev-parse", "--git-dir"], repositoryDirectory, gitEnv, execTimeout.restore)
 
 		if (probe.exitCode === 0) {
 			return undefined

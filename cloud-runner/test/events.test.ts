@@ -1,7 +1,7 @@
 import { runInDurableObject } from "cloudflare:test"
 import { env as workerEnv } from "cloudflare:workers"
 import { describe, expect, it } from "vitest"
-import { EventLog, MAX_EVENTS, MAX_PAYLOAD_BYTES } from "../src/events"
+import { EventLog, MAX_EVENTS, MAX_PAYLOAD_BYTES, MAX_READ_BYTES } from "../src/events"
 import type { Env } from "../src/types"
 
 const env = workerEnv as unknown as Env
@@ -162,5 +162,36 @@ describe("EventLog", () => {
 			return b.append(1, 1, "x", 2)
 		})
 		expect(seqs).toBe(2)
+	})
+})
+
+describe("EventLog read budget", () => {
+	it("stops a read at MAX_READ_BYTES of payload, and a reader still reaches every event", async () => {
+		const big = "x".repeat(200_000) // 24 of these are past the budget
+		const r = await withLog((log) => {
+			for (let i = 0; i < 24; i++) log.append(1, 1, "big", big)
+			const first = log.readAfter(0)
+			const seen = [...first.events]
+			for (let next = first.next, page = 0; page < 30; page++) {
+				const more = log.readAfter(next)
+				if (more.events.length === 0) break
+				seen.push(...more.events)
+				next = more.next
+			}
+			return { first, seen }
+		})
+		const bytes = r.first.events.reduce((sum, e) => sum + JSON.stringify(e.payload).length, 0)
+		expect(r.first.events.length).toBeGreaterThan(0)
+		expect(r.first.events.length).toBeLessThan(24)
+		expect(bytes).toBeLessThanOrEqual(MAX_READ_BYTES)
+		expect(r.seen.map((e) => e.seq)).toEqual(Array.from({ length: 24 }, (_, i) => i + 1))
+	})
+
+	it("returns one event even when it alone is larger than the rest of the budget", async () => {
+		const r = await withLog((log) => {
+			log.append(1, 1, "big", "y".repeat(MAX_PAYLOAD_BYTES - 10))
+			return log.readAfter(0)
+		})
+		expect(r.events).toHaveLength(1)
 	})
 })
