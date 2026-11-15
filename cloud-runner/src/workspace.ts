@@ -135,8 +135,10 @@ export class Workspace extends DurableObject<Env> {
 			const reused = this.host.running && record.replaceInstance !== true
 			await this.ensureStarted(record)
 
-			// A task an earlier start left behind must not share the clone with this
-			// one. One the pid file cannot name is ended with its instance (Copilot C4).
+			// The group of a task an earlier start left behind is KILLed, so it does
+			// not run alongside this one; a process that left the group survives
+			// (README, "Known gaps"). One the pid file cannot name is ended with its
+			// instance (Copilot C4).
 			if (reused) {
 				const leftover = leftoverAction(await this.host.readTask(), record.task)
 
@@ -571,6 +573,7 @@ export class Workspace extends DurableObject<Env> {
 
 	// KILLs the current task's group and waits for its logs to be complete. With
 	// no task id to trust, the instance is replaced once the run is persisted.
+	// Best-effort: a process that left the group (setsid) is not reached.
 	private async endTask(record: Record_): Promise<void> {
 		const task = await this.knownTask(record)
 
@@ -635,7 +638,8 @@ export class Workspace extends DurableObject<Env> {
 	}
 
 	// The leader wrote an exit code. Its group's other members are KILLed before
-	// the output is read and the clone pushed (Copilot C6); the result is the one
+	// the output is read and the clone pushed (Copilot C6), though a process that
+	// left the group can still change the clone; the result is the one
 	// ingest kept, not a second read of stdout (Copilot C10).
 	private async finish(record: Record_, exitCode: number): Promise<void> {
 		await this.endTask(record)

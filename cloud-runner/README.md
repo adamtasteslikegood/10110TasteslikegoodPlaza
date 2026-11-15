@@ -334,6 +334,15 @@ the stale snapshot after a lost run (b5df279), `finish()` leaving the task's gro
 - **Git LFS is refused** by the smart-HTTP-only rule.
 - **The 409 text for a changed host list** says "another repo or branch".
 - **The shell scripts in `container.ts`** have no automated test; they were checked by hand and under `wrangler dev`.
+- **The group KILL is best-effort.** A process the agent starts in a new session (`setsid`) leaves the task's process
+  group, survives the KILL in finish, end and stop, and can keep changing the clone during the push, the snapshot and
+  the next run. Only replacing the instance ends it for certain.
+- **A process-group id can be reused within one boot** after the group dies, so a late KILL could hit an unrelated
+  group. The chance is low.
+- **A broken task file ends the run untrusted, and its work is lost.** A probe that throws (the agent made a log, the
+  pid file or the exit code file a directory or a FIFO) ends the run `failed`, KILLs the stored group and replaces the
+  instance with no push or snapshot. A failure of the `stdout.log` read alone, during `events()` or the alarm's
+  ingest, is not routed there: `events()` answers 500 and the alarm logs it and re-arms.
 - **The Copilot fixes are not on the deploy yet** (see "The development deploy"); their evidence is the local check.
 
 ### Notes on the evidence itself (from the last review, 2026-11-15)
