@@ -1017,3 +1017,35 @@ describe("Workspace set-up after a restart (G4)", () => {
 		expect(fake.running).toBe(false)
 	})
 })
+
+// G5: replaceInstance is stored only with an end state, so a run that is still
+// running never has its instance destroyed under it.
+describe("Workspace instance replacement waits for an end state (G5)", () => {
+	it("leaves replaceInstance unset when a stop comes before the pid file and answers still running", async () => {
+		const fake = new FakeHost()
+		fake.startMode = "no-pid"
+		const { stub } = await started(fake)
+
+		expect(await stub.stop()).toBe("still-running")
+		expect((await stored(stub)).replaceInstance).toBeFalsy()
+		expect((await stub.status()).state).toBe("running")
+		expect(fake.count("destroy")).toBe(0)
+
+		// The pid file comes late; the run then finishes as any other.
+		fake.task = { pid: fake.nextPid - 1, boot: fake.boot }
+		fake.finishTask(0, [resultLine])
+		expect(await stub.status()).toMatchObject({ state: "succeeded", result: "done", pushed: { commit: "commit-1" } })
+		expect(fake.count("destroy")).toBe(0)
+	})
+
+	it("does not destroy the instance of a running run, whatever replaceInstance says", async () => {
+		const { stub, fake } = await started()
+		await edit(stub, (record) => {
+			record.replaceInstance = true
+		})
+
+		expect((await stub.status()).state).toBe("running")
+		expect(fake.count("destroy")).toBe(0)
+		expect(fake.running).toBe(true)
+	})
+})

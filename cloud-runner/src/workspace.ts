@@ -283,10 +283,6 @@ export class Workspace extends DurableObject<Env> {
 			}
 
 			await this.waitForOutput()
-		} else {
-			// Nothing names the task, which may still start: end it with its instance.
-			record.replaceInstance = true
-			this.save(record)
 		}
 
 		const exitCode = await this.host.exitCode()
@@ -304,7 +300,14 @@ export class Workspace extends DurableObject<Env> {
 			return statusOf(record)
 		}
 
-		Object.assign(record, { state: "stopped", hasConversation: conversationAfter("stopped", record.resumed === true, false), persistPending: true })
+		// Nothing names the task, which may still start: end it with its instance,
+		// stored with the end state only (G5).
+		Object.assign(record, {
+			state: "stopped",
+			hasConversation: conversationAfter("stopped", record.resumed === true, false),
+			persistPending: true,
+			...(task === undefined ? { replaceInstance: true } : {}),
+		})
 		this.save(record)
 		this.note(record, { notice: "run stopped", run: record.run })
 		await this.finishRun(record)
@@ -428,7 +431,8 @@ export class Workspace extends DurableObject<Env> {
 			this.settle(record, afterSnapshot(record.run, await within(this.host.snapshot(), this.timing.snapshotWait), attempt))
 		}
 
-		if (record.replaceInstance && !record.persistPending && !record.snapshotPending) {
+		// Never under a run that is still running: replaceInstance comes with an end state (G5).
+		if (record.replaceInstance && record.state !== "running" && !record.persistPending && !record.snapshotPending) {
 			if (this.host.running) {
 				await this.host.destroy()
 				this.ready = false
@@ -659,46 +663,47 @@ export class Workspace extends DurableObject<Env> {
 			await this.host.signalTask(task, "KILL").catch((killError) => console.error(`Workspace KILL failed: ${messageOf(killError)}`))
 		}
 
-		// Stored by markFailed's save, in the same step as the end state (G5).
-		if (task === undefined) record.replaceInstance = true
-		return this.markFailed(record, MAX_RUN_ERROR)
+		return this.markFailed(record, MAX_RUN_ERROR, task === undefined)
 	}
 
 	// Ends a run the runner cuts short: KILLs its group, reads its output, then
 	// pushes and snapshots as after any other run.
 	private async endFailed(record: Record_, error: string): Promise<void> {
-		await this.endTask(record)
+		const unnamed = await this.endTask(record)
 		await this.ingest(record)
-		return this.markFailed(record, error)
+		return this.markFailed(record, error, unnamed)
 	}
 
-	private async markFailed(record: Record_, error: string): Promise<void> {
+	// replace: no task id names the run's process, so the instance is replaced
+	// once persisted, stored with the end state (G5).
+	private async markFailed(record: Record_, error: string, replace = false): Promise<void> {
 		Object.assign(record, {
 			state: "failed",
 			error,
 			result: undefined,
 			hasConversation: conversationAfter("stopped", record.resumed === true, false),
 			persistPending: true,
+			...(replace ? { replaceInstance: true } : {}),
 		})
 		this.save(record)
 		this.note(record, { notice: "run ended", run: record.run, state: record.state })
 		return this.finishRun(record)
 	}
 
-	// KILLs the current task's group and waits for its logs to be complete. With
-	// no task id to trust, the instance is replaced once the run is persisted.
+	// KILLs the current task's group and waits for its logs to be complete. True
+	// when no task id is there to trust: the caller stores replaceInstance with
+	// the end state, and the instance is replaced once the run is persisted (G5).
 	// Best-effort: a process that left the group (setsid) is not reached.
-	private async endTask(record: Record_): Promise<void> {
+	private async endTask(record: Record_): Promise<boolean> {
 		const task = await this.knownTask(record)
 
 		if (task === undefined) {
-			record.replaceInstance = true
-			this.save(record)
-			return
+			return true
 		}
 
 		await this.host.signalTask(task, "KILL")
 		await this.waitForOutput()
+		return false
 	}
 
 	// Up to stopWait for the stdout and stderr copiers to drain what the task wrote.
@@ -712,8 +717,9 @@ export class Workspace extends DurableObject<Env> {
 	// marked stale, so the next restore says the run's work was lost (Copilot C5).
 	// With no task id known, the instance is replaced after the push (Copilot C4).
 	private async endLost(record: Record_, error: string, containerRunning: boolean): Promise<void> {
+		const unnamed = containerRunning && (await this.endTask(record))
+
 		if (containerRunning) {
-			await this.endTask(record)
 			await this.ingest(record)
 		}
 
@@ -722,6 +728,7 @@ export class Workspace extends DurableObject<Env> {
 			error,
 			hasConversation: conversationAfter("lost", record.resumed === true, false),
 			persistPending: containerRunning || undefined,
+			...(unnamed ? { replaceInstance: true } : {}),
 			...(containerRunning || record.snapshot === undefined ? {} : { snapshotStale: true }),
 		})
 		this.save(record)
@@ -756,11 +763,11 @@ export class Workspace extends DurableObject<Env> {
 	// left the group can still change the clone; the result is the one
 	// ingest kept, not a second read of stdout (Copilot C10).
 	private async finish(record: Record_, exitCode: number): Promise<void> {
-		await this.endTask(record)
+		const unnamed = await this.endTask(record)
 		await this.ingest(record)
 
 		if ((await this.host.outputBytes()) > MAX_OUTPUT_BYTES) {
-			return this.markFailed(record, OUTPUT_ERROR)
+			return this.markFailed(record, OUTPUT_ERROR, unnamed)
 		}
 
 		const results = record.resultLine === undefined ? [] : [record.resultLine]
@@ -772,6 +779,7 @@ export class Workspace extends DurableObject<Env> {
 			error: ended.state === "failed" ? ended.error : undefined,
 			hasConversation: conversationAfter("finished", record.resumed === true, results.length > 0),
 			persistPending: true,
+			...(unnamed ? { replaceInstance: true } : {}),
 		})
 		this.save(record)
 		if (ended.state === "succeeded" && ended.truncated) this.note(record, { notice: "result truncated", run: record.run })
