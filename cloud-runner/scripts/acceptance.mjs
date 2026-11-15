@@ -1,0 +1,361 @@
+#!/usr/bin/env node
+// Stage 1 acceptance checks (design §8) against a deployed runner with the
+// test-only routes on. Usage:
+//
+//   RUNNER_CALLER_SECRET=... TEST_REPO=https://github.com/OWNER/REPO TEST_BRANCH=BRANCH \
+//     [AI_GATEWAY_TOKEN=... GITHUB_TOKEN=...] [ONLY=H,1,3,4] node scripts/acceptance.mjs <url>
+//
+// Prints one line per check, `PASS n name` or `FAIL n name: why`, plus NOTE
+// lines with what was observed, and exits 1 on any FAIL. The two tokens are
+// optional and used only to look for them in the container (check 4). No
+// secret is printed: every line goes through redact() first. The workspaces
+// acc-<random>-a and -b are deleted at the end, whatever happened.
+import { execFile } from "node:child_process"
+import { randomBytes } from "node:crypto"
+import { promisify } from "node:util"
+
+const runFile = promisify(execFile)
+const [base] = process.argv.slice(2)
+const secret = process.env.RUNNER_CALLER_SECRET ?? ""
+const repo = process.env.TEST_REPO ?? ""
+const branch = process.env.TEST_BRANCH ?? ""
+const only = process.env.ONLY ? new Set(process.env.ONLY.split(",").map((s) => s.trim())) : undefined
+const secrets = [secret, process.env.AI_GATEWAY_TOKEN ?? "", process.env.GITHUB_TOKEN ?? ""].filter((s) => s.length >= 8)
+const patterns = [/ghp_[A-Za-z0-9]{10,}/, /github_pat_[A-Za-z0-9_]{10,}/, /sk-ant-[A-Za-z0-9_-]{10,}/]
+
+if (!base || !secret || !/^https:\/\/github\.com\/[^/]+\/[^/]+$/.test(repo) || !branch) {
+	console.error("Usage: RUNNER_CALLER_SECRET=... TEST_REPO=https://github.com/OWNER/REPO TEST_BRANCH=BRANCH node scripts/acceptance.mjs <url>")
+	process.exit(2)
+}
+
+// Runs push to TEST_BRANCH: never let them touch a default branch.
+if (["main", "master", "dev", "develop"].includes(branch)) {
+	console.error(`Refusing TEST_BRANCH=${branch}: use a dedicated branch`)
+	process.exit(2)
+}
+
+const id = randomBytes(3).toString("hex")
+const A = `acc-${id}-a`
+const B = `acc-${id}-b`
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+let failed = 0
+
+function redact(text) {
+	let out = String(text)
+	for (const s of secrets) out = out.split(s).join("[secret]")
+	for (const p of patterns) out = out.replace(new RegExp(p.source, "g"), "[token-like]")
+	return out
+}
+
+const say = (line) => console.log(redact(line))
+const note = (text) => say(`NOTE ${text}`)
+
+async function api(method, path, body, timeoutMs = 180_000) {
+	const response = await fetch(`${base.replace(/\/$/, "")}${path}`, {
+		method,
+		headers: { authorization: `Bearer ${secret}`, ...(body === undefined ? {} : { "content-type": "application/json" }) },
+		body: body === undefined ? undefined : JSON.stringify(body),
+		signal: AbortSignal.timeout(timeoutMs),
+	})
+	const text = await response.text()
+	let json
+	try {
+		json = JSON.parse(text)
+	} catch {
+		json = undefined
+	}
+	return { status: response.status, text, json }
+}
+
+function expectStatus(answer, status, what) {
+	if (answer.status !== status) throw new Error(`${what} answered ${answer.status} ${answer.text.slice(0, 300)}`)
+	return answer
+}
+
+async function create(name) {
+	const body = { repo, branch }
+	let answer = await api("PUT", `/workspaces/${name}`, body)
+	if (answer.status === 500) {
+		note(`first PUT /workspaces/${name} answered 500 (${answer.text.trim().slice(0, 200)}); retrying once`)
+		answer = await api("PUT", `/workspaces/${name}`, body)
+	}
+	return expectStatus(answer, 200, `PUT ${name}`).json
+}
+
+const status = async (name) => expectStatus(await api("GET", `/workspaces/${name}`), 200, `GET ${name}`).json
+
+async function startRun(name, prompt, maxTurns) {
+	return expectStatus(await api("POST", `/workspaces/${name}/runs`, { prompt, maxTurns }), 202, `POST ${name}/runs`).json.run
+}
+
+// Polls until the run is no longer running, up to limitMs.
+async function waitEnd(name, limitMs = 10 * 60_000) {
+	const deadline = Date.now() + limitMs
+	for (;;) {
+		const s = await status(name)
+		if (s.state !== "running") return s
+		if (Date.now() > deadline) throw new Error(`${name} still running after ${limitMs / 1000} s`)
+		await sleep(5000)
+	}
+}
+
+async function eventsAfter(name, after) {
+	return expectStatus(await api("GET", `/workspaces/${name}/events?after=${after}`), 200, `events ${name}`).json
+}
+
+// Every event from after on, page by page, bounded.
+async function allEvents(name, after = 0) {
+	const events = []
+	for (let page = 0; page < 1000; page++) {
+		const read = await eventsAfter(name, after)
+		events.push(...read.events)
+		if (read.events.length === 0 || read.next === after) return events
+		after = read.next
+	}
+	throw new Error("events did not end after 1000 pages")
+}
+
+const lastSeq = async (name) => (await allEvents(name)).at(-1)?.seq ?? 0
+
+// Runs argv in the workspace's container through the test-only route.
+async function inBox(name, argv) {
+	return expectStatus(await api("POST", `/workspaces/${name}/exec`, { argv }, 60_000), 200, `exec ${argv[0]}`).json
+}
+
+const nodeIn = (name, code) => inBox(name, ["node", "-e", code])
+
+// What a run's result event and events say about its cost and time.
+function runFacts(events, runNumber) {
+	const mine = events.filter((e) => e.run === runNumber)
+	const result = mine.filter((e) => e.type === "result").at(-1)?.payload
+	const first = mine[0]?.at
+	const last = mine.at(-1)?.at
+	const wall = first && last ? (Date.parse(last) - Date.parse(first)) / 1000 : undefined
+	return { result, wall }
+}
+
+function costNote(label, events, runNumber) {
+	const { result, wall } = runFacts(events, runNumber)
+	const u = result?.usage ?? {}
+	note(
+		`cost ${label} run ${runNumber}: events span ${wall ?? "?"} s; result duration_ms=${result?.duration_ms} num_turns=${result?.num_turns} ` +
+			`input=${u.input_tokens} output=${u.output_tokens} cache_read=${u.cache_read_input_tokens} cache_write=${u.cache_creation_input_tokens} ` +
+			`total_cost_usd=${result?.total_cost_usd} model=${Object.keys(result?.modelUsage ?? {}).join("+") || "?"}`,
+	)
+}
+
+function scan(text, where) {
+	for (const [i, s] of secrets.entries()) if (text.includes(s)) throw new Error(`secret #${i + 1} found in ${where}`)
+	for (const p of patterns) if (p.test(text)) throw new Error(`a match for ${p.source.slice(0, 12)}... found in ${where}`)
+}
+
+async function check(n, name, body) {
+	if (only && !only.has(String(n))) return
+	try {
+		await body()
+		say(`PASS ${n} ${name}`)
+	} catch (error) {
+		failed += 1
+		say(`FAIL ${n} ${name}: ${error instanceof Error ? error.message : error}`)
+	}
+}
+
+const shared = { check1Events: [] }
+
+async function main() {
+	note(`workspaces ${A} and ${B}, branch ${branch}`)
+	const made = await create(A)
+	note(`PUT ${A}: generation ${made.generation}, state ${made.state}`)
+
+	await check("H", "claude --help in the image lists --session-id, --resume, --max-turns", async () => {
+		const help = await inBox(A, ["claude", "--help"])
+		const version = await inBox(A, ["claude", "--version"])
+		note(`claude --version: ${version.stdout.trim()}`)
+		const missing = ["--session-id", "--resume", "--max-turns"].filter((flag) => !help.stdout.includes(flag))
+		if (missing.length) throw new Error(`not in --help: ${missing.join(" ")}`)
+	})
+
+	await check(1, "a prompt runs to completion, writes and pushes NOTES.md", async () => {
+		const runNumber = await startRun(A, `Add a file NOTES.md with one sentence about this repository (mention the id ${id}) and commit it.`, 10)
+		const s = await waitEnd(A)
+		const events = await allEvents(A)
+		shared.check1Events = events.filter((e) => e.run === runNumber)
+		costNote("check 1", events, runNumber)
+		if (s.state !== "succeeded") throw new Error(`state ${s.state}: ${s.error ?? ""}`)
+		if (!shared.check1Events.some((e) => e.type === "result")) throw new Error("no result event")
+		const wrote = shared.check1Events.some(
+			(e) => e.type === "assistant" && (e.payload?.message?.content ?? []).some((c) => c.type === "tool_use" && JSON.stringify(c.input ?? {}).includes("NOTES.md")),
+		)
+		if (!wrote) throw new Error("no tool_use event names NOTES.md")
+		if (!s.pushed?.commit) throw new Error(`no pushed.commit (pushError: ${s.pushError ?? "none"})`)
+		const remote = await runFile("git", ["ls-remote", repo, `refs/heads/${branch}`], { timeout: 60_000 })
+		const head = remote.stdout.split(/\s+/)[0]
+		note(`pushed.commit ${s.pushed.commit}; ls-remote ${head}`)
+		if (head !== s.pushed.commit) throw new Error(`ls-remote shows ${head}, not ${s.pushed.commit}`)
+	})
+
+	await check(2, "events read twice agree, after=next never repeats, a second start answers 409", async () => {
+		const start = await lastSeq(A)
+		const runNumber = await startRun(A, "Run the shell command `sleep 45` with your Bash tool, then reply with the single word done.", 4)
+		const busy = await api("POST", `/workspaces/${A}/runs`, { prompt: "second", maxTurns: 1 })
+		if (busy.status !== 409) throw new Error(`a second start answered ${busy.status}, not 409`)
+		await sleep(15_000)
+		const first = await eventsAfter(A, start)
+		const second = await eventsAfter(A, start)
+		const one = first.events.map((e) => e.seq)
+		const two = second.events.map((e) => e.seq)
+		if (one.length === 0) throw new Error("no events 15 s into the run")
+		if (JSON.stringify(two.slice(0, one.length)) !== JSON.stringify(one)) throw new Error(`second read ${two.join(",")} does not start with ${one.join(",")}`)
+		const seen = []
+		let after = start
+		const deadline = Date.now() + 5 * 60_000
+		for (;;) {
+			const read = await eventsAfter(A, after)
+			seen.push(...read.events.map((e) => e.seq))
+			after = read.next
+			const s = await status(A)
+			if (s.state !== "running" && read.events.length === 0) break
+			if (Date.now() > deadline) throw new Error("run did not end in 5 min")
+			await sleep(3000)
+		}
+		const events = await allEvents(A, start)
+		const full = events.map((e) => e.seq)
+		if (new Set(seen).size !== seen.length) throw new Error("a seq was repeated")
+		if (JSON.stringify(seen) !== JSON.stringify(full)) throw new Error(`incremental reads ${seen.length} events, full read ${full.length}`)
+		costNote("check 2", events, runNumber)
+		note(`check 2: ${seen.length} events read incrementally, same as one full read; run ended ${(await status(A)).state}`)
+	})
+
+	await check(3, "egress: unlisted host 403, push elsewhere refused, own repository reachable, no raw TCP or UDP", async () => {
+		const get = await nodeIn(A, "fetch('https://example.com/').then(r=>console.log(r.status),e=>console.log('error',e.cause?.code??e.message))")
+		if (get.stdout.trim() !== "403") throw new Error(`https://example.com answered ${get.stdout.trim()} ${get.stderr.slice(0, 200)}`)
+		const plain = await nodeIn(A, "fetch('http://example.com/').then(r=>console.log(r.status),e=>console.log('error',e.cause?.code??e.message))")
+		note(`http://example.com: ${plain.stdout.trim()}`)
+		if (plain.stdout.trim() === "200") throw new Error("plain HTTP reached example.com")
+		const other = await inBox(A, ["git", "push", "https://github.com/octocat/Hello-World", "HEAD:refs/heads/x"])
+		note(`push to octocat/Hello-World: exit ${other.exitCode}, ${other.stderr.trim().split("\n").at(-1)}`)
+		if (other.exitCode === 0) throw new Error("a push to another repository succeeded")
+		const own = await inBox(A, ["git", "ls-remote", "origin"])
+		if (own.exitCode !== 0) throw new Error(`git ls-remote origin exited ${own.exitCode}: ${own.stderr.slice(0, 200)}`)
+		for (const port of [53, 22, 25, 8080]) {
+			const tcp = await nodeIn(
+				A,
+				`const s=require('net').connect(${port},'1.1.1.1');s.setTimeout(5000);s.on('connect',()=>{console.log('connected');s.destroy()});s.on('timeout',()=>{console.log('timeout');s.destroy()});s.on('error',e=>console.log('error',e.code))`,
+			)
+			note(`raw TCP 1.1.1.1:${port}: ${tcp.stdout.trim()}`)
+			if (tcp.stdout.includes("connected")) throw new Error(`raw TCP to 1.1.1.1:${port} connected`)
+		}
+		const udp = await nodeIn(
+			A,
+			"const r=new (require('dns').promises.Resolver)({timeout:3000,tries:1});r.setServers(['1.1.1.1']);r.resolve4('example.com').then(a=>console.log('answered',a.length),e=>console.log('error',e.code))",
+		)
+		note(`UDP DNS to 1.1.1.1: ${udp.stdout.trim()}`)
+		if (udp.stdout.includes("answered")) throw new Error("a DNS query over UDP to 1.1.1.1 was answered")
+		const lookup = await nodeIn(A, "require('dns').lookup('example.com',(e,a)=>console.log(e?'error '+e.code:'resolved '+a))")
+		note(`system resolver for example.com: ${lookup.stdout.trim()}`)
+	})
+
+	await check(4, "no credential in env, .git/config, ~/.gitconfig, home, /workspace or check 1's events", async () => {
+		if (secrets.length < 3) note(`only ${secrets.length} of 3 secret values given; the token patterns are checked anyway`)
+		const looked = await inBox(A, ["/bin/sh", "-c", "env; cat .git/config; cat ~/.gitconfig 2>/dev/null; ls -la ~ /workspace"])
+		scan(looked.stdout + looked.stderr, "the container")
+		if (!looked.stdout.includes("[remote \"origin\"]")) throw new Error("the output has no .git/config: the scan saw too little")
+		if (shared.check1Events.length === 0) throw new Error("no events from check 1 to scan")
+		scan(JSON.stringify(shared.check1Events), "check 1's events")
+		note(`scanned ${looked.stdout.length} bytes of container output and ${shared.check1Events.length} events`)
+	})
+
+	await check(5, "two workspaces run at once and do not see each other's files", async () => {
+		await create(B)
+		const prompt = "Reply with the single word ok. Do not use any tools."
+		const [ra, rb] = await Promise.all([startRun(A, prompt, 2), startRun(B, prompt, 2)])
+		const [sa, sb] = await Promise.all([status(A), status(B)])
+		note(`right after both starts: ${A} ${sa.state}, ${B} ${sb.state}`)
+		if (sa.state !== "running" || sb.state !== "running") throw new Error("the two runs were not running at the same time")
+		const [ea, eb] = await Promise.all([waitEnd(A), waitEnd(B)])
+		costNote("check 5 a", await allEvents(A), ra)
+		costNote("check 5 b", await allEvents(B), rb)
+		if (ea.state !== "succeeded" || eb.state !== "succeeded") throw new Error(`ended ${ea.state} (${ea.error ?? ""}) and ${eb.state} (${eb.error ?? ""})`)
+		await inBox(A, ["/bin/sh", "-c", `echo ${id} > /workspace/only-in-a.txt`])
+		const inA = await inBox(A, ["cat", "/workspace/only-in-a.txt"])
+		const inB = await inBox(B, ["test", "-e", "/workspace/only-in-a.txt"])
+		if (inA.stdout.trim() !== id) throw new Error("the file was not written in a")
+		if (inB.exitCode === 0) throw new Error("b sees a's file")
+	})
+
+	await check(6, "after replace-instance the snapshot restores an uncommitted file", async () => {
+		const r1 = await startRun(A, "Create a file scratch.txt containing 42 and do not commit it. Remember the word heliotrope.", 5)
+		const s1 = await waitEnd(A)
+		if (s1.state !== "succeeded") throw new Error(`the first run ended ${s1.state}: ${s1.error ?? ""}`)
+		const before = await inBox(A, ["cat", "scratch.txt"])
+		note(`scratch.txt before replacement: ${JSON.stringify(before.stdout.trim())}; pushError ${s1.pushError ?? "none"}`)
+		const notices = (await allEvents(A)).filter((e) => e.run === r1 && e.type === "runner").map((e) => e.payload?.notice)
+		note(`run ${r1} runner notices: ${notices.join(", ")}`)
+		expectStatus(await api("POST", `/workspaces/${A}/replace-instance`), 200, "replace-instance")
+		const r2 = await startRun(A, "What word did I ask you to remember, and what is in scratch.txt?", 4)
+		const s2 = await waitEnd(A)
+		const events = await allEvents(A)
+		costNote("check 6", events, r2)
+		const init = events.find((e) => e.run === r2 && e.type === "system")?.payload
+		const init1 = events.find((e) => e.run === r1 && e.type === "system")?.payload
+		const startedNote = events.filter((e) => e.type === "runner" && e.payload?.notice === "instance started").at(-1)?.payload
+		const answer = s2.result ?? ""
+		note(
+			`check 6: restored=${s2.restored} uncommittedLost=${s2.uncommittedLost} instance note=${JSON.stringify(startedNote)}; ` +
+				`session ${init1?.session_id === init?.session_id ? "same" : "different"} (${init?.session_id}); ` +
+				`reports 42: ${/\b42\b/.test(answer)}; reports heliotrope: ${/heliotrope/i.test(answer)}; state ${s2.state}`,
+		)
+		note(`check 6 answer: ${JSON.stringify(answer.slice(0, 300))}`)
+		const after = await inBox(A, ["cat", "scratch.txt"])
+		if (s2.restored !== "snapshot") throw new Error(`restored is ${s2.restored}, not snapshot`)
+		if (after.stdout.trim() !== "42") throw new Error(`scratch.txt after replacement: ${JSON.stringify(after.stdout.trim())} ${after.stderr.trim()}`)
+	})
+
+	await check(7, "stop interrupts a run; a replaced instance mid-run reports lost; both accept the next run", async () => {
+		const long = "Run the shell command `sleep 120` with your Bash tool, then reply with the single word done."
+		await startRun(A, long, 3)
+		await sleep(20_000)
+		const t = Date.now()
+		const stopped = expectStatus(await api("POST", `/workspaces/${A}/stop`), 200, "stop").json
+		note(`stop answered ${stopped.state} in ${(Date.now() - t) / 1000} s`)
+		if (stopped.state !== "stopped") throw new Error(`stop left state ${stopped.state}`)
+		await startRun(A, "Reply with the single word ok. Do not use any tools.", 2)
+		expectStatus(await api("POST", `/workspaces/${A}/stop`), 200, "stop of the follow-up run")
+		await startRun(A, long, 3)
+		await sleep(20_000)
+		expectStatus(await api("POST", `/workspaces/${A}/replace-instance`), 200, "replace-instance mid-run")
+		const lost = await status(A)
+		note(`after replace-instance mid-run: ${lost.state} (${lost.error ?? ""}), pushError ${lost.pushError ?? "none"}`)
+		if (lost.state !== "lost") throw new Error(`state ${lost.state}, not lost`)
+		const next = await api("POST", `/workspaces/${A}/runs`, { prompt: "Reply with the single word ok. Do not use any tools.", maxTurns: 2 })
+		if (next.status !== 202) throw new Error(`the run after lost answered ${next.status}`)
+		const s = await status(A)
+		note(`run after lost: generation ${s.generation}, restored ${s.restored}, uncommittedLost ${s.uncommittedLost}`)
+		expectStatus(await api("POST", `/workspaces/${A}/stop`), 200, "stop of the last run")
+	})
+}
+
+async function cleanup() {
+	for (const name of [A, B]) {
+		try {
+			const deleted = await api("DELETE", `/workspaces/${name}`)
+			const after = await api("GET", `/workspaces/${name}`)
+			note(`DELETE ${name}: ${deleted.status}; then GET ${after.status} ${after.text.trim().slice(0, 120)}`)
+			if (deleted.status !== 200 && deleted.status !== 404) throw new Error(`DELETE answered ${deleted.status}`)
+		} catch (error) {
+			failed += 1
+			say(`FAIL cleanup ${name}: ${error instanceof Error ? error.message : error}`)
+		}
+	}
+}
+
+try {
+	await main()
+} catch (error) {
+	failed += 1
+	say(`FAIL setup: ${error instanceof Error ? error.message : error}`)
+} finally {
+	await cleanup()
+}
+
+process.exit(failed === 0 ? 0 : 1)
