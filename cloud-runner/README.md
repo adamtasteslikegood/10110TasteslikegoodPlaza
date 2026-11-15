@@ -403,14 +403,19 @@ files are root's; see "Who runs what in the container" and the local check.
   trusts git's wire format as GitHub reads it. GitHub branch rules remain the control for both.
 - **Git LFS is refused** by the smart-HTTP-only rule.
 - **The 409 text for a changed host list** says "another repo or branch".
-- **The shell scripts in `container.ts`** have no automated test; they were checked by hand and under `wrangler dev`.
+- **Some shell scripts in `container.ts` have no automated test.** The container tests (`npm run test:container`,
+  PLZG-311) drive the task launcher, the copiers, the TERM signal, the alive probe, the ranged read and the diff.
+  Not driven there: the refusals of `outputBytesScript` and `chunkScript`, `longLineScript`, the output caps and the
+  KILL path. Those were checked by hand and under `wrangler dev`.
 - **The group KILL is best-effort.** A process the agent starts in a new session (`setsid`) leaves the task's process
   group, survives the KILL in finish, end and stop, and can keep changing the clone during the push, the snapshot and
   the next run. Only replacing the instance ends it for certain. Since PLZG-311 such a process is the `agent` user's
   and cannot touch the task directory, and a KILL of every process of that user would reach it; that is not built.
 - **A process-group id can be reused within one boot** after the group dies, so a late KILL could hit an unrelated
   group. The chance is low.
-- **Three counted task-file failures end the run untrusted, and its work is lost on purpose.** A task-file failure
+- **Three counted task-file failures end the run untrusted, and its work is lost on purpose.** Since PLZG-311 the
+  agent cannot write the task files, so this is a second line of defence, not something an agent can set off by
+  replacing a file. A task-file failure
   (`TaskFileError`) is an answer from the container showing a file is not what the runner wrote: a read of the pid or
   exit-code file that fails with one of a listed set of file-level errors (`EISDIR`, `ENOTDIR`, `ELOOP`, `ENXIO`,
   `EACCES`, `EPERM`), an exit-code file that is not one decimal status from 0 to 255 and a newline (G6), or a
@@ -441,6 +446,10 @@ files are root's; see "Who runs what in the container" and the local check.
   unit tests and under `wrangler dev`.
 
 ### Notes on the evidence itself (from the last review, 2026-11-15)
+
+- The refusal of a snapshot with another layout (PLZG-311) was shown by overwriting the layout mark in a current
+  instance and snapshotting that. No snapshot built from the earlier image, where the mark is absent, was restored;
+  the absent mark is covered by the unit and container tests only.
 
 - `scripts/redeploy.mjs` is a rewrite of the scratch script that produced the redeploy log; the committed version
   has not been run. Run it under the same memory cap as any deploy.
