@@ -90,7 +90,7 @@ try {
 		await sleep(5000)
 	}
 	console.log(at(), "ended", ended?.state, "generation", ended?.generation)
-	const task = await call("POST", `/workspaces/${name}/exec`, { argv: ["/bin/sh", "-c", "cat /workspace/task/exit-code"] })
+	const task = await call("POST", `/workspaces/${name}/exec`, { argv: ["/bin/sh", "-c", "cat /workspace/task/exit-code"], root: true })
 	const exitCode = task.json?.stdout?.trim()
 	console.log(at(), "task exit-code file:", JSON.stringify(exitCode))
 	const events = (await call("GET", `/workspaces/${name}/events?after=0`)).json?.events ?? []

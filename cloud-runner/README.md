@@ -9,6 +9,28 @@ stream-json output as numbered events, and reports `running`, `succeeded`,
 own: every request goes through the `Outbound` entrypoint, which adds the
 credentials, so none enters the container.
 
+## Who runs what in the container
+
+The agent is not root (PLZG-311, the owner's decision of 2026-11-15). The image
+has a user `agent`, and Claude Code runs as it, with no-new-privs, so a setuid
+binary gives nothing back. The clone (`/workspace/repo`) and `/home/agent`,
+where Claude Code keeps its conversations, are the agent's. Everything the
+runner trusts about a run is root's: the task's session leader, the two
+processes that copy its output, and `/workspace/task` (mode 700) with the pid
+file, the exit code and the logs. `/workspace` itself is root's, so the agent
+cannot move those directories aside. The agent holds only the two pipes its
+output goes into.
+
+The runner's own commands are root's, with one rule: **git in the clone always
+runs as the agent** (clone, push, diff, the check after a restore). The clone's
+config, hooks and diff drivers are the agent's to write, so root must never run
+them. The image carries a layout mark (`/etc/plaza-runner-layout`, `imageLayout`
+in `src/container.ts`); change both when who owns what changes.
+
+`npm run test:container` shows all of this in a container built from the
+Dockerfile (it needs Docker; `npm test` runs in the Workers runtime and has
+no containers).
+
 ## What survives an instance
 
 After every run that ends or is stopped, the object pushes the clone's `HEAD`
@@ -27,6 +49,9 @@ pushed branch. A run lost with its container already gone pushes nothing: the
 stored snapshot is then the best copy there is, so it is kept but marked stale,
 and the next restore from it reports `uncommittedLost: true` and starts a new
 conversation. Every replacing instance appends a `runner` event naming its path.
+A snapshot holds the whole root filesystem, so one whose layout mark is not the
+current image's (for example one taken while the agent was still root) is not
+restored either: the instance clones the branch, and its event says why.
 
 A run's stdout is kept up to 64 MiB; a run that writes more is ended `failed`
 with `run output exceeded 64 MiB`. Only the last 1 MiB of its stderr is kept.
@@ -56,6 +81,8 @@ acting with whatever the container can reach. To turn them off, remove
   command (no shell unless `argv` names one) in `/workspace/repo` with the
   container trust env and `GIT_TERMINAL_PROMPT=0`, and no credential, for at most
   30 s. It answers `{ exitCode, stdout, stderr }`, each stream cut at 64 KiB.
+  The command runs as the agent user; add `"root": true` to run it as root, to
+  look at what the agent cannot (the task directory, root's processes).
 
 Why: the acceptance checks (`scripts/acceptance.mjs`) must look inside the
 container (egress, credentials, files of two workspaces) and replace an instance
@@ -189,6 +216,32 @@ on, workspaces `t1` to `t4`. Commands inside the container ran through the
 | `t3`: 70 MB of lines written to the run's stdout | the writer got SIGPIPE (exit 141); `stdout.log` 67,108,865 bytes; the run ended `failed`, `run output exceeded 64 MiB`; no process left |
 | `t3`: 3 MB written to stderr | `stderr.log` exactly 1,048,576 bytes |
 
+After the agent stopped being root (2026-11-15, PLZG-311), same setup on port
+8797, workspace `nr1` (Hello-World, `master`), the image rebuilt with the `agent`
+user. The image has no `ps`, so processes were read from `/proc`.
+
+| Step | Answer |
+|---|---|
+| `c PUT /workspaces/nr1 ...` | 200 `generation: 1` in 1.5 s; `/workspace` is `root 755`, `/workspace/repo` and its `.git` are `agent 755`, the layout mark reads `2` |
+| an exec (no `root`): `id`, `$HOME`, `NoNewPrivs`, the CA file, `git status`, `touch /workspace/planted` | `uid=1001(agent)`, `/home/agent`, `NoNewPrivs: 1`, the CA file is readable, `## master...origin/master`; the `touch` is refused (`Permission denied`) |
+| the same exec with `"root": true` | `root` |
+| `c POST .../runs`, then the processes from `/proc` | the leader (`sh -c trap : TERM ...`), both copier shells, `head` and `tail` are uid 0; `claude --print ...` is uid 1001 with `NoNewPrivs: 1`, in the leader's group and session |
+| during the run, `stat` of `/workspace/task` and its files | `/workspace/task root 700`; `pid`, `stdout.log`, `stderr.log` `root 644`; both fifos `root 600` |
+| during the run, as the agent: `echo 0 >/workspace/task/exit-code`, `ls /workspace/task`, `kill -KILL <leader>` | all three refused (`Permission denied`, `Operation not permitted`) |
+| as the agent: `kill -TERM -<group>` | allowed for the agent's own process only: `claude` ended, the leader lived and wrote `143`, and the run ended `failed`, `claude exited with 143`, then `push failed` and `snapshot saved` |
+| run 2 left to end | the agent reached the gateway (`api_retry`, `authentication_failed`), then `failed` with `Failed to authenticate. API Error: 401 Unauthorized`; `exit-code` holds `1` and is `root 644`; `push failed` (`could not read Username`, as before: git ran, as the agent), `snapshot saved` (1,194,902,309 bytes); the conversations are under `/home/agent/.claude`, none under `/root` |
+| `c GET /workspaces/nr1/diff` after editing `README` and adding `NEW.txt` as the agent | 200, both in the diff |
+| `c POST .../runs` and `c POST .../stop` at once | 200 `stopped` in 1.6 s; only `tini`, `sleep` and the exec's shell left |
+| `replace-instance`, then the diff and the status | the diff still shows both files; `generation: 2`, `restored: "snapshot"`, `uncommittedLost: false`; the same owners and layout mark as before |
+| the next run on the restored instance | started with `--resume <run 2's session id>`, and its `system`/`init` event carries that id: the conversation in the agent's home survived the snapshot |
+| the layout mark overwritten with `1` (as root), a run stopped so a snapshot is taken, `replace-instance`, then the diff | 200, an empty diff; `generation: 3`, `restored: "branch"`, `uncommittedLost: true`; event `{"notice":"instance started","from":"branch","snapshotError":"The snapshot's image layout is \"1\", not \"2\": it is from another version of the image"}`; the new instance's mark reads `2` |
+| `c DELETE /workspaces/nr1`, then `c GET` | 204; `state: "none"` |
+
+Not shown by this check: a push that succeeds and a run that ends `succeeded`
+(both need real credentials). Under local Docker, root has no `CAP_SYS_PTRACE`,
+so root cannot read the `environ` of the agent's processes; the agent can read
+its own. `scripts/acceptance.mjs` check 4 therefore scans as both users.
+
 One slip during this check: `t1`'s container was looked up by `hostname`,
 which matched its proxy sidecar's id, so the sidecar was removed instead of
 the agent container. `t1`'s next requests then answered 500 after about 119 s
@@ -211,6 +264,11 @@ Evidence and the acceptance output are in
 acceptance suite and the redeploy check were re-run on it (spike C, logs 6 and 7): same outcome as before the fixes.
 The fixes' own failure paths (an unreadable task file, a snapshot that times out, an oversized result) were not
 provoked on the deploy; they rest on the unit tests and the `wrangler dev` checks.
+
+**The deploy does not have the non-root agent yet** (PLZG-311). It still runs the image in which the agent is root.
+A redeploy builds the new image. A workspace from before it keeps working, but its first new instance clones the
+branch (`restored: "branch"`, `uncommittedLost: true`): its snapshot has the old layout and is refused. A run that
+is in progress during that redeploy may lose its unpushed work, so redeploy with no run active.
 
 ### Parts
 
@@ -311,7 +369,17 @@ the deploy.
 From the whole-branch review and its re-review (2026-11-15), reconciled with the Copilot fixes the same day. None
 blocks the development deploy. Closed since, and so removed: the leftover agent and pid 0 or 1 (762df32, b5df279),
 the stale snapshot after a lost run (b5df279), `finish()` leaving the task's group (b5df279), PID 1 not reaping
-(9cb4a90), the first PUT answering 500 (b5df279), and unbounded run output (b5df279).
+(9cb4a90), the first PUT answering 500 (b5df279), and unbounded run output (b5df279). Closed on 2026-11-15 by
+PLZG-311: the agent could write the run's control files (it ran as root). It now runs as the `agent` user and the
+files are root's; see "Who runs what in the container" and the local check.
+
+- **The non-root agent is not deployed, and was not run with real credentials.** It rests on the container tests
+  and the `wrangler dev` check, where every run ended in the 401 of a throwaway token. `scripts/acceptance.mjs` has
+  a new check `U` and passes `root` where a check needs it, and `scripts/redeploy.mjs` reads the exit code as root;
+  neither has been run since. Owed: a redeploy and the acceptance suite, by the owner's go-ahead.
+- **An instance that is live when the image changes keeps its old layout** until it is replaced. A run started on it
+  fails (the `agent` user is missing, so `setpriv` exits 1) and its pushes fail the same way. The next instance
+  clones the branch. Nothing checks the layout of a running instance.
 
 - **Routes can still wait behind a slow push and snapshot.** Each snapshot try is now cut off after 3 minutes and
   tried at most 3 times, one try per alarm, but a route queued behind the alarm can still wait for the push (up to
@@ -338,7 +406,8 @@ the stale snapshot after a lost run (b5df279), `finish()` leaving the task's gro
 - **The shell scripts in `container.ts`** have no automated test; they were checked by hand and under `wrangler dev`.
 - **The group KILL is best-effort.** A process the agent starts in a new session (`setsid`) leaves the task's process
   group, survives the KILL in finish, end and stop, and can keep changing the clone during the push, the snapshot and
-  the next run. Only replacing the instance ends it for certain.
+  the next run. Only replacing the instance ends it for certain. Since PLZG-311 such a process is the `agent` user's
+  and cannot touch the task directory, and a KILL of every process of that user would reach it; that is not built.
 - **A process-group id can be reused within one boot** after the group dies, so a late KILL could hit an unrelated
   group. The chance is low.
 - **Three counted task-file failures end the run untrusted, and its work is lost on purpose.** A task-file failure
@@ -367,14 +436,6 @@ the stale snapshot after a lost run (b5df279), `finish()` leaving the task's gro
   (G4). An agent can still stay `running` until the cap without a task-file failure, for example by starving the
   container so execs time out, or by making a read hang. A failed `stdout.log` read in `events()` answers 500, and one
   in the alarm's ingest while the run is live is logged and re-armed; neither counts toward either limit.
-- **The agent can write the run's control files.** The agent runs as root in the container, so the files under
-  `/workspace/task` (`pid`, `exit-code`, `stdout.log`) are within its reach, as stage 1 accepts: an agent can end its
-  own run early or misreport its exit code. What bounds the damage: `finish()` KILLs the task's process group before
-  it reads the output, pushes or snapshots, when a task id is known (best-effort, see the `setsid` gap above; with
-  none, nothing is signalled and the instance is replaced after the push); the push can update only the workspace's
-  own branch; and the result the caller sees was always the agent's own report. The stage 2 fix is to run the agent as
-  a non-root user with the control files owned by root, or to report the exit status over a channel the agent cannot
-  write.
 - **The fixes' failure paths were not provoked on the deploy.** The deploy runs the fixed code (spike C, logs 6
   and 7), but an unreadable task file, a timed-out snapshot and an oversized result were exercised only in the
   unit tests and under `wrangler dev`.
