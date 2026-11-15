@@ -19,6 +19,7 @@ import {
 	repositoryDirectory,
 	run,
 	signalScript,
+	TASK_FILE_REFUSED,
 	stderrPath,
 	tail,
 	taskAliveScript,
@@ -33,10 +34,11 @@ export type { Task } from "./container"
 export type Signal = "TERM" | "KILL"
 
 // The container answered, and its answer shows a task file is not what the
-// runner wrote: a read failed with a file-level error other than not-found, or
-// a probe script ran and refused the file. Every other failure of a probe (an
-// exec timeout or reject, a transport error, a container that is stopping) is
-// an ordinary Error, and the Workspace treats it as transient (R1).
+// runner wrote: a read failed with one of the file-level errors in
+// wrongFileCodes, or a probe script exited TASK_FILE_REFUSED. Every other
+// failure of a probe (an exec timeout or reject, a transport error, a container
+// that is stopping, any other exit code or error code) is an ordinary Error,
+// and the Workspace treats it as transient (R1, G2).
 export class TaskFileError extends Error {
 	override name = "TaskFileError"
 }
@@ -182,9 +184,8 @@ export class ContainerHost implements Host {
 		const command = ["/bin/sh", "-c", chunkScript, "ingest", String(offset + 1), eventsPath, String(max)]
 		const output = await execOutput(this.c, command, { cwd: "/", env: {} }, execTimeout.short)
 
-		// The script ran and refused stdout.log: it is not the file the copier writes.
 		if (output.exitCode !== 0) {
-			throw new TaskFileError(`Could not read ${eventsPath}: ${tail(new TextDecoder().decode(output.stderr), 500)}`)
+			throw probeFailure(`read ${eventsPath}`, output.exitCode, new TextDecoder().decode(output.stderr))
 		}
 
 		return new Uint8Array(output.stdout)
@@ -200,9 +201,13 @@ export class ContainerHost implements Host {
 		const probe = await run(this.c, ["/bin/sh", "-c", outputBytesScript, "size", eventsPath], "/", {})
 		const bytes = Number(probe.stdout.trim())
 
-		// The script ran and refused stdout.log, or printed no size.
-		if (probe.exitCode !== 0 || !Number.isFinite(bytes)) {
-			throw new TaskFileError(`Could not read the size of ${eventsPath}: ${tail(probe.stderr, 500)}`)
+		if (probe.exitCode !== 0) {
+			throw probeFailure(`read the size of ${eventsPath}`, probe.exitCode, probe.stderr)
+		}
+
+		// A script that exited 0 without a size: the exec, not the file, went wrong.
+		if (!Number.isFinite(bytes)) {
+			throw new Error(`Could not read the size of ${eventsPath}: the probe printed no size`)
 		}
 
 		return bytes
@@ -223,17 +228,37 @@ export class ContainerHost implements Host {
 	}
 }
 
-// A task file read: undefined while it does not exist. Any other file-level
-// error the container reports (a directory, no permission) is a TaskFileError;
-// an exec or transport failure stays an ordinary Error (R1).
+// A probe script's non-zero exit: TaskFileError only when the script itself
+// refused the file (G2). 137 and 143 (the probe KILLed or TERMed while the
+// container stops), 126 and 127 (no shell), 255 and the rest are plain Errors.
+export function probeFailure(what: string, exitCode: number, stderr: string): Error {
+	const message = `Could not ${what}: the probe exited ${exitCode}: ${tail(stderr, 500)}`
+	return exitCode === TASK_FILE_REFUSED ? new TaskFileError(message) : new Error(message)
+}
+
+// The SandboxFileError codes (native Linux errnos) that mean the path exists
+// but is the wrong kind of thing or can't be read, so the agent changed it (G2):
+// EISDIR (a directory), ENOTDIR (a path part is not a directory), ELOOP (a
+// symlink loop), ENXIO (a socket or a FIFO with no writer), EACCES and EPERM (no
+// permission). ENOENT is "not written yet". Every other code, UNKNOWN included,
+// may be the container's own trouble (EIO, ENOSPC, EMFILE, ENOMEM), so it is plain.
+const wrongFileCodes: ReadonlySet<string> = new Set(["EISDIR", "ENOTDIR", "ELOOP", "ENXIO", "EACCES", "EPERM"])
+
+// What a failed task file read is: a TaskFileError for a listed file-level code,
+// else the error as it was.
+export function readFailure(path: string, error: unknown): unknown {
+	if (SandboxFileError.is(error) && wrongFileCodes.has(error.code)) {
+		return new TaskFileError(`Could not read ${path}: ${error.code} ${error.message}`)
+	}
+
+	return error
+}
+
+// A task file read: undefined while it does not exist (R1, G2).
 async function readTaskFile(files: Files, path: string): Promise<string | undefined> {
 	try {
 		return await readOptionalText(files, path)
 	} catch (error) {
-		if (SandboxFileError.is(error)) {
-			throw new TaskFileError(`Could not read ${path}: ${error.code} ${error.message}`)
-		}
-
-		throw error
+		throw readFailure(path, error)
 	}
 }
