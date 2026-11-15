@@ -36,7 +36,8 @@ Also decided by Adam on 2026-11-14:
 
 1. Stage 1: a runner on Cloudflare that Adam can drive with `curl`, with no bridge change.
 2. Stage 2: the bridge can start a department on the runner, and more than one
-   department can be active at once.
+   department can be active at once. Stage 2 is outlined here (§6.7) and gets its own
+   plan only after Adam has read the stage 1 evidence.
 3. Evidence for each item the roadmap marks unverified: Claude Code in a sandbox,
    the login path, resume after the instance is replaced, and cost.
 
@@ -109,7 +110,7 @@ branch `plaza/workspace-<project id>-<department>`.
 | Call | Effect |
 |---|---|
 | Create workspace | Start the container and clone `repo` at `branch` |
-| Start run | Run one prompt; refused while a run is active |
+| Start run | Run one prompt, continuing the workspace's conversation or starting a new one on request; refused while a run is active |
 | Read events after N | Numbered events since N; a reconnecting client loses and repeats nothing |
 | Read status | Idle, running, stopped or failed; last result; pushed commit |
 | Stop run | Interrupt the active run |
@@ -172,22 +173,45 @@ send data out, which is why the list is short and additions are read-only.
 One gap, stated plainly: the agent can push any branch name in its one repository.
 Protected branches are safe only where the repository has branch rules.
 
-### 6.7 Stage 2: the bridge
+### 6.7 Stage 2: the bridge (outline; planned after stage 1 evidence)
+
+Stage 1 is planned and built from this document. Stage 2 is not: it starts when Adam
+has read the stage 1 results, and the proposals marked below are confirmed or changed
+then. A failed conversation resume in stage 1 does not block stage 2; it means the
+bridge sends its M13 recap on every cloud run.
+
+Settled:
 
 - A project setting names where each department runs: `local` (default) or `cloud`.
-- A cloud department takes no local worktree lease and does not count against the
-  local limit of one. Cloud departments have their own limit, default 3 (**my call**).
-- The bridge pushes the workspace branch before the first run, relays events to the
-  client as it does for a local run, and fetches the branch after each run
-  (fast-forward only; anything else is reported as an error, not merged).
-- The bridge holds the relay claim for a cloud department exactly as it does today, so
-  the relay's claim list stays the answer to "who is doing what". The runner gets no
-  relay credential.
-- If the bridge disconnects mid-run, the run continues. On reconnect the bridge reads
-  events after its last number.
-- A live `domain_state` carries where the department runs. Godot shows it; no other
-  client change.
+- Cloud departments do not count against the local limit of one active department.
+  They have their own limit, default 3 (**my call**).
+- The bridge relays runner events to the client as it does for a local run. If the
+  bridge disconnects mid-run, the run continues, and the bridge reads events after its
+  last number on reconnect.
+- A live `domain_state` carries where the department runs. Godot shows it.
+- The runner gets no relay credential. The bridge holds the relay claim as today.
 - Only repositories hosted on GitHub can run in the cloud.
+
+Proposed, to confirm at the stage 2 gate:
+
+1. **Local worktree.** A cloud department still gets its local worktree, branch and
+   lease, as today, so results and diffs read the same way. The agent does not run
+   there. After each run the bridge fetches the branch and fast-forwards the worktree;
+   anything else is an error, not a merge. Switching a department between `local` and
+   `cloud` needs a stopped session and a clean worktree.
+2. **The bridge and GitHub.** Today the bridge never pushes (`bridge/PROTOCOL.md`).
+   Stage 2 has it push `plaza/workspace-*` branches to the project's own repository
+   with the git login already on the machine. This is a real change to a stated rule.
+3. **Runner token for real projects.** Stage 1 uses one token for one test repository.
+   Real projects need a token per repository or a GitHub App.
+4. **Sessions.** Ending a session starts a new cloud conversation on the next run; the
+   workspace is deleted only when the department is. The recap is sent when a
+   conversation starts new.
+5. **Claims while the bridge is away.** The claim lapses and the cloud run finishes
+   and pushes anyway, matching the 2026-11-13 ruling that a run in progress is not
+   interrupted when its claim is lost.
+6. **Names.** `project_id` is a hash of the local git directory path, so a workspace
+   name belongs to one checkout on one machine.
 
 **Cost of stage 2:** it changes `project_service.py`, `domain_manager.py`,
 `domain_session.py`, `config.py` and `domain_protocol.py`, all guarded files, so the
@@ -208,8 +232,11 @@ All in Adam's Cloudflare account, development only:
    in a git-ignored file. (**My call** for development; an Access application like the
    relay's is the stage 2 option.)
 
-The admin token is used only to deploy, from Adam's checkout. It is not given to the
-runner, the bridge or any agent. Docker must be running for `wrangler deploy`.
+The building session deploys and runs the §8 tests itself, using the admin credential
+in Adam's main checkout only for `wrangler` commands, as it did for the relay
+(**my call**). That credential is not given to the runner, the bridge or any in-game
+agent. Everything that can be proven under local `wrangler dev` is proven there first.
+Docker must be running for `wrangler deploy`.
 
 ## 8. Stage 1 acceptance
 
