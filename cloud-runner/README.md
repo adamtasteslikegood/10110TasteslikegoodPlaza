@@ -86,6 +86,31 @@ Push, snapshot and restore (2026-11-15, Task 6), on workspace `persist`
 
 A successful push (`pushed.commit`) needs a real token on a test repository: Task 7.
 
+After the review fixes (2026-11-15), same setup, workspaces `fix1`, `fix2` and
+`nopid` (Hello-World, `master`):
+
+| Step | Answer |
+|---|---|
+| the first `c PUT /workspaces/fix1 ...` after wrangler built the image | 500 `Workspace request failed` after 5.7 s: the clone's first exec found the new instance not running yet (generation 1 used up). The PUT again answered 200, `generation: 2`. Later workspaces answered 200 at once (about 1.5 s) |
+| the same name with the same repo and branch and `"allow":["example.com"]` | 409 `The workspace exists with another repo or branch` (the host list now counts) |
+| `c POST .../runs`, a second POST during it | 202 `{"run":1}`; 409 `A run is already active` |
+| `c GET /workspaces/fix1/diff` during the run, after editing `README` and adding `NEW.txt` | 200 in 0.18 s, both in the diff |
+| a 2 MB `BIG.txt` added, the diff again, during and after the run | 200, 1,048,521 bytes of diff cut at a line, then `[The diff is longer than 1 MiB and was cut here.]`; `.git/index` unchanged (same md5), no temp file left |
+| the run left to end | `failed` with the 401, `pushError` as above |
+| `c POST /workspaces/fix2/runs ...` and `c POST /workspaces/fix2/stop` at once | 200 `stopped` in 2.2 s; exit code 143; no live process in the container but `sleep infinity` (the task's processes are zombies: PID 1 does not reap) |
+| run 2 on `fix2`; three seconds in, `kill -KILL` of the task's session leader (`sh`), `claude` still alive in its group | status stays `running`; when `claude` ended, `lost` with `The agent process ended without writing an exit code`; its `assistant` and `result` events were read in, then `push failed` and `snapshot saved` |
+| on `nopid`: the pid file moved aside right after the start, then `c POST /workspaces/nopid/stop` | 409 `The run could not be stopped: its task is still running. Try again.` after 5.6 s (no task to signal, so no TERM and KILL waits); status `running`, a new run 409, the task alive |
+| the pid file moved back, then the stop again | 200 `stopped` in 1.8 s; exit code 143, the group gone |
+
+Egress after the fixes, with the same `docker exec ... fetch`:
+
+- `fix1` (no `allow`): `https://example.com/` 403; `https://github.com/octocat/Hello-World`
+  (a page, not git) 403; `https://api.github.com/repos/octocat/Hello-World` 403;
+  `.../Hello-World/info/refs?service=git-upload-pack` 200; the same path on
+  `octocat/Spoon-Knife` 403.
+- `fix2` (`"allow": ["example.com"]`): `https://example.com/` 200,
+  `https://example.org/` and `http://example.org/` 403.
+
 Egress, checked with `docker exec <container> node -e "fetch(...)"` and
 `NODE_EXTRA_CA_CERTS=/etc/cloudflare/certs/cloudflare-containers-ca.crt`, not
 through any route of the Worker:
@@ -104,3 +129,17 @@ The props passed with `ctx.exports.Outbound({ props: { repoPath, allow } })`
 reach the intercept under wrangler dev: the clone of the workspace's own
 repository passed, another repository was refused, and only the workspace
 that allowed `example.com` could reach it. No fallback was needed.
+
+## To verify on the deploy
+
+Task 7 checks these on the development deploy. `wrangler dev --local` cannot
+show most of them; the 409 is checked here too, but the deploy must answer it
+as well:
+
+- With Internet off, raw TCP, DNS and ports other than 80/443 do not leave the
+  container.
+- The detached task survives an object restart or a redeploy, and its exit code
+  is still written.
+- A run longer than the 15-minute idle timeout stays alive.
+- A second start during a run answers 409.
+- Two containers can run at once (`wrangler.jsonc` sets no instance limit).
