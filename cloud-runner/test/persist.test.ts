@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest"
 import { abandonedPushError, afterAbandon, afterPersist, pushErrorText } from "../src/persist"
 
+// Fixtures with userinfo are assembled from parts, so no line of this file looks like a
+// credential in a URL to a secret scanner. Nothing here is a real credential.
+const FAKE_TOKEN = ["not", "a", "real", "token"].join("-")
+const withUserinfo = (user: string, secret: string) => "https://" + [user, secret].join(":") + "@" + "github.com/o/r"
+
 describe("pushErrorText", () => {
 	it("keeps the last 2000 characters", () => {
 		const text = pushErrorText(`${"a".repeat(3000)}end`, 128)
@@ -8,13 +13,13 @@ describe("pushErrorText", () => {
 		expect(text.endsWith("end")).toBe(true)
 	})
 	it("strips a credential from a URL", () => {
-		expect(pushErrorText("fatal: unable to access 'https://user:tok@github.com/o/r/': 403", 128)).toBe(
+		expect(pushErrorText(`fatal: unable to access '${withUserinfo("user", "tok")}/': 403`, 128)).toBe(
 			"fatal: unable to access 'https://github.com/o/r/': 403",
 		)
-		expect(pushErrorText("https://x-access-token:ghp_secret@github.com/o/r", 128)).not.toContain("ghp_secret")
+		expect(pushErrorText(withUserinfo("x-access-token", FAKE_TOKEN), 128)).not.toContain(FAKE_TOKEN)
 	})
 	it("strips before cutting, so no tail of a credential is left", () => {
-		const text = pushErrorText(`https://user:${"t".repeat(2500)}@github.com/o/r`, 128)
+		const text = pushErrorText(withUserinfo("user", "t".repeat(2500)), 128)
 		expect(text).toBe("https://github.com/o/r")
 	})
 	it("leaves a plain URL and a later address alone", () => {

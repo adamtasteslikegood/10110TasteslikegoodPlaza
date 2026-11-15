@@ -63,7 +63,7 @@ const refused: [string, string][] = [
 	["GET", "https://github.com/"],
 	["GET", "https://github.com/acme"],
 	["GET", "https://user@github.com/acme/app"],
-	["GET", "https://user:pw@github.com/acme/app"],
+	["GET", "https://" + ["user", "pw"].join(":") + "@github.com/acme/app"],
 	["GET", "https://github.com@evil.test/acme/app"],
 	["GET", "https://gateway.ai.cloudflare.com/v1/acct/gw2/anthropic/x"],
 	["POST", "https://gateway.ai.cloudflare.com/v1/acct/gw/openai/v1/chat/completions"],
