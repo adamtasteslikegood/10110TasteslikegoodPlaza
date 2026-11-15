@@ -375,7 +375,9 @@ the stale snapshot after a lost run (b5df279), `finish()` leaving the task's gro
   own branch; and the result the caller sees was always the agent's own report. The stage 2 fix is to run the agent as
   a non-root user with the control files owned by root, or to report the exit status over a channel the agent cannot
   write.
-- **The Copilot fixes are not on the deploy yet** (see "The development deploy"); their evidence is the local check.
+- **The fixes' failure paths were not provoked on the deploy.** The deploy runs the fixed code (spike C, logs 6
+  and 7), but an unreadable task file, a timed-out snapshot and an oversized result were exercised only in the
+  unit tests and under `wrangler dev`.
 
 ### Notes on the evidence itself (from the last review, 2026-11-15)
 
