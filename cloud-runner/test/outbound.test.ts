@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { inspectPush, policyFor, refusal, withCredential } from "../src/outbound"
+import { checkPush, MAX_COMMAND_BYTES } from "../src/pushguard"
 import type { Env } from "../src/types"
 
 const env = { AI_GATEWAY_TOKEN: "gw-token-value", GITHUB_TOKEN: "gh-token-value" } as Env
@@ -196,6 +197,90 @@ describe("inspectPush", () => {
 		}
 		expect(((await inspectPush(post(null), "work")) as Response).status).toBe(403)
 		expect(((await inspectPush(post(pushBody("refs/heads/work")), "")) as Response).status).toBe(403)
+	})
+
+	// Copilot round 3, E5: the parser's buffer never grows past the command-section cap,
+	// whatever the chunk sizes, and reading stops once the cap is reached.
+	describe("bounded head (Copilot E5)", () => {
+		// checkPush, recording the length of every head it is asked about.
+		const watched = () => {
+			const seen: number[] = []
+			const check: typeof checkPush = (head, branch, ended) => {
+				seen.push(head.length)
+				return checkPush(head, branch, ended)
+			}
+			return { seen, check }
+		}
+		const PACK_BYTES = 4 * 1024 * 1024
+		// Byte-for-byte, compared by length and SHA-256: a deep compare of 4 MiB is too slow.
+		const same = async (a: Uint8Array, b: Uint8Array) => {
+			const hex = async (x: Uint8Array) => [...new Uint8Array(await crypto.subtle.digest("SHA-256", x))].join(",")
+			expect(a.length).toBe(b.length)
+			expect(await hex(a)).toBe(await hex(b))
+		}
+		const withPack = () => {
+			const commands = encoder.encode(pkt(`${A} ${B} refs/heads/work\0report-status agent=git/2`) + "0000")
+			const data = new Uint8Array(commands.length + PACK_BYTES)
+			data.set(commands)
+			for (let i = commands.length; i < data.length; i += 1) data[i] = i % 251
+			return data
+		}
+		// A finite stream that counts how many bytes were pulled from it.
+		const counted = (data: Uint8Array, size: number) => {
+			const pulled = { bytes: 0 }
+			let at = 0
+			const stream = new ReadableStream<Uint8Array>({
+				pull(controller) {
+					if (at >= data.length) return controller.close()
+					const part = data.slice(at, at + size)
+					at += size
+					pulled.bytes += part.length
+					controller.enqueue(part)
+				},
+			})
+			return { stream, pulled }
+		}
+
+		it("forwards one chunk of commands plus several MiB of pack byte for byte, the head kept within the cap", async () => {
+			const data = withPack()
+			const { seen, check } = watched()
+			const out = await inspectPush(post(chunked(data, data.length)), "work", check)
+			expect(seen.length).toBeGreaterThan(0)
+			expect(Math.max(...seen)).toBeLessThanOrEqual(MAX_COMMAND_BYTES)
+			await same(await forwarded(out), data)
+		})
+
+		it("keeps the head within the cap for large chunks under a stated Content-Length", async () => {
+			const data = withPack()
+			const { seen, check } = watched()
+			const out = await inspectPush(post(chunked(data, 100_000), { "content-length": String(data.length) }), "work", check)
+			expect(seen.length).toBeGreaterThan(0)
+			expect(Math.max(...seen)).toBeLessThanOrEqual(MAX_COMMAND_BYTES)
+			await same(await forwarded(out), data)
+		})
+
+		it("still reads a command list split across many small chunks", async () => {
+			const commands = pkt(`${A} ${B} refs/heads/work\0report-status agent=git/2`) + pkt(`${B} ${A} refs/heads/work`)
+			const data = encoder.encode(commands + "0000" + "PACK" + "p".repeat(300))
+			const { seen, check } = watched()
+			const out = await inspectPush(post(chunked(data, 3)), "work", check)
+			expect(seen.length).toBeGreaterThan(30)
+			expect(await forwarded(out)).toEqual(data)
+		})
+
+		it("refuses a command list with no flush within the cap and stops reading there", async () => {
+			const line = pkt(`${A} ${B} refs/heads/work`)
+			const lines = Math.ceil((MAX_COMMAND_BYTES * 2) / line.length)
+			const data = encoder.encode(pkt(`${A} ${B} refs/heads/work\0report-status`) + line.repeat(lines))
+			const { stream, pulled } = counted(data, 1000)
+			const { seen, check } = watched()
+			const out = await inspectPush(post(stream), "work", check)
+			expect(out).toBeInstanceOf(Response)
+			expect((out as Response).status).toBe(403)
+			expect(seen.length).toBeGreaterThan(0)
+			expect(Math.max(...seen)).toBeLessThanOrEqual(MAX_COMMAND_BYTES)
+			expect(pulled.bytes).toBeLessThan(MAX_COMMAND_BYTES + 2 * 1000)
+		})
 	})
 })
 

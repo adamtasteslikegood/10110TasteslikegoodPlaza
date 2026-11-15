@@ -1,6 +1,6 @@
 import { WorkerEntrypoint } from "cloudflare:workers"
 import { decide, isContainerCredentialHeader, type Credential, type Policy } from "./egress"
-import { checkPush } from "./pushguard"
+import { checkPush, MAX_COMMAND_BYTES } from "./pushguard"
 import type { Env } from "./types"
 
 // Set by the workspace when it registers the intercept. branch is the only ref
@@ -67,10 +67,13 @@ function joined(a: Uint8Array, b: Uint8Array): Uint8Array {
 
 // Reads a git-receive-pack body only as far as its command list and asks
 // checkPush whether every ref it updates is the workspace branch (Copilot C11).
-// Allowed, the request goes on with the same bytes: the part read, then the
-// rest of the stream as it arrives, so the packfile is never held in memory.
-// Refused, nothing is fetched and the container gets 403.
-export async function inspectPush(request: Request, branch: string): Promise<Request | Response> {
+// What is held before the decision: the chunks read so far, by reference and
+// uncopied, to send on unchanged; and a copy of at most MAX_COMMAND_BYTES of
+// their start, which is all the parser sees (Copilot E5). checkPush decides by
+// the time that copy is full, so reading stops there. Allowed, the request goes
+// on with the held chunks, then the rest of the stream as it arrives. Refused,
+// nothing is fetched and the container gets 403. `check` is a seam for tests.
+export async function inspectPush(request: Request, branch: string, check: typeof checkPush = checkPush): Promise<Request | Response> {
 	if (request.headers.has("content-encoding")) {
 		return pushRefused("a compressed push cannot be inspected")
 	}
@@ -86,20 +89,28 @@ export async function inspectPush(request: Request, branch: string): Promise<Req
 	}
 
 	const reader = request.body.getReader()
+	const held: Uint8Array[] = []
 	let head: Uint8Array = new Uint8Array(0)
 	let ended = false
-	let verdict = checkPush(head, branch, ended)
+	let verdict = check(head, branch, ended)
 
 	while (verdict === "more") {
+		if (head.length >= MAX_COMMAND_BYTES) {
+			// checkPush never asks for more past the cap; refuse rather than read on.
+			verdict = { allow: false, reason: "the push command list is over 64 KiB" }
+			break
+		}
+
 		const chunk = await reader.read()
 
 		if (chunk.done) {
 			ended = true
-		} else {
-			head = joined(head, chunk.value)
+		} else if (chunk.value.length > 0) {
+			held.push(chunk.value)
+			head = joined(head, chunk.value.subarray(0, MAX_COMMAND_BYTES - head.length))
 		}
 
-		verdict = checkPush(head, branch, ended)
+		verdict = check(head, branch, ended)
 	}
 
 	if (!verdict.allow) {
@@ -107,10 +118,10 @@ export async function inspectPush(request: Request, branch: string): Promise<Req
 		return pushRefused(verdict.reason)
 	}
 
-	const consumed = head
 	let rest: ReadableStream<Uint8Array> = new ReadableStream<Uint8Array>({
 		start(controller) {
-			if (consumed.length > 0) controller.enqueue(consumed)
+			for (const chunk of held) controller.enqueue(chunk)
+			held.length = 0
 			if (ended) controller.close()
 		},
 		async pull(controller) {
