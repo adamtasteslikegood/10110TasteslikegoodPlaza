@@ -18,8 +18,15 @@ export class FakeHost implements Host {
 	groups = new Map<number, Group>()
 	exit?: number
 	stdout: Uint8Array = new Uint8Array()
-	results: string[] = []
+	// The size stdout.log reports, when a test sets one larger than stdout.
+	outputSize?: number
+	pidInvalid = false // the pid file exists but does not parse
 	snapshots = 0
+	// A snapshot that answers this many ms late (bounded), or fails.
+	snapshotDelayMs = 0
+	snapshotError?: string
+	// How many image starts fail before one answers.
+	imageFailures = 0
 	execResult: CommandResult = { exitCode: 0, stdout: "", stderr: "" }
 
 	// How the next startTask behaves.
@@ -41,18 +48,25 @@ export class FakeHost implements Host {
 		return this.calls.filter((c) => c === call).length
 	}
 
-	// The running task ends on its own, after writing these stdout lines.
-	finishTask(exitCode: number, lines: string[]): void {
+	// The running task's leader ends on its own, after writing these stdout
+	// lines. With background set, a member of its group outlives it.
+	finishTask(exitCode: number, lines: string[], background = false): void {
 		const group = this.task && this.groups.get(this.task.pid)
-		if (group) group.alive = false
+		if (group && !background) group.alive = false
 		this.exit = exitCode
 		this.stdout = new TextEncoder().encode(lines.map((line) => `${line}\n`).join(""))
-		this.results = lines.filter((line) => line.includes('"type":"result"'))
 	}
 
-	startFromImage(): void {
+	async startFromImage(): Promise<void> {
 		this.calls.push("startFromImage")
+
+		if (this.imageFailures > 0) {
+			this.imageFailures -= 1
+			throw new Error("The new instance did not answer")
+		}
+
 		this.running = true
+		this.calls.push("image ready")
 	}
 
 	async startFromSnapshot(id: string): Promise<string | undefined> {
@@ -86,7 +100,9 @@ export class FakeHost implements Host {
 	async snapshot(): Promise<Saved> {
 		this.calls.push("snapshot")
 		this.snapshots += 1
-		return { id: `snap-${this.snapshots}`, size: 1 }
+		const id = `snap-${this.snapshots}`
+		if (this.snapshotDelayMs > 0) await new Promise((resolve) => setTimeout(resolve, this.snapshotDelayMs))
+		return this.snapshotError === undefined ? { id, size: 1 } : { error: this.snapshotError }
 	}
 
 	async diff(): Promise<{ ok: boolean; text: string }> {
@@ -96,9 +112,10 @@ export class FakeHost implements Host {
 	async resetTask(): Promise<void> {
 		this.calls.push("resetTask")
 		this.task = undefined
+		this.pidInvalid = false
 		this.exit = undefined
 		this.stdout = new Uint8Array()
-		this.results = []
+		this.outputSize = undefined
 	}
 
 	async startTask(): Promise<void> {
@@ -120,9 +137,9 @@ export class FakeHost implements Host {
 		}
 	}
 
-	async readTask(): Promise<Task | undefined> {
+	async readTask(): Promise<Task | "invalid" | undefined> {
 		this.fail("readTask")
-		return this.task
+		return this.pidInvalid ? "invalid" : this.task
 	}
 
 	async taskAlive(task: Task): Promise<boolean> {
@@ -158,8 +175,12 @@ export class FakeHost implements Host {
 		return { bytes: 0, ended: false }
 	}
 
-	async resultLines(): Promise<string[]> {
-		return this.results
+	async outputBytes(): Promise<number> {
+		return this.outputSize ?? this.stdout.byteLength
+	}
+
+	async outputDone(): Promise<boolean> {
+		return true
 	}
 
 	async exec(argv: string[]): Promise<CommandResult> {

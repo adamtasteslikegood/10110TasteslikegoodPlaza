@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { abandonedPushError, afterAbandon, afterPersist, pushErrorText } from "../src/persist"
+import { abandonedPushError, abandonSnapshot, afterAbandon, afterPush, afterSnapshot, MAX_SNAPSHOT_ATTEMPTS, pushErrorText, startFromImage, within } from "../src/persist"
 
 // Fixtures with userinfo are assembled from parts, so no line of this file looks like a
 // credential in a URL to a secret scanner. Nothing here is a real credential.
@@ -31,38 +31,115 @@ describe("pushErrorText", () => {
 	})
 })
 
-describe("afterPersist", () => {
-	it("stores the pushed commit, clears the push error and keeps the new snapshot", () => {
-		expect(afterPersist(4, { commit: "abc" }, { id: "s1", size: 10 })).toEqual({
-			pushed: { commit: "abc" },
-			pushError: undefined,
-			snapshot: "s1",
-			notices: [
-				{ notice: "pushed", run: 4, commit: "abc" },
-				{ notice: "snapshot saved", run: 4, bytes: 10 },
-			],
+describe("afterPush", () => {
+	it("stores the pushed commit, clears the push error and leaves the snapshot pending (Copilot C8)", () => {
+		expect(afterPush(4, { commit: "abc" })).toEqual({
+			fields: { pushed: { commit: "abc" }, pushError: undefined, persistPending: false, snapshotPending: true, snapshotAttempts: 0 },
+			notice: { notice: "pushed", run: 4, commit: "abc" },
 		})
 	})
-	it("a refused push keeps the last pushed commit and still keeps the snapshot", () => {
-		const after = afterPersist(2, { error: "denied" }, { id: "s2", size: 5 })
-		expect(after).not.toHaveProperty("pushed")
-		expect(after).toMatchObject({ pushError: "denied", snapshot: "s2" })
-		expect(after.notices[0]).toEqual({ notice: "push failed", run: 2, error: "denied" })
+	it("a refused push keeps the last pushed commit and still leaves the snapshot pending", () => {
+		const after = afterPush(2, { error: "denied" })
+		expect(after.fields).not.toHaveProperty("pushed")
+		expect(after.fields).toMatchObject({ pushError: "denied", persistPending: false, snapshotPending: true })
+		expect(after.notice).toEqual({ notice: "push failed", run: 2, error: "denied" })
 	})
-	it("a failed snapshot drops the stored one and says why", () => {
-		const after = afterPersist(3, { commit: "abc" }, { error: "not supported" })
-		expect(after).toHaveProperty("snapshot", undefined)
-		expect(after.notices[1]).toEqual({ notice: "snapshot failed", run: 3, error: "not supported" })
+})
+
+describe("afterSnapshot", () => {
+	it("keeps a new snapshot and clears the retry and stale marks", () => {
+		expect(afterSnapshot(4, { id: "s1", size: 10 }, 1)).toEqual({
+			fields: { snapshot: "s1", snapshotPending: false, snapshotAttempts: undefined, snapshotStale: undefined },
+			notice: { notice: "snapshot saved", run: 4, bytes: 10 },
+		})
+	})
+	it("a failed snapshot drops the stored one, which is behind the pushed branch, and says why", () => {
+		expect(afterSnapshot(3, { error: "not supported" }, 1)).toEqual({
+			fields: { snapshot: undefined, snapshotPending: false, snapshotAttempts: undefined, snapshotStale: undefined },
+			notice: { notice: "snapshot failed", run: 3, error: "not supported" },
+		})
+	})
+	it("a timed-out snapshot stays pending until its third attempt (Copilot C8)", () => {
+		expect(MAX_SNAPSHOT_ATTEMPTS).toBe(3)
+		for (const attempt of [1, 2]) {
+			expect(afterSnapshot(5, "timeout", attempt)).toEqual({
+				fields: { snapshotPending: true },
+				notice: { notice: "snapshot timed out", run: 5, attempt },
+			})
+		}
+		expect(afterSnapshot(5, "timeout", 3)).toEqual({
+			fields: { snapshot: undefined, snapshotPending: false, snapshotAttempts: undefined, snapshotStale: undefined },
+			notice: { notice: "snapshot failed", run: 5, error: "The snapshot timed out 3 times" },
+		})
+	})
+})
+
+describe("abandonSnapshot", () => {
+	it("drops a pending snapshot's stored predecessor, which is behind the pushed branch", () => {
+		expect(abandonSnapshot(6, "why")).toEqual({
+			fields: { snapshot: undefined, snapshotPending: false, snapshotAttempts: undefined, snapshotStale: undefined },
+			notice: { notice: "snapshot failed", run: 6, error: "why" },
+		})
 	})
 })
 
 describe("afterAbandon", () => {
-	it("clears the pending flag, records why nothing was pushed, and drops the stale snapshot", () => {
+	it("clears the pending flag, records why nothing was pushed, and keeps the snapshot marked stale (Copilot C5)", () => {
 		expect(afterAbandon(3)).toEqual({
 			persistPending: false,
 			pushError: abandonedPushError,
-			snapshot: undefined,
+			snapshotStale: true,
 			notice: { notice: "push failed", run: 3, error: abandonedPushError },
 		})
+	})
+})
+
+describe("within", () => {
+	it("answers the work's value when it ends in time", async () => {
+		expect(await within(Promise.resolve("done"), 50)).toBe("done")
+	})
+	it("answers timeout when the work is slower, without waiting for it", async () => {
+		const slow = new Promise((resolve) => setTimeout(() => resolve("late"), 200))
+		const started = Date.now()
+		expect(await within(slow, 10)).toBe("timeout")
+		expect(Date.now() - started).toBeLessThan(150)
+	})
+})
+
+describe("startFromImage (Copilot C9)", () => {
+	const bytes = (text: string) => new TextEncoder().encode(text)
+	// A container whose first `failures` execs fail as on an instance still booting.
+	const booting = (failures: number) => {
+		const seen = { starts: 0, execs: 0, destroyed: false }
+		const container = {
+			images: { agent: "agent-image" },
+			get running() {
+				return seen.starts > 0 && !seen.destroyed
+			},
+			start: () => {
+				seen.starts += 1
+			},
+			destroy: async () => {
+				seen.destroyed = true
+			},
+			exec: async () => {
+				seen.execs += 1
+				if (seen.execs <= failures) throw new Error("container is not running")
+				return { output: async () => ({ exitCode: 0, stdout: bytes(""), stderr: bytes("") }) }
+			},
+		} as unknown as Container
+		return { container, seen }
+	}
+
+	it("returns once an exec on the new instance answers", async () => {
+		const { container, seen } = booting(3)
+		await startFromImage(container, { attempts: 10, delayMs: 1 })
+		expect(seen).toEqual({ starts: 1, execs: 4, destroyed: false })
+	})
+
+	it("gives up after its attempts, destroys the instance and says why", async () => {
+		const { container, seen } = booting(100)
+		await expect(startFromImage(container, { attempts: 5, delayMs: 1 })).rejects.toThrow("The new instance did not answer after 5 attempts: container is not running")
+		expect(seen).toEqual({ starts: 1, execs: 5, destroyed: true })
 	})
 })

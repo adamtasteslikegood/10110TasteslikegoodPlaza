@@ -1,19 +1,20 @@
 import { Files } from "@cloudflare/sandbox"
-import { parseLine } from "./agent"
 import {
 	capDiff,
 	capOutput,
 	type CommandResult,
 	chunkScript,
+	copyScript,
 	diffScript,
 	eventsPath,
 	execOutput,
 	execTimeout,
 	exitCodePath,
 	longLineScript,
+	outputBytesScript,
+	outputDoneScript,
 	parseTask,
 	pidPath,
-	readLines,
 	readOptionalText,
 	repositoryDirectory,
 	run,
@@ -37,7 +38,8 @@ export type Signal = "TERM" | "KILL"
 // into execs and file reads. Tests drive a real Workspace with a fake one.
 export interface Host {
 	readonly running: boolean
-	startFromImage(): void
+	// Resolves once an exec on the new instance answers; throws (instance destroyed) if none does.
+	startFromImage(): Promise<void>
 	startFromSnapshot(id: string): Promise<string | undefined>
 	destroy(): Promise<void>
 	setPolicy(props: OutboundProps): Promise<void>
@@ -50,8 +52,9 @@ export interface Host {
 	resetTask(): Promise<void>
 	// Starts the detached task. Can throw after the task has started.
 	startTask(argv: string[], env: Record<string, string>): Promise<void>
-	// The task the pid file names, if it has been written.
-	readTask(): Promise<Task | undefined>
+	// The task the pid file names, if it has been written; "invalid" when the file
+	// exists but names no usable group.
+	readTask(): Promise<Task | "invalid" | undefined>
 	// Whether a live (not zombie) process of the task's group runs in this instance.
 	taskAlive(task: Task): Promise<boolean>
 	signalTask(task: Task, signal: Signal): Promise<void>
@@ -60,7 +63,10 @@ export interface Host {
 	readOutput(offset: number, max: number): Promise<Uint8Array>
 	// The length of the line at offset, newline included, and whether it has ended.
 	lineLength(offset: number): Promise<{ bytes: number; ended: boolean }>
-	resultLines(): Promise<string[]>
+	// The size of stdout.log in bytes, 0 before it exists.
+	outputBytes(): Promise<number>
+	// Whether the task's stdout and stderr copiers have ended, so the logs are complete.
+	outputDone(): Promise<boolean>
 	stderrTail(): Promise<string>
 	// Test-only: runs argv in the clone with the git trust env, each stream capped.
 	exec(argv: string[]): Promise<CommandResult>
@@ -88,8 +94,8 @@ export class ContainerHost implements Host {
 		return new Files(this.c)
 	}
 
-	startFromImage(): void {
-		startFromImage(this.c)
+	startFromImage(): Promise<void> {
+		return startFromImage(this.c)
 	}
 
 	startFromSnapshot(id: string): Promise<string | undefined> {
@@ -134,16 +140,16 @@ export class ContainerHost implements Host {
 	}
 
 	async startTask(argv: string[], env: Record<string, string>): Promise<void> {
-		const started = await run(this.c, ["/bin/sh", "-c", taskScript, "agent", taskDirectory, ...argv], repositoryDirectory, env)
+		const started = await run(this.c, ["/bin/sh", "-c", taskScript, "agent", taskDirectory, copyScript, ...argv], repositoryDirectory, env)
 
 		if (started.exitCode !== 0) {
 			throw new Error(`The task launcher exited with ${started.exitCode}: ${tail(started.stderr, 500)}`)
 		}
 	}
 
-	async readTask(): Promise<Task | undefined> {
+	async readTask(): Promise<Task | "invalid" | undefined> {
 		const text = await readOptionalText(this.files, pidPath)
-		return text === undefined ? undefined : parseTask(text)
+		return text === undefined ? undefined : (parseTask(text) ?? "invalid")
 	}
 
 	async taskAlive(task: Task): Promise<boolean> {
@@ -152,6 +158,9 @@ export class ContainerHost implements Host {
 	}
 
 	async signalTask(task: Task, signal: Signal): Promise<void> {
+		// Group 0 is the caller's own and -1 is every process (Copilot C2).
+		if (task.pid <= 1) return
+
 		// Fails when the group is gone already, which is fine.
 		await run(this.c, ["/bin/sh", "-c", signalScript, "signal", String(task.pid), task.boot, signal], "/", {})
 	}
@@ -171,12 +180,19 @@ export class ContainerHost implements Host {
 		return { bytes, ended: ended === 1 }
 	}
 
-	async resultLines(): Promise<string[]> {
-		const results: string[] = []
-		for await (const line of readLines((await this.files.readFile(eventsPath)).body)) {
-			if (parseLine(line)?.type === "result") results.push(line)
+	async outputBytes(): Promise<number> {
+		const probe = await run(this.c, ["/bin/sh", "-c", outputBytesScript, "size", eventsPath], "/", {})
+		const bytes = Number(probe.stdout.trim())
+
+		if (probe.exitCode !== 0 || !Number.isFinite(bytes)) {
+			throw new Error(`Could not read the size of ${eventsPath}: ${tail(probe.stderr, 500)}`)
 		}
-		return results
+
+		return bytes
+	}
+
+	async outputDone(): Promise<boolean> {
+		return (await run(this.c, ["/bin/sh", "-c", outputDoneScript, "done", taskDirectory], "/", {})).exitCode === 0
 	}
 
 	async stderrTail(): Promise<string> {

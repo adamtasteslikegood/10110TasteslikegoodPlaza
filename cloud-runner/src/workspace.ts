@@ -1,9 +1,9 @@
 import { DurableObject } from "cloudflare:workers"
 import { agentArgv, agentEnv, outcome, parseLine } from "./agent"
 import { completeLines, leadingType, lineEvent } from "./container"
-import { EventLog } from "./events"
+import { EventLog, MAX_PAYLOAD_BYTES } from "./events"
 import { ContainerHost, type Host, type Task } from "./host"
-import { afterAbandon, afterPersist, gitEnv, messageOf } from "./persist"
+import { abandonSnapshot, afterAbandon, afterPush, afterSnapshot, gitEnv, messageOf, within } from "./persist"
 import {
 	admit,
 	admitCreate,
@@ -11,8 +11,11 @@ import {
 	conversation,
 	conversationAfter,
 	judgeRun,
+	leftoverAction,
+	MAX_OUTPUT_BYTES,
 	MAX_RUN_ERROR,
 	needsAlarm,
+	OUTPUT_ERROR,
 	persistAction,
 	restorePath,
 	stopOutcome,
@@ -24,6 +27,8 @@ const inactivityTimeout = 15 * 60 * 1000
 const runCheckInterval = 60 * 1000
 const chunkBytes = 4 * 1024 * 1024
 const recordKey = "workspace"
+// What the record keeps of a result event too large to store.
+const truncatedResult = JSON.stringify({ type: "result", truncated: true })
 
 // Everything the object keeps between requests: one small record, read with one get.
 type Record_ = {
@@ -38,7 +43,12 @@ type Record_ = {
 	state: RunState
 	startedAt?: number // ms epoch of the current run's start
 	task?: Task // the current run's task, once its pid file was read
-	persistPending?: boolean // the run ended; push and snapshot are not stored yet
+	persistPending?: boolean // the run ended; its push is not stored yet
+	snapshotPending?: boolean // the push is stored; the snapshot after it is not yet (Copilot C8)
+	snapshotAttempts?: number // snapshot attempts made for the last run, at most MAX_SNAPSHOT_ATTEMPTS
+	snapshotStale?: boolean // the stored snapshot predates a run whose work was lost (Copilot C5)
+	replaceInstance?: boolean // the instance may run a process no task id names: destroy it once persisted (Copilot C4)
+	resultLine?: string // the current run's last result event, read during ingest (Copilot C10)
 	result?: string
 	error?: string
 	pushed?: { commit: string }
@@ -59,8 +69,9 @@ export class Workspace extends DurableObject<Env> {
 	private queue: Promise<unknown> = Promise.resolve()
 	// The container, said as intent. Built on first use; tests set a fake here.
 	private sandbox?: Host
-	// How long to wait for a pid file and for a signalled task, and how often to look.
-	private timing = { pidWait: 5 * 1000, stopWait: 10 * 1000, poll: 500 }
+	// How long to wait for a pid file, for a signalled task and for a snapshot,
+	// and how often to look.
+	private timing = { pidWait: 5 * 1000, stopWait: 10 * 1000, poll: 500, snapshotWait: 3 * 60 * 1000 }
 
 	constructor(ctx: DurableObjectState, env: Env) {
 		super(ctx, env)
@@ -114,17 +125,31 @@ export class Workspace extends DurableObject<Env> {
 				return decision
 			}
 
-			// Starting a new instance clones again and forgets the conversation.
-			await this.ensureStarted(record)
-			const { sessionId, resume } = conversation(fresh, record.hasConversation, record.sessionId, crypto.randomUUID())
-
-			// A task an earlier start left behind must not share the clone with this one.
-			const leftover = (await this.host.readTask()) ?? record.task
-
-			if (leftover) {
-				await this.host.signalTask(leftover, "KILL")
+			// A snapshot still pending would replace one taken before the last push;
+			// the stored one is behind the branch, so a new instance clones instead.
+			if (record.snapshotPending) {
+				this.settle(record, abandonSnapshot(record.run, "A new run started before the snapshot was saved"))
 			}
 
+			// Starting a new instance clones again and forgets the conversation.
+			const reused = this.host.running && record.replaceInstance !== true
+			await this.ensureStarted(record)
+
+			// A task an earlier start left behind must not share the clone with this
+			// one. One the pid file cannot name is ended with its instance (Copilot C4).
+			if (reused) {
+				const leftover = leftoverAction(await this.host.readTask(), record.task)
+
+				if (leftover === "replace") {
+					await this.host.destroy()
+					this.ready = false
+					await this.startInstance(record)
+				} else if (leftover !== "none") {
+					await this.host.signalTask(leftover.kill, "KILL")
+				}
+			}
+
+			const { sessionId, resume } = conversation(fresh, record.hasConversation, record.sessionId, crypto.randomUUID())
 			await this.host.resetTask()
 
 			// The run is stored and watched before the task starts, so a start that
@@ -141,6 +166,7 @@ export class Workspace extends DurableObject<Env> {
 				eventsOffset: 0,
 				result: undefined,
 				error: undefined,
+				resultLine: undefined,
 			})
 			this.save(record)
 			this.note(record, { notice: "run started", run: record.run })
@@ -210,11 +236,18 @@ export class Workspace extends DurableObject<Env> {
 				if ((await this.host.exitCode()) === undefined) {
 					await this.waitFor(this.timing.stopWait, async () => !(await this.host.taskAlive(task)))
 				}
+
+				await this.waitForOutput()
+			} else {
+				// Nothing names the task, which may still start: end it with its instance.
+				record.replaceInstance = true
+				this.save(record)
 			}
 
 			const exitCode = await this.host.exitCode()
 			const taskAlive = exitCode === undefined && task !== undefined && (await this.host.taskAlive(task))
-			const resultSeen = exitCode !== undefined && (await this.host.resultLines()).length > 0
+			await this.ingest(record)
+			const resultSeen = exitCode !== undefined && record.resultLine !== undefined
 			const decision = stopOutcome({ exitCode, pidPresent: task !== undefined, taskAlive, resultSeen })
 
 			if (decision === "still-running") {
@@ -226,7 +259,6 @@ export class Workspace extends DurableObject<Env> {
 				return statusOf(record)
 			}
 
-			await this.ingest(record)
 			Object.assign(record, { state: "stopped", hasConversation: conversationAfter("stopped", record.resumed === true, false), persistPending: true })
 			this.save(record)
 			this.note(record, { notice: "run stopped", run: record.run })
@@ -301,7 +333,7 @@ export class Workspace extends DurableObject<Env> {
 	async alarm(): Promise<void> {
 		await this.exclusive(async () => {
 			try {
-				const record = await this.refresh()
+				const record = await this.refresh(true)
 
 				if (record.state === "running") {
 					await this.ingest(record)
@@ -311,7 +343,7 @@ export class Workspace extends DurableObject<Env> {
 			} finally {
 				const stored = this.load()
 
-				if (needsAlarm(stored.state, stored.persistPending === true)) {
+				if (needsAlarm(stored.state, stored.persistPending === true, stored.snapshotPending === true)) {
 					await this.ctx.storage.setAlarm(Date.now() + runCheckInterval)
 				}
 			}
@@ -323,29 +355,50 @@ export class Workspace extends DurableObject<Env> {
 		return this.sandbox
 	}
 
-	// After a run ends or is stopped: push the branch, then snapshot the instance.
-	// The end state was stored with persistPending, so an interruption anywhere
-	// here is retried by the next refresh.
-	private async finishRun(record: Record_): Promise<void> {
-		const action = persistAction({ pending: record.persistPending === true, containerRunning: this.host.running })
+	// After a run ends or is stopped: push the branch, then snapshot the instance,
+	// then replace an instance that may hold an unnamed process. The end state
+	// was stored with persistPending, so an interrupted push is retried by the
+	// next refresh. The snapshot is tried right after the push and then only by
+	// the alarm: each try is bounded by timing.snapshotWait (Copilot C8).
+	private async finishRun(record: Record_, retrySnapshot = false): Promise<void> {
+		let trySnapshot = retrySnapshot
 
-		if (action === "none") {
-			return
+		if (record.persistPending) {
+			const action = persistAction({ pending: true, containerRunning: this.host.running })
+
+			if (action === "abandon" || record.branch === undefined) {
+				const { notice, ...fields } = afterAbandon(record.run)
+				this.settle(record, { fields, notice })
+			} else {
+				this.settle(record, afterPush(record.run, await this.host.push(record.branch)))
+				trySnapshot = true
+			}
 		}
 
-		if (action === "abandon" || record.branch === undefined) {
-			const { notice, ...fields } = afterAbandon(record.run)
-			Object.assign(record, fields)
+		if (record.snapshotPending && !this.host.running) {
+			this.settle(record, abandonSnapshot(record.run, "The container stopped before the snapshot was saved"))
+		} else if (record.snapshotPending && trySnapshot) {
+			const attempt = (record.snapshotAttempts ?? 0) + 1
+			record.snapshotAttempts = attempt
 			this.save(record)
-			this.note(record, notice)
-			return
+			this.settle(record, afterSnapshot(record.run, await within(this.host.snapshot(), this.timing.snapshotWait), attempt))
 		}
 
-		const pushed = await this.host.push(record.branch)
-		const { notices, ...fields } = afterPersist(record.run, pushed, await this.host.snapshot())
-		Object.assign(record, fields, { persistPending: false })
+		if (record.replaceInstance && !record.persistPending && !record.snapshotPending) {
+			if (this.host.running) {
+				await this.host.destroy()
+				this.ready = false
+			}
+
+			record.replaceInstance = false
+			this.save(record)
+		}
+	}
+
+	private settle(record: Record_, after: { fields: Partial<Record_>; notice: unknown }): void {
+		Object.assign(record, after.fields)
 		this.save(record)
-		for (const notice of notices) this.note(record, notice)
+		this.note(record, after.notice)
 	}
 
 	// One public method or alarm at a time. A clone can outlast
@@ -370,7 +423,7 @@ export class Workspace extends DurableObject<Env> {
 
 	// The stored record, with a running run judged against what the container
 	// shows and a pending push and snapshot done. Never starts a container.
-	private async refresh(): Promise<Record_> {
+	private async refresh(retrySnapshot = false): Promise<Record_> {
 		const record = this.load()
 
 		// After this object restarts, a running container needs its intercepts again.
@@ -382,8 +435,8 @@ export class Workspace extends DurableObject<Env> {
 			await this.check(record)
 		}
 
-		if (record.persistPending) {
-			await this.finishRun(record)
+		if (record.persistPending || record.snapshotPending || record.replaceInstance) {
+			await this.finishRun(record, retrySnapshot)
 		}
 
 		return record
@@ -406,7 +459,8 @@ export class Workspace extends DurableObject<Env> {
 			exitCode = await this.host.exitCode()
 		}
 
-		const verdict = judgeRun({ containerRunning: running, exitCode, taskSeen: task !== undefined, taskAlive, elapsedMs: Date.now() - record.startedAt })
+		const outputBytes = running ? await this.host.outputBytes() : undefined
+		const verdict = judgeRun({ containerRunning: running, exitCode, taskSeen: task !== undefined, taskAlive, elapsedMs: Date.now() - record.startedAt, outputBytes })
 
 		switch (verdict) {
 			case "running":
@@ -420,29 +474,70 @@ export class Workspace extends DurableObject<Env> {
 			case "never-started":
 				return this.endLost(record, "The agent did not write its pid file within 60 seconds", true)
 			case "overdue":
-				if (task) await this.host.signalTask(task, "KILL")
-				await this.ingest(record)
-				Object.assign(record, {
-					state: "failed",
-					error: MAX_RUN_ERROR,
-					hasConversation: conversationAfter("stopped", record.resumed === true, false),
-					persistPending: true,
-				})
-				this.save(record)
-				this.note(record, { notice: "run ended", run: record.run, state: record.state })
-				return this.finishRun(record)
+				return this.endFailed(record, MAX_RUN_ERROR)
+			case "output-exceeded":
+				return this.endFailed(record, OUTPUT_ERROR)
 		}
+	}
+
+	// Ends a run the runner cuts short: KILLs its group, reads its output, then
+	// pushes and snapshots as after any other run.
+	private async endFailed(record: Record_, error: string): Promise<void> {
+		await this.endTask(record)
+		await this.ingest(record)
+		return this.markFailed(record, error)
+	}
+
+	private async markFailed(record: Record_, error: string): Promise<void> {
+		Object.assign(record, {
+			state: "failed",
+			error,
+			result: undefined,
+			hasConversation: conversationAfter("stopped", record.resumed === true, false),
+			persistPending: true,
+		})
+		this.save(record)
+		this.note(record, { notice: "run ended", run: record.run, state: record.state })
+		return this.finishRun(record)
+	}
+
+	// KILLs the current task's group and waits for its logs to be complete. With
+	// no task id to trust, the instance is replaced once the run is persisted.
+	private async endTask(record: Record_): Promise<void> {
+		const task = await this.knownTask(record)
+
+		if (task === undefined) {
+			record.replaceInstance = true
+			this.save(record)
+			return
+		}
+
+		await this.host.signalTask(task, "KILL")
+		await this.waitForOutput()
+	}
+
+	// Up to stopWait for the stdout and stderr copiers to drain what the task wrote.
+	private async waitForOutput(): Promise<void> {
+		await this.waitFor(this.timing.stopWait, () => this.host.outputDone())
 	}
 
 	// A run that ended without an exit code. With the container still up, its
 	// output is read and the branch pushed as after any other run.
+	// With the container gone, the stored snapshot predates the run: it is kept,
+	// marked stale, so the next restore says the run's work was lost (Copilot C5).
+	// With no task id known, the instance is replaced after the push (Copilot C4).
 	private async endLost(record: Record_, error: string, containerRunning: boolean): Promise<void> {
-		if (containerRunning) await this.ingest(record)
+		if (containerRunning) {
+			await this.endTask(record)
+			await this.ingest(record)
+		}
+
 		Object.assign(record, {
 			state: "lost",
 			error,
 			hasConversation: conversationAfter("lost", record.resumed === true, false),
 			persistPending: containerRunning || undefined,
+			...(containerRunning || record.snapshot === undefined ? {} : { snapshotStale: true }),
 		})
 		this.save(record)
 		this.note(record, { notice: "run lost", run: record.run, error })
@@ -452,7 +547,9 @@ export class Workspace extends DurableObject<Env> {
 	// The current run's task: the pid file, else the one read earlier (the file
 	// can be removed during a run). Stored once seen.
 	private async knownTask(record: Record_): Promise<Task | undefined> {
-		const task = (await this.host.readTask()) ?? record.task
+		const file = await this.host.readTask()
+		const stored = record.task !== undefined && record.task.pid > 1 ? record.task : undefined
+		const task = file === undefined || file === "invalid" ? stored : file
 
 		if (task && (task.pid !== record.task?.pid || task.boot !== record.task.boot)) {
 			record.task = task
@@ -469,10 +566,18 @@ export class Workspace extends DurableObject<Env> {
 		return task
 	}
 
+	// The leader wrote an exit code. Its group's other members are KILLed before
+	// the output is read and the clone pushed (Copilot C6); the result is the one
+	// ingest kept, not a second read of stdout (Copilot C10).
 	private async finish(record: Record_, exitCode: number): Promise<void> {
+		await this.endTask(record)
 		await this.ingest(record)
 
-		const results = await this.host.resultLines()
+		if ((await this.host.outputBytes()) > MAX_OUTPUT_BYTES) {
+			return this.markFailed(record, OUTPUT_ERROR)
+		}
+
+		const results = record.resultLine === undefined ? [] : [record.resultLine]
 		const ended = outcome(results, exitCode, await this.host.stderrTail())
 
 		Object.assign(record, {
@@ -511,6 +616,7 @@ export class Workspace extends DurableObject<Env> {
 
 				const type = leadingType(new TextDecoder().decode(chunk.subarray(0, 256)))
 				this.eventLog.append(record.run, record.generation, type, { truncated: true, bytes: bytes - 1 })
+				if (type === "result") record.resultLine = truncatedResult
 				record.eventsOffset += bytes
 				this.save(record)
 				continue
@@ -519,7 +625,9 @@ export class Workspace extends DurableObject<Env> {
 			// No await from here to save(): the events and the offset are stored together.
 			for (const line of lines) {
 				const event = lineEvent(line, parseLine)
-				if (event) this.eventLog.append(record.run, record.generation, event.type, event.payload)
+				if (!event) continue
+				this.eventLog.append(record.run, record.generation, event.type, event.payload)
+				if (event.type === "result") record.resultLine = line.byteLength > MAX_PAYLOAD_BYTES ? truncatedResult : new TextDecoder().decode(line)
 			}
 
 			record.eventsOffset += consumed
@@ -542,6 +650,21 @@ export class Workspace extends DurableObject<Env> {
 
 	// Makes sure a container runs with this object's intercepts and idle timeout.
 	private async ensureStarted(record: Record_): Promise<void> {
+		// An instance that may hold an unnamed process is not reused (Copilot C4).
+		if (record.replaceInstance) {
+			if (this.host.running) {
+				if (record.snapshotPending) {
+					this.settle(record, abandonSnapshot(record.run, "The instance was replaced before the snapshot was saved"))
+				}
+
+				await this.host.destroy()
+				this.ready = false
+			}
+
+			record.replaceInstance = false
+			this.save(record)
+		}
+
 		if (this.host.running) {
 			if (!this.ready) {
 				await this.setUp(record)
@@ -561,7 +684,7 @@ export class Workspace extends DurableObject<Env> {
 		const snapshotError = record.snapshot === undefined ? undefined : await this.host.startFromSnapshot(record.snapshot)
 		const path = restorePath({ hasSnapshot: record.snapshot !== undefined, snapshotStartFailed: snapshotError !== undefined, hasRepo: record.repo !== undefined })
 
-		if (path !== "snapshot") this.host.startFromImage()
+		if (path !== "snapshot") await this.host.startFromImage()
 		await this.setUp(record)
 
 		if (path === "branch") {
@@ -575,8 +698,13 @@ export class Workspace extends DurableObject<Env> {
 			}
 		}
 
-		const { notice, keepSnapshot, ...fields } = afterRestore(path, { generation: record.generation, hasConversation: record.hasConversation, snapshotError })
-		Object.assign(record, fields, { snapshot: keepSnapshot ? record.snapshot : undefined })
+		const { notice, keepSnapshot, ...fields } = afterRestore(path, {
+			generation: record.generation,
+			hasConversation: record.hasConversation,
+			snapshotError,
+			snapshotStale: record.snapshotStale,
+		})
+		Object.assign(record, fields, { snapshot: keepSnapshot ? record.snapshot : undefined, snapshotStale: undefined })
 		this.save(record)
 		if (notice) this.note(record, notice)
 	}

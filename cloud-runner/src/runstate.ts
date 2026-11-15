@@ -1,3 +1,4 @@
+import type { Task } from "./container"
 import type { RunState } from "./types"
 
 // A run longer than this is killed and fails (controller ruling: 60 minutes).
@@ -6,14 +7,20 @@ export const MAX_RUN_ERROR = "run exceeded 60 minutes"
 // The task writes its pid file as it starts; none this long after the start means it never ran.
 export const PID_GRACE_MS = 60 * 1000
 
-export type RunCheck = { containerRunning: boolean; exitCode?: number; taskSeen: boolean; taskAlive: boolean; elapsedMs: number }
-export type Verdict = "running" | "exited" | "container-gone" | "process-gone" | "never-started" | "overdue"
+// A run whose stdout.log passes this is killed and fails (controller ruling, Copilot C10).
+// The task writes at most one byte more, so the disk use is bounded too.
+export const MAX_OUTPUT_BYTES = 64 * 1024 * 1024
+export const OUTPUT_ERROR = "run output exceeded 64 MiB"
+
+export type RunCheck = { containerRunning: boolean; exitCode?: number; taskSeen: boolean; taskAlive: boolean; elapsedMs: number; outputBytes?: number }
+export type Verdict = "running" | "exited" | "container-gone" | "process-gone" | "never-started" | "overdue" | "output-exceeded"
 
 // What a stored running run really is, given what the container shows now.
 // "exited": the caller reads its output and finishes it. The other non-running
 // verdicts end the run; all but "container-gone" can still push and snapshot.
 export function judgeRun(o: RunCheck): Verdict {
 	if (!o.containerRunning) return "container-gone"
+	if ((o.outputBytes ?? 0) > MAX_OUTPUT_BYTES) return "output-exceeded"
 	if (o.exitCode !== undefined) return "exited"
 	if (o.elapsedMs >= MAX_RUN_MS) return "overdue"
 	if (!o.taskSeen) return o.elapsedMs >= PID_GRACE_MS ? "never-started" : "running"
@@ -28,9 +35,22 @@ export function persistAction(o: { pending: boolean; containerRunning: boolean }
 	return o.containerRunning ? "persist" : "abandon"
 }
 
-// The alarm watches a running run, and retries a push and snapshot not yet done.
-export function needsAlarm(state: RunState, persistPending: boolean): boolean {
-	return state === "running" || persistPending
+// The alarm watches a running run, and retries a push and snapshot not yet
+// done, and a snapshot that timed out.
+export function needsAlarm(state: RunState, persistPending: boolean, snapshotPending = false): boolean {
+	return state === "running" || persistPending || snapshotPending
+}
+
+// What a start does about a task an earlier run left in the running instance:
+// KILL the group the pid file names, else the one stored. A pid file that does
+// not parse, or a stored group ID of 0 or 1 (stored before parseTask refused
+// them), names no group that can be signalled safely, so the instance is
+// replaced instead (Copilot C4).
+export function leftoverAction(file: Task | "invalid" | undefined, stored: Task | undefined): "none" | "replace" | { kill: Task } {
+	if (file === "invalid") return "replace"
+	if (file !== undefined) return { kill: file }
+	if (stored === undefined) return "none"
+	return stored.pid > 1 ? { kill: stored } : "replace"
 }
 
 type Workspace = { repo?: string; branch?: string; allow: string[] }
@@ -100,8 +120,11 @@ export type Restored = {
 // What a new instance's path does to the record. A snapshot carries the files
 // and Claude Code's session; a clone carries neither, so work done in an earlier
 // instance and not pushed is gone, and the stored snapshot (absent or broken) is
-// dropped. Only an instance that replaces an earlier one is noted.
-export function afterRestore(path: RestorePath, o: { generation: number; hasConversation: boolean; snapshotError?: string }): Restored {
+// dropped. Only an instance that replaces an earlier one is noted. A stale
+// snapshot (one taken before a run whose instance was lost) is still the best
+// files there are, so it is restored, but the run's work is reported lost and
+// the conversation, which ran past the snapshot, starts again (Copilot C5).
+export function afterRestore(path: RestorePath, o: { generation: number; hasConversation: boolean; snapshotError?: string; snapshotStale?: boolean }): Restored {
 	if (path === "image") return { hasConversation: false, keepSnapshot: false }
 
 	const replaces = o.generation > 1
@@ -109,7 +132,7 @@ export function afterRestore(path: RestorePath, o: { generation: number; hasConv
 		? { notice: "instance started" as const, generation: o.generation, from: path, ...(o.snapshotError === undefined ? {} : { snapshotError: o.snapshotError }) }
 		: undefined
 	const fields = path === "snapshot"
-		? { restored: path, uncommittedLost: false, hasConversation: o.hasConversation, keepSnapshot: true }
+		? { restored: path, uncommittedLost: o.snapshotStale === true, hasConversation: o.snapshotStale !== true && o.hasConversation, keepSnapshot: true }
 		: { restored: path, uncommittedLost: replaces, hasConversation: false, keepSnapshot: false }
 
 	return notice === undefined ? fields : { ...fields, notice }

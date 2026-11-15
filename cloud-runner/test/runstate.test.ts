@@ -6,6 +6,8 @@ import {
 	conversation,
 	conversationAfter,
 	judgeRun,
+	leftoverAction,
+	MAX_OUTPUT_BYTES,
 	MAX_RUN_MS,
 	needsAlarm,
 	persistAction,
@@ -44,6 +46,33 @@ describe("judgeRun", () => {
 	})
 })
 
+describe("judgeRun output cap (Copilot C10)", () => {
+	it("ends a run whose stdout passed 64 MiB, even one that exited", () => {
+		expect(MAX_OUTPUT_BYTES).toBe(64 * 1024 * 1024)
+		expect(judgeRun(check({ outputBytes: MAX_OUTPUT_BYTES }))).toBe("running")
+		expect(judgeRun(check({ outputBytes: MAX_OUTPUT_BYTES + 1 }))).toBe("output-exceeded")
+		expect(judgeRun(check({ outputBytes: MAX_OUTPUT_BYTES + 1, exitCode: 141 }))).toBe("output-exceeded")
+		expect(judgeRun(check({ containerRunning: false, outputBytes: MAX_OUTPUT_BYTES + 1 }))).toBe("container-gone")
+	})
+})
+
+describe("leftoverAction (Copilot C2, C4)", () => {
+	const t = (pid: number) => ({ pid, boot: "b" })
+	it("kills the task the pid file names, else the stored one", () => {
+		expect(leftoverAction(t(7), t(9))).toEqual({ kill: t(7) })
+		expect(leftoverAction(undefined, t(9))).toEqual({ kill: t(9) })
+	})
+	it("does nothing when no task was ever seen", () => {
+		expect(leftoverAction(undefined, undefined)).toBe("none")
+	})
+	it("replaces the instance for a pid file it cannot read, or a stored group ID of 0 or 1", () => {
+		expect(leftoverAction("invalid", t(9))).toBe("replace")
+		expect(leftoverAction("invalid", undefined)).toBe("replace")
+		expect(leftoverAction(undefined, t(1))).toBe("replace")
+		expect(leftoverAction(undefined, t(0))).toBe("replace")
+	})
+})
+
 describe("persistAction", () => {
 	it("persists a pending push while the container runs, and gives it up when it is gone", () => {
 		expect(persistAction({ pending: false, containerRunning: true })).toBe("none")
@@ -58,6 +87,10 @@ describe("needsAlarm", () => {
 		expect(needsAlarm("running", false)).toBe(true)
 		expect(needsAlarm("succeeded", true)).toBe(true)
 		for (const s of ["none", "idle", "succeeded", "failed", "stopped", "lost"] as const) expect(needsAlarm(s, false)).toBe(false)
+	})
+	it("watches a snapshot retry left after a timeout (Copilot C8)", () => {
+		expect(needsAlarm("succeeded", false, true)).toBe(true)
+		expect(needsAlarm("succeeded", false, false)).toBe(false)
 	})
 })
 
@@ -205,6 +238,15 @@ describe("afterRestore", () => {
 		const first = afterRestore("branch", { generation: 1, hasConversation: false })
 		expect(first.uncommittedLost).toBe(false)
 		expect(first.notice).toBeUndefined()
+	})
+	it("a stale snapshot is still restored, but says the run's work was lost and starts a new conversation (Copilot C5)", () => {
+		expect(afterRestore("snapshot", { generation: 3, hasConversation: true, snapshotStale: true })).toEqual({
+			restored: "snapshot",
+			uncommittedLost: true,
+			hasConversation: false,
+			keepSnapshot: true,
+			notice: { notice: "instance started", generation: 3, from: "snapshot" },
+		})
 	})
 	it("a bare image sets no restore fields and appends no notice", () => {
 		expect(afterRestore("image", { generation: 2, hasConversation: true })).toEqual({ hasConversation: false, keepSnapshot: false })

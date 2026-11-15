@@ -20,30 +20,69 @@ export function pushErrorText(stderr: string, exitCode: number): string {
 export type Pushed = { commit: string } | { error: string }
 export type Saved = { id: string; size: number } | { error: string }
 
-// What a run's push and snapshot leave in the record, and the runner notices
-// for them. A refused push keeps the last pushed commit; the run's own state is
-// never touched. A failed snapshot drops the stored one: it predates this run,
-// and the next instance must not restore files behind the pushed branch.
-export function afterPersist(run: number, pushed: Pushed, saved: Saved) {
-	const push = "commit" in pushed
-		? { fields: { pushed: { commit: pushed.commit }, pushError: undefined }, notice: { notice: "pushed", run, commit: pushed.commit } }
-		: { fields: { pushError: pushed.error }, notice: { notice: "push failed", run, error: pushed.error } }
-	const snap = "id" in saved ? { notice: "snapshot saved", run, bytes: saved.size } : { notice: "snapshot failed", run, error: saved.error }
+// What a run's push leaves in the record, and its runner notice. A refused push
+// keeps the last pushed commit; the run's own state is never touched. The push
+// is stored before the snapshot is taken, so a snapshot that times out does not
+// push again (Copilot C8).
+export function afterPush(run: number, pushed: Pushed) {
+	const done = { persistPending: false, snapshotPending: true, snapshotAttempts: 0 }
+	return "commit" in pushed
+		? { fields: { pushed: { commit: pushed.commit }, pushError: undefined, ...done }, notice: { notice: "pushed", run, commit: pushed.commit } }
+		: { fields: { pushError: pushed.error, ...done }, notice: { notice: "push failed", run, error: pushed.error } }
+}
 
-	return { ...push.fields, snapshot: "id" in saved ? saved.id : undefined, notices: [push.notice, snap] }
+// A snapshot is tried at most this many times when it times out.
+export const MAX_SNAPSHOT_ATTEMPTS = 3
+
+const snapshotSettled = { snapshotPending: false, snapshotAttempts: undefined, snapshotStale: undefined }
+
+// A snapshot not taken (failed, given up, or no longer possible) drops the
+// stored one: it predates this run, and the next instance must not restore
+// files behind the pushed branch.
+export function abandonSnapshot(run: number, error: string) {
+	return { fields: { snapshot: undefined, ...snapshotSettled }, notice: { notice: "snapshot failed", run, error } }
+}
+
+// What a snapshot attempt (the attempt-th) leaves in the record.
+export function afterSnapshot(run: number, saved: Saved | "timeout", attempt: number) {
+	if (saved === "timeout") {
+		return attempt < MAX_SNAPSHOT_ATTEMPTS
+			? { fields: { snapshotPending: true }, notice: { notice: "snapshot timed out", run, attempt } }
+			: abandonSnapshot(run, `The snapshot timed out ${MAX_SNAPSHOT_ATTEMPTS} times`)
+	}
+
+	return "id" in saved
+		? { fields: { snapshot: saved.id, ...snapshotSettled }, notice: { notice: "snapshot saved", run, bytes: saved.size } }
+		: abandonSnapshot(run, saved.error)
 }
 
 // A push and snapshot that were due when the container was already gone. The
-// stored snapshot predates the run, so it is dropped: the next instance clones
-// the pushed branch and reports the run's files lost.
+// stored snapshot predates the run but nothing newer was pushed, so it still
+// holds the best files there are: it is kept, marked stale, and the next
+// restore says the run's work was lost (Copilot C5).
 export const abandonedPushError = "The container stopped before the branch was pushed"
 
 export function afterAbandon(run: number) {
 	return {
 		persistPending: false,
 		pushError: abandonedPushError,
-		snapshot: undefined,
+		snapshotStale: true,
 		notice: { notice: "push failed", run, error: abandonedPushError },
+	}
+}
+
+// The work's value, or "timeout" once ms have passed. The work is not
+// cancelled; its late value is ignored.
+export async function within<T>(work: Promise<T>, ms: number): Promise<T | "timeout"> {
+	let timer: ReturnType<typeof setTimeout> | null = null
+	const late = new Promise<"timeout">((resolve) => {
+		timer = setTimeout(() => resolve("timeout"), ms)
+	})
+
+	try {
+		return await Promise.race([work, late])
+	} finally {
+		if (timer !== null) clearTimeout(timer)
 	}
 }
 
@@ -104,8 +143,32 @@ export async function snapshot(container: Container): Promise<Saved> {
 
 const instance = "standard-1"
 
-export function startFromImage(container: Container): void {
+// How long a new instance from the image gets to answer its first exec: one
+// try a second for up to two minutes.
+export const imageReadiness = { attempts: 120, delayMs: 1000 }
+
+// start() returns before the instance is up, and an exec on an instance not
+// yet running fails at once, so this probes until one answers. Intercepts are
+// registered only after, on an instance that runs (Copilot C9). An instance
+// that never answers is destroyed.
+export async function startFromImage(container: Container, wait = imageReadiness): Promise<void> {
 	container.start({ image: container.images.agent, instance, enableInternet: false })
+	let last = "no answer"
+
+	for (let attempt = 1; attempt <= wait.attempts; attempt++) {
+		try {
+			const probe = await run(container, ["true"], "/", {})
+			if (probe.exitCode === 0) return
+			last = `true exited with ${probe.exitCode}`
+		} catch (error) {
+			last = messageOf(error)
+		}
+
+		if (attempt < wait.attempts) await new Promise((resolve) => setTimeout(resolve, wait.delayMs))
+	}
+
+	if (container.running) await container.destroy()
+	throw new Error(`The new instance did not answer after ${wait.attempts} attempts: ${last}`)
 }
 
 // undefined once an instance runs from the snapshot and holds the clone, else

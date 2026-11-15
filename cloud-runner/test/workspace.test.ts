@@ -2,7 +2,7 @@ import { evictDurableObject, runDurableObjectAlarm, runInDurableObject } from "c
 import { env as workerEnv } from "cloudflare:workers"
 import { describe, expect, it } from "vitest"
 import { abandonedPushError } from "../src/persist"
-import { MAX_RUN_ERROR, MAX_RUN_MS, PID_GRACE_MS } from "../src/runstate"
+import { MAX_OUTPUT_BYTES, MAX_RUN_ERROR, MAX_RUN_MS, OUTPUT_ERROR, PID_GRACE_MS } from "../src/runstate"
 import type { Env } from "../src/types"
 import type { Workspace } from "../src/workspace"
 import { FakeHost } from "./fakehost"
@@ -10,10 +10,22 @@ import { FakeHost } from "./fakehost"
 const env = workerEnv as unknown as Env
 const repo = "https://github.com/acme/app"
 const resultLine = JSON.stringify({ type: "result", result: "done" })
-const fast = { pidWait: 20, stopWait: 20, poll: 5 }
+const fast = { pidWait: 20, stopWait: 20, poll: 5, snapshotWait: 20 }
 
 type Seams = { sandbox: FakeHost; timing: typeof fast }
-type Stored = { state: string; persistPending?: boolean; startedAt?: number; error?: string; task?: unknown }
+type Stored = {
+	state: string
+	persistPending?: boolean
+	startedAt?: number
+	error?: string
+	task?: unknown
+	snapshot?: string
+	snapshotPending?: boolean
+	snapshotAttempts?: number
+	snapshotStale?: boolean
+	replaceInstance?: boolean
+	resumed?: boolean
+}
 
 // A real Workspace object with the fake container in its one seam. The seam is
 // a private field, set from inside the object; an eviction drops it, so attach()
@@ -297,5 +309,223 @@ describe("Workspace test-only routes", () => {
 		await stub.exec(["true"])
 		expect(fake.running).toBe(true)
 		expect(fake.count("startFromImage")).toBe(2)
+	})
+})
+
+async function notices(stub: Stub): Promise<unknown[]> {
+	const read = await direct(stub, (w) => w.events(0))
+	if (read === "missing") throw new Error("the workspace is missing")
+	return read.events.filter((e) => e.type === "runner").map((e) => (e.payload as { notice: string }).notice)
+}
+
+// A workspace whose first run ended and was pushed and snapshotted (snap-1).
+async function afterOneRun(fake = new FakeHost()) {
+	const opened = await started(fake)
+	fake.finishTask(0, [resultLine])
+	expect(await opened.stub.status()).toMatchObject({ state: "succeeded" })
+	expect((await stored(opened.stub)).snapshot).toBe("snap-1")
+	return opened
+}
+
+describe("Workspace replaces an instance it cannot trust (Copilot C4)", () => {
+	it("persists a run that never wrote its pid file, then destroys the instance; the next start restores the snapshot", async () => {
+		const fake = new FakeHost()
+		fake.startMode = "no-pid"
+		const { stub } = await started(fake)
+		await edit(stub, (record) => {
+			record.startedAt = Date.now() - PID_GRACE_MS - 1
+		})
+
+		expect((await stub.status()).state).toBe("lost")
+		expect(fake.calls.filter((c) => ["push work", "snapshot", "destroy"].includes(c))).toEqual(["push work", "snapshot", "destroy"])
+		expect(fake.running).toBe(false)
+		expect((await stored(stub)).replaceInstance).toBeFalsy()
+
+		fake.startMode = "spawn"
+		expect(await stub.startRun("next", false, 5)).toEqual({ run: 2 })
+		expect(fake.calls).toContain("startFromSnapshot snap-1")
+		expect(await stub.status()).toMatchObject({ state: "running", restored: "snapshot", uncommittedLost: false })
+	})
+
+	it("replaces a running instance whose pid file it cannot read, and signals nothing", async () => {
+		const { stub, fake } = await created()
+		fake.pidInvalid = true
+
+		expect(await stub.startRun("hello", false, 5)).toEqual({ run: 1 })
+		expect(fake.calls.filter((c) => c.startsWith("signal"))).toEqual([])
+		const order = fake.calls.filter((c) => ["destroy", "startFromImage", "resetTask", "startTask"].includes(c))
+		expect(order).toEqual(["startFromImage", "destroy", "startFromImage", "resetTask", "startTask"])
+		expect(fake.count("clone work")).toBe(2)
+	})
+
+	it("replaces the instance for a stored group ID of 1 from before parseTask refused it (Copilot C2)", async () => {
+		const { stub, fake } = await created()
+		await edit(stub, (record) => {
+			record.task = { pid: 1, boot: fake.boot }
+		})
+
+		expect(await stub.startRun("hello", false, 5)).toEqual({ run: 1 })
+		expect(fake.calls).not.toContain("signal 1 KILL")
+		expect(fake.count("destroy")).toBe(1)
+	})
+
+	it("does not wait for a timed-out snapshot when a new run needs the instance replaced", async () => {
+		const fake = new FakeHost()
+		fake.startMode = "no-pid"
+		fake.snapshotDelayMs = 100
+		const { stub } = await started(fake)
+		await edit(stub, (record) => {
+			record.startedAt = Date.now() - PID_GRACE_MS - 1
+		})
+
+		expect((await stub.status()).state).toBe("lost")
+		expect(await stored(stub)).toMatchObject({ snapshotPending: true, replaceInstance: true })
+		expect(fake.running).toBe(true) // the destroy waits for the snapshot retry
+
+		fake.startMode = "spawn"
+		fake.snapshotDelayMs = 100
+		expect(await stub.startRun("next", false, 5)).toEqual({ run: 2 })
+		expect(fake.count("destroy")).toBe(1)
+		expect(fake.count("clone work")).toBe(2)
+		expect(await stub.status()).toMatchObject({ restored: "branch", uncommittedLost: true })
+		expect(await stored(stub)).toMatchObject({ snapshotPending: false, replaceInstance: false })
+	})
+})
+
+describe("Workspace stale snapshot (Copilot C5)", () => {
+	it("restores the old snapshot after a run lost with its container, says the work was lost and starts a new conversation", async () => {
+		const { stub, fake } = await afterOneRun()
+		expect(await stub.startRun("second", false, 5)).toEqual({ run: 2 })
+		expect((await stored(stub)).resumed).toBe(true)
+		fake.running = false
+
+		expect((await stub.status()).state).toBe("lost")
+		expect(await stored(stub)).toMatchObject({ snapshot: "snap-1", snapshotStale: true })
+
+		expect(await stub.startRun("third", false, 5)).toEqual({ run: 3 })
+		expect(fake.calls).toContain("startFromSnapshot snap-1")
+		expect(await stub.status()).toMatchObject({ restored: "snapshot", uncommittedLost: true })
+		const record = await stored(stub)
+		expect(record.resumed).toBe(false)
+		expect(record.snapshotStale).toBeFalsy()
+	})
+
+	it("keeps the old snapshot, marked stale, when the push was given up with the container gone", async () => {
+		const { stub, fake } = await afterOneRun()
+		await stub.startRun("second", false, 5)
+		fake.finishTask(0, [resultLine])
+		fake.failOnce.push = new Error("object reset")
+		await expect(direct(stub, (w) => w.status())).rejects.toThrow(/object reset/)
+
+		fake.running = false
+		expect(await stub.status()).toMatchObject({ pushError: abandonedPushError })
+		expect(await stored(stub)).toMatchObject({ snapshot: "snap-1", snapshotStale: true })
+		await stub.startRun("third", false, 5)
+		expect(await stub.status()).toMatchObject({ restored: "snapshot", uncommittedLost: true })
+	})
+})
+
+describe("Workspace finish (Copilot C6)", () => {
+	it("kills the task's group before it reads the output, pushes or snapshots", async () => {
+		const { stub, fake } = await started()
+		fake.finishTask(0, [resultLine], true)
+		expect(fake.groups.get(100)?.alive).toBe(true)
+
+		expect(await stub.status()).toMatchObject({ state: "succeeded", result: "done" })
+		expect(fake.groups.get(100)?.alive).toBe(false)
+		const order = fake.calls.filter((c) => ["signal 100 KILL", "push work", "snapshot"].includes(c))
+		expect(order).toEqual(["signal 100 KILL", "push work", "snapshot"])
+	})
+})
+
+describe("Workspace snapshot timeout (Copilot C8)", () => {
+	it("stores the push, keeps the snapshot pending for the alarm, and gives up after three attempts", async () => {
+		const fake = new FakeHost()
+		const { stub } = await started(fake)
+		fake.finishTask(0, [resultLine])
+		fake.snapshotDelayMs = 100
+
+		expect(await stub.status()).toMatchObject({ state: "succeeded", pushed: { commit: "commit-1" } })
+		expect(await stored(stub)).toMatchObject({ persistPending: false, snapshotPending: true, snapshotAttempts: 1 })
+		expect(await alarmAt(stub)).not.toBeNull()
+
+		expect(await runDurableObjectAlarm(stub)).toBe(true)
+		expect(await stored(stub)).toMatchObject({ snapshotPending: true, snapshotAttempts: 2 })
+		expect(await runDurableObjectAlarm(stub)).toBe(true)
+		expect(await stored(stub)).toMatchObject({ snapshotPending: false, snapshot: undefined })
+		expect(await alarmAt(stub)).toBeNull()
+
+		expect(fake.count("push work")).toBe(1)
+		expect(fake.count("snapshot")).toBe(3)
+		expect(await notices(stub)).toEqual(["run started", "run ended", "pushed", "snapshot timed out", "snapshot timed out", "snapshot failed"])
+	})
+
+	it("keeps a snapshot that answers on a retry", async () => {
+		const fake = new FakeHost()
+		const { stub } = await started(fake)
+		fake.finishTask(0, [resultLine])
+		fake.snapshotDelayMs = 100
+		await stub.status()
+
+		fake.snapshotDelayMs = 0
+		expect(await runDurableObjectAlarm(stub)).toBe(true)
+		expect(await stored(stub)).toMatchObject({ snapshotPending: false, snapshot: "snap-2" })
+	})
+
+	it("drops a still-pending snapshot when the next run starts, since the stored one is behind the branch", async () => {
+		const fake = new FakeHost()
+		const { stub } = await afterOneRun(fake)
+		await stub.startRun("second", false, 5)
+		fake.finishTask(0, [resultLine])
+		fake.snapshotDelayMs = 100
+		await stub.status()
+		expect(await stored(stub)).toMatchObject({ snapshot: "snap-1", snapshotPending: true })
+
+		// Only the alarm retries a snapshot; the new run drops the pending one.
+		expect(await stub.startRun("third", false, 5)).toEqual({ run: 3 })
+		expect(await stored(stub)).toMatchObject({ snapshot: undefined, snapshotPending: false })
+	})
+})
+
+describe("Workspace new instance readiness (Copilot C9)", () => {
+	it("sets intercepts only after the new instance answers, and a start that never answers leaves nothing set up", async () => {
+		const fake = new FakeHost()
+		fake.imageFailures = 1
+		const { stub } = await open(fake)
+
+		await expect(direct(stub, (w) => w.create(repo, "work", []))).rejects.toThrow(/did not answer/)
+		expect(fake.calls).toEqual(["startFromImage"])
+
+		expect(await stub.create(repo, "work", [])).not.toBe("conflict")
+		expect(fake.calls.slice(1, 4)).toEqual(["startFromImage", "image ready", "setPolicy "])
+	})
+})
+
+describe("Workspace output limits (Copilot C10)", () => {
+	it("kills and fails a run whose stdout passed 64 MiB, then persists it", async () => {
+		const { stub, fake } = await started()
+		fake.outputSize = MAX_OUTPUT_BYTES + 1
+
+		expect(await stub.status()).toMatchObject({ state: "failed", error: OUTPUT_ERROR, pushed: { commit: "commit-1" } })
+		expect(fake.calls).toContain("signal 100 KILL")
+		expect(fake.groups.get(100)?.alive).toBe(false)
+	})
+
+	it("fails a run that exited after its stdout passed 64 MiB", async () => {
+		const { stub, fake } = await started()
+		fake.finishTask(141, [resultLine])
+		fake.outputSize = MAX_OUTPUT_BYTES + 1
+
+		expect(await stub.status()).toMatchObject({ state: "failed", error: OUTPUT_ERROR })
+	})
+
+	it("takes the result from the events read during the run, not a second read of stdout", async () => {
+		const { stub, fake } = await started()
+		fake.stdout = new TextEncoder().encode(`${resultLine}\n`)
+		await direct(stub, (w) => w.events(0)) // ingested while the task runs
+
+		fake.finishTask(0, []) // the file now holds nothing past what was read
+		fake.stdout = new TextEncoder().encode(`${resultLine}\n`)
+		expect(await stub.status()).toMatchObject({ state: "succeeded", result: "done" })
 	})
 })

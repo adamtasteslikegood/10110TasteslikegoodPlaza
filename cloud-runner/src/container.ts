@@ -1,5 +1,6 @@
 import { Files, SandboxFileError } from "@cloudflare/sandbox"
 import { MAX_PAYLOAD_BYTES } from "./events"
+import { MAX_OUTPUT_BYTES } from "./runstate"
 
 // Shell snippets and helpers for the Workspace's container, after the guide's
 // AgentSandbox. Everything a run leaves behind lives in taskDirectory, outside
@@ -27,11 +28,37 @@ export const trustEnv = {
 // code when it ends, each by temp file and rename. It catches TERM (and does
 // nothing), so a stop's TERM reaches the command while the leader stays to
 // record the exit code; KILL ends the leader too and leaves no exit code.
-export const taskScript = `dir=$1; shift
+// stdout.log keeps at most this many bytes: one past the run's output cap, so a
+// file this long shows the cap was passed. stderr.log keeps its last MiB.
+export const MAX_STDOUT_FILE_BYTES = MAX_OUTPUT_BYTES + 1
+export const MAX_STDERR_BYTES = 1024 * 1024
+
+// Copies fifo $0.fifo through the filter "$@" to $0.log, then marks $0.done.
+// Each copier runs in its own session, so a signal to the task's group leaves
+// it to drain what the group wrote; it ends when every writer is gone.
+export const copyScript = `"$@" <"$0.fifo" >"$0.log"; : >"$0.done"`
+
+// Starts argv detached in its own session and process group under task
+// directory $1, with copyScript as $2. The leader writes the pid file, then the agent's exit code once
+// argv returns. Both streams go through fifos to capped copiers (Copilot C10):
+// stdout through head, stderr through tail. A failed setup still writes an exit
+// code, so the run ends instead of hanging.
+export const taskScript = `dir=$1; copy=$2; shift 2
 exec setsid -f sh -c 'trap : TERM
 echo "$$ $(cat /proc/sys/kernel/random/boot_id)" >"$0/pid.tmp" && mv "$0/pid.tmp" "$0/pid"
-"$@" >"$0/stdout.log" 2>"$0/stderr.log"
-echo "$?" >"$0/exit-code.tmp" && mv "$0/exit-code.tmp" "$0/exit-code"' "$dir" "$@" </dev/null >/dev/null 2>&1`
+copy=$1; shift
+mkfifo "$0/stdout.fifo" "$0/stderr.fifo" &&
+setsid -f sh -c "$copy" "$0/stdout" head -c ${MAX_STDOUT_FILE_BYTES} </dev/null &&
+setsid -f sh -c "$copy" "$0/stderr" tail -c ${MAX_STDERR_BYTES} </dev/null &&
+"$@" >"$0/stdout.fifo" 2>"$0/stderr.fifo"
+echo "$?" >"$0/exit-code.tmp" && mv "$0/exit-code.tmp" "$0/exit-code"' "$dir" "$copy" "$@" </dev/null >/dev/null 2>&1`
+
+// The size of file $1 in bytes; 0 while it does not exist.
+export const outputBytesScript = `[ -e "$1" ] || { echo 0; exit 0; }
+wc -c <"$1"`
+
+// Succeeds once both copiers of task directory $1 have ended.
+export const outputDoneScript = `[ -e "$1/stdout.done" ] && [ -e "$1/stderr.done" ]`
 
 // What the pid file holds: the group ID and the boot it started in.
 export type Task = { pid: number; boot: string }
