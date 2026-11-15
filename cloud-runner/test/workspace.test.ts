@@ -501,6 +501,30 @@ describe("Workspace new instance readiness (Copilot C9)", () => {
 	})
 })
 
+describe("Workspace push policy (Copilot C11)", () => {
+	it("gives Outbound the workspace branch on create and on every later setup", async () => {
+		const { stub, fake } = await open()
+		expect(await stub.create(repo, "work", ["example.org"])).not.toBe("conflict")
+		expect(fake.policies.at(-1)).toEqual({ repoPath: "/acme/app", branch: "work", allow: ["example.org"] })
+
+		fake.running = false
+		expect(await stub.startRun("hello", false, 5)).toEqual({ run: 1 })
+		expect(fake.policies.at(-1)).toEqual({ repoPath: "/acme/app", branch: "work", allow: ["example.org"] })
+	})
+
+	it("sets a policy with no repository and no branch before a create and after a failed clone", async () => {
+		const fake = new FakeHost()
+		fake.cloneError = "fatal: not found"
+		const { stub } = await open(fake)
+		expect(await stub.create(repo, "work", [])).toMatchObject({ cloneError: "fatal: not found" })
+		expect(fake.policies).toEqual([
+			{ repoPath: "", branch: "", allow: [] },
+			{ repoPath: "/acme/app", branch: "work", allow: [] },
+			{ repoPath: "", branch: "", allow: [] },
+		])
+	})
+})
+
 describe("Workspace output limits (Copilot C10)", () => {
 	it("kills and fails a run whose stdout passed 64 MiB, then persists it", async () => {
 		const { stub, fake } = await started()

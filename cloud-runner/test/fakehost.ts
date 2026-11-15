@@ -80,15 +80,22 @@ export class FakeHost implements Host {
 		this.running = false
 	}
 
+	// Every policy set, in order (Copilot C11 checks the branch in each).
+	policies: OutboundProps[] = []
+
 	async setPolicy(props: OutboundProps): Promise<void> {
 		this.calls.push(`setPolicy ${props.repoPath}`)
+		this.policies.push(props)
 	}
 
 	async setInactivityTimeout(): Promise<void> {}
 
+	// What clone() answers: undefined for success, or the clone error.
+	cloneError: string | undefined = undefined
+
 	async clone(_repo: string, branch: string): Promise<string | undefined> {
 		this.calls.push(`clone ${branch}`)
-		return undefined
+		return this.cloneError
 	}
 
 	async push(branch: string): Promise<Pushed> {

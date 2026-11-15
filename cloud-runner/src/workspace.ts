@@ -98,11 +98,11 @@ export class Workspace extends DurableObject<Env> {
 			}
 
 			await this.ensureStarted(record)
-			await this.host.setPolicy({ repoPath: new URL(repo).pathname, allow })
+			await this.host.setPolicy({ repoPath: new URL(repo).pathname, branch, allow })
 			const cloned = await this.host.clone(repo, branch)
 
 			if (cloned !== undefined) {
-				await this.host.setPolicy({ repoPath: "", allow: [] })
+				await this.host.setPolicy({ repoPath: "", branch: "", allow: [] })
 				return { status: statusOf(record), cloneError: cloned }
 			}
 
@@ -713,7 +713,11 @@ export class Workspace extends DurableObject<Env> {
 		this.ready = false
 
 		try {
-			await this.host.setPolicy(record.repo === undefined ? { repoPath: "", allow: [] } : { repoPath: new URL(record.repo).pathname, allow: record.allow })
+			await this.host.setPolicy(
+				record.repo === undefined
+					? { repoPath: "", branch: "", allow: [] }
+					: { repoPath: new URL(record.repo).pathname, branch: record.branch ?? "", allow: record.allow },
+			)
 			await this.host.setInactivityTimeout(inactivityTimeout)
 		} catch (error) {
 			// The next request starts a new container.

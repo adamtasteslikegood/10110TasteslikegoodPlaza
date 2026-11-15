@@ -2,11 +2,15 @@
 // no network, no environment. Everything that decides lives here; outbound.ts
 // only applies the answer.
 
-export type Policy = { gatewayPath: string; repoPath: string; allow: string[] } // repoPath "/owner/repo"
+// repoPath "/owner/repo"; branch is the workspace branch, the only ref a push
+// may update, or "" for none.
+export type Policy = { gatewayPath: string; repoPath: string; branch: string; allow: string[] }
 
 export type Credential = "gateway" | "github" | "none"
 
-export type Decision = { allow: true; credential: Credential } | { allow: false; reason: string }
+// push: the request is a git-receive-pack POST. outbound.ts reads its command
+// list (pushguard.ts) before it forwards anything (Copilot C11).
+export type Decision = { allow: true; credential: Credential; push?: true } | { allow: false; reason: string }
 
 const GATEWAY_HOST = "gateway.ai.cloudflare.com"
 const GITHUB_HOST = "github.com"
@@ -104,7 +108,13 @@ export function decide(method: string, rawUrl: string, policy: Policy): Decision
 		// nowhere else on github.com, and nothing else there is reachable, even
 		// when the workspace's own hosts name github.com.
 		if (policy.repoPath !== "" && !UNSAFE_PATH.test(path) && isSmartHttp(verb, path, url.search, policy.repoPath)) {
-			return { allow: true, credential: "github" }
+			if (verb !== "POST" || !path.endsWith("/git-receive-pack")) {
+				return { allow: true, credential: "github" }
+			}
+
+			// A push: allowed only for the workspace branch, which outbound.ts
+			// checks in the body. With no branch nothing may be pushed.
+			return policy.branch === "" ? refuse("a push needs the workspace branch") : { allow: true, credential: "github", push: true }
 		}
 
 		return refuse("only git fetch and push of the workspace repository are allowed on github.com")

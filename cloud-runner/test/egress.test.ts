@@ -1,17 +1,15 @@
 import { describe, expect, it } from "vitest"
 import { decide, isContainerCredentialHeader, type Policy } from "../src/egress"
 
-const policy: Policy = { gatewayPath: "/v1/acct/gw", repoPath: "/acme/app", allow: ["example.org"] }
+const policy: Policy = { gatewayPath: "/v1/acct/gw", repoPath: "/acme/app", branch: "work", allow: ["example.org"] }
 
 const allowed: [string, string, string][] = [
 	["POST", "https://gateway.ai.cloudflare.com/v1/acct/gw/anthropic/v1/messages", "gateway"],
 	["GET", "https://github.com/acme/app.git/info/refs?service=git-upload-pack", "github"],
-	["POST", "https://github.com/acme/app/git-receive-pack", "github"],
 	["POST", "https://github.com/acme/app.git/git-upload-pack", "github"],
 	["GET", "https://github.com/acme/app/info/refs?service=git-upload-pack", "github"],
 	["GET", "https://github.com/acme/app/info/refs?service=git-receive-pack", "github"],
 	["POST", "https://github.com/acme/app/git-upload-pack", "github"],
-	["POST", "https://github.com/acme/app.git/git-receive-pack", "github"],
 	["GET", "https://GitHub.com./acme/app/info/refs?service=git-upload-pack", "github"],
 	["GET", "https://registry.npmjs.org/zod", "none"],
 	["GET", "https://registry.npmjs.org/@types%2fnode", "none"],
@@ -127,6 +125,24 @@ describe("decide", () => {
 	it("judges traversal on the path only, and allows only the exact service query", () => {
 		expect(decide("GET", "https://github.com/acme/app.git/info/refs?service=git-receive-pack", policy)).toEqual({ allow: true, credential: "github" })
 		expect(decide("GET", "https://github.com/acme/app.git/info/refs?service=git-upload-pack&x=a//b..c%2f", policy).allow).toBe(false)
+	})
+
+	it("marks a push for inspection of the refs it updates (Copilot C11)", () => {
+		for (const url of ["https://github.com/acme/app/git-receive-pack", "https://github.com/acme/app.git/git-receive-pack"]) {
+			expect(decide("POST", url, policy)).toEqual({ allow: true, credential: "github", push: true })
+		}
+	})
+
+	it("keeps the push ref advertisement and fetch unmarked: git needs them and they update nothing", () => {
+		expect(decide("GET", "https://github.com/acme/app/info/refs?service=git-receive-pack", policy)).toEqual({ allow: true, credential: "github" })
+		expect(decide("POST", "https://github.com/acme/app/git-upload-pack", policy)).toEqual({ allow: true, credential: "github" })
+	})
+
+	it("refuses every push when the policy names no branch, but still allows a fetch", () => {
+		const noBranch: Policy = { ...policy, branch: "" }
+		expect(decide("POST", "https://github.com/acme/app/git-receive-pack", noBranch)).toMatchObject({ allow: false, reason: expect.stringContaining("branch") })
+		expect(decide("GET", "https://github.com/acme/app/info/refs?service=git-receive-pack", noBranch).allow).toBe(true)
+		expect(decide("POST", "https://github.com/acme/app/git-upload-pack", noBranch).allow).toBe(true)
 	})
 
 	it("refuses every GitHub path when the policy names no repository", () => {
