@@ -486,12 +486,16 @@ export class Workspace extends DurableObject<Env> {
 
 		const running = this.host.running
 		const elapsedMs = Date.now() - record.startedAt
-		// Judged before any probe, so an overdue run ends whatever the task files say (F1).
+		// Judged before any probe but the exit code, so an overdue run ends whatever
+		// the other task files say (F1). A failure while ending it still ends it.
 		const overdue = running && elapsedMs >= MAX_RUN_MS
 
 		try {
 			if (overdue) {
-				return await this.endFailed(record, MAX_RUN_ERROR)
+				// A run with an exit code has finished, not overrun (R2). With none, or a
+				// probe that throws, the overdue rule ends it.
+				const exitCode = await this.host.exitCode().catch(() => undefined)
+				return await (exitCode === undefined ? this.endFailed(record, MAX_RUN_ERROR) : this.finish(record, exitCode))
 			}
 
 			await this.judge(record, running, elapsedMs)

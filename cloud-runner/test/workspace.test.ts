@@ -648,9 +648,20 @@ describe("Workspace task files the agent broke (F1)", () => {
 		expect(fake.calls).toContain("signal 100 KILL")
 	})
 
-	it("ends an overdue run before it reads any task file", async () => {
+	it("finishes an overdue run that has an exit code as any other finished run (R2)", async () => {
 		const { stub, fake } = await started()
 		fake.finishTask(0, [resultLine])
+		await edit(stub, (record) => {
+			record.startedAt = Date.now() - MAX_RUN_MS - 1
+		})
+
+		expect(await stub.status()).toMatchObject({ state: "succeeded", result: "done", pushed: { commit: "commit-1" } })
+	})
+
+	it("ends an overdue run by the overdue rule when its exit-code probe throws (R2)", async () => {
+		const { stub, fake } = await started()
+		fake.finishTask(0, [resultLine])
+		fake.failOnce.exitCode = new Error("exec timed out")
 		await edit(stub, (record) => {
 			record.startedAt = Date.now() - MAX_RUN_MS - 1
 		})
