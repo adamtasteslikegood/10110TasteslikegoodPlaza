@@ -53,8 +53,10 @@ setsid -f sh -c "$copy" "$0/stderr" tail -c ${MAX_STDERR_BYTES} </dev/null &&
 "$@" >"$0/stdout.fifo" 2>"$0/stderr.fifo"
 echo "$?" >"$0/exit-code.tmp" && mv "$0/exit-code.tmp" "$0/exit-code"' "$dir" "$copy" "$@" </dev/null >/dev/null 2>&1`
 
-// The size of file $1 in bytes; 0 while it does not exist.
+// The size of file $1 in bytes; 0 while it does not exist. Anything but a
+// regular file (a directory, a FIFO that would block the read) fails.
 export const outputBytesScript = `[ -e "$1" ] || { echo 0; exit 0; }
+[ -f "$1" ] || { echo "$1 is not a regular file" >&2; exit 1; }
 wc -c <"$1"`
 
 // Succeeds once both copiers of task directory $1 have ended.
@@ -88,8 +90,9 @@ exit 1`
 export const signalScript = `[ "$2" = "$(cat /proc/sys/kernel/random/boot_id)" ] && kill -"$3" "-$1"`
 
 // Up to $3 bytes of file $2 from byte $1 (1-based): a ranged read. A file not
-// yet created reads as empty; one that can't be read fails.
+// yet created reads as empty; one that is not a regular file or can't be read fails.
 export const chunkScript = `[ -e "$2" ] || exit 0
+[ -f "$2" ] || { echo "$2 is not a regular file" >&2; exit 1; }
 [ -r "$2" ] || { echo "cannot read $2" >&2; exit 1; }
 tail -c +"$1" "$2" | head -c "$3"`
 

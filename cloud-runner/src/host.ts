@@ -1,4 +1,4 @@
-import { Files } from "@cloudflare/sandbox"
+import { Files, SandboxFileError } from "@cloudflare/sandbox"
 import {
 	capDiff,
 	capOutput,
@@ -18,7 +18,6 @@ import {
 	readOptionalText,
 	repositoryDirectory,
 	run,
-	runBytes,
 	signalScript,
 	stderrPath,
 	tail,
@@ -32,6 +31,15 @@ import { clone, gitEnv, push, snapshot, startFromImage, startFromSnapshot, type 
 
 export type { Task } from "./container"
 export type Signal = "TERM" | "KILL"
+
+// The container answered, and its answer shows a task file is not what the
+// runner wrote: a read failed with a file-level error other than not-found, or
+// a probe script ran and refused the file. Every other failure of a probe (an
+// exec timeout or reject, a transport error, a container that is stopping) is
+// an ordinary Error, and the Workspace treats it as transient (R1).
+export class TaskFileError extends Error {
+	override name = "TaskFileError"
+}
 
 // Everything the Workspace object asks of its container, said as intent. The
 // object keeps the order of these calls and the record; ContainerHost turns each
@@ -148,7 +156,7 @@ export class ContainerHost implements Host {
 	}
 
 	async readTask(): Promise<Task | "invalid" | undefined> {
-		const text = await readOptionalText(this.files, pidPath)
+		const text = await readTaskFile(this.files, pidPath)
 		return text === undefined ? undefined : (parseTask(text) ?? "invalid")
 	}
 
@@ -166,12 +174,20 @@ export class ContainerHost implements Host {
 	}
 
 	async exitCode(): Promise<number | undefined> {
-		const text = await readOptionalText(this.files, exitCodePath)
+		const text = await readTaskFile(this.files, exitCodePath)
 		return text === undefined ? undefined : Number.parseInt(text, 10)
 	}
 
-	readOutput(offset: number, max: number): Promise<Uint8Array> {
-		return runBytes(this.c, ["/bin/sh", "-c", chunkScript, "ingest", String(offset + 1), eventsPath, String(max)])
+	async readOutput(offset: number, max: number): Promise<Uint8Array> {
+		const command = ["/bin/sh", "-c", chunkScript, "ingest", String(offset + 1), eventsPath, String(max)]
+		const output = await execOutput(this.c, command, { cwd: "/", env: {} }, execTimeout.short)
+
+		// The script ran and refused stdout.log: it is not the file the copier writes.
+		if (output.exitCode !== 0) {
+			throw new TaskFileError(`Could not read ${eventsPath}: ${tail(new TextDecoder().decode(output.stderr), 500)}`)
+		}
+
+		return new Uint8Array(output.stdout)
 	}
 
 	async lineLength(offset: number): Promise<{ bytes: number; ended: boolean }> {
@@ -184,8 +200,9 @@ export class ContainerHost implements Host {
 		const probe = await run(this.c, ["/bin/sh", "-c", outputBytesScript, "size", eventsPath], "/", {})
 		const bytes = Number(probe.stdout.trim())
 
+		// The script ran and refused stdout.log, or printed no size.
 		if (probe.exitCode !== 0 || !Number.isFinite(bytes)) {
-			throw new Error(`Could not read the size of ${eventsPath}: ${tail(probe.stderr, 500)}`)
+			throw new TaskFileError(`Could not read the size of ${eventsPath}: ${tail(probe.stderr, 500)}`)
 		}
 
 		return bytes
@@ -203,5 +220,20 @@ export class ContainerHost implements Host {
 		// No credential: the trust env only, and git never waits at a prompt.
 		const output = await execOutput(this.c, argv, { cwd: repositoryDirectory, env: { ...gitEnv, GIT_TERMINAL_PROMPT: "0" } }, execTimeout.short)
 		return { exitCode: output.exitCode, stdout: capOutput(output.stdout), stderr: capOutput(output.stderr) }
+	}
+}
+
+// A task file read: undefined while it does not exist. Any other file-level
+// error the container reports (a directory, no permission) is a TaskFileError;
+// an exec or transport failure stays an ordinary Error (R1).
+async function readTaskFile(files: Files, path: string): Promise<string | undefined> {
+	try {
+		return await readOptionalText(files, path)
+	} catch (error) {
+		if (SandboxFileError.is(error)) {
+			throw new TaskFileError(`Could not read ${path}: ${error.code} ${error.message}`)
+		}
+
+		throw error
 	}
 }

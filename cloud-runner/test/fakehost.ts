@@ -1,10 +1,10 @@
 import type { CommandResult } from "../src/container"
-import type { Host, Signal, Task } from "../src/host"
+import { TaskFileError, type Host, type Signal, type Task } from "../src/host"
 import type { OutboundProps } from "../src/outbound"
 import type { Pushed, Saved } from "../src/persist"
 
 type Group = { alive: boolean; ignoresTerm: boolean }
-type Probe = "push" | "exitCode" | "readTask" | "readOutput" | "outputBytes" | "outputDone"
+type Probe = "push" | "exitCode" | "readTask" | "readOutput" | "outputBytes" | "outputDone" | "taskAlive" | "signal"
 
 // A container in memory, behind the Workspace's one seam. It models what the
 // rules depend on: the pid file, the task's process groups, the exit code the
@@ -35,16 +35,25 @@ export class FakeHost implements Host {
 	ignoresTerm = false
 	// One error to throw at the next call of a method, then gone.
 	failOnce: Partial<Record<Probe, Error>> = {}
-	// Probes that throw on every call, as a task file the agent replaced with a
-	// directory or a FIFO would make them (F1).
+	// Errors for the next calls of a method, one per call, in order (finite).
+	failNext: Partial<Record<Probe, Error[]>> = {}
+	// Probes that throw TaskFileError on every call, as a task file the agent
+	// replaced with a directory would make them (F1, R1).
 	broken = new Set<Probe>()
+	// Probes that throw a plain Error on every call, as an exec that times out
+	// or a container that is restarting would make them (R1).
+	flaky = new Set<Probe>()
 
 	private fail(name: Probe): void {
-		if (this.broken.has(name)) throw new Error(`${name} could not read the task files`)
-		const error = this.failOnce[name]
+		if (this.broken.has(name)) throw new TaskFileError(`${name} found a task file the runner did not write`)
+		if (this.flaky.has(name)) throw new Error(`${name} timed out`)
+		const error = this.failOnce[name] ?? this.failNext[name]?.shift()
+
+		if (this.failOnce[name]) {
+			delete this.failOnce[name]
+		}
 
 		if (error) {
-			delete this.failOnce[name]
 			throw error
 		}
 	}
@@ -155,11 +164,13 @@ export class FakeHost implements Host {
 	}
 
 	async taskAlive(task: Task): Promise<boolean> {
+		this.fail("taskAlive")
 		return task.boot === this.boot && this.groups.get(task.pid)?.alive === true
 	}
 
 	async signalTask(task: Task, signal: Signal): Promise<void> {
 		this.calls.push(`signal ${task.pid} ${signal}`)
+		this.fail("signal")
 		const group = this.groups.get(task.pid)
 
 		if (!group?.alive || task.boot !== this.boot) {

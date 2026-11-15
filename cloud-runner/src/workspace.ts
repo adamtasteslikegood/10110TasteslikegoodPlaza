@@ -2,7 +2,7 @@ import { DurableObject } from "cloudflare:workers"
 import { agentArgv, agentEnv, outcome, parseLine, resultSentinel } from "./agent"
 import { completeLines, leadingType, lineEvent } from "./container"
 import { EventLog, MAX_PAYLOAD_BYTES } from "./events"
-import { ContainerHost, type Host, type Task } from "./host"
+import { ContainerHost, TaskFileError, type Host, type Task } from "./host"
 import { abandonSnapshot, afterAbandon, afterPush, afterSnapshot, gitEnv, messageOf, within } from "./persist"
 import {
 	admit,
@@ -20,6 +20,7 @@ import {
 	persistAction,
 	restorePath,
 	stopOutcome,
+	TASK_FILE_FAILURE_LIMIT,
 	TASK_FILES_ERROR,
 } from "./runstate"
 import type { CommandResult } from "./container"
@@ -49,6 +50,7 @@ type Record_ = {
 	snapshotStale?: boolean // the stored snapshot predates a run whose work was lost (Copilot C5)
 	replaceInstance?: boolean // the instance may run a process no task id names: destroy it once persisted (Copilot C4)
 	resultLine?: string // the current run's last result event, read during ingest (Copilot C10)
+	taskFileFailures?: number // checks in a row of the current run that ended in a TaskFileError (R1)
 	result?: string
 	error?: string
 	pushed?: { commit: string }
@@ -169,6 +171,7 @@ export class Workspace extends DurableObject<Env> {
 				result: undefined,
 				error: undefined,
 				resultLine: undefined,
+				taskFileFailures: undefined,
 			})
 			this.save(record)
 			this.note(record, { notice: "run started", run: record.run })
@@ -237,15 +240,24 @@ export class Workspace extends DurableObject<Env> {
 			try {
 				return await this.stopRunning(record)
 			} catch (error) {
-				// Still running, so a probe of the task files threw (F1).
+				// Once the run has ended, what threw is the push or snapshot: it is retried.
 				if (record.state !== "running") throw error
+
+				// A task file the runner did not write: replacing the instance stops the
+				// run (F1). Anything else may be a blip, and the task may still be alive,
+				// so the caller is told to try again (R1).
+				if (!(error instanceof TaskFileError)) {
+					console.error(`Workspace stop failed, the run goes on: ${messageOf(error)}`)
+					return "still-running"
+				}
+
 				await this.endUntrusted(record, "stopped", TASK_FILES_ERROR)
 				return statusOf(record)
 			}
 		})
 	}
 
-	// The signals and the reads of a stop. Every probe here can throw (F1).
+	// The signals and the reads of a stop. Every probe here can throw (F1, R1).
 	private async stopRunning(record: Record_): Promise<Status | "still-running"> {
 		// refresh() saw the container running, or the run would be lost.
 		// A stop right after the start can come before the task wrote its pid.
@@ -482,13 +494,36 @@ export class Workspace extends DurableObject<Env> {
 				return await this.endFailed(record, MAX_RUN_ERROR)
 			}
 
-			return await this.judge(record, running, elapsedMs)
+			await this.judge(record, running, elapsedMs)
+
+			if (record.taskFileFailures !== undefined) {
+				record.taskFileFailures = undefined // every probe answered
+				this.save(record)
+			}
 		} catch (error) {
 			// Once the run has ended, what threw is the push or snapshot: it is retried.
-			// While it still runs, a probe of the task files threw (F1).
 			if (record.state !== "running") throw error
-			console.error(`Workspace could not read the task files: ${messageOf(error)}`)
-			return this.endUntrusted(record, "failed", overdue ? MAX_RUN_ERROR : TASK_FILES_ERROR)
+
+			// The cap is the backstop: an overdue run ends whatever failed (F1).
+			if (overdue) {
+				console.error(`Workspace could not end an overdue run cleanly: ${messageOf(error)}`)
+				return this.endUntrusted(record, "failed", MAX_RUN_ERROR)
+			}
+
+			// An exec timeout, a restarting container or a transport error says
+			// nothing about the task: the run goes on and the next check retries (R1).
+			if (!(error instanceof TaskFileError)) {
+				console.error(`Workspace check failed, the run goes on: ${messageOf(error)}`)
+				return
+			}
+
+			record.taskFileFailures = (record.taskFileFailures ?? 0) + 1
+			this.save(record)
+			console.error(`Workspace found a task file it did not write (${record.taskFileFailures} in a row): ${messageOf(error)}`)
+
+			if (record.taskFileFailures >= TASK_FILE_FAILURE_LIMIT) {
+				return this.endUntrusted(record, "failed", TASK_FILES_ERROR)
+			}
 		}
 	}
 
@@ -523,12 +558,12 @@ export class Workspace extends DurableObject<Env> {
 		}
 	}
 
-	// Ends a run whose task files cannot be read (F1). The agent may have made them
-	// a directory or a FIFO, so nothing of the instance is trusted: the stored group
-	// gets a best-effort KILL, no file is read, and the instance is replaced without
-	// a push or snapshot. A snapshot holds the whole root filesystem and the next
-	// run would start from it, so the old one is kept, marked stale, as when the
-	// container is gone (Copilot C5).
+	// Ends a run whose task files are not what the runner wrote (F1, R1), or an
+	// overdue run that could not be ended cleanly. Nothing of the instance is
+	// trusted: the stored group gets a best-effort KILL, no file is read, and the
+	// instance is replaced without a push or snapshot. A snapshot holds the whole
+	// root filesystem and the next run would start from it, so the old one is
+	// kept, marked stale, as when the container is gone (Copilot C5).
 	private async endUntrusted(record: Record_, state: "failed" | "stopped", error: string): Promise<void> {
 		const task = record.task !== undefined && record.task.pid > 1 ? record.task : undefined
 

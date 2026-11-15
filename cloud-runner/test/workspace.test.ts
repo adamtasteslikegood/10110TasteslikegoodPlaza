@@ -2,7 +2,8 @@ import { evictDurableObject, runDurableObjectAlarm, runInDurableObject } from "c
 import { env as workerEnv } from "cloudflare:workers"
 import { describe, expect, it } from "vitest"
 import { abandonedPushError } from "../src/persist"
-import { MAX_OUTPUT_BYTES, MAX_RUN_ERROR, MAX_RUN_MS, OUTPUT_ERROR, PID_GRACE_MS, TASK_FILES_ERROR } from "../src/runstate"
+import { TaskFileError } from "../src/host"
+import { MAX_OUTPUT_BYTES, MAX_RUN_ERROR, MAX_RUN_MS, OUTPUT_ERROR, PID_GRACE_MS, TASK_FILE_FAILURE_LIMIT, TASK_FILES_ERROR } from "../src/runstate"
 import { TRUNCATED_RESULT_ERROR } from "../src/agent"
 import type { Env } from "../src/types"
 import type { Workspace } from "../src/workspace"
@@ -191,7 +192,16 @@ describe("Workspace push and snapshot after an interruption (I2)", () => {
 })
 
 describe("Workspace alarm (I5)", () => {
-	it("re-arms after a throw while the run is running (F1d)", async () => {
+	it("re-arms after a throw while the run is running", async () => {
+		const { stub, fake } = await started()
+		fake.failOnce.exitCode = new Error("exec failed")
+
+		expect(await runDurableObjectAlarm(stub)).toBe(true)
+		expect(await alarmAt(stub)).not.toBeNull()
+		expect((await stored(stub)).state).toBe("running")
+	})
+
+	it("re-arms after a throw of the stdout.log read while the run is running (F1d)", async () => {
 		const { stub, fake } = await started()
 		fake.failOnce.readOutput = new Error("exec failed")
 
@@ -591,9 +601,17 @@ describe("Workspace output limits (Copilot C10)", () => {
 	})
 })
 
-// F1: the agent can replace a task file with a directory or a FIFO, so every
-// probe that reads one throws, on every call. The run must still end.
+// F1: the agent can replace a task file with a directory, so every probe that
+// reads one throws TaskFileError, on every call. The run must still end, after
+// TASK_FILE_FAILURE_LIMIT checks in a row (R1).
 describe("Workspace task files the agent broke (F1)", () => {
+	// Checks that each end in a TaskFileError, short of the limit: still running.
+	async function strikesShortOfLimit(stub: Stub) {
+		for (let i = 1; i < TASK_FILE_FAILURE_LIMIT; i++) {
+			expect((await stub.status()).state).toBe("running")
+		}
+	}
+
 	// A run that ended untrusted: failed, not pushed or snapshotted, its instance
 	// destroyed, and later requests answered normally.
 	async function endedUntrusted(stub: Stub, fake: FakeHost, error = TASK_FILES_ERROR) {
@@ -606,11 +624,13 @@ describe("Workspace task files the agent broke (F1)", () => {
 		expect(await stub.status()).toMatchObject({ state: "failed", error })
 	}
 
-	it.each(["outputBytes", "exitCode", "readTask"] as const)("ends the run when %s throws mid-run, after a KILL of the stored group", async (probe) => {
+	it.each(["outputBytes", "exitCode", "readTask"] as const)("ends the run when %s keeps failing on the task file, after a KILL of the stored group", async (probe) => {
 		const { stub, fake } = await started()
 		expect((await stub.status()).state).toBe("running") // the pid is read and stored
 		fake.broken.add(probe)
 
+		await strikesShortOfLimit(stub)
+		expect(fake.count("destroy")).toBe(0)
 		await endedUntrusted(stub, fake)
 		expect(fake.calls).toContain("signal 100 KILL")
 		expect(fake.groups.get(100)?.alive).toBe(false)
@@ -643,6 +663,7 @@ describe("Workspace task files the agent broke (F1)", () => {
 		await stub.startRun("second", false, 5)
 		fake.broken.add("outputBytes")
 
+		await strikesShortOfLimit(stub)
 		expect(await stub.status()).toMatchObject({ state: "failed", error: TASK_FILES_ERROR })
 		expect(await stored(stub)).toMatchObject({ snapshot: "snap-1", snapshotStale: true })
 		fake.broken.clear()
@@ -650,18 +671,18 @@ describe("Workspace task files the agent broke (F1)", () => {
 		expect(await stub.status()).toMatchObject({ restored: "snapshot", uncommittedLost: true })
 	})
 
-	it("stops a run whose probes throw with 200 and an ended state", async () => {
+	it("stops a run whose task files are broken with 200 and an ended state", async () => {
 		const { stub, fake } = await started()
 		expect((await stub.status()).state).toBe("running")
 		fake.broken.add("exitCode")
 		fake.broken.add("readTask")
 
 		const status = await stub.stop()
-		expect(status).toMatchObject({ state: "failed", error: TASK_FILES_ERROR })
+		expect(status).toMatchObject({ state: "stopped", error: TASK_FILES_ERROR })
 		expect(fake.running).toBe(false)
 	})
 
-	it("stops a run whose probes throw inside stop itself, answering stopped and replacing the instance", async () => {
+	it("stops a run whose task files break inside stop itself, answering stopped and replacing the instance", async () => {
 		const { stub, fake } = await started()
 		fake.broken.add("outputDone") // read only once the signals are sent
 
@@ -671,6 +692,15 @@ describe("Workspace task files the agent broke (F1)", () => {
 		expect(fake.count("destroy")).toBe(1)
 		expect(fake.running).toBe(false)
 		expect(await stub.status()).toMatchObject({ state: "stopped" })
+	})
+
+	it("stops a run on one TaskFileError during the stop", async () => {
+		const { stub, fake } = await started()
+		expect((await stub.status()).state).toBe("running")
+		fake.failNext.outputDone = [new TaskFileError("stdout.done is not a file")] // read only during the stop
+
+		expect(await stub.stop()).toMatchObject({ state: "stopped", error: TASK_FILES_ERROR })
+		expect(fake.count("destroy")).toBe(1)
 	})
 
 	it("answers a stop with the ended state when the refresh before it fails", async () => {
@@ -685,6 +715,12 @@ describe("Workspace task files the agent broke (F1)", () => {
 	it("ends the run on the alarm, which then needs no re-arm, instead of throwing every tick", async () => {
 		const { stub, fake } = await started()
 		fake.broken.add("outputBytes")
+
+		for (let i = 1; i < TASK_FILE_FAILURE_LIMIT; i++) {
+			expect(await runDurableObjectAlarm(stub)).toBe(true)
+			expect((await stored(stub)).state).toBe("running")
+			expect(await alarmAt(stub)).not.toBeNull()
+		}
 
 		expect(await runDurableObjectAlarm(stub)).toBe(true)
 		expect((await stored(stub)).state).toBe("failed")
@@ -706,6 +742,106 @@ describe("Workspace task files the agent broke (F1)", () => {
 		expect(await runDurableObjectAlarm(stub)).toBe(true)
 		expect(await stored(stub)).toMatchObject({ state: "failed", error: MAX_RUN_ERROR })
 		expect(fake.count("push work")).toBe(0)
+		expect(await alarmAt(stub)).toBeNull()
+	})
+})
+
+// R1: a probe can fail for reasons that say nothing about the task files: an
+// exec timeout, a container that is stopping or restarting, a transport error.
+// Such a failure is transient: the run goes on and the next check retries.
+describe("Workspace transient probe failures (R1)", () => {
+	// Still running, nothing destroyed, and a clean finish later ends it normally.
+	async function stillHealthy(stub: Stub, fake: FakeHost) {
+		expect((await stored(stub)).state).toBe("running")
+		expect(fake.count("destroy")).toBe(0)
+		expect((await stored(stub)).replaceInstance).toBeFalsy()
+
+		fake.finishTask(0, [resultLine])
+		expect(await stub.status()).toMatchObject({ state: "succeeded", result: "done", pushed: { commit: "commit-1" } })
+		expect(fake.count("destroy")).toBe(0)
+	}
+
+	it.each(["exitCode", "outputBytes", "taskAlive", "readTask"] as const)("keeps a healthy run running after one plain throw of %s", async (probe) => {
+		const { stub, fake } = await started()
+		fake.failOnce[probe] = new Error("exec timed out")
+
+		expect((await stub.status()).state).toBe("running")
+		await stillHealthy(stub, fake)
+	})
+
+	it("keeps a healthy run running after one plain throw of the stdout.log read", async () => {
+		const { stub, fake } = await started()
+		fake.failOnce.readOutput = new Error("exec timed out")
+
+		expect(await runDurableObjectAlarm(stub)).toBe(true)
+		await stillHealthy(stub, fake)
+	})
+
+	it("ends a run that exited 0 as succeeded and pushes it, after one ingest throw during finish", async () => {
+		const { stub, fake } = await started()
+		fake.finishTask(0, [resultLine])
+		fake.failOnce.readOutput = new Error("container is restarting")
+
+		expect((await stub.status()).state).toBe("running")
+		expect(fake.count("push work")).toBe(0)
+		expect(await stub.status()).toMatchObject({ state: "succeeded", result: "done", pushed: { commit: "commit-1" } })
+		expect(fake.count("push work")).toBe(1)
+		expect(fake.count("destroy")).toBe(0)
+	})
+
+	it("keeps the run running after one and two TaskFileErrors, and ends it at three in a row", async () => {
+		const { stub, fake } = await started()
+		const strike = () => new TaskFileError("stdout.log is a directory")
+		fake.failNext.outputBytes = [strike(), strike(), strike()]
+
+		expect((await stub.status()).state).toBe("running")
+		expect((await stub.status()).state).toBe("running")
+		expect(fake.count("destroy")).toBe(0)
+		expect(await stub.status()).toMatchObject({ state: "failed", error: TASK_FILES_ERROR })
+		expect(fake.count("destroy")).toBe(1)
+		expect(fake.count("push work")).toBe(0)
+	})
+
+	it("starts the count again after a check whose probes all succeed", async () => {
+		const { stub, fake } = await started()
+		const strike = () => new TaskFileError("stdout.log is a directory")
+		fake.failNext.outputBytes = [strike(), strike()]
+
+		expect((await stub.status()).state).toBe("running")
+		expect((await stub.status()).state).toBe("running")
+		expect((await stub.status()).state).toBe("running") // clean
+		fake.failNext.outputBytes = [strike()]
+		expect((await stub.status()).state).toBe("running")
+		expect(fake.count("destroy")).toBe(0)
+	})
+
+	it("answers still-running to a stop whose signalling fails transiently, and the run goes on", async () => {
+		const { stub, fake } = await started()
+		expect((await stub.status()).state).toBe("running")
+		fake.failOnce.signal = new Error("container is restarting")
+
+		expect(await stub.stop()).toBe("still-running")
+		expect((await stored(stub)).state).toBe("running")
+		expect(fake.count("destroy")).toBe(0)
+		expect(fake.count("push work")).toBe(0)
+	})
+
+	it("ends a run whose probes fail transiently forever by the 60-minute cap", async () => {
+		const { stub, fake } = await started()
+		expect((await stub.status()).state).toBe("running")
+		for (const probe of ["exitCode", "readTask", "taskAlive", "readOutput", "outputBytes", "outputDone"] as const) fake.flaky.add(probe)
+
+		for (let i = 0; i < 2 * TASK_FILE_FAILURE_LIMIT; i++) {
+			expect(await runDurableObjectAlarm(stub)).toBe(true)
+			expect((await stored(stub)).state).toBe("running")
+		}
+
+		expect(fake.count("destroy")).toBe(0)
+		await edit(stub, (record) => {
+			record.startedAt = Date.now() - MAX_RUN_MS - 1
+		})
+		expect(await runDurableObjectAlarm(stub)).toBe(true)
+		expect(await stored(stub)).toMatchObject({ state: "failed", error: MAX_RUN_ERROR })
 		expect(await alarmAt(stub)).toBeNull()
 	})
 })
