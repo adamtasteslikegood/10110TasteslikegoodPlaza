@@ -80,8 +80,8 @@ did not appear here.
 ## The four questions
 
 1. **Does Claude Code run in a Sandbox container?** Yes. 2.1.308 runs headless (`--print --output-format
-   stream-json --verbose`) as a detached task, writes files, commits, and the Worker pushes. Turn limits work through
-   the hidden `--max-turns`. `--session-id` and `--resume` are listed.
+   stream-json --verbose`) as a detached task, writes files, commits, and the Worker pushes. The hidden `--max-turns` is
+   accepted; no run reached its limit, so enforcement was not exercised. `--session-id` and `--resume` are listed.
 2. **Which login path?** No Anthropic credential enters the container. The CLI gets `ANTHROPIC_API_KEY=provided-by-worker`
    (a placeholder) and `ANTHROPIC_BASE_URL` set to the gateway's provider-native route
    `https://gateway.ai.cloudflare.com/v1/<account>/my-cf-agent-gateway/anthropic`. The `Outbound` entrypoint drops the
@@ -98,20 +98,23 @@ did not appear here.
 
 ## Cost (check 8)
 
-**Measured** (from `result` events, Claude Code's own `total_cost_usd`, computed by the CLI from the token counts at
-list price, not a gateway invoice):
+**Measured** (from `result` events: Claude Code's own `total_cost_usd`, computed by the CLI from the token counts at
+list price, not a gateway invoice). On a resumed session `total_cost_usd` is **cumulative**: workspace `acc-a49ef1-a`
+reported 0.047, 0.052, 0.054 and 0.070 over runs 1, 2, 3 and 5. The per-run figure is the difference:
 
-| Run | Wall (event timestamps) | Turns | Output tokens | Cache read / write | USD |
-|---|---|---|---|---|---|
-| check 1 (write, commit) | 15 s | 2 | 418 | 16,402 / 16,620 | 0.047 |
-| check 2 (`sleep 45`) | 55 s | 2 | 54 | 33,531 / 381 | 0.052 |
-| check 5 a / b ("ok") | 9 s / 9 s | 1 / 1 | 4 / 4 | 17,001 / 48 and 12,565 / 3,808 | 0.054 / 0.011 |
-| check 6 run 5 (recall) | 9 s | 1 | 52 | 17,892 / 271 | 0.070 |
-| redeploy (`sleep 150`) | 160 s | 2 | — | — | 0.014 |
+| Run | Wall (event timestamps) | Turns | Output tokens | Cache read / write | Reported (cumulative) | This run |
+|---|---|---|---|---|---|---|
+| check 1, run 1 (write, commit; fresh session) | 15 s | 2 | 418 | 16,402 / 16,620 | 0.0474 | 0.0474 |
+| check 2, run 2 (`sleep 45`, resumed) | 55 s | 2 | 54 | 33,531 / 381 | 0.0522 | 0.0048 |
+| check 5 a, run 3 ("ok", resumed) | 9 s | 1 | 4 | 17,001 / 48 | 0.0541 | 0.0019 |
+| check 5 b, run 1 ("ok", fresh session) | 9 s | 1 | 4 | 12,565 / 3,808 | 0.0108 | 0.0108 |
+| check 6, run 5 (recall, after run 4) | 9 s | 1 | 52 | 17,892 / 271 | 0.0702 | 0.0161 (runs 4 and 5) |
+| redeploy (`sleep 150`, separate workspace) | 160 s | 2 | — | — | 0.014 | 0.014 |
 
-The six runs with a result total about **$0.25**. The remaining runs (check 6 run 4, and check 7's three runs, which were
-stopped or lost) wrote no `result` event, so their cost is not measured. Even a one-word reply reads about 12–18k
-cached tokens of system prompt, so model cost per run has a floor of roughly 1–7 cents, depending on cache writes.
+The measured total is about **$0.095** (the last cumulative figure of each session: 0.0702 + 0.0108 + 0.014). Check 7's
+three runs were stopped or lost and wrote no `result` event, so their cost is not measured. A fresh session pays to
+write about 4–17k tokens of system prompt to the cache (about 1–5 cents for the first run); a resumed one-word run that
+reads it back costs about 0.2–0.5 cents.
 
 **Computed** from design §9 (a `standard-1` instance costs about $0.04/h idle and up to about $0.075/h at full CPU;
 snapshots are free in beta):
