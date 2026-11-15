@@ -36,7 +36,9 @@ Every row below was executed against a real checkout. The rule this table exists
 | `black --check .` | Formatting gate. **Hard-fails CI** — run `black .` before pushing Python. |
 | `flake8 . --select=E9,F63,F7,F82` | Syntax errors and undefined names. Also hard-fails; the wider `--max-complexity` pass is advisory. |
 
-`npm test` is real too, but **there is no JavaScript in this repo** — `package.json` is a task-runner facade over the same gates (`npm start` → `godot .`; `npm test` → validate → import → smoke → M11 scenes → real-client/fake-provider integration, also required by CI; `npm run agents:check` left out of `npm test` so a fresh checkout without the submodule or `pyyaml` still goes green). No npm dependencies or `node_modules`; activate the Python venv for integration. Treat a failure as a failure of the underlying Python or Godot gate and debug it there. CI calls those tools directly, so the facade can never become the only path to a gate.
+`npm test` is real too, but **the root has no JavaScript** — the root `package.json` is a task-runner facade over the same gates (`npm start` → `godot .`; `npm test` → validate → import → smoke → M11 scenes → real-client/fake-provider integration, also required by CI; `npm run agents:check` left out of `npm test` so a fresh checkout without the submodule or `pyyaml` still goes green). No npm dependencies or `node_modules`; activate the Python venv for integration. Treat a failure as a failure of the underlying Python or Godot gate and debug it there. CI calls those tools directly, so the facade can never become the only path to a gate.
+
+The one exception is `cloud-runner/` (M14 stage 1), a TypeScript Cloudflare Worker with its own `package.json`, dependencies and tests. The root `npm test` does not run them. From `cloud-runner/`, run `npm ci` once, then `npm test` and `npm run typecheck`; CI's `Cloud Runner` job runs the same. Run them under a memory cap (`systemd-run --user --scope -q -p MemoryMax=6G -p MemorySwapMax=0 -- npm test`): the Workers test runtime once took the machine down. A failure there is a TypeScript failure, not a Python or Godot one. See `cloud-runner/README.md`.
 
 ## Critical architectural reframe (read this before trusting the legacy reference docs)
 
@@ -91,7 +93,7 @@ It is the source of truth behind `data/agents.json`; don't copy that data into t
 
 ## CI workflows
 
-`.github/workflows/ci.yml` runs on push/PR to `main` and `dev`. Eight jobs; principal development gates:
+`.github/workflows/ci.yml` runs on push/PR to `main` and `dev`. Nine jobs (the ninth, `Cloud Runner`, tests and typechecks `cloud-runner/`); principal development gates:
 
 Top-level `permissions: contents: read`; a job needing more declares its own block rather than widening that one.
 

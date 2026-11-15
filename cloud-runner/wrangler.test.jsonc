@@ -1,0 +1,27 @@
+{
+	// Used only by vitest (see vitest.config.ts). Same as wrangler.jsonc but
+	// without `containers`, which the test runtime cannot build or start.
+	"name": "plaza-cloud-runner-test",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-11-14",
+	"compatibility_flags": ["nodejs_compat"],
+	"vars": {
+		"AI_GATEWAY_ID": "my-cf-agent-gateway",
+		"MODEL": "claude-sonnet-5-5",
+		"AI_GATEWAY_ACCOUNT_ID": "test-account",
+	},
+	"durable_objects": {
+		"bindings": [
+			{
+				"class_name": "Workspace",
+				"name": "WORKSPACE",
+			},
+		],
+	},
+	"exports": {
+		"Workspace": {
+			"type": "durable-object",
+			"storage": "sqlite",
+		},
+	},
+}

@@ -1,0 +1,22 @@
+{
+  "name": "plaza-cloud-runner",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Cloudflare Worker that runs Claude Code on one GitHub branch inside a sandbox container (M14 stage 1).",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@cloudflare/sandbox": "^1.0.3",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "^1.8.2",
+    "@cloudflare/workers-types": "^5.20261115.1",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.12",
+    "wrangler": "^4.162.0"
+  }
+}
