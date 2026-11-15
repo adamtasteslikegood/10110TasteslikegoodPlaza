@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { afterPersist, pushErrorText } from "../src/persist"
+import { abandonedPushError, afterAbandon, afterPersist, pushErrorText } from "../src/persist"
 
 describe("pushErrorText", () => {
 	it("keeps the last 2000 characters", () => {
@@ -48,5 +48,16 @@ describe("afterPersist", () => {
 		const after = afterPersist(3, { commit: "abc" }, { error: "not supported" })
 		expect(after).toHaveProperty("snapshot", undefined)
 		expect(after.notices[1]).toEqual({ notice: "snapshot failed", run: 3, error: "not supported" })
+	})
+})
+
+describe("afterAbandon", () => {
+	it("clears the pending flag, records why nothing was pushed, and drops the stale snapshot", () => {
+		expect(afterAbandon(3)).toEqual({
+			persistPending: false,
+			pushError: abandonedPushError,
+			snapshot: undefined,
+			notice: { notice: "push failed", run: 3, error: abandonedPushError },
+		})
 	})
 })

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { parseLine } from "../src/agent"
-import { completeLines, leadingType, lineEvent, runBytes } from "../src/container"
+import { completeLines, leadingType, lineEvent, parseTask, runBytes } from "../src/container"
 import { MAX_PAYLOAD_BYTES } from "../src/events"
 
 const bytes = (text: string) => new TextEncoder().encode(text)
@@ -54,5 +54,14 @@ describe("runBytes", () => {
 	})
 	it("throws with the exit code and stderr of a command that fails", async () => {
 		await expect(runBytes(container(1, "", "tail: cannot open"), ["tail"])).rejects.toThrow(/exited with 1.*tail: cannot open/)
+	})
+})
+
+describe("parseTask", () => {
+	it("reads the group ID and boot ID of a pid file", () => {
+		expect(parseTask("123 0a1b-c2\n")).toEqual({ pid: 123, boot: "0a1b-c2" })
+	})
+	it("refuses a partial or odd pid file", () => {
+		for (const text of ["", "123", "123 ", "x 1", "12 a b", "-1 a"]) expect(parseTask(text), text).toBeUndefined()
 	})
 })

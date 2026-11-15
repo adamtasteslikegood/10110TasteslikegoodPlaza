@@ -33,6 +33,20 @@ export function afterPersist(run: number, pushed: Pushed, saved: Saved) {
 	return { ...push.fields, snapshot: "id" in saved ? saved.id : undefined, notices: [push.notice, snap] }
 }
 
+// A push and snapshot that were due when the container was already gone. The
+// stored snapshot predates the run, so it is dropped: the next instance clones
+// the pushed branch and reports the run's files lost.
+export const abandonedPushError = "The container stopped before the branch was pushed"
+
+export function afterAbandon(run: number) {
+	return {
+		persistPending: false,
+		pushError: abandonedPushError,
+		snapshot: undefined,
+		notice: { notice: "push failed", run, error: abandonedPushError },
+	}
+}
+
 // undefined on success, else the end of git's stderr. A failed clone leaves no directory.
 export async function clone(container: Container, repo: string, branch: string): Promise<string | undefined> {
 	const files = new Files(container)

@@ -1,24 +1,80 @@
 import { describe, expect, it } from "vitest"
-import { admit, afterRestore, conversation, conversationAfter, restorePath, settle, stopOutcome } from "../src/runstate"
+import {
+	admit,
+	admitCreate,
+	afterRestore,
+	conversation,
+	conversationAfter,
+	judgeRun,
+	MAX_RUN_MS,
+	needsAlarm,
+	persistAction,
+	PID_GRACE_MS,
+	restorePath,
+	stopOutcome,
+	type RunCheck,
+} from "../src/runstate"
 
-describe("settle", () => {
-	it("calls a running run lost when the container is gone", () => {
-		expect(settle("running", { containerRunning: false, pidAlive: false })).toBe("lost")
+const check = (o: Partial<RunCheck>): RunCheck => ({ containerRunning: true, taskSeen: true, taskAlive: true, elapsedMs: 1000, ...o })
+
+describe("judgeRun", () => {
+	it("calls a run whose container is gone container-gone, exit code or not", () => {
+		expect(judgeRun(check({ containerRunning: false }))).toBe("container-gone")
+		expect(judgeRun(check({ containerRunning: false, exitCode: 0 }))).toBe("container-gone")
 	})
-	it("calls a running run lost when the process is gone", () => {
-		expect(settle("running", { containerRunning: true, pidAlive: false })).toBe("lost")
+	it("leaves a run with an exit code for the caller to finish", () => {
+		expect(judgeRun(check({ exitCode: 1, taskAlive: false }))).toBe("exited")
+		expect(judgeRun(check({ exitCode: 0, elapsedMs: MAX_RUN_MS * 2 }))).toBe("exited")
 	})
 	it("keeps a run that is alive", () => {
-		expect(settle("running", { containerRunning: true, pidAlive: true })).toBe("running")
+		expect(judgeRun(check({}))).toBe("running")
 	})
-	it("leaves a run with an exit code running for the caller to finish", () => {
-		expect(settle("running", { containerRunning: false, pidAlive: false, exitCode: 0 })).toBe("running")
-		expect(settle("running", { containerRunning: true, pidAlive: false, exitCode: 1 })).toBe("running")
+	it("calls a run whose process group is gone without an exit code process-gone", () => {
+		expect(judgeRun(check({ taskAlive: false }))).toBe("process-gone")
 	})
-	it("passes every other state through", () => {
-		for (const s of ["none", "idle", "succeeded", "failed", "stopped", "lost"] as const) {
-			expect(settle(s, { containerRunning: false, pidAlive: false })).toBe(s)
-		}
+	it("gives a run with no pid file 60 s, then calls it never-started", () => {
+		expect(judgeRun(check({ taskSeen: false, taskAlive: false, elapsedMs: PID_GRACE_MS - 1 }))).toBe("running")
+		expect(judgeRun(check({ taskSeen: false, taskAlive: false, elapsedMs: PID_GRACE_MS }))).toBe("never-started")
+	})
+	it("calls a live run overdue at 60 minutes", () => {
+		expect(MAX_RUN_MS).toBe(60 * 60 * 1000)
+		expect(judgeRun(check({ elapsedMs: MAX_RUN_MS - 1 }))).toBe("running")
+		expect(judgeRun(check({ elapsedMs: MAX_RUN_MS }))).toBe("overdue")
+		expect(judgeRun(check({ taskSeen: false, taskAlive: false, elapsedMs: MAX_RUN_MS }))).toBe("overdue")
+	})
+})
+
+describe("persistAction", () => {
+	it("persists a pending push while the container runs, and gives it up when it is gone", () => {
+		expect(persistAction({ pending: false, containerRunning: true })).toBe("none")
+		expect(persistAction({ pending: false, containerRunning: false })).toBe("none")
+		expect(persistAction({ pending: true, containerRunning: true })).toBe("persist")
+		expect(persistAction({ pending: true, containerRunning: false })).toBe("abandon")
+	})
+})
+
+describe("needsAlarm", () => {
+	it("keeps the alarm for a running run or a pending push", () => {
+		expect(needsAlarm("running", false)).toBe(true)
+		expect(needsAlarm("succeeded", true)).toBe(true)
+		for (const s of ["none", "idle", "succeeded", "failed", "stopped", "lost"] as const) expect(needsAlarm(s, false)).toBe(false)
+	})
+})
+
+describe("admitCreate", () => {
+	const repo = "https://github.com/acme/app"
+	it("creates when there is no workspace", () => {
+		expect(admitCreate({ allow: [] }, { repo, branch: "main", allow: [] })).toBe("create")
+	})
+	it("answers the same workspace for the same repo, branch and host list in any order", () => {
+		expect(admitCreate({ repo, branch: "main", allow: ["a.example", "b.example"] }, { repo, branch: "main", allow: ["b.example", "a.example"] })).toBe("same")
+	})
+	it("answers conflict for a different host list, branch or repo", () => {
+		const stored = { repo, branch: "main", allow: ["a.example"] }
+		expect(admitCreate(stored, { repo, branch: "main", allow: ["b.example"] })).toBe("conflict")
+		expect(admitCreate(stored, { repo, branch: "main", allow: [] })).toBe("conflict")
+		expect(admitCreate(stored, { repo, branch: "dev", allow: ["a.example"] })).toBe("conflict")
+		expect(admitCreate(stored, { repo: `${repo}2`, branch: "main", allow: ["a.example"] })).toBe("conflict")
 	})
 })
 

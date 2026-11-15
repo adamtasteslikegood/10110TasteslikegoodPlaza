@@ -21,23 +21,40 @@ export const trustEnv = {
 	SSL_CERT_FILE: caPath,
 }
 
-// Runs the command in its own process group. Records its process ID when
-// it starts and its exit code when it ends.
+// Starts the command detached, in a session of its own, and returns at once.
+// The session leader is a shell that outlives the exec and the object: it
+// writes its process ID (the group ID) when it starts and the command's exit
+// code when it ends, each by temp file and rename. It catches TERM (and does
+// nothing), so a stop's TERM reaches the command while the leader stays to
+// record the exit code; KILL ends the leader too and leaves no exit code.
 export const taskScript = `dir=$1; shift
-setsid sh -c 'echo "$$ $(cat /proc/sys/kernel/random/boot_id)" >"$0/pid"; exec "$@"' \\
-	"$dir" "$@" >"$dir/stdout.log" 2>"$dir/stderr.log"
-echo "$?" >"$dir/exit-code.tmp" && mv "$dir/exit-code.tmp" "$dir/exit-code"`
+exec setsid -f sh -c 'trap : TERM
+echo "$$ $(cat /proc/sys/kernel/random/boot_id)" >"$0/pid.tmp" && mv "$0/pid.tmp" "$0/pid"
+"$@" >"$0/stdout.log" 2>"$0/stderr.log"
+echo "$?" >"$0/exit-code.tmp" && mv "$0/exit-code.tmp" "$0/exit-code"' "$dir" "$@" </dev/null >/dev/null 2>&1`
 
-// Succeeds while the process in the file runs and started in this instance.
-export const taskRunningScript = `read -r pid boot <"$1" &&
-	[ "$boot" = "$(cat /proc/sys/kernel/random/boot_id)" ] &&
-	kill -0 "$pid"`
+// What the pid file holds: the group ID and the boot it started in.
+export type Task = { pid: number; boot: string }
 
-// Sends signal $2 to the process group of the task in the file. The image's
-// sh is dash, whose kill takes no "--": "-$pid" right after the signal names a group.
-export const signalScript = `read -r pid boot <"$1" &&
-	[ "$boot" = "$(cat /proc/sys/kernel/random/boot_id)" ] &&
-	kill -"$2" "-$pid"`
+export function parseTask(text: string): Task | undefined {
+	const match = /^(\d+) (\S+)\s*$/.exec(text)
+	return match === null ? undefined : { pid: Number(match[1]), boot: match[2] }
+}
+
+// Succeeds while a process of group $1 that is not a zombie runs, and only in
+// boot $2. kill -0 would also succeed on a zombie no one reaps.
+export const taskAliveScript = `pgid=$1
+[ "$2" = "$(cat /proc/sys/kernel/random/boot_id)" ] || exit 1
+for s in /proc/[0-9]*/stat; do
+	read -r line <"$s" 2>/dev/null || continue
+	set -- \${line##*) }
+	[ "$1" != Z ] && [ "$3" = "$pgid" ] && exit 0
+done
+exit 1`
+
+// Sends signal $3 to process group $1 when it started in boot $2. The image's
+// sh is dash, whose kill takes no "--": "-$1" right after the signal names a group.
+export const signalScript = `[ "$2" = "$(cat /proc/sys/kernel/random/boot_id)" ] && kill -"$3" "-$1"`
 
 // Up to $3 bytes of file $2 from byte $1 (1-based): a ranged read. A file not
 // yet created reads as empty; one that can't be read fails.
