@@ -10,6 +10,7 @@ import {
 	afterRestore,
 	conversation,
 	conversationAfter,
+	countsNow,
 	judgeRun,
 	leftoverAction,
 	MAX_OUTPUT_BYTES,
@@ -19,6 +20,7 @@ import {
 	OUTPUT_ERROR,
 	persistAction,
 	restorePath,
+	RUN_CHECK_INTERVAL_MS,
 	stopOutcome,
 	TASK_FILE_FAILURE_LIMIT,
 	TASK_FILES_ERROR,
@@ -27,7 +29,7 @@ import type { CommandResult } from "./container"
 import type { Env, Event, RunState, Status } from "./types"
 
 const inactivityTimeout = 15 * 60 * 1000
-const runCheckInterval = 60 * 1000
+const runCheckInterval = RUN_CHECK_INTERVAL_MS
 const chunkBytes = 4 * 1024 * 1024
 const recordKey = "workspace"
 
@@ -51,6 +53,7 @@ type Record_ = {
 	replaceInstance?: boolean // the instance may run a process no task id names: destroy it once persisted (Copilot C4)
 	resultLine?: string // the current run's last result event, read during ingest (Copilot C10)
 	taskFileFailures?: number // checks in a row of the current run that ended in a TaskFileError (R1)
+	lastTaskFileFailureAt?: number // ms epoch of the last one counted, at most one per check interval (G3)
 	result?: string
 	error?: string
 	pushed?: { commit: string }
@@ -172,6 +175,7 @@ export class Workspace extends DurableObject<Env> {
 				error: undefined,
 				resultLine: undefined,
 				taskFileFailures: undefined,
+				lastTaskFileFailureAt: undefined,
 			})
 			this.save(record)
 			this.note(record, { notice: "run started", run: record.run })
@@ -501,7 +505,8 @@ export class Workspace extends DurableObject<Env> {
 			await this.judge(record, running, elapsedMs)
 
 			if (record.taskFileFailures !== undefined) {
-				record.taskFileFailures = undefined // every probe answered
+				// Every probe answered: the count starts again.
+				Object.assign(record, { taskFileFailures: undefined, lastTaskFileFailureAt: undefined })
 				this.save(record)
 			}
 		} catch (error) {
@@ -521,7 +526,16 @@ export class Workspace extends DurableObject<Env> {
 				return
 			}
 
-			record.taskFileFailures = (record.taskFileFailures ?? 0) + 1
+			// Status polls can come many times a second: one failure counts per
+			// check interval, so the limit means minutes of failing checks (G3).
+			const now = Date.now()
+
+			if (!countsNow(record.lastTaskFileFailureAt, now)) {
+				console.error(`Workspace found a task file it did not write again within a check interval: ${messageOf(error)}`)
+				return
+			}
+
+			Object.assign(record, { taskFileFailures: (record.taskFileFailures ?? 0) + 1, lastTaskFileFailureAt: now })
 			this.save(record)
 			console.error(`Workspace found a task file it did not write (${record.taskFileFailures} in a row): ${messageOf(error)}`)
 

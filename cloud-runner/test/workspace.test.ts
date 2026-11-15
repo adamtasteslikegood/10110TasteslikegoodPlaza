@@ -3,7 +3,16 @@ import { env as workerEnv } from "cloudflare:workers"
 import { describe, expect, it } from "vitest"
 import { abandonedPushError } from "../src/persist"
 import { TaskFileError } from "../src/host"
-import { MAX_OUTPUT_BYTES, MAX_RUN_ERROR, MAX_RUN_MS, OUTPUT_ERROR, PID_GRACE_MS, TASK_FILE_FAILURE_LIMIT, TASK_FILES_ERROR } from "../src/runstate"
+import {
+	MAX_OUTPUT_BYTES,
+	MAX_RUN_ERROR,
+	MAX_RUN_MS,
+	OUTPUT_ERROR,
+	PID_GRACE_MS,
+	RUN_CHECK_INTERVAL_MS,
+	TASK_FILE_FAILURE_LIMIT,
+	TASK_FILES_ERROR,
+} from "../src/runstate"
 import { TRUNCATED_RESULT_ERROR } from "../src/agent"
 import type { Env } from "../src/types"
 import type { Workspace } from "../src/workspace"
@@ -28,6 +37,10 @@ type Stored = {
 	replaceInstance?: boolean
 	resumed?: boolean
 	resultLine?: string
+	taskFileFailures?: number
+	lastTaskFileFailureAt?: number
+	overdueAttempts?: number
+	lastOverdueAttemptAt?: number
 }
 
 // A real Workspace object with the fake container in its one seam. The seam is
@@ -64,6 +77,15 @@ function edit(stub: Stub, change: (record: Stored) => void): Promise<void> {
 // the test runtime as an unhandled rejection, so the throwing cases use this.
 function direct<R>(stub: Stub, call: (workspace: Workspace) => Promise<R>): Promise<R> {
 	return runInDurableObject(stub, (instance) => call(instance as unknown as Workspace))
+}
+
+// One check interval passes for the failure counters: the last counted failure
+// is moved that far back, as if the next check came an interval later (G3).
+function later(stub: Stub): Promise<void> {
+	return edit(stub, (record) => {
+		if (record.lastTaskFileFailureAt !== undefined) record.lastTaskFileFailureAt -= RUN_CHECK_INTERVAL_MS
+		if (record.lastOverdueAttemptAt !== undefined) record.lastOverdueAttemptAt -= RUN_CHECK_INTERVAL_MS
+	})
 }
 
 function alarmAt(stub: Stub): Promise<number | null> {
@@ -609,6 +631,7 @@ describe("Workspace task files the agent broke (F1)", () => {
 	async function strikesShortOfLimit(stub: Stub) {
 		for (let i = 1; i < TASK_FILE_FAILURE_LIMIT; i++) {
 			expect((await stub.status()).state).toBe("running")
+			await later(stub)
 		}
 	}
 
@@ -731,6 +754,7 @@ describe("Workspace task files the agent broke (F1)", () => {
 			expect(await runDurableObjectAlarm(stub)).toBe(true)
 			expect((await stored(stub)).state).toBe("running")
 			expect(await alarmAt(stub)).not.toBeNull()
+			await later(stub)
 		}
 
 		expect(await runDurableObjectAlarm(stub)).toBe(true)
@@ -800,13 +824,15 @@ describe("Workspace transient probe failures (R1)", () => {
 		expect(fake.count("destroy")).toBe(0)
 	})
 
-	it("keeps the run running after one and two TaskFileErrors, and ends it at three in a row", async () => {
+	it("keeps the run running after one and two TaskFileErrors, and ends it at three in a row, a check interval apart", async () => {
 		const { stub, fake } = await started()
 		const strike = () => new TaskFileError("stdout.log is a directory")
 		fake.failNext.outputBytes = [strike(), strike(), strike()]
 
 		expect((await stub.status()).state).toBe("running")
+		await later(stub)
 		expect((await stub.status()).state).toBe("running")
+		await later(stub)
 		expect(fake.count("destroy")).toBe(0)
 		expect(await stub.status()).toMatchObject({ state: "failed", error: TASK_FILES_ERROR })
 		expect(fake.count("destroy")).toBe(1)
@@ -819,11 +845,29 @@ describe("Workspace transient probe failures (R1)", () => {
 		fake.failNext.outputBytes = [strike(), strike()]
 
 		expect((await stub.status()).state).toBe("running")
+		await later(stub)
 		expect((await stub.status()).state).toBe("running")
+		expect((await stored(stub)).taskFileFailures).toBe(2)
+		await later(stub)
 		expect((await stub.status()).state).toBe("running") // clean
+		expect(await stored(stub)).toMatchObject({ taskFileFailures: undefined, lastTaskFileFailureAt: undefined })
 		fake.failNext.outputBytes = [strike()]
 		expect((await stub.status()).state).toBe("running")
 		expect(fake.count("destroy")).toBe(0)
+	})
+
+	// G3: status polls can come many times a second; only one failure per check
+	// interval counts, so three quick polls are not three checks.
+	it("counts TaskFileErrors within one check interval once, and the run goes on", async () => {
+		const { stub, fake } = await started()
+		const strike = () => new TaskFileError("stdout.log is a directory")
+		fake.failNext.outputBytes = [strike(), strike(), strike()]
+
+		for (let i = 0; i < 3; i++) expect((await stub.status()).state).toBe("running")
+		expect((await stored(stub)).taskFileFailures).toBe(1)
+		expect(fake.count("destroy")).toBe(0)
+		fake.finishTask(0, [resultLine])
+		expect(await stub.status()).toMatchObject({ state: "succeeded", pushed: { commit: "commit-1" } })
 	})
 
 	it("answers still-running to a stop whose signalling fails transiently, and the run goes on", async () => {

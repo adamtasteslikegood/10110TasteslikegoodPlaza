@@ -16,6 +16,15 @@ export const OUTPUT_ERROR = "run output exceeded 64 MiB"
 // is trusted (F1). Only this many checks in a row end the run that way (R1).
 export const TASK_FILES_ERROR = "the run's task files could not be read"
 export const TASK_FILE_FAILURE_LIMIT = 3
+// How often the alarm checks a running run. A failure counts toward a limit at
+// most once per interval, so quick status polls are not many checks (G3).
+export const RUN_CHECK_INTERVAL_MS = 60 * 1000
+
+// Whether a failure now counts toward a limit: the first always does, a later
+// one only once a check interval has passed since the last one counted (G3).
+export function countsNow(lastCountedAt: number | undefined, now: number): boolean {
+	return lastCountedAt === undefined || now - lastCountedAt >= RUN_CHECK_INTERVAL_MS
+}
 
 export type RunCheck = { containerRunning: boolean; exitCode?: number; taskSeen: boolean; taskAlive: boolean; elapsedMs: number; outputBytes?: number }
 export type Verdict = "running" | "exited" | "container-gone" | "process-gone" | "never-started" | "overdue" | "output-exceeded"
