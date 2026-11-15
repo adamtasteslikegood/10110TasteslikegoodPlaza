@@ -39,8 +39,11 @@ export const signalScript = `read -r pid boot <"$1" &&
 	[ "$boot" = "$(cat /proc/sys/kernel/random/boot_id)" ] &&
 	kill -"$2" "-$pid"`
 
-// Up to $3 bytes of file $2 from byte $1 (1-based): a ranged read.
-export const chunkScript = `tail -c +"$1" "$2" | head -c "$3"`
+// Up to $3 bytes of file $2 from byte $1 (1-based): a ranged read. A file not
+// yet created reads as empty; one that can't be read fails.
+export const chunkScript = `[ -e "$2" ] || exit 0
+[ -r "$2" ] || { echo "cannot read $2" >&2; exit 1; }
+tail -c +"$1" "$2" | head -c "$3"`
 
 // For a line longer than one chunk: its length in bytes from byte $1 of file
 // $2, and 1 when it already ends with a newline.
@@ -60,6 +63,11 @@ export async function run(container: Container, command: string[], cwd: string, 
 
 export async function runBytes(container: Container, command: string[]): Promise<Uint8Array> {
 	const output = await (await container.exec(command, { cwd: "/" })).output()
+
+	if (output.exitCode !== 0) {
+		throw new Error(`${command[0]} exited with ${output.exitCode}: ${tail(new TextDecoder().decode(output.stderr))}`)
+	}
+
 	return new Uint8Array(output.stdout)
 }
 

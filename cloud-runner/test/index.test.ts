@@ -299,6 +299,12 @@ describe("Workspace answers", () => {
     expect((await call(req("GET", "/workspaces/a/diff"), [], { diff: "missing" })).status).toBe(404)
   })
 
+  it("stop: 409 with a clear message when the task could not be stopped", async () => {
+    const res = await call(req("POST", "/workspaces/a/stop"), [], { stop: "still-running" })
+    expect(res.status).toBe(409)
+    expect(await res.text()).toContain("could not be stopped")
+  })
+
   it("diff: 502 with the error text when git fails", async () => {
     const res = await call(req("GET", "/workspaces/a/diff"), [], { diff: { ok: false, text: "fatal: not a git repository" } })
     expect(res.status).toBe(502)

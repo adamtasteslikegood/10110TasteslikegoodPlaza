@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { admit, conversation, settle } from "../src/runstate"
+import { admit, conversation, conversationAfter, settle, stopOutcome } from "../src/runstate"
 
 describe("settle", () => {
 	it("calls a running run lost when the container is gone", () => {
@@ -49,5 +49,54 @@ describe("conversation", () => {
 	})
 	it("starts a new one when the stored id is missing", () => {
 		expect(conversation(false, true, undefined, "b")).toEqual({ sessionId: "b", resume: false })
+	})
+})
+
+describe("stopOutcome", () => {
+	const base = { pidPresent: true, taskAlive: false, resultSeen: false }
+	it("calls a run killed by the signal stopped", () => {
+		expect(stopOutcome({ ...base, exitCode: 143 })).toBe("stopped")
+		expect(stopOutcome({ ...base, exitCode: 137 })).toBe("stopped")
+	})
+	it("finishes a run that ended on its own before the signal", () => {
+		expect(stopOutcome({ ...base, exitCode: 0 })).toBe("finish")
+		expect(stopOutcome({ ...base, exitCode: 1 })).toBe("finish")
+	})
+	it("finishes a run whose result was written, whatever its exit code", () => {
+		expect(stopOutcome({ ...base, exitCode: 143, resultSeen: true })).toBe("finish")
+		expect(stopOutcome({ ...base, exitCode: 137, resultSeen: true })).toBe("finish")
+	})
+	it("never calls a run stopped while its task is alive", () => {
+		expect(stopOutcome({ ...base, taskAlive: true })).toBe("still-running")
+	})
+	it("never calls a run stopped before its task wrote its pid", () => {
+		expect(stopOutcome({ ...base, pidPresent: false })).toBe("still-running")
+		expect(stopOutcome({ ...base, pidPresent: false, taskAlive: true })).toBe("still-running")
+	})
+	it("calls a run stopped when its task is gone but left no exit code", () => {
+		expect(stopOutcome(base)).toBe("stopped")
+	})
+})
+
+describe("conversationAfter", () => {
+	it("at start: only a resumed run has a conversation", () => {
+		expect(conversationAfter("started", true, false)).toBe(true)
+		expect(conversationAfter("started", false, false)).toBe(false)
+	})
+	it("a run that answered keeps its conversation, however it ended", () => {
+		for (const end of ["finished", "stopped", "lost"] as const) {
+			expect(conversationAfter(end, false, true), end).toBe(true)
+			expect(conversationAfter(end, true, true), end).toBe(true)
+		}
+	})
+	it("a run that ended on its own without answering starts the next one fresh", () => {
+		expect(conversationAfter("finished", true, false)).toBe(false)
+		expect(conversationAfter("finished", false, false)).toBe(false)
+	})
+	it("a run cut short keeps a resumed conversation, not a fresh one", () => {
+		for (const end of ["stopped", "lost"] as const) {
+			expect(conversationAfter(end, true, false), end).toBe(true)
+			expect(conversationAfter(end, false, false), end).toBe(false)
+		}
 	})
 })

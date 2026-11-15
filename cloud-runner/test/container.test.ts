@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { parseLine } from "../src/agent"
-import { completeLines, leadingType, lineEvent } from "../src/container"
+import { completeLines, leadingType, lineEvent, runBytes } from "../src/container"
 import { MAX_PAYLOAD_BYTES } from "../src/events"
 
 const bytes = (text: string) => new TextEncoder().encode(text)
@@ -43,5 +43,16 @@ describe("lineEvent", () => {
 	it("keeps only the type and size of a line over the cap", () => {
 		const line = bytes(`{"type":"user","text":"${"x".repeat(MAX_PAYLOAD_BYTES)}"}`)
 		expect(lineEvent(line, parseLine)).toEqual({ type: "user", payload: { truncated: true, bytes: line.byteLength } })
+	})
+})
+
+describe("runBytes", () => {
+	const container = (exitCode: number, stdout: string, stderr = "") =>
+		({ exec: async () => ({ output: async () => ({ exitCode, stdout: bytes(stdout), stderr: bytes(stderr) }) }) }) as unknown as Container
+	it("returns stdout of a command that succeeds", async () => {
+		expect(text(await runBytes(container(0, "abc"), ["true"]))).toBe("abc")
+	})
+	it("throws with the exit code and stderr of a command that fails", async () => {
+		await expect(runBytes(container(1, "", "tail: cannot open"), ["tail"])).rejects.toThrow(/exited with 1.*tail: cannot open/)
 	})
 })

@@ -26,12 +26,13 @@ import {
 } from "./container"
 import { EventLog } from "./events"
 import type { OutboundProps } from "./outbound"
-import { admit, conversation, settle, type Observed } from "./runstate"
+import { admit, conversation, conversationAfter, settle, stopOutcome, type Observed } from "./runstate"
 import type { Env, Event, RunState, Status } from "./types"
 
 const inactivityTimeout = 15 * 60 * 1000
 const runCheckInterval = 60 * 1000
 const stopWait = 10 * 1000
+const pidWait = 5 * 1000
 const chunkBytes = 4 * 1024 * 1024
 const recordKey = "workspace"
 const gitEnv = { ...trustEnv, HOME: "/root" }
@@ -137,7 +138,15 @@ export class Workspace extends DurableObject<Env> {
 			)
 
 			record.run += 1
-			Object.assign(record, { state: "running", sessionId, resumed: resume, eventsOffset: 0, result: undefined, error: undefined })
+			Object.assign(record, {
+				state: "running",
+				sessionId,
+				resumed: resume,
+				hasConversation: conversationAfter("started", resume, false),
+				eventsOffset: 0,
+				result: undefined,
+				error: undefined,
+			})
 			this.save(record)
 			this.note(record, { notice: "run started", run: record.run })
 			await this.ctx.storage.setAlarm(Date.now() + runCheckInterval)
@@ -161,7 +170,7 @@ export class Workspace extends DurableObject<Env> {
 		})
 	}
 
-	stop(): Promise<Status | "missing"> {
+	stop(): Promise<Status | "missing" | "still-running"> {
 		return this.exclusive(async () => {
 			const record = await this.refresh()
 
@@ -174,13 +183,31 @@ export class Workspace extends DurableObject<Env> {
 			}
 
 			// refresh() saw the container running, or the run would be lost.
+			// A stop right after the start can come before the task wrote its pid.
+			await this.waitFor(pidWait, async () => (await readOptionalText(this.files, pidPath)) !== undefined)
+
 			if (!(await this.signalUntilExit("TERM"))) {
 				await this.signalUntilExit("KILL")
 			}
 
+			const exitCode = await this.readExitCode()
+			const pidPresent = (await readOptionalText(this.files, pidPath)) !== undefined
+			const taskAlive = exitCode === undefined && pidPresent && (await this.taskRunning())
+			const resultSeen = exitCode !== undefined && (await this.resultLines()).length > 0
+			const decision = stopOutcome({ exitCode, pidPresent, taskAlive, resultSeen })
+
+			if (decision === "still-running") {
+				return "still-running"
+			}
+
+			if (decision === "finish") {
+				await this.finish(record, exitCode as number)
+				return statusOf(record)
+			}
+
 			await this.ingest(record)
 			record.state = "stopped"
-			if (record.resumed) record.hasConversation = true
+			record.hasConversation = conversationAfter("stopped", record.resumed === true, false)
 			this.save(record)
 			this.note(record, { notice: "run stopped", run: record.run })
 			return statusOf(record)
@@ -286,6 +313,7 @@ export class Workspace extends DurableObject<Env> {
 		if (settled === "lost") {
 			record.state = "lost"
 			record.error = "The container stopped before the run ended"
+			record.hasConversation = conversationAfter("lost", record.resumed === true, false)
 			this.save(record)
 			this.note(record, { notice: "run lost", run: record.run })
 		} else if (observed.exitCode !== undefined) {
@@ -311,14 +339,25 @@ export class Workspace extends DurableObject<Env> {
 			return { containerRunning: true, pidAlive: true }
 		}
 
-		const probe = await run(this.container, ["/bin/sh", "-c", taskRunningScript, "probe", pidPath], "/", {})
-
-		if (probe.exitCode === 0) {
+		if (await this.taskRunning()) {
 			return { containerRunning: true, pidAlive: true }
 		}
 
 		// The task can finish after the first read, so read the exit code again.
 		return { containerRunning: true, pidAlive: false, exitCode: await this.readExitCode() }
+	}
+
+	private async taskRunning(): Promise<boolean> {
+		const probe = await run(this.container, ["/bin/sh", "-c", taskRunningScript, "probe", pidPath], "/", {})
+		return probe.exitCode === 0
+	}
+
+	private async resultLines(): Promise<string[]> {
+		const results: string[] = []
+		for await (const line of readLines((await this.files.readFile(eventsPath)).body)) {
+			if (parseLine(line)?.type === "result") results.push(line)
+		}
+		return results
 	}
 
 	private async readExitCode(): Promise<number | undefined> {
@@ -329,20 +368,14 @@ export class Workspace extends DurableObject<Env> {
 	private async finish(record: Record_, exitCode: number): Promise<void> {
 		await this.ingest(record)
 
-		const results: string[] = []
-		for await (const line of readLines((await this.files.readFile(eventsPath)).body)) {
-			if (parseLine(line)?.type === "result") results.push(line)
-		}
-
+		const results = await this.resultLines()
 		const stderr = await run(this.container, ["tail", "-c", "2000", stderrPath], "/", {})
 		const ended = outcome(results, exitCode, stderr.stdout)
 
 		record.state = ended.state
 		record.result = ended.state === "succeeded" ? ended.result : undefined
 		record.error = ended.state === "failed" ? ended.error : undefined
-		// Claude Code keeps a session once it has answered. A run with no result
-		// (a resume that found no session, a crash) starts the next one fresh.
-		record.hasConversation = results.length > 0
+		record.hasConversation = conversationAfter("finished", record.resumed === true, results.length > 0)
 		this.save(record)
 		this.note(record, { notice: "run ended", run: record.run, state: record.state })
 		await this.finishRun()
@@ -397,16 +430,16 @@ export class Workspace extends DurableObject<Env> {
 	// TERM or KILL to the run's process group, then up to stopWait for its exit code.
 	private async signalUntilExit(signal: "TERM" | "KILL"): Promise<boolean> {
 		await run(this.container, ["/bin/sh", "-c", signalScript, "signal", pidPath, signal], "/", {})
+		return this.waitFor(stopWait, async () => (await this.readExitCode()) !== undefined)
+	}
 
-		for (let waited = 0; waited < stopWait; waited += 500) {
-			if ((await this.readExitCode()) !== undefined) {
-				return true
-			}
-
+	// Polls every 500 ms for up to ms; true once done() holds.
+	private async waitFor(ms: number, done: () => Promise<boolean>): Promise<boolean> {
+		for (let waited = 0; ; waited += 500) {
+			if (await done()) return true
+			if (waited >= ms) return false
 			await sleep(500)
 		}
-
-		return false
 	}
 
 	// Makes sure a container runs with this object's intercepts and idle timeout.

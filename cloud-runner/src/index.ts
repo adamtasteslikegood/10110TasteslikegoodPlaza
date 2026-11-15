@@ -136,6 +136,10 @@ export default {
 				case "stop": {
 					const status = await workspace.stop()
 
+					if (status === "still-running") {
+						return text("The run could not be stopped: its task is still running. Try again.", 409)
+					}
+
 					return status === "missing" ? text(missing, 404) : Response.json(status)
 				}
 
