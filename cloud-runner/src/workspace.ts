@@ -340,8 +340,9 @@ export class Workspace extends DurableObject<Env> {
 		record.state = ended.state
 		record.result = ended.state === "succeeded" ? ended.result : undefined
 		record.error = ended.state === "failed" ? ended.error : undefined
-		// Claude Code keeps a session once it has answered, or when it was resumed.
-		if (record.resumed || results.length > 0) record.hasConversation = true
+		// Claude Code keeps a session once it has answered. A run with no result
+		// (a resume that found no session, a crash) starts the next one fresh.
+		record.hasConversation = results.length > 0
 		this.save(record)
 		this.note(record, { notice: "run ended", run: record.run, state: record.state })
 		await this.finishRun()

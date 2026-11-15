@@ -33,12 +33,14 @@ wrangler dev built the image and ran it without a Cloudflare login. An empty
 | `c PUT /workspaces/plain '{"repo":"https://github.com/octocat/Hello-World","branch":"master"}'` | 200 `{"state":"idle","run":0,"generation":1,"repo":"https://github.com/octocat/Hello-World","branch":"master"}` (about 2.5 s) |
 | the same PUT again | 200, the same status |
 | the same name with `{"repo":"https://github.com/octocat/Spoon-Knife","branch":"main"}` | 409 `The workspace exists with another repo or branch` |
+| `c PUT /workspaces/check '{"repo":"https://github.com/octocat/Hello-World","branch":"no-such-branch"}'` | 502 `{"state":"none","run":0,"generation":1,"cloneError":"Cloning into '/workspace/repo'...\nfatal: Remote branch no-such-branch not found in upstream origin\n"}`; then GET answers `state: "none"`, and a PUT with `master` answers 200 with `generation: 1` (the same container) |
 | `c GET '/workspaces/plain/events?after=0'` | 200 `{"events":[],"next":0}` |
 | `c POST /workspaces/plain/runs '{"prompt":"Say hello in one word.","maxTurns":2}'` | 202 `{"run":1}` |
 | a second POST runs during it | 409 `A run is already active` |
 | `c GET /workspaces/plain` after the run ended (about 3 min of retries) | 200 `{"state":"failed","run":1,...,"error":"Failed to authenticate. API Error: 401 Unauthorized"}` |
 | the next POST runs | 202 `{"run":2}`, started with `--resume <run 1's session id>` |
 | a run on workspace `alarm` with no request for 290 s, then `events?after=0` | the `run ended` runner event (`state: failed`) is stamped 08:01:12, 50 s before the request at 08:02:02: the 60 s alarm finished the run |
+| on workspace `check`: a run that fails with the 401, then a run without `fresh`, both left to end | both end `failed` with the 401; run 2's `system`/`init` event carries the same `session_id` as run 1's (`--resume` found the session) |
 | `docker kill` of the container during run 2, then `c GET /workspaces/plain` | 200 `{"state":"lost","run":2,"generation":1,...,"error":"The container stopped before the run ended"}` |
 | the next POST runs | 202 `{"run":3}`; status shows `generation: 2`, the branch was cloned again and the run started with a new `--session-id` |
 | `c POST /workspaces/hello/stop` six seconds into a run | 200 `{"state":"stopped",...}` in 0.25 s; the task's exit code was 143 (TERM) |
@@ -55,8 +57,10 @@ through any route of the Worker:
 - Workspace `hello` (`"allow": ["example.com"]`): `https://example.com/` answers
   200, `https://example.org/` 403, and `github.com/octocat/Spoon-Knife` (another
   repository) 403.
-- The container's environment holds no token, secret or `Authorization`, and
-  the clone's remote is the plain `https://github.com/octocat/Hello-World`.
+- The running claude process's environment (`/proc/<pid>/environ`, pid from
+  `/workspace/task/pid`) holds no token, secret or `Authorization`: the only
+  match is the placeholder `ANTHROPIC_API_KEY=provided-by-worker`. The clone's
+  remote is the plain `https://github.com/octocat/Hello-World`.
 
 The props passed with `ctx.exports.Outbound({ props: { repoPath, allow } })`
 reach the intercept under wrangler dev: the clone of the workspace's own
