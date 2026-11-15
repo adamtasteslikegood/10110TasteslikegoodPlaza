@@ -1,0 +1,46 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "plaza-cloud-runner-dev",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-11-14",
+	"compatibility_flags": ["nodejs_compat"],
+	"workers_dev": true,
+	"observability": {
+		"enabled": true,
+	},
+	"upload_source_maps": true,
+	"vars": {
+		// AI_GATEWAY_ACCOUNT_ID is not committed. It comes from the git-ignored
+		// wrangler.dev.jsonc at deploy time.
+		"AI_GATEWAY_ID": "my-cf-agent-gateway",
+		"MODEL": "claude-sonnet-5-5",
+	},
+	"secrets": {
+		"required": ["AI_GATEWAY_TOKEN", "GITHUB_TOKEN", "RUNNER_CALLER_SECRET"],
+	},
+	"containers": [
+		{
+			"class_name": "Workspace",
+			"scheduling_policy": "durable_object",
+			"images": {
+				"agent": {
+					"dockerfile": "./Dockerfile",
+				},
+			},
+		},
+	],
+	"durable_objects": {
+		"bindings": [
+			{
+				"class_name": "Workspace",
+				"name": "WORKSPACE",
+			},
+		],
+	},
+	"exports": {
+		"Workspace": {
+			"type": "durable-object",
+			"storage": "sqlite",
+		},
+	},
+}
