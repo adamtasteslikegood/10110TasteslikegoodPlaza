@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { decide, type Policy } from "../src/egress"
+import { decide, isContainerCredentialHeader, type Policy } from "../src/egress"
 
 const policy: Policy = { gatewayPath: "/v1/acct/gw", repoPath: "/acme/app", allow: ["example.org"] }
 
@@ -141,5 +141,16 @@ describe("decide", () => {
 		expect(decide("POST", "https://github.com/other/repo", wide).allow).toBe(false)
 		expect(decide("GET", "https://gateway.ai.cloudflare.com/v1/acct/gw2/anthropic/x", wide).allow).toBe(false)
 		expect(decide("POST", "https://github.com/acme/app/git-upload-pack", wide)).toEqual({ allow: true, credential: "github" })
+	})
+})
+
+describe("isContainerCredentialHeader", () => {
+	it("names the headers the container may not set, in any case (Copilot C3)", () => {
+		for (const name of ["authorization", "Authorization", "proxy-authorization", "Proxy-Authorization", "x-api-key", "X-Api-Key", "cf-aig-authorization", "CF-AIG-Metadata", "cf-aig-"])
+			expect(isContainerCredentialHeader(name), name).toBe(true)
+	})
+	it("leaves other headers alone", () => {
+		for (const name of ["anthropic-version", "content-type", "x-api-key-id", "cf-ray", "aig-authorization", "user-agent"])
+			expect(isContainerCredentialHeader(name), name).toBe(false)
 	})
 })

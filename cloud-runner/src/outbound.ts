@@ -1,5 +1,5 @@
 import { WorkerEntrypoint } from "cloudflare:workers"
-import { decide, type Credential, type Policy } from "./egress"
+import { decide, isContainerCredentialHeader, type Credential, type Policy } from "./egress"
 import type { Env } from "./types"
 
 // Set by the workspace when it registers the intercept.
@@ -8,26 +8,21 @@ export type OutboundProps = { repoPath: string; allow: string[] }
 export function withCredential(request: Request, credential: Credential, env: Env): Request {
 	const headers = new Headers(request.headers)
 
+	// Whatever the host, the container sets no credential of its own: the
+	// gateway reads cf-aig-* as instructions (cost, logging, cache, key alias)
+	// and Authorization or x-api-key as a provider key, and an allowed host could
+	// be handed a key it should never see. Names are collected first, then deleted.
+	const controlled = [...headers.keys()].filter(isContainerCredentialHeader)
+	for (const name of controlled) headers.delete(name)
+
 	if (credential === "gateway") {
-		// The gateway reads cf-aig-* headers as instructions (cost, logging,
-		// cache, key alias) and Authorization as a provider key: the container
-		// sets none of them. Names are collected first, then deleted.
-		const controlled = [...headers.keys()].filter((name) => name.toLowerCase().startsWith("cf-aig-"))
-		for (const name of controlled) headers.delete(name)
-		headers.delete("authorization")
-		headers.delete("x-api-key")
 		headers.set("cf-aig-authorization", `Bearer ${env.AI_GATEWAY_TOKEN}`)
 		// The gateway caches responses for 300 s; a run must never get another's.
 		headers.set("cf-aig-skip-cache", "true")
-	} else if (credential === "github") {
-		// The Worker owns this header for github: a value from the container is
-		// never passed on. With no token (local runs on a public repository) the
-		// request goes out with no credential at all.
-		headers.delete("Authorization")
-
-		if (env.GITHUB_TOKEN !== "") {
-			headers.set("Authorization", `Basic ${btoa(`x-access-token:${env.GITHUB_TOKEN}`)}`)
-		}
+	} else if (credential === "github" && env.GITHUB_TOKEN !== "") {
+		// With no token (local runs on a public repository) the request goes
+		// out with no credential at all.
+		headers.set("Authorization", `Basic ${btoa(`x-access-token:${env.GITHUB_TOKEN}`)}`)
 	}
 
 	// Never follow a redirect here: the Worker would not re-decide it and would

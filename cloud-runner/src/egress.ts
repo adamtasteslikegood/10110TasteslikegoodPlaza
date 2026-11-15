@@ -15,6 +15,16 @@ const READ_ONLY = ["GET", "HEAD"]
 
 const refuse = (reason: string): Decision => ({ allow: false, reason })
 
+// Headers that carry a credential or instruct the gateway. The container never
+// sets them for any host: outbound.ts drops them all before adding the one
+// header the Worker owns for the chosen credential.
+const CREDENTIAL_HEADERS = ["authorization", "proxy-authorization", "x-api-key"]
+
+export function isContainerCredentialHeader(name: string): boolean {
+	const lower = name.toLowerCase()
+	return CREDENTIAL_HEADERS.includes(lower) || lower.startsWith("cf-aig-")
+}
+
 // True when the URL parser did not change the string: no dropped tabs or
 // newlines, no backslash read as a slash, no folded dot segments, nothing
 // added. Scheme and host may differ in case only (the parser lowercases them),

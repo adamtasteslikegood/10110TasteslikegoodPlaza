@@ -70,11 +70,43 @@ describe("withCredential", () => {
 	})
 
 	it("none: adds no credential header", () => {
-		const out = withCredential(request({ "x-api-key": "kept" }), "none", env)
+		const out = withCredential(request({ accept: "kept" }), "none", env)
 
 		expect(out.headers.get("authorization")).toBeNull()
 		expect(out.headers.get("cf-aig-authorization")).toBeNull()
 		expect(out.headers.get("cf-aig-skip-cache")).toBeNull()
+		expect(out.headers.get("accept")).toBe("kept")
+	})
+
+	// Copilot C3: every credential kind drops what the container set before adding its own.
+	const forged = {
+		authorization: "Bearer forged",
+		"Proxy-Authorization": "Basic forged",
+		"x-api-key": "forged",
+		"cf-aig-authorization": "Bearer forged",
+		"CF-AIG-Metadata": '{"a":1}',
+		"anthropic-version": "2023-06-01",
+	}
+	const sent = (out: Request) => Object.fromEntries([...out.headers].filter(([name]) => name !== "content-type"))
+
+	it("gateway: strips every container credential header, then adds only its own", () => {
+		expect(sent(withCredential(request(forged), "gateway", env))).toEqual({
+			"anthropic-version": "2023-06-01",
+			"cf-aig-authorization": "Bearer gw-token-value",
+			"cf-aig-skip-cache": "true",
+		})
+	})
+
+	it("github: strips every container credential header, then adds only its own", () => {
+		expect(sent(withCredential(request(forged), "github", env))).toEqual({
+			"anthropic-version": "2023-06-01",
+			authorization: `Basic ${btoa("x-access-token:gh-token-value")}`,
+		})
+		expect(sent(withCredential(request(forged), "github", { ...env, GITHUB_TOKEN: "" }))).toEqual({ "anthropic-version": "2023-06-01" })
+	})
+
+	it("none: strips every container credential header and adds none", () => {
+		expect(sent(withCredential(request(forged), "none", env))).toEqual({ "anthropic-version": "2023-06-01" })
 	})
 })
 
