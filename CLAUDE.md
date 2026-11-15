@@ -91,7 +91,7 @@ It is the source of truth behind `data/agents.json`; don't copy that data into t
 
 ## CI workflows
 
-`.github/workflows/ci.yml` runs on push/PR to `main` and `dev`. Eight jobs; principal development gates:
+`.github/workflows/ci.yml` runs on push/PR to `main` and `dev`. Nine jobs (the ninth, `Cloud Runner`, tests and typechecks `cloud-runner/`); principal development gates:
 
 Top-level `permissions: contents: read`; a job needing more declares its own block rather than widening that one.
 
