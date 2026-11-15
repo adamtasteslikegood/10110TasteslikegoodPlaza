@@ -44,22 +44,28 @@ export function parseLine(line: string): { type: string; payload: unknown } | un
 
 export const TRUNCATED_RESULT_ERROR = "the run's result was over 256 KiB and could not be read"
 
-const KEPT_RESULT_FIELDS = ["subtype", "is_error", "num_turns", "total_cost_usd", "usage", "session_id"]
+const KEPT_RESULT_FIELDS = ["subtype", "num_turns", "total_cost_usd", "usage", "session_id"]
+// A kept field whose JSON is longer than this is dropped, so the stored record stays small (F1b).
+export const MAX_KEPT_FIELD_BYTES = 4096
+
+const encoder = new TextEncoder()
 
 // What is kept of a result line over the payload cap (Copilot round 2, E1):
-// the fields that classify the run, without the result text. A line that does
-// not parse as a result, or was never read whole (undefined), is marked
-// unreadable, and outcome() fails the run on it.
+// is_error and the other fields that classify the run, each at most
+// MAX_KEPT_FIELD_BYTES, without the result text. A line that does not parse as
+// a result, whose is_error is not a boolean, or that was never read whole
+// (undefined), is marked unreadable, and outcome() fails the run on it.
 export function resultSentinel(text: string | undefined): string {
 	const parsed = text === undefined ? undefined : parseLine(text)
+	const payload = parsed?.payload as Record<string, unknown> | undefined
 
-	if (parsed?.type !== "result") {
+	if (parsed?.type !== "result" || typeof payload?.is_error !== "boolean") {
 		return JSON.stringify({ type: "result", truncated: true, unreadable: true })
 	}
 
-	const payload = parsed.payload as Record<string, unknown>
-	const kept = Object.fromEntries(KEPT_RESULT_FIELDS.filter((name) => name in payload).map((name) => [name, payload[name]]))
-	return JSON.stringify({ type: "result", truncated: true, ...kept })
+	const small = (name: string) => name in payload && encoder.encode(JSON.stringify(payload[name]) ?? "").length <= MAX_KEPT_FIELD_BYTES
+	const kept = Object.fromEntries(KEPT_RESULT_FIELDS.filter(small).map((name) => [name, payload[name]]))
+	return JSON.stringify({ type: "result", truncated: true, is_error: payload.is_error, ...kept })
 }
 
 export function outcome(

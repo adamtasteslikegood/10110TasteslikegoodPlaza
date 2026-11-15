@@ -26,6 +26,7 @@ type Stored = {
 	snapshotStale?: boolean
 	replaceInstance?: boolean
 	resumed?: boolean
+	resultLine?: string
 }
 
 // A real Workspace object with the fake container in its one seam. The seam is
@@ -516,6 +517,17 @@ describe("Workspace oversized result (Copilot round 2, E1)", () => {
 		const { stub, fake } = await started()
 		fake.finishTask(0, [`{"type":"result","is_error":false,"result":"${text}`])
 		expect(await stub.status()).toMatchObject({ state: "failed", error: TRUNCATED_RESULT_ERROR })
+	})
+
+	it("stores a small sentinel for an oversized result with a huge usage object (F1b)", async () => {
+		const { stub, fake } = await started()
+		const usage = { input_tokens: 1, padding: "u".repeat(1024 * 1024) }
+		fake.finishTask(0, [JSON.stringify({ type: "result", subtype: "success", is_error: false, usage, result: "done" })])
+
+		expect(await stub.status()).toMatchObject({ state: "succeeded", result: "" })
+		const kept = (await stored(stub)).resultLine as string
+		expect(new TextEncoder().encode(kept).length).toBeLessThan(16 * 1024)
+		expect(JSON.parse(kept)).toMatchObject({ is_error: false, truncated: true })
 	})
 
 	it("succeeds a run whose oversized result is a success, with the result marked truncated", async () => {

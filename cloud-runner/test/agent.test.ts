@@ -77,6 +77,24 @@ describe("resultSentinel", () => {
 		expect(sentinel).toEqual({ type: "result", truncated: true, subtype: "success", is_error: false, num_turns: 2, total_cost_usd: 0.5, usage, session_id: "s1" })
 	})
 
+	// F1b: a kept field can be as large as the line, and the record must stay small.
+	it("drops a kept field over 4 KiB, keeps is_error, and classifies the run the same", () => {
+		const usage = { input_tokens: 3, padding: "u".repeat(1024 * 1024) }
+		for (const is_error of [false, true]) {
+			const sentinel = resultSentinel(line({ subtype: "success", is_error, num_turns: 2, usage, session_id: "s1" }))
+			expect(new TextEncoder().encode(sentinel).length).toBeLessThan(16 * 1024)
+			expect(JSON.parse(sentinel)).toEqual({ type: "result", truncated: true, subtype: "success", is_error, num_turns: 2, session_id: "s1" })
+		}
+		expect(outcome([resultSentinel(line({ is_error: false, usage }))], 0, "")).toEqual({ state: "succeeded", result: "", truncated: true })
+		expect(outcome([resultSentinel(line({ subtype: "error_max_turns", is_error: true, usage }))], 1, "")).toEqual({ state: "failed", error: "error_max_turns" })
+	})
+
+	it("marks a result whose is_error is not a boolean as unreadable", () => {
+		for (const fields of [{}, { is_error: "false" }, { is_error: { x: 1 } }, { is_error: null }]) {
+			expect(JSON.parse(resultSentinel(line(fields)))).toEqual({ type: "result", truncated: true, unreadable: true })
+		}
+	})
+
 	it("marks a line it cannot parse, or never saw whole, as unreadable", () => {
 		for (const text of [line({ is_error: false }).slice(0, 500), "not json", "[1]", JSON.stringify({ type: "assistant" }), undefined]) {
 			expect(JSON.parse(resultSentinel(text))).toEqual({ type: "result", truncated: true, unreadable: true })
