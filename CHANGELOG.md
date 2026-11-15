@@ -32,7 +32,9 @@ spec-set versions, and no application release existed before `v0.1.22`.
 - The test-only `exec` route runs as the agent; `"root": true` asks for root.
 - New `npm run test:container` runs the runner's commands in a container built
   from the Dockerfile (needs Docker). CI's `Cloud Runner` job runs it.
-- Not deployed: the development Worker still runs the earlier image.
+- Deployed to the development Worker on 2026-11-15. The acceptance suite and
+  the redeploy check ran on it; the results are in
+  `docs/research/cloudflare-durable-objects/spike-c.md` (logs 8 to 10).
 
 ### Fixed — real domain sessions start again: fresh tool-guard evidence (PLZG-309)
 

@@ -14,7 +14,11 @@ Run on 2026-11-15 against the development deploy of `cloud-runner/` (PLZG-310).
   (same runner code and image; the image push was skipped). Its checks ran on that version.
 - After the Copilot review fixes (2026-11-15) the Worker was redeployed from the branch at 330bea3 with a new
   image (tini as PID 1): version `d63bf26b-17a7-45f8-aa05-0e1ee1af5e00`, on which log 6 ran. The redeploy check
-  (log 7) then made version `2aad8fcd-30fd-42df-a66e-d4a09bc07b4f`, which is live (same code and image).
+  (log 7) then made version `2aad8fcd-30fd-42df-a66e-d4a09bc07b4f` (same code and image).
+- For the non-root agent (PLZG-311, 2026-11-15) the Worker was redeployed from `dev` at b5687c7 with a new image
+  (an `agent` user, layout mark `2`): version `71ae6191-736a-4052-b2eb-63243f22d95e`, on which log 8 ran. The
+  redeploy check (log 9) then made version `b2ecfa8e-a7a8-4f78-a6b9-dafbd8844962`, which is live (same code and
+  image).
 - One container application, `plaza-cloud-runner-dev-workspace` (class `Workspace`, `durable_object`
   scheduling, instance `standard-1`, Internet off), image built from `cloud-runner/Dockerfile`:
   `node:24-trixie-slim`, git, ripgrep, `@anthropic-ai/claude-code@2.1.308`, the sandbox shim 1.0.3.
@@ -266,6 +270,148 @@ exit=0
 
 After both, `git ls-remote <repo> refs/heads/main` still gave `80f5ccb8968eacd2f6d68740e1990d2076671c10`.
 
+**Log 8, `acc-311.log`: the full suite with the non-root agent (PLZG-311)** (`dev` at b5687c7, version 71ae6191,
+new image with the `agent` user and layout mark `2`; started 23:45:26Z). Same outcome as log 6: checks 1 to 7 and T
+pass, H fails because `--max-turns` is not in `--help`, and the script exited 1 for that alone. Check `U` is new and
+passes: an exec runs as uid 1001 with no-new-privs, the agent cannot list, write or move the task directory, and
+`/workspace` and `/workspace/task` are root's. Check 1 is the first run to end `succeeded` and push as the non-root
+agent; `ls-remote` shows the commit the runner reported. Check 4 scanned the environ of 4 processes, as root and as
+the agent.
+
+```
+NOTE workspaces acc-80197f-a and acc-80197f-b, branch cloud-runner/acceptance
+NOTE ls-remote main before the checks: 80f5ccb8968eacd2f6d68740e1990d2076671c10
+NOTE PUT acc-80197f-a: generation 1, state idle
+NOTE claude --version: 2.1.308 (Claude Code)
+NOTE claude -p --max-turns 1 </dev/null: exit 1 Error: Input must be provided either through stdin or as a prompt argument when using --print
+NOTE claude -p --no-such-flag-xyz </dev/null: exit 1 error: unknown option '--no-such-flag-xyz'
+FAIL H claude --help in the image lists --session-id, --resume, --max-turns: not in --help: --max-turns
+NOTE cost check 1 run 1: events span 16.794 s; result duration_ms=7471 num_turns=4 input=6 output=462 cache_read=43657 cache_write=6285 total_cost_usd=0.0247102 model=claude-sonnet-5-5
+NOTE pushed.commit 0c3c7d2e9c39a8c4b3fa14199282395e3b14408f; ls-remote 0c3c7d2e9c39a8c4b3fa14199282395e3b14408f
+PASS 1 a prompt runs to completion, writes and pushes NOTES.md
+NOTE an exec as the agent: uid 1001 (agent), NoNewPrivs:	1
+NOTE owners: /workspace root 755; /workspace/task root 700; /workspace/task/exit-code root 644; /workspace/repo agent 755
+PASS U the agent is not root, and /workspace and the task directory are out of its reach (PLZG-311)
+NOTE cost check T run 2: events span 8.408 s; result duration_ms=2691 num_turns=2 input=2 output=47 cache_read=16985 cache_write=197 total_cost_usd=0.027375200000000002 model=claude-sonnet-5-5
+NOTE check T: state failed, error "error_max_turns", result subtype error_max_turns, is_error true, num_turns 2, tool calls 1
+PASS T maxTurns 1 stops a run that needs two tool calls (result subtype error_max_turns)
+NOTE cost check 2 run 3: events span 55.682 s; result duration_ms=50198 num_turns=2 input=4 output=199 cache_read=34517 cache_write=388 total_cost_usd=0.0337949 model=claude-sonnet-5-5
+NOTE check 2: 15 events read incrementally, same as one full read; run ended succeeded
+PASS 2 events read twice agree, after=next never repeats, a second start answers 409
+NOTE http://example.com: 403
+NOTE https://registry.npmjs.org/left-pad: 200; http://registry.npmjs.org/left-pad: 403
+NOTE push to octocat/Hello-World: exit 128, fatal: unable to access 'https://github.com/octocat/Hello-World/': The requested URL returned error: 403
+NOTE raw TCP 1.1.1.1:53: timeout
+NOTE raw TCP 1.1.1.1:22: timeout
+NOTE raw TCP 1.1.1.1:25: timeout
+NOTE raw TCP 1.1.1.1:8080: timeout
+NOTE UDP DNS example.com via 8.8.8.8: answered 11.9.0.1
+NOTE /etc/resolv.conf: "nameserver 1.1.1.1\nnameserver 9.9.9.9\nnameserver 2606:4700:4700::1111"
+NOTE UDP DNS example.com via 1.1.1.1: answered 11.9.0.1; via 192.0.2.1 (TEST-NET): answered 11.9.0.1; nx-80197f.example.invalid via 1.1.1.1: answered 11.9.0.1
+NOTE UDP NTP to 162.159.200.1:123: no reply
+NOTE UDP to 1.1.1.1:9999: no reply
+NOTE system resolver for example.com: resolved fd00::119:1
+PASS 3 egress: unlisted host 403, plain HTTP refused, push elsewhere refused, own repository reachable, no raw TCP, no direct UDP (DNS name leakage not tested)
+NOTE scanned 1392 bytes of container output, the environ of 4 processes (1696 bytes) and 37 events (check 1's: 14)
+PASS 4 no credential in env, any process's environ, .git/config, ~/.gitconfig, home, /workspace or the workspace's events
+NOTE right after both starts: acc-80197f-a running, acc-80197f-b running
+NOTE cost check 5 a run 4: events span 9.154 s; result duration_ms=2613 num_turns=1 input=2 output=4 cache_read=17570 cache_write=48 total_cost_usd=0.0357159 model=claude-sonnet-5-5
+NOTE cost check 5 b run 1: events span 8.851 s; result duration_ms=2241 num_turns=1 input=2 output=4 cache_read=12568 cache_write=3796 total_cost_usd=0.0107908 model=claude-sonnet-5-5
+PASS 5 two workspaces run at once and do not see each other's files
+NOTE scratch.txt before replacement: "42"; pushError none
+NOTE run 5 runner notices: run started, run ended, pushed, snapshot saved
+NOTE cost check 6 run 6: events span 10.158 s; result duration_ms=2790 num_turns=1 input=2 output=59 cache_read=18366 cache_write=360 total_cost_usd=0.050724500000000006 model=claude-sonnet-5-5
+NOTE check 6: restored=snapshot uncommittedLost=false instance note={"notice":"instance started","generation":2,"from":"snapshot"}; session same (3a6ad0ea-bc15-44dd-b55e-0aab5380e2fa); reports 42: true; reports heliotrope: true; state succeeded
+NOTE check 6 answer: "You asked me to remember the word **heliotrope**. `scratch.txt` contains `42`. I wrote that file myself earlier in this conversation and haven't re-read it since."
+PASS 6 after replace-instance the snapshot restores an uncommitted file
+NOTE stop answered stopped in 6.57 s
+NOTE after replace-instance mid-run: lost (The container stopped before the run ended), pushError none
+NOTE run after lost: generation 3, restored snapshot, uncommittedLost true
+PASS 7 stop interrupts a run; a replaced instance mid-run reports lost; both accept the next run
+NOTE ls-remote main after the checks: 80f5ccb8968eacd2f6d68740e1990d2076671c10
+NOTE DELETE acc-80197f-a: 204; then GET 200 {"state":"none","run":0,"generation":0}
+NOTE DELETE acc-80197f-b: 204; then GET 200 {"state":"none","run":0,"generation":0}
+exit=1
+```
+
+**Log 9, `redeploy-311.log`: check (d) with the non-root agent**, by `scripts/redeploy.mjs` (it now reads the
+exit-code file as root). The deploy made version b2ecfa8e from the same code and image, which is live; the run
+stayed on generation 1 and ended `succeeded` with exit code 0, then `pushed` and `snapshot saved`.
+
+```
+2s version before 71ae6191-736a-4052-b2eb-63243f22d95e
+2s PUT 200
+4s run 202 {"run":1}
+25s before redeploy running generation 1
+40s redeploy ok version after b2ecfa8e-a7a8-4f78-a6b9-dafbd8844962 image unchanged
+40s after redeploy running generation 1
+166s ended succeeded generation 1
+166s task exit-code file: "0"
+runner notices: run started, run ended, pushed, snapshot saved
+result: duration_ms 154704 turns 2 total_cost_usd 0.0134874
+166s DELETE 204 then state none
+PASS d the run survived the redeploy on the same instance and wrote exit code 0
+exit=0
+```
+
+**Log 10, `mig-before.log`, `mig-after.log` and `probe-1.log`: a workspace taken across the redeploy that changed
+the image layout.** A one-off script, not committed. Before the deploy (version 2aad8fcd, the image in which the
+agent is root) it made workspace `mig-311a`, planted an uncommitted file, ran one run so a snapshot was saved, and
+dropped the instance with `replace-instance`. `wrangler containers list` then showed 0 live instances. The deploy
+returned at 23:43:42Z (version 71ae6191 created 23:43:40Z).
+
+```
+PUT mig-311a: 200 {"state":"idle","run":0,"generation":1,"repo":"https://github.com/adamtasteslikegood/ArtazZen-recipes-TanStack-showcase","branch":"cloud-runner/acceptance"}
+old image, id -u: 200 exit 0 out "0" err ""
+old image, layout mark: 200 exit 1 out "" err "cat: /etc/plaza-runner-layout: No such file or directory"
+old image, plant uncommitted file: 200 exit 0 out "-rw-r--r-- 1 root root 18 Nov 15 23:41 /workspace/repo/mig.txt" err ""
+POST runs: 202 {"run":1}
+run on the old image ended: {"state":"succeeded","generation":1,"result":"ok"}
+runner event: {"notice":"run started","run":1}
+runner event: {"notice":"run ended","run":1,"state":"succeeded"}
+runner event: {"notice":"pushed","run":1,"commit":"5b25bc970402ea72d2e50d1b4ac37713e2b41745"}
+runner event: {"notice":"snapshot saved","run":1,"bytes":277124}
+replace-instance: 200 {"state":"succeeded","run":1,"generation":1,"repo":"https://github.com/adamtasteslikegood/ArtazZen-recipes-TanStack-showcase","branch":"cloud-runner/acceptance","result":"ok","pushed":{"commit":"5b25b
+status now: {"state":"succeeded","generation":1,"result":"ok"}
+```
+
+After the deploy the workspace was started again. The intent was to see the new code refuse the old snapshot
+(`restored: "branch"`, a `snapshotError` in the `instance started` event). **That is not what happened**: these
+requests, the last of them at 23:44:15Z, were answered by the old code. It restored the snapshot into a new
+instance, and an exec with no `root` flag ran as uid 0. The missing layout mark and the root-owned clone say
+nothing about the image, since a restored snapshot is the whole root filesystem.
+
+```
+status before the first start on the new image: {"state":"succeeded","generation":1,"result":"ok"}
+POST runs: 202 {"run":2}
+run on the new image ended: {"state":"succeeded","generation":2,"restored":"snapshot","uncommittedLost":false,"result":"ok"}
+instance started event: {"notice":"instance started","generation":2,"from":"snapshot"}
+new image, id -u: 200 exit 0 out "0" err ""
+new image, layout mark (root): 200 exit 1 out "" err "cat: /etc/plaza-runner-layout: No such file or directory"
+new image, mig.txt in the clone: 200 exit 0 out "before-the-deploy" err ""
+new image, owners (root): 200 exit 0 out "/workspace root 755\n/workspace/task root 755\n/workspace/repo root 755" err ""
+DELETE mig-311a: 204; then GET 200 {"state":"none","run":0,"generation":0}
+```
+
+A workspace made at 23:45:00Z got the new code and the new image:
+
+```
+2026-11-15T23:45:00.424Z
+PUT probe-311a: 200 {"state":"idle","run":0,"generation":1,"repo":"https://github.com/adamtasteslikegood/ArtazZen-recipes-TanStack-showcase","branch":"cloud-runner/acceptance"}
+id -u (no root flag): 200 exit 0 out "1001" err ""
+id -u (root: true): 200 exit 0 out "0" err ""
+layout mark (root: true): 200 exit 0 out "2" err ""
+agent user in the image (root: true): 200 exit 0 out "uid=1001(agent) gid=1001(agent) groups=1001(agent)" err ""
+DELETE probe-311a: 204; then GET 200 {"state":"none","run":0,"generation":0}
+```
+
+So the refusal of a snapshot from the earlier image is still not shown on the deploy, and the old image is gone,
+so this cannot be repeated as it was. What it did show is in Surprises: the old code can answer after the deploy
+returns.
+
+After all three, `git ls-remote <repo> refs/heads/main` still gave `80f5ccb8968eacd2f6d68740e1990d2076671c10`, and
+`refs/heads/cloud-runner/acceptance` was at check 1's commit, `0c3c7d2e9c39a8c4b3fa14199282395e3b14408f`.
+
 ### Owed: does a query name leave the platform?
 
 Check 3 shows that no UDP packet from the container reaches a real resolver directly. Every UDP/53 query gets the
@@ -321,6 +467,10 @@ three runs were stopped or lost and wrote no `result` event, so their cost is no
 write about 4–17k tokens of system prompt to the cache (about 1–5 cents for the first run); a resumed one-word run that
 reads it back costs about 0.2–0.5 cents.
 
+The runs of 2026-11-15 with the non-root agent (logs 8 and 9) reported about **$0.075** more: 0.0507 and 0.0108
+for the two acceptance sessions and 0.0135 for the redeploy run. Check 7's runs and the two one-word runs of log 10
+are not in that figure.
+
 None of this measures design §8 item 8, a ten-minute run and an idle hour (see the table: NOT MEASURED).
 
 **Computed** from design §9 (a `standard-1` instance costs about $0.04/h idle and up to about $0.075/h at full CPU;
@@ -370,4 +520,10 @@ The Cloudflare dashboard's billed figures (Containers, AI Gateway logs) are left
   "create a new Worker?" prompt with yes.
 - **Snapshots pile up.** Every ended run takes one. At least eleven `rootfs-snapshot-*` images were left in the registry after
   these checks (ten before review fix round 1, which ended one more run). They cannot be deleted through the API and expire 30 days after they were taken or last restored.
-- **`stop` took about 4 s** on the deploy, against 0.25–2 s locally.
+- **`stop` took about 4 s** on the deploy, against 0.25–2 s locally. In log 8 it took 6.6 s.
+- **The old code answered after `wrangler deploy` had returned** (log 10). A workspace made two minutes before
+  the deploy was still served by the old Worker code 33 s after the deploy returned, and that code started a new
+  instance from the workspace's old snapshot. A workspace made 78 s after the deploy got the new code and image.
+  Whether the delay belongs to a workspace's already-loaded object or to the whole Worker was not told apart.
+- **`wrangler containers list` lags.** Right after a `replace-instance` or a DELETE it still counted the instance
+  as live; under a minute later it showed 0.
