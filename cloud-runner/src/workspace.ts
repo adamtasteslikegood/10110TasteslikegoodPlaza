@@ -14,11 +14,13 @@ import {
 	leftoverAction,
 	MAX_OUTPUT_BYTES,
 	MAX_RUN_ERROR,
+	MAX_RUN_MS,
 	needsAlarm,
 	OUTPUT_ERROR,
 	persistAction,
 	restorePath,
 	stopOutcome,
+	TASK_FILES_ERROR,
 } from "./runstate"
 import type { CommandResult } from "./container"
 import type { Env, Event, RunState, Status } from "./types"
@@ -211,7 +213,16 @@ export class Workspace extends DurableObject<Env> {
 
 	stop(): Promise<Status | "missing" | "still-running"> {
 		return this.exclusive(async () => {
-			const record = await this.refresh()
+			let record: Record_
+
+			try {
+				record = await this.refresh()
+			} catch (error) {
+				// A failed push or setup must not keep a run from stopping (F1): the
+				// stored record says what is left to do, and a pending push is retried.
+				console.error(`Workspace refresh before a stop failed: ${messageOf(error)}`)
+				record = this.load()
+			}
 
 			if (record.repo === undefined) {
 				return "missing"
@@ -221,48 +232,60 @@ export class Workspace extends DurableObject<Env> {
 				return statusOf(record)
 			}
 
-			// refresh() saw the container running, or the run would be lost.
-			// A stop right after the start can come before the task wrote its pid.
-			const task = await this.waitForTask(record)
-
-			if (task) {
-				await this.host.signalTask(task, "TERM")
-				await this.waitFor(this.timing.stopWait, async () => (await this.host.exitCode()) !== undefined)
-				// Members of the group that ignore TERM outlive the leader: always KILL.
-				await this.host.signalTask(task, "KILL")
-
-				if ((await this.host.exitCode()) === undefined) {
-					await this.waitFor(this.timing.stopWait, async () => !(await this.host.taskAlive(task)))
-				}
-
-				await this.waitForOutput()
-			} else {
-				// Nothing names the task, which may still start: end it with its instance.
-				record.replaceInstance = true
-				this.save(record)
-			}
-
-			const exitCode = await this.host.exitCode()
-			const taskAlive = exitCode === undefined && task !== undefined && (await this.host.taskAlive(task))
-			await this.ingest(record)
-			const resultSeen = exitCode !== undefined && record.resultLine !== undefined
-			const decision = stopOutcome({ exitCode, pidPresent: task !== undefined, taskAlive, resultSeen })
-
-			if (decision === "still-running") {
-				return "still-running"
-			}
-
-			if (decision === "finish") {
-				await this.finish(record, exitCode as number)
+			try {
+				return await this.stopRunning(record)
+			} catch (error) {
+				// Still running, so a probe of the task files threw (F1).
+				if (record.state !== "running") throw error
+				await this.endUntrusted(record, "stopped", TASK_FILES_ERROR)
 				return statusOf(record)
 			}
-
-			Object.assign(record, { state: "stopped", hasConversation: conversationAfter("stopped", record.resumed === true, false), persistPending: true })
-			this.save(record)
-			this.note(record, { notice: "run stopped", run: record.run })
-			await this.finishRun(record)
-			return statusOf(record)
 		})
+	}
+
+	// The signals and the reads of a stop. Every probe here can throw (F1).
+	private async stopRunning(record: Record_): Promise<Status | "still-running"> {
+		// refresh() saw the container running, or the run would be lost.
+		// A stop right after the start can come before the task wrote its pid.
+		const task = await this.waitForTask(record)
+
+		if (task) {
+			await this.host.signalTask(task, "TERM")
+			await this.waitFor(this.timing.stopWait, async () => (await this.host.exitCode()) !== undefined)
+			// Members of the group that ignore TERM outlive the leader: always KILL.
+			await this.host.signalTask(task, "KILL")
+
+			if ((await this.host.exitCode()) === undefined) {
+				await this.waitFor(this.timing.stopWait, async () => !(await this.host.taskAlive(task)))
+			}
+
+			await this.waitForOutput()
+		} else {
+			// Nothing names the task, which may still start: end it with its instance.
+			record.replaceInstance = true
+			this.save(record)
+		}
+
+		const exitCode = await this.host.exitCode()
+		const taskAlive = exitCode === undefined && task !== undefined && (await this.host.taskAlive(task))
+		await this.ingest(record)
+		const resultSeen = exitCode !== undefined && record.resultLine !== undefined
+		const decision = stopOutcome({ exitCode, pidPresent: task !== undefined, taskAlive, resultSeen })
+
+		if (decision === "still-running") {
+			return "still-running"
+		}
+
+		if (decision === "finish") {
+			await this.finish(record, exitCode as number)
+			return statusOf(record)
+		}
+
+		Object.assign(record, { state: "stopped", hasConversation: conversationAfter("stopped", record.resumed === true, false), persistPending: true })
+		this.save(record)
+		this.note(record, { notice: "run stopped", run: record.run })
+		await this.finishRun(record)
+		return statusOf(record)
 	}
 
 	diff(): Promise<{ ok: boolean; text: string } | "missing"> {
@@ -448,6 +471,26 @@ export class Workspace extends DurableObject<Env> {
 		}
 
 		const running = this.host.running
+		const elapsedMs = Date.now() - record.startedAt
+		// Judged before any probe, so an overdue run ends whatever the task files say (F1).
+		const overdue = running && elapsedMs >= MAX_RUN_MS
+
+		try {
+			if (overdue) {
+				return await this.endFailed(record, MAX_RUN_ERROR)
+			}
+
+			return await this.judge(record, running, elapsedMs)
+		} catch (error) {
+			// Once the run has ended, what threw is the push or snapshot: it is retried.
+			// While it still runs, a probe of the task files threw (F1).
+			if (record.state !== "running") throw error
+			console.error(`Workspace could not read the task files: ${messageOf(error)}`)
+			return this.endUntrusted(record, "failed", overdue ? MAX_RUN_ERROR : TASK_FILES_ERROR)
+		}
+	}
+
+	private async judge(record: Record_, running: boolean, elapsedMs: number): Promise<void> {
 		let exitCode = running ? await this.host.exitCode() : undefined
 		const task = running && exitCode === undefined ? await this.knownTask(record) : undefined
 		const taskAlive = task !== undefined && (await this.host.taskAlive(task))
@@ -458,7 +501,7 @@ export class Workspace extends DurableObject<Env> {
 		}
 
 		const outputBytes = running ? await this.host.outputBytes() : undefined
-		const verdict = judgeRun({ containerRunning: running, exitCode, taskSeen: task !== undefined, taskAlive, elapsedMs: Date.now() - record.startedAt, outputBytes })
+		const verdict = judgeRun({ containerRunning: running, exitCode, taskSeen: task !== undefined, taskAlive, elapsedMs, outputBytes })
 
 		switch (verdict) {
 			case "running":
@@ -476,6 +519,33 @@ export class Workspace extends DurableObject<Env> {
 			case "output-exceeded":
 				return this.endFailed(record, OUTPUT_ERROR)
 		}
+	}
+
+	// Ends a run whose task files cannot be read (F1). The agent may have made them
+	// a directory or a FIFO, so nothing of the instance is trusted: the stored group
+	// gets a best-effort KILL, no file is read, and the instance is replaced without
+	// a push or snapshot. A snapshot holds the whole root filesystem and the next
+	// run would start from it, so the old one is kept, marked stale, as when the
+	// container is gone (Copilot C5).
+	private async endUntrusted(record: Record_, state: "failed" | "stopped", error: string): Promise<void> {
+		const task = record.task !== undefined && record.task.pid > 1 ? record.task : undefined
+
+		if (task !== undefined && this.host.running) {
+			await this.host.signalTask(task, "KILL").catch((killError) => console.error(`Workspace KILL failed: ${messageOf(killError)}`))
+		}
+
+		Object.assign(record, {
+			state,
+			error,
+			result: undefined,
+			hasConversation: conversationAfter("lost", record.resumed === true, false),
+			persistPending: undefined,
+			replaceInstance: true,
+			...(record.snapshot === undefined ? {} : { snapshotStale: true }),
+		})
+		this.save(record)
+		this.note(record, { notice: "run ended", run: record.run, state, error })
+		await this.finishRun(record)
 	}
 
 	// Ends a run the runner cuts short: KILLs its group, reads its output, then

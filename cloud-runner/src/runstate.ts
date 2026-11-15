@@ -11,6 +11,9 @@ export const PID_GRACE_MS = 60 * 1000
 // The task writes at most one byte more, so the disk use is bounded too.
 export const MAX_OUTPUT_BYTES = 64 * 1024 * 1024
 export const OUTPUT_ERROR = "run output exceeded 64 MiB"
+// A probe of /workspace/task/ that throws: the agent may have replaced a task
+// file with a directory or a FIFO, so nothing the task wrote is trusted (F1).
+export const TASK_FILES_ERROR = "the run's task files could not be read"
 
 export type RunCheck = { containerRunning: boolean; exitCode?: number; taskSeen: boolean; taskAlive: boolean; elapsedMs: number; outputBytes?: number }
 export type Verdict = "running" | "exited" | "container-gone" | "process-gone" | "never-started" | "overdue" | "output-exceeded"

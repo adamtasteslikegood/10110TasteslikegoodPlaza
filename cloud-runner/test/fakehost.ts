@@ -4,6 +4,7 @@ import type { OutboundProps } from "../src/outbound"
 import type { Pushed, Saved } from "../src/persist"
 
 type Group = { alive: boolean; ignoresTerm: boolean }
+type Probe = "push" | "exitCode" | "readTask" | "readOutput" | "outputBytes" | "outputDone"
 
 // A container in memory, behind the Workspace's one seam. It models what the
 // rules depend on: the pid file, the task's process groups, the exit code the
@@ -33,9 +34,13 @@ export class FakeHost implements Host {
 	startMode: "spawn" | "spawn-then-throw" | "throw" | "no-pid" = "spawn"
 	ignoresTerm = false
 	// One error to throw at the next call of a method, then gone.
-	failOnce: Partial<Record<"push" | "exitCode" | "readTask", Error>> = {}
+	failOnce: Partial<Record<Probe, Error>> = {}
+	// Probes that throw on every call, as a task file the agent replaced with a
+	// directory or a FIFO would make them (F1).
+	broken = new Set<Probe>()
 
-	private fail(name: keyof FakeHost["failOnce"]): void {
+	private fail(name: Probe): void {
+		if (this.broken.has(name)) throw new Error(`${name} could not read the task files`)
 		const error = this.failOnce[name]
 
 		if (error) {
@@ -175,6 +180,7 @@ export class FakeHost implements Host {
 	}
 
 	async readOutput(offset: number, max: number): Promise<Uint8Array> {
+		this.fail("readOutput")
 		return this.stdout.slice(offset, offset + max)
 	}
 
@@ -183,10 +189,12 @@ export class FakeHost implements Host {
 	}
 
 	async outputBytes(): Promise<number> {
+		this.fail("outputBytes")
 		return this.outputSize ?? this.stdout.byteLength
 	}
 
 	async outputDone(): Promise<boolean> {
+		this.fail("outputDone")
 		return true
 	}
 

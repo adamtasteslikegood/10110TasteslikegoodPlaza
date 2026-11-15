@@ -2,7 +2,7 @@ import { evictDurableObject, runDurableObjectAlarm, runInDurableObject } from "c
 import { env as workerEnv } from "cloudflare:workers"
 import { describe, expect, it } from "vitest"
 import { abandonedPushError } from "../src/persist"
-import { MAX_OUTPUT_BYTES, MAX_RUN_ERROR, MAX_RUN_MS, OUTPUT_ERROR, PID_GRACE_MS } from "../src/runstate"
+import { MAX_OUTPUT_BYTES, MAX_RUN_ERROR, MAX_RUN_MS, OUTPUT_ERROR, PID_GRACE_MS, TASK_FILES_ERROR } from "../src/runstate"
 import { TRUNCATED_RESULT_ERROR } from "../src/agent"
 import type { Env } from "../src/types"
 import type { Workspace } from "../src/workspace"
@@ -190,9 +190,9 @@ describe("Workspace push and snapshot after an interruption (I2)", () => {
 })
 
 describe("Workspace alarm (I5)", () => {
-	it("re-arms after a throw", async () => {
+	it("re-arms after a throw while the run is running (F1d)", async () => {
 		const { stub, fake } = await started()
-		fake.failOnce.exitCode = new Error("exec failed")
+		fake.failOnce.readOutput = new Error("exec failed")
 
 		expect(await runDurableObjectAlarm(stub)).toBe(true)
 		expect(await alarmAt(stub)).not.toBeNull()
@@ -576,5 +576,106 @@ describe("Workspace output limits (Copilot C10)", () => {
 		fake.finishTask(0, []) // the file now holds nothing past what was read
 		fake.stdout = new TextEncoder().encode(`${resultLine}\n`)
 		expect(await stub.status()).toMatchObject({ state: "succeeded", result: "done" })
+	})
+})
+
+// F1: the agent can replace a task file with a directory or a FIFO, so every
+// probe that reads one throws, on every call. The run must still end.
+describe("Workspace task files the agent broke (F1)", () => {
+	// A run that ended untrusted: failed, not pushed or snapshotted, its instance
+	// destroyed, and later requests answered normally.
+	async function endedUntrusted(stub: Stub, fake: FakeHost, error = TASK_FILES_ERROR) {
+		expect(await stub.status()).toMatchObject({ state: "failed", error })
+		expect(fake.count("push work")).toBe(0)
+		expect(fake.count("snapshot")).toBe(0)
+		expect(fake.count("destroy")).toBe(1)
+		expect(fake.running).toBe(false)
+		expect((await stored(stub)).replaceInstance).toBe(false)
+		expect(await stub.status()).toMatchObject({ state: "failed", error })
+	}
+
+	it.each(["outputBytes", "exitCode", "readTask"] as const)("ends the run when %s throws mid-run, after a KILL of the stored group", async (probe) => {
+		const { stub, fake } = await started()
+		expect((await stub.status()).state).toBe("running") // the pid is read and stored
+		fake.broken.add(probe)
+
+		await endedUntrusted(stub, fake)
+		expect(fake.calls).toContain("signal 100 KILL")
+		expect(fake.groups.get(100)?.alive).toBe(false)
+	})
+
+	it("ends an overdue run by the overdue rule, whatever the probes do", async () => {
+		const { stub, fake } = await started()
+		expect((await stub.status()).state).toBe("running")
+		for (const probe of ["outputBytes", "exitCode", "readTask", "readOutput", "outputDone"] as const) fake.broken.add(probe)
+		await edit(stub, (record) => {
+			record.startedAt = Date.now() - MAX_RUN_MS - 1
+		})
+
+		await endedUntrusted(stub, fake, MAX_RUN_ERROR)
+		expect(fake.calls).toContain("signal 100 KILL")
+	})
+
+	it("ends an overdue run before it reads any task file", async () => {
+		const { stub, fake } = await started()
+		fake.finishTask(0, [resultLine])
+		await edit(stub, (record) => {
+			record.startedAt = Date.now() - MAX_RUN_MS - 1
+		})
+
+		expect(await stub.status()).toMatchObject({ state: "failed", error: MAX_RUN_ERROR })
+	})
+
+	it("marks the stored snapshot stale, so the next restore says the run's work was lost", async () => {
+		const { stub, fake } = await afterOneRun()
+		await stub.startRun("second", false, 5)
+		fake.broken.add("outputBytes")
+
+		expect(await stub.status()).toMatchObject({ state: "failed", error: TASK_FILES_ERROR })
+		expect(await stored(stub)).toMatchObject({ snapshot: "snap-1", snapshotStale: true })
+		fake.broken.clear()
+		expect(await stub.startRun("third", false, 5)).toEqual({ run: 3 })
+		expect(await stub.status()).toMatchObject({ restored: "snapshot", uncommittedLost: true })
+	})
+
+	it("stops a run whose probes throw with 200 and an ended state", async () => {
+		const { stub, fake } = await started()
+		expect((await stub.status()).state).toBe("running")
+		fake.broken.add("exitCode")
+		fake.broken.add("readTask")
+
+		const status = await stub.stop()
+		expect(status).toMatchObject({ state: "failed", error: TASK_FILES_ERROR })
+		expect(fake.running).toBe(false)
+	})
+
+	it("stops a run whose probes throw inside stop itself, answering stopped and replacing the instance", async () => {
+		const { stub, fake } = await started()
+		fake.broken.add("outputDone") // read only once the signals are sent
+
+		expect(await stub.stop()).toMatchObject({ state: "stopped", error: TASK_FILES_ERROR })
+		expect(fake.calls.filter((c) => c.startsWith("signal 100"))).toContain("signal 100 KILL")
+		expect(fake.count("push work")).toBe(0)
+		expect(fake.count("destroy")).toBe(1)
+		expect(fake.running).toBe(false)
+		expect(await stub.status()).toMatchObject({ state: "stopped" })
+	})
+
+	it("answers a stop with the ended state when the refresh before it fails", async () => {
+		const { stub, fake } = await started()
+		fake.finishTask(0, [resultLine])
+		fake.failOnce.push = new Error("object reset")
+
+		expect(await stub.stop()).toMatchObject({ state: "succeeded", result: "done" })
+		expect(await stored(stub)).toMatchObject({ persistPending: true })
+	})
+
+	it("ends the run on the alarm, which then needs no re-arm, instead of throwing every tick", async () => {
+		const { stub, fake } = await started()
+		fake.broken.add("outputBytes")
+
+		expect(await runDurableObjectAlarm(stub)).toBe(true)
+		expect((await stored(stub)).state).toBe("failed")
+		expect(await alarmAt(stub)).toBeNull()
 	})
 })
