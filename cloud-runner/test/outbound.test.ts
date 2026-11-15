@@ -26,6 +26,29 @@ describe("withCredential", () => {
 		expect(out.headers.get("cf-aig-skip-cache")).toBe("true")
 	})
 
+	it("gateway: drops every cf-aig- header and Authorization the container sent", () => {
+		const out = withCredential(
+			request({
+				"cf-aig-custom-cost": '{"per_token_in":0}',
+				"cf-aig-collect-log": "false",
+				"CF-AIG-Metadata": '{"a":1}',
+				"cf-aig-cache-ttl": "9999",
+				authorization: "Bearer sk-ant-other-key",
+				"anthropic-beta": "kept",
+			}),
+			"gateway",
+			env,
+		)
+
+		expect(out.headers.get("cf-aig-custom-cost")).toBeNull()
+		expect(out.headers.get("cf-aig-collect-log")).toBeNull()
+		expect(out.headers.get("cf-aig-metadata")).toBeNull()
+		expect(out.headers.get("cf-aig-cache-ttl")).toBeNull()
+		expect(out.headers.get("authorization")).toBeNull()
+		expect(out.headers.get("anthropic-beta")).toBe("kept")
+		expect([...out.headers.keys()].filter((name) => name.startsWith("cf-aig-")).sort()).toEqual(["cf-aig-authorization", "cf-aig-skip-cache"])
+	})
+
 	it("github: sets Basic x-access-token and no gateway headers", () => {
 		const out = withCredential(request({ authorization: "Bearer forged" }), "github", env)
 

@@ -33,6 +33,20 @@ function isSerialized(rawUrl: string, url: URL): boolean {
 // a plain string comparison sees.
 const UNSAFE_PATH = /(^|\/)\.{1,2}(\/|$)|\/\/|%2e|%2f|%5c|\\/i
 
+const SERVICES = ["git-upload-pack", "git-receive-pack"]
+
+// GET <repo>[.git]/info/refs?service=<service>, or POST <repo>[.git]/<service>
+// with no query. The query must be exactly the one git sends.
+function isSmartHttp(verb: string, path: string, search: string, repo: string): boolean {
+	const rest = path.startsWith(`${repo}.git/`) ? path.slice(repo.length + 4) : path.startsWith(`${repo}/`) ? path.slice(repo.length) : undefined
+
+	if (rest === "/info/refs") {
+		return verb === "GET" && SERVICES.some((service) => search === `?service=${service}`)
+	}
+
+	return verb === "POST" && search === "" && SERVICES.some((service) => rest === `/${service}`)
+}
+
 export function decide(method: string, rawUrl: string, policy: Policy): Decision {
 	let url: URL
 
@@ -74,18 +88,21 @@ export function decide(method: string, rawUrl: string, policy: Policy): Decision
 		return refuse("only the Anthropic route of the workspace gateway is allowed")
 	}
 
-	if (host === GITHUB_HOST && policy.repoPath !== "") {
-		const repo = policy.repoPath
-		const ours = path === repo || path === `${repo}.git` || path.startsWith(`${repo}/`) || path.startsWith(`${repo}.git/`)
-
-		if (!UNSAFE_PATH.test(path) && ours) {
+	if (host === GITHUB_HOST) {
+		// Only git's smart-HTTP requests for this workspace's repository: the ref
+		// advertisement and the pack exchange, for fetch and push. The token goes
+		// nowhere else on github.com, and nothing else there is reachable, even
+		// when the workspace's own hosts name github.com.
+		if (policy.repoPath !== "" && !UNSAFE_PATH.test(path) && isSmartHttp(verb, path, url.search, policy.repoPath)) {
 			return { allow: true, credential: "github" }
 		}
+
+		return refuse("only git fetch and push of the workspace repository are allowed on github.com")
 	}
 
 	if (PACKAGE_HOSTS.includes(host) || policy.allow.includes(host)) {
-		// A host here is never given a credential, even when it is github.com
-		// or the gateway host: those two are decided above or refused below.
+		// A host here is never given a credential: github.com and the gateway
+		// host are decided above.
 		return READ_ONLY.includes(verb) ? { allow: true, credential: "none" } : refuse("only GET and HEAD are allowed on this host")
 	}
 

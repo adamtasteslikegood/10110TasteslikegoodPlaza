@@ -9,6 +9,12 @@ export function withCredential(request: Request, credential: Credential, env: En
 	const headers = new Headers(request.headers)
 
 	if (credential === "gateway") {
+		// The gateway reads cf-aig-* headers as instructions (cost, logging,
+		// cache, key alias) and Authorization as a provider key: the container
+		// sets none of them. Names are collected first, then deleted.
+		const controlled = [...headers.keys()].filter((name) => name.toLowerCase().startsWith("cf-aig-"))
+		for (const name of controlled) headers.delete(name)
+		headers.delete("authorization")
 		headers.delete("x-api-key")
 		headers.set("cf-aig-authorization", `Bearer ${env.AI_GATEWAY_TOKEN}`)
 		// The gateway caches responses for 300 s; a run must never get another's.
