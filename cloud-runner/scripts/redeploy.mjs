@@ -7,10 +7,13 @@
 // starts a `sleep 150` run, redeploys with `wrangler deploy -c wrangler.dev.jsonc` 20 s in, waits for the run
 // to end, prints the task's exit-code file and deletes the workspace. It needs ALLOW_TEST_ROUTES (exec).
 // The redeploy makes a new Worker version; nothing else on the account changes.
+// It passes only when `wrangler deploy` succeeded and the version that takes
+// all traffic changed (Copilot C7); scripts/redeploy-verdict.ts holds the rule.
 
 import { execFile } from "node:child_process"
 import { randomBytes } from "node:crypto"
 import { promisify } from "node:util"
+import { currentVersion, redeployPassed } from "./redeploy-verdict.ts"
 
 const runFile = promisify(execFile)
 const [base] = process.argv.slice(2)
@@ -42,6 +45,25 @@ async function call(method, path, body) {
 	}
 }
 
+// Any rejection is a failure: an exit code, a signal, a timeout or a spawn error.
+const wrangler = (args, timeout) =>
+	runFile("npx", ["wrangler", ...args, "-c", "wrangler.dev.jsonc"], { env: { ...process.env, CI: "1" }, maxBuffer: 64 << 20, timeout }).then(
+		(done) => ({ ok: true, stdout: String(done.stdout ?? ""), code: 0 }),
+		(error) => ({ ok: false, stdout: String(error?.stdout ?? ""), code: error?.code ?? "unknown" }),
+	)
+const version = async () => {
+	const status = await wrangler(["deployments", "status", "--json"], 120_000)
+	return status.ok ? currentVersion(status.stdout) : undefined
+}
+
+// Fails closed: with no known version before, nothing is started.
+const versionBefore = await version()
+console.log(at(), "version before", versionBefore)
+if (versionBefore === undefined) {
+	console.error("FAIL d could not read the current Worker version")
+	process.exit(1)
+}
+
 let ok = false
 try {
 	console.log(at(), "PUT", (await call("PUT", `/workspaces/${name}`, { repo, branch })).status)
@@ -53,14 +75,9 @@ try {
 	await sleep(20_000)
 	const before = (await call("GET", `/workspaces/${name}`)).json
 	console.log(at(), "before redeploy", before?.state, "generation", before?.generation)
-	const deployed = await runFile("npx", ["wrangler", "deploy", "-c", "wrangler.dev.jsonc"], {
-		env: { ...process.env, CI: "1" },
-		maxBuffer: 64 << 20,
-		timeout: 400_000,
-	}).catch((error) => error)
-	const out = String(deployed.stdout ?? "")
-	const version = out.match(/Current Version ID: (\S+)/)?.[1]
-	console.log(at(), "redeploy exit", deployed.code ?? 0, "version", version, "image", /skipping push|already exists/i.test(out) ? "unchanged" : "pushed or unknown")
+	const deployed = await wrangler(["deploy"], 400_000)
+	const versionAfter = await version()
+	console.log(at(), "redeploy", deployed.ok ? "ok" : `failed (${deployed.code})`, "version after", versionAfter, "image", /skipping push|already exists/i.test(deployed.stdout) ? "unchanged" : "pushed or unknown")
 	const mid = (await call("GET", `/workspaces/${name}`)).json
 	console.log(at(), "after redeploy", mid?.state, "generation", mid?.generation)
 	let ended
@@ -80,7 +97,7 @@ try {
 	console.log("runner notices:", events.filter((e) => e.type === "runner").map((e) => e.payload?.notice).join(", "))
 	const result = events.filter((e) => e.type === "result").at(-1)?.payload
 	console.log("result: duration_ms", result?.duration_ms, "turns", result?.num_turns, "total_cost_usd", result?.total_cost_usd)
-	ok = before?.state === "running" && mid?.generation === before?.generation && ended?.generation === before?.generation && ended?.state === "succeeded" && exitCode === "0"
+	ok = redeployPassed({ deployed: deployed.ok, versionBefore, versionAfter, before, mid, ended, exitCode })
 } finally {
 	const deleted = await call("DELETE", `/workspaces/${name}`)
 	const after = (await call("GET", `/workspaces/${name}`)).json
