@@ -2,6 +2,7 @@ import { z } from "zod"
 import type { Env } from "./types"
 
 export { Workspace } from "./workspace"
+export { Outbound } from "./outbound"
 export type { Env } from "./types"
 
 const workspaceName = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/
