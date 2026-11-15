@@ -1,5 +1,5 @@
 import { DurableObject } from "cloudflare:workers"
-import { agentArgv, agentEnv, outcome, parseLine } from "./agent"
+import { agentArgv, agentEnv, outcome, parseLine, resultSentinel } from "./agent"
 import { completeLines, leadingType, lineEvent } from "./container"
 import { EventLog, MAX_PAYLOAD_BYTES } from "./events"
 import { ContainerHost, type Host, type Task } from "./host"
@@ -28,7 +28,6 @@ const runCheckInterval = 60 * 1000
 const chunkBytes = 4 * 1024 * 1024
 const recordKey = "workspace"
 // What the record keeps of a result event too large to store.
-const truncatedResult = JSON.stringify({ type: "result", truncated: true })
 
 // Everything the object keeps between requests: one small record, read with one get.
 type Record_ = {
@@ -588,6 +587,7 @@ export class Workspace extends DurableObject<Env> {
 			persistPending: true,
 		})
 		this.save(record)
+		if (ended.state === "succeeded" && ended.truncated) this.note(record, { notice: "result truncated", run: record.run })
 		this.note(record, { notice: "run ended", run: record.run, state: record.state })
 		await this.finishRun(record)
 	}
@@ -616,7 +616,8 @@ export class Workspace extends DurableObject<Env> {
 
 				const type = leadingType(new TextDecoder().decode(chunk.subarray(0, 256)))
 				this.eventLog.append(record.run, record.generation, type, { truncated: true, bytes: bytes - 1 })
-				if (type === "result") record.resultLine = truncatedResult
+				// Never read whole, so it cannot say how the run ended (Copilot round 2, E1).
+				if (type === "result") record.resultLine = resultSentinel(undefined)
 				record.eventsOffset += bytes
 				this.save(record)
 				continue
@@ -627,7 +628,10 @@ export class Workspace extends DurableObject<Env> {
 				const event = lineEvent(line, parseLine)
 				if (!event) continue
 				this.eventLog.append(record.run, record.generation, event.type, event.payload)
-				if (event.type === "result") record.resultLine = line.byteLength > MAX_PAYLOAD_BYTES ? truncatedResult : new TextDecoder().decode(line)
+				if (event.type === "result") {
+					const text = new TextDecoder().decode(line)
+					record.resultLine = line.byteLength > MAX_PAYLOAD_BYTES ? resultSentinel(text) : text
+				}
 			}
 
 			record.eventsOffset += consumed

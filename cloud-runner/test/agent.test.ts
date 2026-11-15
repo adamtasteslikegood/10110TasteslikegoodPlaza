@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { agentArgv, agentEnv, outcome, parseLine } from "../src/agent"
+import { agentArgv, agentEnv, outcome, parseLine, resultSentinel, TRUNCATED_RESULT_ERROR } from "../src/agent"
 
 const base = { prompt: "fix it", model: "claude-sonnet-5-5", maxTurns: 20, sessionId: "sess-1" }
 const head = ["claude", "--print", "--output-format", "stream-json", "--verbose", "--dangerously-skip-permissions", "--model", "claude-sonnet-5-5", "--max-turns", "20"]
@@ -63,5 +63,40 @@ describe("outcome", () => {
 	})
 	it("treats a successful result with no text as an empty result", () => {
 		expect(outcome(['{"type":"result","subtype":"success","is_error":false}'], 0, "")).toEqual({ state: "succeeded", result: "" })
+	})
+})
+
+// Copilot round 2, E1: a result line over the payload cap keeps what classifies the run.
+describe("resultSentinel", () => {
+	const big = "x".repeat(1000) // stands for the result text that is dropped
+	const line = (fields: Record<string, unknown>) => JSON.stringify({ type: "result", ...fields, result: big })
+
+	it("keeps the classifying fields and drops the result text", () => {
+		const usage = { input_tokens: 3, output_tokens: 4 }
+		const sentinel = JSON.parse(resultSentinel(line({ subtype: "success", is_error: false, num_turns: 2, total_cost_usd: 0.5, usage, session_id: "s1", other: "y" })))
+		expect(sentinel).toEqual({ type: "result", truncated: true, subtype: "success", is_error: false, num_turns: 2, total_cost_usd: 0.5, usage, session_id: "s1" })
+	})
+
+	it("marks a line it cannot parse, or never saw whole, as unreadable", () => {
+		for (const text of [line({ is_error: false }).slice(0, 500), "not json", "[1]", JSON.stringify({ type: "assistant" }), undefined]) {
+			expect(JSON.parse(resultSentinel(text))).toEqual({ type: "result", truncated: true, unreadable: true })
+		}
+	})
+})
+
+describe("outcome of a truncated result (Copilot round 2, E1)", () => {
+	it("fails an oversized error result", () => {
+		const sentinel = resultSentinel(JSON.stringify({ type: "result", subtype: "error_during_execution", is_error: true, result: "x".repeat(1000) }))
+		expect(outcome([sentinel], 1, "")).toEqual({ state: "failed", error: "error_during_execution" })
+	})
+
+	it("fails an oversized result it could not read, naming the truncated result", () => {
+		expect(TRUNCATED_RESULT_ERROR).toContain("result")
+		expect(outcome([resultSentinel("{\"type\":\"result\",\"is_er")], 0, "")).toEqual({ state: "failed", error: TRUNCATED_RESULT_ERROR })
+	})
+
+	it("succeeds an oversized successful result, with an empty result marked truncated", () => {
+		const sentinel = resultSentinel(JSON.stringify({ type: "result", subtype: "success", is_error: false, result: "x".repeat(1000) }))
+		expect(outcome([sentinel], 0, "")).toEqual({ state: "succeeded", result: "", truncated: true })
 	})
 })

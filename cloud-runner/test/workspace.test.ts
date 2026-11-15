@@ -3,6 +3,7 @@ import { env as workerEnv } from "cloudflare:workers"
 import { describe, expect, it } from "vitest"
 import { abandonedPushError } from "../src/persist"
 import { MAX_OUTPUT_BYTES, MAX_RUN_ERROR, MAX_RUN_MS, OUTPUT_ERROR, PID_GRACE_MS } from "../src/runstate"
+import { TRUNCATED_RESULT_ERROR } from "../src/agent"
 import type { Env } from "../src/types"
 import type { Workspace } from "../src/workspace"
 import { FakeHost } from "./fakehost"
@@ -498,6 +499,30 @@ describe("Workspace new instance readiness (Copilot C9)", () => {
 
 		expect(await stub.create(repo, "work", [])).not.toBe("conflict")
 		expect(fake.calls.slice(1, 4)).toEqual(["startFromImage", "image ready", "setPolicy "])
+	})
+})
+
+describe("Workspace oversized result (Copilot round 2, E1)", () => {
+	// 300 KiB: over the 256 KiB payload cap, well under a read chunk.
+	const text = "x".repeat(300 * 1024)
+
+	it("fails a run whose oversized result says is_error", async () => {
+		const { stub, fake } = await started()
+		fake.finishTask(1, [JSON.stringify({ type: "result", subtype: "error_max_turns", is_error: true, result: text })])
+		expect(await stub.status()).toMatchObject({ state: "failed", error: "error_max_turns" })
+	})
+
+	it("fails a run whose oversized result cannot be parsed", async () => {
+		const { stub, fake } = await started()
+		fake.finishTask(0, [`{"type":"result","is_error":false,"result":"${text}`])
+		expect(await stub.status()).toMatchObject({ state: "failed", error: TRUNCATED_RESULT_ERROR })
+	})
+
+	it("succeeds a run whose oversized result is a success, with the result marked truncated", async () => {
+		const { stub, fake } = await started()
+		fake.finishTask(0, [JSON.stringify({ type: "result", subtype: "success", is_error: false, num_turns: 3, result: text })])
+		expect(await stub.status()).toMatchObject({ state: "succeeded", result: "" })
+		expect(await notices(stub)).toContain("result truncated")
 	})
 })
 

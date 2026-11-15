@@ -42,18 +42,39 @@ export function parseLine(line: string): { type: string; payload: unknown } | un
 	return typeof type === "string" ? { type, payload } : undefined
 }
 
+export const TRUNCATED_RESULT_ERROR = "the run's result was over 256 KiB and could not be read"
+
+const KEPT_RESULT_FIELDS = ["subtype", "is_error", "num_turns", "total_cost_usd", "usage", "session_id"]
+
+// What is kept of a result line over the payload cap (Copilot round 2, E1):
+// the fields that classify the run, without the result text. A line that does
+// not parse as a result, or was never read whole (undefined), is marked
+// unreadable, and outcome() fails the run on it.
+export function resultSentinel(text: string | undefined): string {
+	const parsed = text === undefined ? undefined : parseLine(text)
+
+	if (parsed?.type !== "result") {
+		return JSON.stringify({ type: "result", truncated: true, unreadable: true })
+	}
+
+	const payload = parsed.payload as Record<string, unknown>
+	const kept = Object.fromEntries(KEPT_RESULT_FIELDS.filter((name) => name in payload).map((name) => [name, payload[name]]))
+	return JSON.stringify({ type: "result", truncated: true, ...kept })
+}
+
 export function outcome(
 	lines: Iterable<string>,
 	exitCode: number,
 	stderrTail: string,
-): { state: "succeeded"; result: string } | { state: "failed"; error: string } {
-	let last: { is_error?: unknown; result?: unknown; subtype?: unknown } | undefined
+): { state: "succeeded"; result: string; truncated?: true } | { state: "failed"; error: string } {
+	let last: { is_error?: unknown; result?: unknown; subtype?: unknown; truncated?: unknown; unreadable?: unknown } | undefined
 	for (const line of lines) {
 		const parsed = parseLine(line)
 		if (parsed?.type === "result") last = parsed.payload as typeof last
 	}
 	if (!last) return { state: "failed", error: `claude exited with ${exitCode}: ${stderrTail}` }
+	if (last.unreadable === true) return { state: "failed", error: TRUNCATED_RESULT_ERROR }
 	const result = typeof last.result === "string" ? last.result : undefined
 	if (last.is_error === true) return { state: "failed", error: result ?? (typeof last.subtype === "string" ? last.subtype : "error") }
-	return { state: "succeeded", result: result ?? "" }
+	return last.truncated === true ? { state: "succeeded", result: "", truncated: true } : { state: "succeeded", result: result ?? "" }
 }
