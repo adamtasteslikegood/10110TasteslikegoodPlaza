@@ -472,7 +472,18 @@ export class Workspace extends DurableObject<Env> {
 
 		// After this object restarts, a running container needs its intercepts again.
 		if (this.host.running && !this.ready) {
-			await this.setUp(record)
+			try {
+				await this.setUp(record)
+			} catch (error) {
+				// A running run keeps its container and the next call retries (G4),
+				// until the 60-minute cap: then the run ends lost, its container
+				// destroyed, as when the container is gone.
+				if (record.state !== "running" || !this.overdue(record) || !this.overdueAttemptFailed(record, error)) throw error
+				await this.host.destroy()
+				this.ready = false
+				await this.endLost(record, MAX_RUN_ERROR, false)
+				return record
+			}
 		}
 
 		if (record.state === "running") {
@@ -498,7 +509,7 @@ export class Workspace extends DurableObject<Env> {
 		// Judged before any probe but the exit code, so an overdue run ends whatever
 		// the other task files say (F1). A plain failure while ending it is retried,
 		// and after OVERDUE_ATTEMPT_LIMIT checks it ends by a path that pushes (G1).
-		const overdue = running && elapsedMs >= MAX_RUN_MS
+		const overdue = running && this.overdue(record)
 
 		try {
 			if (overdue) {
@@ -527,22 +538,7 @@ export class Workspace extends DurableObject<Env> {
 			// an overdue run is retried, one counted per check interval, and at the
 			// limit the run fails without further probes but its branch is pushed (G1).
 			if (overdue && !(error instanceof TaskFileError)) {
-				const now = Date.now()
-
-				if (!countsNow(record.lastOverdueAttemptAt, now)) {
-					console.error(`Workspace could not end an overdue run again within a check interval: ${messageOf(error)}`)
-					return
-				}
-
-				const overdueAttempts = (record.overdueAttempts ?? 0) + 1
-				Object.assign(record, { overdueAttempts, lastOverdueAttemptAt: now })
-				this.save(record)
-				console.error(`Workspace could not end an overdue run (${overdueAttempts} tries): ${messageOf(error)}`)
-
-				if (overdueAttempts >= OVERDUE_ATTEMPT_LIMIT) {
-					return this.endOverdue(record)
-				}
-
+				if (this.overdueAttemptFailed(record, error)) return this.endOverdue(record)
 				return
 			}
 
@@ -629,6 +625,27 @@ export class Workspace extends DurableObject<Env> {
 		this.save(record)
 		this.note(record, { notice: "run ended", run: record.run, state, error })
 		await this.finishRun(record)
+	}
+
+	private overdue(record: Record_): boolean {
+		return record.startedAt !== undefined && Date.now() - record.startedAt >= MAX_RUN_MS
+	}
+
+	// Counts a plain failure to end or set up an overdue run, at most once per
+	// check interval (G1, G4). True once OVERDUE_ATTEMPT_LIMIT have counted.
+	private overdueAttemptFailed(record: Record_, error: unknown): boolean {
+		const now = Date.now()
+
+		if (!countsNow(record.lastOverdueAttemptAt, now)) {
+			console.error(`Workspace could not end an overdue run again within a check interval: ${messageOf(error)}`)
+			return false
+		}
+
+		const overdueAttempts = (record.overdueAttempts ?? 0) + 1
+		Object.assign(record, { overdueAttempts, lastOverdueAttemptAt: now })
+		this.save(record)
+		console.error(`Workspace could not end an overdue run (${overdueAttempts} tries): ${messageOf(error)}`)
+		return overdueAttempts >= OVERDUE_ATTEMPT_LIMIT
 	}
 
 	// Ends an overdue run that could not be ended cleanly within
@@ -894,6 +911,11 @@ export class Workspace extends DurableObject<Env> {
 			)
 			await this.host.setInactivityTimeout(inactivityTimeout)
 		} catch (error) {
+			// Internet is off in the container until the intercepts are registered,
+			// so a container without them fails closed. A running run's container is
+			// kept: refresh() retries, and the 60-minute cap ends the run (G4).
+			if (record.state === "running") throw error
+
 			// The next request starts a new container.
 			await this.host.destroy()
 			throw error

@@ -949,3 +949,71 @@ describe("Workspace transient probe failures (R1)", () => {
 		expect(await alarmAt(stub)).toBeNull()
 	})
 })
+
+// G4: after this object restarts, a running run's container needs its
+// intercepts again. A failure to set them is a plain error: it is retried, and
+// only the 60-minute cap ends such a run.
+describe("Workspace set-up after a restart (G4)", () => {
+	async function restarted() {
+		const opened = await started()
+		expect((await opened.stub.status()).state).toBe("running")
+		await evictDurableObject(opened.stub)
+		await attach(opened.stub, opened.fake)
+		return opened
+	}
+
+	it("keeps a running run's container when setting the intercepts fails once, and finishes the run", async () => {
+		const { stub, fake } = await restarted()
+		fake.failOnce.setPolicy = new Error("intercept registration timed out")
+
+		await expect(direct(stub, (w) => w.status())).rejects.toThrow(/intercept registration/)
+		expect(fake.count("destroy")).toBe(0)
+		expect(fake.running).toBe(true)
+		expect((await stored(stub)).state).toBe("running")
+
+		expect((await stub.status()).state).toBe("running")
+		fake.finishTask(0, [resultLine])
+		expect(await stub.status()).toMatchObject({ state: "succeeded", result: "done", pushed: { commit: "commit-1" } })
+		expect(fake.count("destroy")).toBe(0)
+	})
+
+	it("ends a running run whose intercepts can never be set at the 60-minute cap", async () => {
+		const { stub, fake } = await restarted()
+		fake.flaky.add("setPolicy")
+
+		for (let i = 0; i < 2 * OVERDUE_ATTEMPT_LIMIT; i++) {
+			expect(await runDurableObjectAlarm(stub)).toBe(true)
+			expect((await stored(stub)).state).toBe("running")
+		}
+		expect(fake.count("destroy")).toBe(0)
+
+		await edit(stub, (record) => {
+			record.startedAt = Date.now() - MAX_RUN_MS - 1
+		})
+		for (let i = 1; i < OVERDUE_ATTEMPT_LIMIT; i++) {
+			expect(await runDurableObjectAlarm(stub)).toBe(true)
+			expect((await stored(stub)).state).toBe("running")
+			await later(stub)
+		}
+		expect(fake.count("destroy")).toBe(0)
+
+		expect(await runDurableObjectAlarm(stub)).toBe(true)
+		expect(await stored(stub)).toMatchObject({ state: "lost", error: MAX_RUN_ERROR })
+		expect(fake.count("destroy")).toBe(1)
+		expect(fake.running).toBe(false)
+		expect(await alarmAt(stub)).toBeNull()
+	})
+
+	it("still destroys the container when setting the intercepts fails with no run running", async () => {
+		const { stub, fake } = await started()
+		fake.finishTask(0, [resultLine])
+		expect((await stub.status()).state).toBe("succeeded")
+		await evictDurableObject(stub)
+		await attach(stub, fake)
+		fake.failOnce.setPolicy = new Error("intercept registration timed out")
+
+		await expect(direct(stub, (w) => w.status())).rejects.toThrow(/intercept registration/)
+		expect(fake.count("destroy")).toBe(1)
+		expect(fake.running).toBe(false)
+	})
+})

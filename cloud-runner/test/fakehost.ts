@@ -4,7 +4,7 @@ import type { OutboundProps } from "../src/outbound"
 import type { Pushed, Saved } from "../src/persist"
 
 type Group = { alive: boolean; ignoresTerm: boolean }
-type Probe = "push" | "exitCode" | "readTask" | "readOutput" | "outputBytes" | "outputDone" | "taskAlive" | "signal"
+type Probe = "push" | "exitCode" | "readTask" | "readOutput" | "outputBytes" | "outputDone" | "taskAlive" | "signal" | "setPolicy"
 
 // A container in memory, behind the Workspace's one seam. It models what the
 // rules depend on: the pid file, the task's process groups, the exit code the
@@ -99,6 +99,7 @@ export class FakeHost implements Host {
 
 	async setPolicy(props: OutboundProps): Promise<void> {
 		this.calls.push(`setPolicy ${props.repoPath}`)
+		this.fail("setPolicy")
 		this.policies.push(props)
 	}
 
