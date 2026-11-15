@@ -8,6 +8,7 @@ import {
 	MAX_RUN_ERROR,
 	MAX_RUN_MS,
 	OUTPUT_ERROR,
+	OVERDUE_ATTEMPT_LIMIT,
 	PID_GRACE_MS,
 	RUN_CHECK_INTERVAL_MS,
 	TASK_FILE_FAILURE_LIMIT,
@@ -659,7 +660,8 @@ describe("Workspace task files the agent broke (F1)", () => {
 		expect(fake.groups.get(100)?.alive).toBe(false)
 	})
 
-	it("ends an overdue run by the overdue rule, whatever the probes do", async () => {
+	// G1: only a TaskFileError ends a run with no push, overdue or not.
+	it("ends an overdue run whose task files are broken by the task-file rule", async () => {
 		const { stub, fake } = await started()
 		expect((await stub.status()).state).toBe("running")
 		for (const probe of ["outputBytes", "exitCode", "readTask", "readOutput", "outputDone"] as const) fake.broken.add(probe)
@@ -667,7 +669,8 @@ describe("Workspace task files the agent broke (F1)", () => {
 			record.startedAt = Date.now() - MAX_RUN_MS - 1
 		})
 
-		await endedUntrusted(stub, fake, MAX_RUN_ERROR)
+		await strikesShortOfLimit(stub)
+		await endedUntrusted(stub, fake)
 		expect(fake.calls).toContain("signal 100 KILL")
 	})
 
@@ -774,8 +777,13 @@ describe("Workspace task files the agent broke (F1)", () => {
 		await edit(stub, (record) => {
 			record.startedAt = Date.now() - MAX_RUN_MS - 1
 		})
+		for (let i = 1; i < TASK_FILE_FAILURE_LIMIT; i++) {
+			expect(await runDurableObjectAlarm(stub)).toBe(true)
+			expect((await stored(stub)).state).toBe("running")
+			await later(stub)
+		}
 		expect(await runDurableObjectAlarm(stub)).toBe(true)
-		expect(await stored(stub)).toMatchObject({ state: "failed", error: MAX_RUN_ERROR })
+		expect(await stored(stub)).toMatchObject({ state: "failed", error: TASK_FILES_ERROR })
 		expect(fake.count("push work")).toBe(0)
 		expect(await alarmAt(stub)).toBeNull()
 	})
@@ -881,7 +889,37 @@ describe("Workspace transient probe failures (R1)", () => {
 		expect(fake.count("push work")).toBe(0)
 	})
 
-	it("ends a run whose probes fail transiently forever by the 60-minute cap", async () => {
+	// G1: a plain throw while ending an overdue run says nothing about the task
+	// files, so the run's work is kept: the next check retries.
+	it("finishes an overdue run with an exit code on the next check after one plain throw of the stdout.log read", async () => {
+		const { stub, fake } = await started()
+		expect((await stub.status()).state).toBe("running")
+		fake.finishTask(0, [resultLine])
+		fake.failOnce.readOutput = new Error("exec timed out")
+		await edit(stub, (record) => {
+			record.startedAt = Date.now() - MAX_RUN_MS - 1
+		})
+
+		expect((await stub.status()).state).toBe("running")
+		expect(await stored(stub)).toMatchObject({ overdueAttempts: 1 })
+		expect(fake.count("destroy")).toBe(0)
+		expect(await stub.status()).toMatchObject({ state: "succeeded", result: "done", pushed: { commit: "commit-1" } })
+		expect(fake.count("destroy")).toBe(0)
+	})
+
+	it("counts plain throws while overdue once per check interval", async () => {
+		const { stub, fake } = await started()
+		expect((await stub.status()).state).toBe("running")
+		for (const probe of ["exitCode", "readTask", "outputBytes"] as const) fake.flaky.add(probe)
+		await edit(stub, (record) => {
+			record.startedAt = Date.now() - MAX_RUN_MS - 1
+		})
+
+		for (let i = 0; i < 2 * OVERDUE_ATTEMPT_LIMIT; i++) expect((await stub.status()).state).toBe("running")
+		expect((await stored(stub)).overdueAttempts).toBe(1)
+	})
+
+	it("ends a run whose probes fail transiently forever by the 60-minute cap, and still pushes it", async () => {
 		const { stub, fake } = await started()
 		expect((await stub.status()).state).toBe("running")
 		for (const probe of ["exitCode", "readTask", "taskAlive", "readOutput", "outputBytes", "outputDone"] as const) fake.flaky.add(probe)
@@ -895,8 +933,19 @@ describe("Workspace transient probe failures (R1)", () => {
 		await edit(stub, (record) => {
 			record.startedAt = Date.now() - MAX_RUN_MS - 1
 		})
+		for (let i = 1; i < OVERDUE_ATTEMPT_LIMIT; i++) {
+			expect(await runDurableObjectAlarm(stub)).toBe(true)
+			expect((await stored(stub)).state).toBe("running")
+			await later(stub)
+		}
+		expect(fake.count("push work")).toBe(0)
+
 		expect(await runDurableObjectAlarm(stub)).toBe(true)
-		expect(await stored(stub)).toMatchObject({ state: "failed", error: MAX_RUN_ERROR })
+		expect(await stored(stub)).toMatchObject({ state: "failed", error: MAX_RUN_ERROR, persistPending: false, pushed: { commit: "commit-1" } })
+		expect(fake.count("push work")).toBe(1)
+		expect(fake.calls).toContain("signal 100 KILL") // best-effort, from the stored group
+		expect(fake.count("destroy")).toBe(0) // not replaced as untrusted
+		expect(fake.running).toBe(true)
 		expect(await alarmAt(stub)).toBeNull()
 	})
 })

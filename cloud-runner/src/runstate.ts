@@ -19,6 +19,9 @@ export const TASK_FILE_FAILURE_LIMIT = 3
 // How often the alarm checks a running run. A failure counts toward a limit at
 // most once per interval, so quick status polls are not many checks (G3).
 export const RUN_CHECK_INTERVAL_MS = 60 * 1000
+// Checks of an overdue run that may fail with a plain error before the run ends
+// anyway, by a failing end that still pushes its branch (G1).
+export const OVERDUE_ATTEMPT_LIMIT = 3
 
 // Whether a failure now counts toward a limit: the first always does, a later
 // one only once a check interval has passed since the last one counted (G3).

@@ -18,6 +18,7 @@ import {
 	MAX_RUN_MS,
 	needsAlarm,
 	OUTPUT_ERROR,
+	OVERDUE_ATTEMPT_LIMIT,
 	persistAction,
 	restorePath,
 	RUN_CHECK_INTERVAL_MS,
@@ -54,6 +55,8 @@ type Record_ = {
 	resultLine?: string // the current run's last result event, read during ingest (Copilot C10)
 	taskFileFailures?: number // checks in a row of the current run that ended in a TaskFileError (R1)
 	lastTaskFileFailureAt?: number // ms epoch of the last one counted, at most one per check interval (G3)
+	overdueAttempts?: number // checks of the overdue run that failed with a plain error (G1)
+	lastOverdueAttemptAt?: number // ms epoch of the last one counted, at most one per check interval (G1)
 	result?: string
 	error?: string
 	pushed?: { commit: string }
@@ -176,6 +179,8 @@ export class Workspace extends DurableObject<Env> {
 				resultLine: undefined,
 				taskFileFailures: undefined,
 				lastTaskFileFailureAt: undefined,
+				overdueAttempts: undefined,
+				lastOverdueAttemptAt: undefined,
 			})
 			this.save(record)
 			this.note(record, { notice: "run started", run: record.run })
@@ -491,14 +496,19 @@ export class Workspace extends DurableObject<Env> {
 		const running = this.host.running
 		const elapsedMs = Date.now() - record.startedAt
 		// Judged before any probe but the exit code, so an overdue run ends whatever
-		// the other task files say (F1). A failure while ending it still ends it.
+		// the other task files say (F1). A plain failure while ending it is retried,
+		// and after OVERDUE_ATTEMPT_LIMIT checks it ends by a path that pushes (G1).
 		const overdue = running && elapsedMs >= MAX_RUN_MS
 
 		try {
 			if (overdue) {
 				// A run with an exit code has finished, not overrun (R2). With none, or a
-				// probe that throws, the overdue rule ends it.
-				const exitCode = await this.host.exitCode().catch(() => undefined)
+				// read that fails with a plain error, the overdue rule ends it. A
+				// TaskFileError goes to the task-file count below.
+				const exitCode = await this.host.exitCode().catch((error: unknown) => {
+					if (error instanceof TaskFileError) throw error
+					return undefined
+				})
 				return await (exitCode === undefined ? this.endFailed(record, MAX_RUN_ERROR) : this.finish(record, exitCode))
 			}
 
@@ -513,10 +523,27 @@ export class Workspace extends DurableObject<Env> {
 			// Once the run has ended, what threw is the push or snapshot: it is retried.
 			if (record.state !== "running") throw error
 
-			// The cap is the backstop: an overdue run ends whatever failed (F1).
-			if (overdue) {
-				console.error(`Workspace could not end an overdue run cleanly: ${messageOf(error)}`)
-				return this.endUntrusted(record, "failed", MAX_RUN_ERROR)
+			// Only a TaskFileError ends a run with no push. A plain error while ending
+			// an overdue run is retried, one counted per check interval, and at the
+			// limit the run fails without further probes but its branch is pushed (G1).
+			if (overdue && !(error instanceof TaskFileError)) {
+				const now = Date.now()
+
+				if (!countsNow(record.lastOverdueAttemptAt, now)) {
+					console.error(`Workspace could not end an overdue run again within a check interval: ${messageOf(error)}`)
+					return
+				}
+
+				const overdueAttempts = (record.overdueAttempts ?? 0) + 1
+				Object.assign(record, { overdueAttempts, lastOverdueAttemptAt: now })
+				this.save(record)
+				console.error(`Workspace could not end an overdue run (${overdueAttempts} tries): ${messageOf(error)}`)
+
+				if (overdueAttempts >= OVERDUE_ATTEMPT_LIMIT) {
+					return this.endOverdue(record)
+				}
+
+				return
 			}
 
 			// An exec timeout, a restarting container or a transport error says
@@ -535,11 +562,12 @@ export class Workspace extends DurableObject<Env> {
 				return
 			}
 
-			Object.assign(record, { taskFileFailures: (record.taskFileFailures ?? 0) + 1, lastTaskFileFailureAt: now })
+			const taskFileFailures = (record.taskFileFailures ?? 0) + 1
+			Object.assign(record, { taskFileFailures, lastTaskFileFailureAt: now })
 			this.save(record)
-			console.error(`Workspace found a task file it did not write (${record.taskFileFailures} in a row): ${messageOf(error)}`)
+			console.error(`Workspace found a task file it did not write (${taskFileFailures} in a row): ${messageOf(error)}`)
 
-			if (record.taskFileFailures >= TASK_FILE_FAILURE_LIMIT) {
+			if (taskFileFailures >= TASK_FILE_FAILURE_LIMIT) {
 				return this.endUntrusted(record, "failed", TASK_FILES_ERROR)
 			}
 		}
@@ -601,6 +629,22 @@ export class Workspace extends DurableObject<Env> {
 		this.save(record)
 		this.note(record, { notice: "run ended", run: record.run, state, error })
 		await this.finishRun(record)
+	}
+
+	// Ends an overdue run that could not be ended cleanly within
+	// OVERDUE_ATTEMPT_LIMIT checks (G1). The stored group gets a best-effort KILL,
+	// nothing more is probed, and the run fails with its branch pushed and
+	// snapshotted. With no stored group to name, the instance is replaced after.
+	private async endOverdue(record: Record_): Promise<void> {
+		const task = record.task !== undefined && record.task.pid > 1 ? record.task : undefined
+
+		if (task !== undefined && this.host.running) {
+			await this.host.signalTask(task, "KILL").catch((killError) => console.error(`Workspace KILL failed: ${messageOf(killError)}`))
+		}
+
+		// Stored by markFailed's save, in the same step as the end state (G5).
+		if (task === undefined) record.replaceInstance = true
+		return this.markFailed(record, MAX_RUN_ERROR)
 	}
 
 	// Ends a run the runner cuts short: KILLs its group, reads its output, then
