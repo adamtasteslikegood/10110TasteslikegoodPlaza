@@ -5,7 +5,7 @@ tier: 3
 authority: derived
 status: ACTIVE
 doc_set_version: 0.2.18
-last_updated: 2026-10
+last_updated: 2026-11
 owner: adamtasteslikegood
 derives_from: [PROJECT-OVERVIEW, DESIGN-25D, SPEC-DRIVERS-025, BRIDGE-PLATFORM-DESIGN]
 enforcement: asserted
@@ -677,4 +677,4 @@ capability and its position in the sequence, not a vendor commitment.
 
 ---
 
-*Last updated: October 2026*
+*Last updated: November 2026*

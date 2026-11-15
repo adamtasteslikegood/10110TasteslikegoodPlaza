@@ -70,7 +70,11 @@ Adam chose Cloudflare first: department sessions in Sandbox containers behind a 
 This supersedes the order above (A, then A+B, then C). The approved design is
 `docs/superpowers/specs/2026-11-14-m14-cloudflare-runner-design.md`; it answers finding 5(a) with the API-key route through AI Gateway.
 
-## Recommendation
+## Recommendation (historical, superseded)
+> Superseded by the owner goal updates above: the current direction is the M14 Cloudflare runner,
+> `docs/superpowers/specs/2026-11-14-m14-cloudflare-runner-design.md`. The recommendation below is kept as
+> recorded on 2026-10-22 and is not a current plan.
+
 Do not migrate yet. Take option A's first step, designed for B and C:
 1. Extract a `DomainSessionStore` interface (append event, read since cursor, get/set lease, get/set memory) behind `domain_manager`, with a local SQLite
    implementation. This is cheap structure, matching the owner's "weight toward structure" rule.

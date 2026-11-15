@@ -435,11 +435,11 @@
     },
     {
       "path": "docs/superpowers/specs/2026-11-14-m14-cloudflare-runner-design.md",
-      "reason": "Owner-approved M14 Cloudflare runner design (2026-11-14); derived design contract pending implementation, not shipped behavior or a new locked decision origin."
+      "reason": "Owner-approved M14 Cloudflare runner design (2026-11-14); stage 1 implemented and deployed for development (evidence in spike-c.md), stage 2 planned. Derived design contract, not a new locked decision origin."
     },
     {
       "path": "docs/superpowers/plans/2026-11-14-m14-cloudflare-runner-stage1.md",
-      "reason": "Derived stage 1 implementation plan for the owner-approved M14 Cloudflare runner design; pending plan review, not runtime acceptance or a new product-decision origin."
+      "reason": "Derived stage 1 implementation plan for the owner-approved M14 Cloudflare runner design; executed, with the open acceptance gaps tracked in cloud-runner/README.md and spike-c.md. Not a new product-decision origin."
     },
     {
       "path": "docs/superpowers/plans/2026-10-26-m13-sqlite-session-persistence.md",

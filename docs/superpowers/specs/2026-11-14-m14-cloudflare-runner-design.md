@@ -2,7 +2,9 @@
 
 **Status:** approved by Adam 2026-11-14, including the API-key route in §5 (his Anthropic
 API key, through the AI Gateway already on his account unless its setup makes a fresh one
-better) and use of his Workers Paid plan. Nothing is built or deployed yet.
+better) and use of his Workers Paid plan. Update 2026-11-15: stage 1 is implemented
+(`cloud-runner/`) and deployed for development; the evidence and its gaps are in
+`docs/research/cloudflare-durable-objects/spike-c.md` and `cloud-runner/README.md`. Stage 2 is planned, not built.
 **Baseline:** dev `eb6b170`. Cloudflare facts were read from developers.cloudflare.com on
 2026-11-14 (pages listed in §11); `@cloudflare/sandbox` latest is 1.0.3.
 
@@ -168,12 +170,15 @@ send data out, which is why the list is short and additions are read-only.
 |---|---|
 | Writes stay in the department's worktree | The container holds nothing else |
 | No write to another department's files | One container per workspace |
-| Git changes only on the owned branch | Token scoped to one repository; the handler refuses other repositories; GitHub branch rules protect `dev` and `main` |
+| Git changes only on the owned branch | Token scoped to one repository; the handler refuses other repositories; a push may update only the workspace branch and may not delete it (`cloud-runner/src/pushguard.ts`); GitHub branch rules protect `dev` and `main` |
 | Permission mode `dontAsk` with a hook | Skip-permissions inside the container, as Cloudflare's guide does; the container is the limit |
 | Paid guard probe evidence | Stage 1 acceptance tests (§8) |
 
-One gap, stated plainly: the agent can push any branch name in its one repository.
-Protected branches are safe only where the repository has branch rules.
+Update 2026-11-15 (PR #409 review): the `Outbound` handler now reads the command list of every
+`git-receive-pack` request and forwards it only when every command updates
+`refs/heads/<workspace branch>` and none deletes it. What remains: a force-push of the workspace
+branch itself is still possible, and the check trusts git's wire format, so branch rules on
+GitHub are still recommended for `dev` and `main`.
 
 ### 6.7 Stage 2: the bridge (outline; planned after stage 1 evidence)
 
