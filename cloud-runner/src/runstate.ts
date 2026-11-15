@@ -44,3 +44,38 @@ export function conversationAfter(point: "started" | "finished" | "stopped" | "l
 	if (resultSeen) return true
 	return point !== "finished" && resumed
 }
+
+export type RestorePath = "snapshot" | "branch" | "image"
+
+// How a new container instance gets its files. A snapshot needs a repository;
+// one that did not start falls back to a fresh clone of the pushed branch.
+export function restorePath(o: { hasSnapshot: boolean; snapshotStartFailed: boolean; hasRepo: boolean }): RestorePath {
+	if (!o.hasRepo) return "image"
+	return o.hasSnapshot && !o.snapshotStartFailed ? "snapshot" : "branch"
+}
+
+export type Restored = {
+	restored?: "snapshot" | "branch"
+	uncommittedLost?: boolean
+	hasConversation: boolean
+	keepSnapshot: boolean
+	notice?: { notice: "instance started"; generation: number; from: "snapshot" | "branch"; snapshotError?: string }
+}
+
+// What a new instance's path does to the record. A snapshot carries the files
+// and Claude Code's session; a clone carries neither, so work done in an earlier
+// instance and not pushed is gone, and the stored snapshot (absent or broken) is
+// dropped. Only an instance that replaces an earlier one is noted.
+export function afterRestore(path: RestorePath, o: { generation: number; hasConversation: boolean; snapshotError?: string }): Restored {
+	if (path === "image") return { hasConversation: false, keepSnapshot: false }
+
+	const replaces = o.generation > 1
+	const notice = replaces
+		? { notice: "instance started" as const, generation: o.generation, from: path, ...(o.snapshotError === undefined ? {} : { snapshotError: o.snapshotError }) }
+		: undefined
+	const fields = path === "snapshot"
+		? { restored: path, uncommittedLost: false, hasConversation: o.hasConversation, keepSnapshot: true }
+		: { restored: path, uncommittedLost: replaces, hasConversation: false, keepSnapshot: false }
+
+	return notice === undefined ? fields : { ...fields, notice }
+}

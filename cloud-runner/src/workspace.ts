@@ -22,11 +22,11 @@ import {
 	taskDirectory,
 	taskRunningScript,
 	taskScript,
-	trustEnv,
 } from "./container"
 import { EventLog } from "./events"
 import type { OutboundProps } from "./outbound"
-import { admit, conversation, conversationAfter, settle, stopOutcome, type Observed } from "./runstate"
+import { afterPersist, clone, gitEnv, push, snapshot, startFromImage, startFromSnapshot } from "./persist"
+import { admit, afterRestore, conversation, conversationAfter, restorePath, settle, stopOutcome, type Observed } from "./runstate"
 import type { Env, Event, RunState, Status } from "./types"
 
 const inactivityTimeout = 15 * 60 * 1000
@@ -35,7 +35,6 @@ const stopWait = 10 * 1000
 const pidWait = 5 * 1000
 const chunkBytes = 4 * 1024 * 1024
 const recordKey = "workspace"
-const gitEnv = { ...trustEnv, HOME: "/root" }
 
 // Everything the object keeps between requests: one small record, read with one get.
 type Record_ = {
@@ -52,7 +51,7 @@ type Record_ = {
 	error?: string
 	pushed?: { commit: string }
 	pushError?: string
-	snapshot?: string
+	snapshot?: string // id of the snapshot taken after the last run
 	restored?: "snapshot" | "branch"
 	uncommittedLost?: boolean
 	eventsOffset: number // bytes of stdout.log already in the event log
@@ -88,7 +87,7 @@ export class Workspace extends DurableObject<Env> {
 
 			await this.ensureStarted(record)
 			await this.intercept({ repoPath: new URL(repo).pathname, allow })
-			const cloned = await this.clone(repo, branch)
+			const cloned = await clone(this.container, repo, branch)
 
 			if (cloned !== undefined) {
 				await this.intercept({ repoPath: "", allow: [] })
@@ -210,6 +209,7 @@ export class Workspace extends DurableObject<Env> {
 			record.hasConversation = conversationAfter("stopped", record.resumed === true, false)
 			this.save(record)
 			this.note(record, { notice: "run stopped", run: record.run })
+			await this.finishRun(record)
 			return statusOf(record)
 		})
 	}
@@ -256,8 +256,18 @@ export class Workspace extends DurableObject<Env> {
 		})
 	}
 
-	// Task 6: push the branch and snapshot the workspace after a run.
-	private async finishRun(): Promise<void> {}
+	// After a run ends or is stopped: push the branch, then snapshot the instance.
+	private async finishRun(record: Record_): Promise<void> {
+		if (!this.ctx.container?.running || record.branch === undefined) {
+			return
+		}
+
+		const pushed = await push(this.container, record.branch)
+		const { notices, ...fields } = afterPersist(record.run, pushed, await snapshot(this.container))
+		Object.assign(record, fields)
+		this.save(record)
+		for (const notice of notices) this.note(record, notice)
+	}
 
 	private get container(): Container {
 		const container = this.ctx.container
@@ -378,7 +388,7 @@ export class Workspace extends DurableObject<Env> {
 		record.hasConversation = conversationAfter("finished", record.resumed === true, results.length > 0)
 		this.save(record)
 		this.note(record, { notice: "run ended", run: record.run, state: record.state })
-		await this.finishRun()
+		await this.finishRun(record)
 	}
 
 	// Adds the complete lines of stdout.log past eventsOffset to the event log.
@@ -455,20 +465,19 @@ export class Workspace extends DurableObject<Env> {
 		await this.startInstance(record)
 	}
 
+	// A new instance: from the stored snapshot if it starts, else from the image
+	// with a fresh clone of the branch. refresh() has already settled a lost run.
 	private async startInstance(record: Record_): Promise<void> {
-		if (record.state === "running") {
-			record.state = "lost"
-			record.error = "The container stopped before the run ended"
-			this.note(record, { notice: "run lost", run: record.run })
-		}
-
 		record.generation += 1
 		this.save(record)
-		this.container.start({ image: this.container.images.agent, instance: "standard-1", enableInternet: false })
+		const snapshotError = record.snapshot === undefined ? undefined : await startFromSnapshot(this.container, record.snapshot)
+		const path = restorePath({ hasSnapshot: record.snapshot !== undefined, snapshotStartFailed: snapshotError !== undefined, hasRepo: record.repo !== undefined })
+
+		if (path !== "snapshot") startFromImage(this.container)
 		await this.setUp(record)
 
-		if (record.repo !== undefined && record.branch !== undefined) {
-			const cloned = await this.clone(record.repo, record.branch)
+		if (path === "branch") {
+			const cloned = await clone(this.container, record.repo as string, record.branch as string)
 
 			if (cloned !== undefined) {
 				// The next request starts another instance and clones again.
@@ -476,10 +485,12 @@ export class Workspace extends DurableObject<Env> {
 				this.ready = false
 				throw new Error(`Clone failed on a new instance: ${cloned}`)
 			}
-
-			record.hasConversation = false
-			this.save(record)
 		}
+
+		const { notice, keepSnapshot, ...fields } = afterRestore(path, { generation: record.generation, hasConversation: record.hasConversation, snapshotError })
+		Object.assign(record, fields, { snapshot: keepSnapshot ? record.snapshot : undefined })
+		this.save(record)
+		if (notice) this.note(record, notice)
 	}
 
 	private async setUp(record: Record_): Promise<void> {
@@ -502,26 +513,6 @@ export class Workspace extends DurableObject<Env> {
 		const outbound = this.ctx.exports.Outbound({ props })
 		await this.container.interceptAllOutboundHttp(outbound)
 		await this.container.interceptOutboundHttps("*", outbound)
-	}
-
-	// undefined on success, else the end of git's stderr. A failed clone leaves no directory.
-	private async clone(repo: string, branch: string): Promise<string | undefined> {
-		await this.files.remove(repositoryDirectory, { recursive: true, force: true })
-		const cloned = await run(this.container, ["git", "clone", "--branch", branch, "--", repo, repositoryDirectory], "/workspace", gitEnv)
-
-		if (cloned.exitCode !== 0) {
-			await this.files.remove(repositoryDirectory, { recursive: true, force: true })
-			return tail(cloned.stderr) || `git clone exited with ${cloned.exitCode}`
-		}
-
-		for (const [key, value] of [
-			["user.name", "Plaza cloud agent"],
-			["user.email", "plaza-cloud-agent@users.noreply.github.com"],
-		]) {
-			await run(this.container, ["git", "config", key, value], repositoryDirectory, gitEnv)
-		}
-
-		return undefined
 	}
 }
 

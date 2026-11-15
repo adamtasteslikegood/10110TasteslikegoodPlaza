@@ -9,6 +9,23 @@ stream-json output as numbered events, and reports `running`, `succeeded`,
 own: every request goes through the `Outbound` entrypoint, which adds the
 credentials, so none enters the container.
 
+## What survives an instance
+
+After every run that ends or is stopped, the object pushes the clone's `HEAD`
+to the branch and then takes a container snapshot (`snapshotContainer`). The
+status keeps the last pushed commit (`pushed`) or the end of git's stderr
+(`pushError`); neither changes the run's own state. A new instance starts from
+the stored snapshot, with the files and Claude Code's session (`restored:
+"snapshot"`). With no snapshot, or one that does not start, it clones the
+branch again, starts a new conversation and says so (`restored: "branch"`,
+`uncommittedLost: true` after an earlier instance). A failed snapshot drops the
+stored one, so a later instance never restores files older than the pushed
+branch. Every replacing instance appends a `runner` event naming its path.
+
+Snapshots are in public beta. The Durable Object Container API has no method
+to delete a snapshot, so `DELETE /workspaces/:name` only forgets the stored id;
+the snapshot itself expires 30 days after it was taken or last restored.
+
 ## Local check
 
 Run on 2026-11-14 with Docker 29.9.2, from `cloud-runner/`. `.dev.vars`
@@ -51,6 +68,23 @@ wrangler dev built the image and ran it without a Cloudflare login. An empty
 | `c GET /workspaces/hello/diff` after editing `README` and adding `NEW.txt` in the clone | 200, a `git diff` showing both, the new file included |
 | `c GET /workspaces/never`, `c GET /workspaces/never/diff` | 200 `{"state":"none","run":0,"generation":0}`; 404 `No such workspace: create it with PUT first` |
 | `c DELETE /workspaces/hello`, then `c GET '/workspaces/hello/events?after=0'` | 204; 404, and the container is gone |
+
+Push, snapshot and restore (2026-11-15, Task 6), on workspace `persist`
+(Hello-World, `master`, empty `GITHUB_TOKEN`). Snapshots work under
+`wrangler dev --local`: each is a local Docker image named
+`workerd-container-snap-<id>` (about 1.19 GB here).
+
+| Step | Answer |
+|---|---|
+| `c PUT ...`, then `c GET '/workspaces/persist/events?after=0'` | 200 `generation: 1`, no `restored`; `{"events":[],"next":0}` |
+| `c POST /workspaces/persist/runs ...`; `docker exec <container> sh -c 'echo local > /workspace/repo/LOCAL.txt'`; the run left to end (401) | status `failed`, `"pushError":"fatal: could not read Username for 'https://github.com': terminal prompts disabled\n"`; runner events `run ended`, `push failed` (same text), `snapshot saved` (`bytes: 1193260641`) |
+| `docker rm -f <container>`, then `c GET /workspaces/persist/diff` | the first try answered 500 `Network connection lost` (workerd reset the object while the removed container went away; generation 2 was used up); the retry answered 200 with `LOCAL.txt` in the diff |
+| `c GET /workspaces/persist`, events after 17 | `generation: 3`, `restored: "snapshot"`, `uncommittedLost: false`; one event `{"notice":"instance started","generation":3,"from":"snapshot"}` |
+| `docker rm -f <container>` and `docker rmi -f workerd-container-snap-<id>` (the snapshot gone), then `c GET /workspaces/persist/diff` | 200, empty diff (`LOCAL.txt` gone) |
+| `c GET /workspaces/persist`, events after 18 | `generation: 4`, `restored: "branch"`, `uncommittedLost: true`; `{"notice":"instance started","generation":4,"from":"branch","snapshotError":"exec() requires a running container."}` |
+| `c POST .../runs`, then `c POST .../stop` six seconds in | 200 `stopped`, `pushError` as above; events `run stopped`, `push failed`, `snapshot saved`; run 2's `system`/`init` carries a new `session_id` (the clone forgot run 1's conversation) |
+
+A successful push (`pushed.commit`) needs a real token on a test repository: Task 7.
 
 Egress, checked with `docker exec <container> node -e "fetch(...)"` and
 `NODE_EXTRA_CA_CERTS=/etc/cloudflare/certs/cloudflare-containers-ca.crt`, not

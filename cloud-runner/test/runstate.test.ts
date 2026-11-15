@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { admit, conversation, conversationAfter, settle, stopOutcome } from "../src/runstate"
+import { admit, afterRestore, conversation, conversationAfter, restorePath, settle, stopOutcome } from "../src/runstate"
 
 describe("settle", () => {
 	it("calls a running run lost when the container is gone", () => {
@@ -98,5 +98,59 @@ describe("conversationAfter", () => {
 			expect(conversationAfter(end, true, false), end).toBe(true)
 			expect(conversationAfter(end, false, false), end).toBe(false)
 		}
+	})
+})
+
+describe("restorePath", () => {
+	const base = { hasSnapshot: true, snapshotStartFailed: false, hasRepo: true }
+	it("starts from the stored snapshot", () => expect(restorePath(base)).toBe("snapshot"))
+	it("clones the branch when there is no snapshot", () => {
+		expect(restorePath({ ...base, hasSnapshot: false })).toBe("branch")
+	})
+	it("clones the branch when the snapshot did not start", () => {
+		expect(restorePath({ ...base, snapshotStartFailed: true })).toBe("branch")
+	})
+	it("starts a bare image before the workspace has a repository", () => {
+		expect(restorePath({ hasSnapshot: false, snapshotStartFailed: false, hasRepo: false })).toBe("image")
+		expect(restorePath({ ...base, hasRepo: false })).toBe("image")
+	})
+})
+
+describe("afterRestore", () => {
+	it("a snapshot keeps the conversation and the snapshot, and loses nothing", () => {
+		for (const hasConversation of [true, false]) {
+			expect(afterRestore("snapshot", { generation: 3, hasConversation })).toEqual({
+				restored: "snapshot",
+				uncommittedLost: false,
+				hasConversation,
+				keepSnapshot: true,
+				notice: { notice: "instance started", generation: 3, from: "snapshot" },
+			})
+		}
+	})
+	it("a branch clone after an earlier instance forgets the conversation and says work was lost", () => {
+		expect(afterRestore("branch", { generation: 2, hasConversation: true })).toEqual({
+			restored: "branch",
+			uncommittedLost: true,
+			hasConversation: false,
+			keepSnapshot: false,
+			notice: { notice: "instance started", generation: 2, from: "branch" },
+		})
+	})
+	it("names why the snapshot was not used", () => {
+		expect(afterRestore("branch", { generation: 2, hasConversation: true, snapshotError: "Snapshot not found" }).notice).toEqual({
+			notice: "instance started",
+			generation: 2,
+			from: "branch",
+			snapshotError: "Snapshot not found",
+		})
+	})
+	it("a first instance loses nothing and appends no notice", () => {
+		const first = afterRestore("branch", { generation: 1, hasConversation: false })
+		expect(first.uncommittedLost).toBe(false)
+		expect(first.notice).toBeUndefined()
+	})
+	it("a bare image sets no restore fields and appends no notice", () => {
+		expect(afterRestore("image", { generation: 2, hasConversation: true })).toEqual({ hasConversation: false, keepSnapshot: false })
 	})
 })
