@@ -17,7 +17,10 @@ export function withCredential(request: Request, credential: Credential, env: En
 		headers.set("Authorization", `Basic ${btoa(`x-access-token:${env.GITHUB_TOKEN}`)}`)
 	}
 
-	return new Request(request, { headers })
+	// Never follow a redirect here: the Worker would not re-decide it and would
+	// carry the credential along. The container follows it and each hop comes
+	// back through Outbound.
+	return new Request(request, { headers, redirect: "manual" })
 }
 
 // Names the host only: the path and query can carry a secret.
@@ -38,7 +41,7 @@ function policyFor(props: Partial<OutboundProps> | undefined, env: Env): Policy 
 		gatewayPath: `/v1/${env.AI_GATEWAY_ACCOUNT_ID}/${env.AI_GATEWAY_ID}`,
 		// With no props the policy has no repository and no extra hosts.
 		repoPath: typeof props?.repoPath === "string" ? props.repoPath : "",
-		allow: Array.isArray(props?.allow) ? props.allow : [],
+		allow: Array.isArray(props?.allow) ? props.allow.map((host) => host.toLowerCase().replace(/\.$/, "")) : [],
 	}
 }
 

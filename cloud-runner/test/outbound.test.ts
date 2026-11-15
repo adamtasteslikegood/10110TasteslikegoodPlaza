@@ -34,6 +34,11 @@ describe("withCredential", () => {
 		expect(out.headers.get("cf-aig-skip-cache")).toBeNull()
 	})
 
+	it.each(["gateway", "github", "none"] as const)("%s: never follows a redirect", (credential) => {
+		expect(withCredential(request(), credential, env).redirect).toBe("manual")
+		expect(withCredential(new Request("https://example.test/x", { redirect: "follow" }), credential, env).redirect).toBe("manual")
+	})
+
 	it("none: adds no credential header", () => {
 		const out = withCredential(request({ "x-api-key": "kept" }), "none", env)
 

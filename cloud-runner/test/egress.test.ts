@@ -64,6 +64,13 @@ const refused: [string, string][] = [
 	["GET", "not a url"],
 	["GET", ""],
 	["GET", "//github.com/acme/app"],
+	// the parser moves these to another path or host (review round 1)
+	["GET", "https://github.com\\..\\x/acme/app"],
+	["GET", "https://github.com/acme/app/.\t./other"],
+	["GET", "https://github.com/acme/app/.\n./other/repo"],
+	["POST", "https://gateway.ai.cloudflare.com/v1/acct/gw/anthropic/.\t./openai/x"],
+	["GET", "https:github.com/acme/app"],
+	["GET", "https://github.com\t/acme/app"],
 ]
 
 describe("decide", () => {
@@ -75,6 +82,17 @@ describe("decide", () => {
 		const decision = decide(method, url, policy)
 		expect(decision.allow).toBe(false)
 		expect(decision).toHaveProperty("reason")
+	})
+
+	it("names the reason for key refusals", () => {
+		expect(decide("GET", "http://github.com/acme/app", policy)).toMatchObject({ reason: expect.stringContaining("HTTPS") })
+		expect(decide("GET", "https://github.com:8443/acme/app", policy)).toMatchObject({ reason: expect.stringContaining("443") })
+		expect(decide("POST", "https://registry.npmjs.org/zod", policy)).toMatchObject({ reason: expect.stringContaining("GET") })
+		expect(decide("GET", "https://evil.test/", policy)).toMatchObject({ reason: expect.stringContaining("not allowed") })
+	})
+
+	it("ignores a fragment", () => {
+		expect(decide("GET", "https://github.com/acme/app#frag", policy)).toEqual({ allow: true, credential: "github" })
 	})
 
 	it("matches the method case-insensitively", () => {

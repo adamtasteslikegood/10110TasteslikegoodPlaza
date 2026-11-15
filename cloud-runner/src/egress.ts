@@ -15,19 +15,17 @@ const READ_ONLY = ["GET", "HEAD"]
 
 const refuse = (reason: string): Decision => ({ allow: false, reason })
 
-// The path as the sender wrote it: between the authority and the first "?" or
-// "#". new URL() folds ".." and "." away, so the check has to read the raw text.
-function rawPathOf(rawUrl: string): string {
-	const rest = rawUrl.slice(rawUrl.indexOf("://") + 3)
-	const start = rest.search(/[/?#]/)
+// True when the URL parser did not change the string: no dropped tabs or
+// newlines, no backslash read as a slash, no folded dot segments, nothing
+// added. Scheme and host may differ in case only (the parser lowercases them),
+// and a fragment is never sent so it is ignored. Everything after the
+// authority must match exactly, so the text we judge is the text that is fetched.
+function isSerialized(rawUrl: string, url: URL): boolean {
+	const input = rawUrl.split("#", 1)[0]
+	const parsed = url.href.split("#", 1)[0]
+	const head = `https://${url.host}`
 
-	if (start === -1) {
-		return "/"
-	}
-
-	const path = rest.slice(start).split(/[?#]/, 1)[0]
-
-	return path === "" ? "/" : path
+	return input.slice(0, head.length).toLowerCase() === head && input.slice(head.length) === parsed.slice(head.length)
 }
 
 // Dot segments, empty segments, encoded dots or slashes, and backslashes (which
@@ -56,8 +54,13 @@ export function decide(method: string, rawUrl: string, policy: Policy): Decision
 		return refuse("a URL with credentials is not allowed")
 	}
 
+	if (!isSerialized(rawUrl, url)) {
+		return refuse("the request URL is not in its normal form")
+	}
+
 	const host = url.hostname.toLowerCase().replace(/\.$/, "")
-	const path = rawPathOf(rawUrl)
+	// Safe to use: the URL is in serialized form, so this is the path as sent.
+	const path = url.pathname
 	const verb = method.toUpperCase()
 
 	if (host === GATEWAY_HOST) {
