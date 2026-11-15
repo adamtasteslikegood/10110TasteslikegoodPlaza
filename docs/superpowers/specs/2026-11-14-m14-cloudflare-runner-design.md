@@ -152,7 +152,7 @@ Only ports 80 and 443 leave a container, and only through the handler. HTTPS onl
 
 | Destination | Allowed | Credential added by the Worker |
 |---|---|---|
-| The AI Gateway endpoint of this account | All methods | Gateway token |
+| The Anthropic route of this account's AI Gateway | All methods | Gateway token |
 | `github.com`, this workspace's repository only | Clone, fetch, push | Scoped GitHub token |
 | `registry.npmjs.org`, `pypi.org`, `files.pythonhosted.org` | GET only | None |
 | Per-workspace additions, set at create | GET only | None |
@@ -234,10 +234,9 @@ All in Adam's Cloudflare account, development only:
    in a git-ignored file. (**My call** for development; an Access application like the
    relay's is the stage 2 option.)
 
-The building session deploys and runs the §8 tests itself, using the admin credential
-in Adam's main checkout only for `wrangler` commands, as it did for the relay
-(**my call**). That credential is not given to the runner, the bridge or any in-game
-agent. Everything that can be proven under local `wrangler dev` is proven there first.
+The building session deploys and runs the §8 tests itself with wrangler's own login,
+as it did for the relay (**my call**). No account API token is given to the runner,
+the bridge or any in-game agent. Everything that can be proven under local `wrangler dev` is proven there first.
 Docker must be running for `wrangler deploy`.
 
 ## 8. Stage 1 acceptance

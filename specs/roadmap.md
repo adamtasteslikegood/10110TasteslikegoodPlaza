@@ -48,7 +48,7 @@ and its limits separately from the historical direct API proof below.
 | **M11** | Godot NPC conversation history, late responses, mouse window resizing and basic keyboard/scroll controls | Implemented and locally accepted by owner 2026-10-21 |
 | **M12** | Configured project/worktree bootstrap, native three-file memory and domain execution through clients | Complete; owner checklist, both local guard modes and clean shutdown accepted at dev `971ac2f` |
 | **M13** | Durable local user/project/domain application state in SQLite, with explicit restart semantics | In Progress; SQLite persistence design approved, implementation in progress; not shipped or accepted |
-| **M14** | Independent execution workspaces beyond M12's minimum | Planned; sequencing with M13 to be reviewed |
+| **M14** | Independent execution workspaces beyond M12's minimum | Planned; owner chose Cloudflare first on 2026-11-14 ([design](../docs/superpowers/specs/2026-11-14-m14-cloudflare-runner-design.md), stage 1 plan written, nothing built); sequencing with M13 to be reviewed |
 | **M15** | Authenticated hosted durable state; hosted provider remains unselected | Planned after M14 |
 
 The detailed scope and acceptance contract live in `BRIDGE-PLATFORM-DESIGN`;

@@ -28,8 +28,8 @@ name here disagrees with the installed 1.0.x types, the types win.
 - No credential inside the container: not in env, files, clone URL or arguments.
 - The container starts with Internet access off. HTTPS only; plain HTTP is refused.
 - No file under `bridge/` or `scripts/` changes. All code lives in `cloud-runner/`.
-- The admin Cloudflare credential is used only for `wrangler` commands from this
-  session. It is never written into the Worker, a file in the repo, or a prompt.
+- Deploys use wrangler's own login from this session. No account API token is written
+  into the Worker, a file in the repo, or a prompt.
 - Secrets are never printed. Local secret files live in `cloud-runner/.dev/` (git-ignored).
 - Worker name `plaza-cloud-runner-dev`; `workers_dev: true`; development only.
 - AI Gateway: the existing `my-cf-agent-gateway` (authenticated, spend limits of $10
@@ -43,7 +43,7 @@ name here disagrees with the installed 1.0.x types, the types win.
 
 ## Owner inputs needed before Task 7 (Tasks 1-6 need none)
 
-1. Docker running on this machine (`docker info` fails today).
+1. Docker running on this machine (running as of 2026-11-14, version 29.9.2).
 2. `npx wrangler login` done in `cloud-runner/`.
 3. A gateway token with Run permission for `my-cf-agent-gateway`, and an Anthropic
    provider key stored in that gateway (or Unified Billing credits on it).
@@ -72,6 +72,7 @@ name here disagrees with the installed 1.0.x types, the types win.
 | `cloud-runner/src/egress.ts` | Pure allow/refuse decision for one outbound request |
 | `cloud-runner/src/outbound.ts` | `Outbound` entrypoint: calls `decide`, adds credentials, fetches |
 | `cloud-runner/src/agent.ts` | Pure: Claude Code argv and env, result-event parsing |
+| `cloud-runner/src/runstate.ts` | Pure: what a start request and an observation do to the run state |
 | `cloud-runner/src/events.ts` | `EventLog` over the object's SQLite |
 | `cloud-runner/src/workspace.ts` | `Workspace` Durable Object: container, runs, alarm, push, snapshot |
 | `cloud-runner/test/*.test.ts` | One test file per source file above except `workspace.ts` |
@@ -148,7 +149,7 @@ it("validates the create body", ...)                    // http:// repo, gitlab.
 it("answers 400 for an empty prompt and 413 at 131072 bytes", ...) // 131071 passes
 ```
 
-- [ ] **Step 2:** Run `npm test` in `cloud-runner/`. Expected: FAIL, modules missing.
+- [ ] **Step 2:** Run `npm test` in `cloud-runner/`. Expected: FAIL, modules missing. If the vitest workers pool tries to build the container image from `wrangler.jsonc`, point `vitest.config.ts` at a `wrangler.test.jsonc` that has the Durable Object binding and no `containers` block.
 - [ ] **Step 3:** Implement `src/index.ts` (default export `fetch` that authorizes, parses, validates, and calls the method named for the action on `env.WORKSPACE.getByName(name)`; a stub `Workspace` class is enough for typecheck until Task 5).
 - [ ] **Step 4:** `npm test` and `npm run typecheck`. Expected: PASS.
 - [ ] **Step 5:** Commit `feat(cloud-runner): scaffold worker with caller auth and request validation`.
@@ -171,7 +172,9 @@ export function decide(method: string, url: URL, policy: Policy): Decision
 
 - Rules, in order: not `https:` -> refuse. Port other than 443 -> refuse. Host compared
   lowercase with a trailing dot removed.
-  `gateway.ai.cloudflare.com` and path equal to `gatewayPath` or under `gatewayPath + "/"` -> gateway.
+  `gateway.ai.cloudflare.com` and path under `gatewayPath + "/anthropic/"` -> gateway.
+  Other providers on the same gateway are refused: the gateway has Unified Billing on,
+  so a wider rule would let the container call any provider on Adam's account.
   `github.com` and normalised path equal to `repoPath`, `repoPath + ".git"`, or under
   either followed by `/` -> github. The path is rejected if it contains `..`, `//`, `%2e`
   or `%2f` in any case; the owner/repo comparison is exact-case.
@@ -202,8 +205,11 @@ export function decide(method: string, url: URL, policy: Policy): Decision
 ["GET",  "https://github.com/acme/app-other"]                // prefix only
 ["GET",  "https://github.com/acme/app/../other"]             // traversal (test the raw string, before URL normalises it, and "%2e%2e")
 ["GET",  "https://github.com/Acme/App"]                      // case
-["GET",  "https://gateway.ai.cloudflare.com/v1/acct/gw2/x"]  // other gateway
-["GET",  "https://gateway.ai.cloudflare.com/v1/other/gw/x"]  // other account
+["GET",  "https://gateway.ai.cloudflare.com/v1/acct/gw2/anthropic/x"]  // other gateway
+["POST", "https://gateway.ai.cloudflare.com/v1/acct/gw/openai/v1/chat/completions"] // other provider
+["POST", "https://gateway.ai.cloudflare.com/v1/acct/gw/anthropicx/v1/messages"]     // prefix only
+["GET",  "https://gateway.ai.cloudflare.com/v1/acct/gw"]                            // gateway root
+["GET",  "https://gateway.ai.cloudflare.com/v1/other/gw/anthropic/x"]  // other account
 ["POST", "https://registry.npmjs.org/zod"]                   // write to a registry
 ["POST", "https://example.org/x"]
 ["GET",  "https://api.github.com/user"]
@@ -218,7 +224,7 @@ export function decide(method: string, url: URL, policy: Policy): Decision
 ### Task 3: Claude Code command, env and result parsing
 
 **Files:**
-- Create: `cloud-runner/src/agent.ts`, `test/agent.test.ts`
+- Create: `cloud-runner/src/agent.ts`, `test/agent.test.ts`, `src/runstate.ts`, `test/runstate.test.ts`
 
 **Interfaces:**
 - Produces:
@@ -232,12 +238,22 @@ export function outcome(lines: Iterable<string>, exitCode: number, stderrTail: s
   { state: "succeeded"; result: string } | { state: "failed"; error: string }
 ```
 
+- In `runstate.ts`:
+
+```ts
+export type Observed = { containerRunning: boolean; pidAlive: boolean; exitCode?: number }
+// What the stored state really is, given what the container shows now.
+export function settle(stored: RunState, o: Observed): RunState   // "running" stays only if containerRunning && pidAlive && exitCode === undefined; with an exit code it is left "running" for the caller to finish; otherwise "lost". Other states pass through.
+export function admit(settled: RunState, hasWorkspace: boolean): "start" | "busy" | "missing"
+export function conversation(fresh: boolean, hasConversation: boolean, storedId: string | undefined, newId: string): { sessionId: string; resume: boolean }
+```
+
 - `agentArgv`: `claude --print --output-format stream-json --verbose --dangerously-skip-permissions --model <model> --max-turns <n>`, then `--session-id <id>` when `resume` is false or `--resume <id>` when true, then `--`, then the prompt. No `--no-session-persistence`.
 - `agentEnv`: exactly the guide's four variables, with the gateway URL built from the two ids. No other key.
 - `outcome`: the last line that parses as `{ type: "result", is_error, result?, subtype }` decides; none -> failed with `claude exited with <code>: <stderrTail>`.
 - Before writing, run the pinned CLI's `--help` in the built image once and confirm `--session-id`, `--resume` and `--max-turns` exist; if a name differs, use the CLI's and note it in the README.
 
-- [ ] **Step 1: Write failing tests**: argv for a first run and a resumed run (exact arrays); a prompt starting with `--` stays after `--`; `agentEnv` key set equals `["ANTHROPIC_API_KEY","ANTHROPIC_BASE_URL","CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC","IS_SANDBOX"]` and `ANTHROPIC_API_KEY === "provided-by-worker"`; `outcome` for success, `is_error: true`, and no result line.
+- [ ] **Step 1: Write failing tests**: `settle("running", { containerRunning: false, pidAlive: false })` is `"lost"`; `settle("running", { containerRunning: true, pidAlive: false })` is `"lost"`; with `exitCode: 0` it stays `"running"`; `settle("succeeded", ...)` is unchanged; `admit("running", true)` is `"busy"`, `admit("lost", true)` and `admit("idle", true)` are `"start"`, `admit("none", false)` is `"missing"`; `conversation(false, true, "a", "b")` is `{ sessionId: "a", resume: true }`, and `fresh: true`, `hasConversation: false` or a missing stored id each give `{ sessionId: "b", resume: false }`. Also: argv for a first run and a resumed run (exact arrays); a prompt starting with `--` stays after `--`; `agentEnv` key set equals `["ANTHROPIC_API_KEY","ANTHROPIC_BASE_URL","CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC","IS_SANDBOX"]` and `ANTHROPIC_API_KEY === "provided-by-worker"`; `outcome` for success, `is_error: true`, and no result line.
 - [ ] **Step 2:** Run, expect FAIL. **Step 3:** Implement. **Step 4:** Run, expect PASS.
 - [ ] **Step 5:** Commit `feat(cloud-runner): build the claude code command and read its result`.
 
@@ -275,7 +291,7 @@ export class EventLog {
 - Modify: `cloud-runner/src/index.ts` (export `Workspace` and `Outbound`)
 
 **Interfaces:**
-- Consumes: `agentArgv`, `agentEnv`, `outcome`, `parseLine` (Task 3); `EventLog` (Task 4); `Outbound` with props `{ repoPath, allow }` (Task 2).
+- Consumes: `agentArgv`, `agentEnv`, `outcome`, `parseLine`, `settle`, `admit`, `conversation` (Task 3); `EventLog` (Task 4); `Outbound` with props `{ repoPath, allow }` (Task 2).
 - Produces RPC methods on `Workspace extends DurableObject<Env>`:
 
 ```ts
@@ -293,10 +309,10 @@ destroyWorkspace(): Promise<void>
   - Stored facts (object storage): `repo`, `branch`, `allow`, `run`, `generation`, `sessionId`, `hasConversation`, `state`, `result`, `error`, `pushed`, `pushError`, `snapshot`, `restored`, `eventsOffset`.
   - `create` clones with `--branch <branch>` and full history (no `--depth`), then sets `user.name "Plaza cloud agent"` and `user.email "plaza-cloud-agent@users.noreply.github.com"` in the clone. Calling `create` again with the same repo and branch is a no-op that returns status; with a different repo or branch it returns `"conflict"`, which the router answers as 409.
   - `startRun`: `fresh` or no conversation yet -> new `crypto.randomUUID()` and `resume: false`; otherwise resume the stored id. Increments `run`. Appends a `runner` event `{ notice: "run started", run }`.
-  - `ingest()`: reads `stdout.log` from `eventsOffset`, appends one event per complete line through `EventLog`, advances the offset. Called by `events()`, by the alarm, and once more when a run is seen to have ended.
+  - `ingest()`: reads `stdout.log` from `eventsOffset` with a ranged read (a `Files` read with an offset if the installed types have one, otherwise `tail -c +<offset+1>` through exec; never the whole file each time), appends one event per complete line through `EventLog`, advances the offset. Called by `events()`, by the alarm, and once more when a run is seen to have ended.
   - When the alarm or `status()` sees the run ended: `ingest()`, compute `outcome`, store it, then call `finishRun()` (Task 6; a no-op until then).
   - `stop()`: sends TERM to the task's process group, waits up to 10 s for the exit code, then KILL; state `stopped`; appends a `runner` event.
-  - A stored `running` state with no running container, or a dead pid with no exit code, becomes `lost`, and `startRun` is then accepted.
+  - Every state read goes through `settle`, and `startRun` decides with `admit` and `conversation`; the object holds no copy of those rules.
   - `diff()`: the guide's command.
   - `destroyWorkspace()`: `container.destroy()`, delete the stored snapshot if the API offers a delete (Task 6), `EventLog.clear()`, `ctx.storage.deleteAll()`.
 
@@ -334,15 +350,15 @@ Needs the four owner inputs above.
 
 - [ ] **Step 1:** Put the three secrets with `npx wrangler secret put` (the caller secret is 32 random bytes, hex, also saved to `cloud-runner/.dev/caller.env`). Deploy with `npx wrangler deploy -c wrangler.dev.jsonc`. Expected: a `workers.dev` URL.
 - [ ] **Step 2:** Write `acceptance.mjs` with these checks, numbered as spec §8:
-  1. Prompt "Add a file NOTES.md with one sentence about this repository and commit it." ends `succeeded`; events contain a `result` event; `pushed.commit` is set and `git ls-remote` shows it on the branch.
+  1. Prompt "Add a file NOTES.md with one sentence about this repository and commit it." ends `succeeded`; events contain a `result` event and a tool-use event that wrote `NOTES.md` (assert on the events, not the final prose); `pushed.commit` is set and `git ls-remote` shows it on the branch.
   2. During a run, read events twice with the same `after`; the two answers have the same `seq` list prefix; reading with `after = next` never repeats a `seq`.
-  3. Prompt "Run: curl -sS -o /dev/null -w '%{http_code}' https://example.com ; then run: git push https://github.com/octocat/Hello-World HEAD:refs/heads/x ; report both outputs exactly." The result text contains `403` and the push is reported refused.
-  4. Prompt "Run: env ; cat .git/config ; ls -la ~ ; report the outputs exactly." The script asserts none of the three secret values, nor any string matching `ghp_`, `github_pat_` or `sk-ant-`, appears in the events.
-  5. Start runs in workspaces a and b within one second; both reach `succeeded`; a prompt in b that lists `/workspace` does not show a file a created.
+  3. Through the test-only `exec` route (Step 3), with no model involved: an HTTPS GET to `https://example.com` answers 403; `git push https://github.com/octocat/Hello-World HEAD:refs/heads/x` fails; `git ls-remote origin` succeeds. Use `git` or `node -e` for the GET if the image has no `curl`.
+  4. Through `exec`: the output of `env`, `cat .git/config`, `cat ~/.gitconfig 2>/dev/null` and `ls -la ~ /workspace` contains none of the three secret values and nothing matching `ghp_`, `github_pat_` or `sk-ant-`. The same scan is run over every event of check 1.
+  5. Start runs in workspaces a and b within one second; both reach `succeeded`. Through `exec`, a file created in a's `/workspace` is absent from b's.
   6. In a: prompt "Create scratch.txt containing 42 and do not commit it. Remember the word heliotrope." When that run has ended, call the test-only `replace-instance` route from Step 3 (not `DELETE`). Then prompt "What word did I ask you to remember, and what is in scratch.txt?" Record: `restored`, whether `42` is reported, whether `heliotrope` is reported. The check passes when the file survives; the conversation result is recorded either way.
-  7. Start a long prompt, `stop` after 20 s, status is `stopped`, and a following run answers 202.
+  7. Start a long prompt, `stop` after 20 s, status is `stopped`, and a following run answers 202. Then start another long prompt, call `replace-instance` mid-run: status is `lost`, and a following run answers 202.
   8. Not automated: read the ten-minute and idle-hour cost from the Cloudflare dashboard and the gateway's log, and write the numbers into `spike-c.md`.
-- [ ] **Step 3:** Add the test-only route check 6 needs: `POST /workspaces/:name/replace-instance`, enabled only when `vars.ALLOW_REPLACE_INSTANCE === "1"` (set in `wrangler.dev.jsonc`, absent from `wrangler.jsonc`), which destroys the container and leaves storage alone. Add its test to `test/index.test.ts` (404 when the var is unset).
+- [ ] **Step 3:** Add two test-only routes, enabled only when `vars.ALLOW_TEST_ROUTES === "1"` (set in `wrangler.dev.jsonc`, absent from `wrangler.jsonc`): `POST /workspaces/:name/replace-instance`, which destroys the container and leaves storage alone; and `POST /workspaces/:name/exec` with body `{ argv: string[] }`, which runs that command in the clone with the trust env and answers `{ exitCode, stdout, stderr }`. Add tests to `test/index.test.ts`: both answer 404 when the var is unset. The README says these routes exist only on the development deploy and why.
 - [ ] **Step 4:** Run `node scripts/acceptance.mjs <url>`. Fix what fails in the runner; a check that fails because of a platform limit is recorded as such, not hidden.
 - [ ] **Step 5:** Write `spike-c.md`: date, deployed version, the script's output, the answers to the roadmap's four unverified questions (Claude Code in a sandbox, the login path used, resume after replacement, cost), and anything that surprised. Write `README.md`: parts, routes, deploy and redeploy steps, where secrets live, how to delete a workspace, the "Local check" notes.
 - [ ] **Step 6:** `python3 scripts/validate_specs.py`. Expected: `Spec validation passed`.
