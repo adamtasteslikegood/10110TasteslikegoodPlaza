@@ -410,6 +410,10 @@
       "reason": "Static source review of an external Workers/DO/React Router chat example at a pinned commit; non-authoritative research only, no product decision or implementation approval."
     },
     {
+      "path": "docs/research/cloudflare-durable-objects/spike-c.md",
+      "reason": "Evidence from the M14 stage 1 development deploy of cloud-runner (acceptance output, login path, resume, cost); research only, no product decision or implementation approval."
+    },
+    {
       "path": "docs/superpowers/specs/2026-10-25-m13-memory-store-extraction-design.md",
       "reason": "Owner-approved bounded #373 extraction design, derived from existing M12 replay/admission behavior; approval authorizes this extraction, not new persistence or provider decisions."
     },

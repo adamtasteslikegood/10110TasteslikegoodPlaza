@@ -152,19 +152,97 @@ reach the intercept under wrangler dev: the clone of the workspace's own
 repository passed, another repository was refused, and only the workspace
 that allowed `example.com` could reach it. No fallback was needed.
 
-## To verify on the deploy
+## The development deploy
 
-Task 7 checks these on the development deploy. `wrangler dev --local` cannot
-show most of them; the 409 is checked here too, but the deploy must answer it
-as well:
+Up since 2026-11-15: Worker `plaza-cloud-runner-dev` at
+`https://plaza-cloud-runner-dev.adamschoen3.workers.dev`, with test routes on.
+Evidence and the acceptance output are in
+[spike-c.md](../docs/research/cloudflare-durable-objects/spike-c.md).
 
-- With Internet off, raw TCP, DNS and ports other than 80/443 do not leave the
-  container.
-- The detached task survives an object restart or a redeploy, and its exit code
-  is still written.
-- A run longer than the 15-minute idle timeout stays alive.
+### Parts
+
+- The Worker (`src/index.ts`): bearer check, routes, and the `Outbound`
+  entrypoint that adds credentials to the container's HTTP(S).
+- The `Workspace` Durable Object (SQLite storage), one per workspace name.
+- The container application `plaza-cloud-runner-dev-workspace`, image from
+  `Dockerfile`, one `standard-1` instance per workspace, Internet off.
+- AI Gateway `my-cf-agent-gateway` (not managed here: its BYOK key and
+  settings belong to the owner).
+
+### Routes
+
+All need `Authorization: Bearer <RUNNER_CALLER_SECRET>`.
+
+| Route | Does |
+|---|---|
+| `PUT /workspaces/:name` `{repo, branch, allow?}` | create (clone) or confirm the workspace |
+| `GET /workspaces/:name` | status |
+| `POST /workspaces/:name/runs` `{prompt, fresh?, maxTurns?}` | start a run, 202 `{run}`; 409 while one is active |
+| `GET /workspaces/:name/events?after=N` | events after `seq` N, and `next` |
+| `POST /workspaces/:name/stop` | stop the run |
+| `GET /workspaces/:name/diff` | `git diff` of the clone, new files included |
+| `DELETE /workspaces/:name` | destroy the container and forget the workspace (204) |
+| `POST /workspaces/:name/replace-instance`, `POST /workspaces/:name/exec` | test-only, see above |
+
+### Where the secrets live
+
+- Worker secrets `AI_GATEWAY_TOKEN`, `GITHUB_TOKEN` and `RUNNER_CALLER_SECRET`, on Cloudflare only.
+- Locally, in the owner's checkout and git-ignored: `.dev/deploy.env` (the two tokens) and `.dev/caller.env`
+  (the caller secret, 32 random bytes in hex). Both are mode 600.
+- `wrangler.dev.jsonc` (git-ignored) is `wrangler.jsonc` plus `AI_GATEWAY_ACCOUNT_ID` and `ALLOW_TEST_ROUTES: "1"`.
+
+### Deploy or redeploy
+
+From `cloud-runner/`, logged in with `npx wrangler login`, with Docker running:
+
+```sh
+# once, or to rotate a secret (each read from stdin, never from argv)
+set -a; . .dev/deploy.env; . .dev/caller.env; set +a
+printf %s "$AI_GATEWAY_TOKEN" | npx wrangler secret put AI_GATEWAY_TOKEN -c wrangler.dev.jsonc
+printf %s "$GITHUB_TOKEN" | npx wrangler secret put GITHUB_TOKEN -c wrangler.dev.jsonc
+printf %s "$RUNNER_CALLER_SECRET" | npx wrangler secret put RUNNER_CALLER_SECRET -c wrangler.dev.jsonc
+
+npx wrangler deploy -c wrangler.dev.jsonc --dry-run
+systemd-run --user --scope -q -p MemoryMax=10G -p MemorySwapMax=0 -- npx wrangler deploy -c wrangler.dev.jsonc
+```
+
+If `docker login` to `registry.cloudflare.com` fails because the configured
+credential store does not work, run the deploy with a throwaway
+`DOCKER_CONFIG` holding `{}` (and `DOCKER_HOST` set to the daemon's socket if
+a Docker context was in use), then delete that directory: it ends up holding
+the registry login in plain text. A redeploy with an unchanged image skips the
+push and does not disturb a running task (spike C, check d).
+
+Acceptance, against the deploy (pushes go to the test branch only; the script refuses `main` and `master`):
+
+```sh
+set -a; . .dev/deploy.env; . .dev/caller.env; set +a
+TEST_REPO=https://github.com/OWNER/REPO TEST_BRANCH=cloud-runner/acceptance \
+  node scripts/acceptance.mjs https://plaza-cloud-runner-dev.adamschoen3.workers.dev
+```
+
+### Delete a workspace
+
+`DELETE /workspaces/:name` destroys its container and forgets its storage. It answers 204, and a GET then answers
+`state: "none"`. Its snapshots stay in the registry until they expire (30 days). Check that no instance is left with
+`npx wrangler containers list` (the `LIVE INSTANCES` column).
+
+### Remove the deploy
+
+`npx wrangler delete -c wrangler.dev.jsonc` removes the Worker and its Durable Objects. Its help does not say it removes
+the container application, so check `npx wrangler containers list` afterwards and remove
+`plaza-cloud-runner-dev-workspace` with `npx wrangler containers delete <ID>` if it is still there. The images and snapshots in `registry.cloudflare.com` are listed by `npx wrangler containers images list`;
+remove the image with `npx wrangler containers images delete`. The snapshots expire on their own. Only the owner removes
+the deploy.
+
+### Results of the former "to verify on the deploy" list
+
+- With Internet off, raw TCP (22, 25, 53, 8080) and UDP other than DNS do not leave the container. DNS is answered by
+  a local platform stub with one synthetic address, whatever the destination or name.
+- The detached task survived a Worker redeploy mid-run, and its exit code was written.
 - A second start during a run answers 409.
-- Two containers can run at once (`wrangler.jsonc` sets no instance limit).
+- Two containers ran at once.
+- A run longer than the 15-minute idle timeout was **not exercised**; the longest run was about 160 s.
 
 ## Known gaps to close before stage 2
 
@@ -181,7 +259,10 @@ From the whole-branch review and its re-review (2026-11-15). None blocks the dev
 - **A timed-out exec may keep running in the container**, and `diff` can leave its temp index lock behind.
 - **PID 1 is `sleep infinity`**, which never reaps finished processes. Add an init such as tini; this also closes
   process-group id reuse within one boot.
-- **The first PUT after an image build answered 500 once** under `wrangler dev`. Watch for it on the deploy.
+- **The first PUT after an image build answered 500 once** under `wrangler dev`. It did not recur on the deploy
+  (every first PUT answered 200), but the cause, an exec before the new instance was running, is not fixed.
+- **A run longer than the 15-minute idle timeout** has not been tried on the deploy.
+- **`--max-turns` is a hidden flag** of Claude Code 2.1.308. It works today; a later version could drop it without notice.
 - **Older AI Gateway header names** without the `cf-aig-` prefix (for example `cf-skip-cache`) are not stripped.
   Check the gateway documentation and strip them if the gateway still honours them.
 - **Any ref of the workspace repository can be pushed or deleted** with the token. Branch rules on GitHub are the control.
