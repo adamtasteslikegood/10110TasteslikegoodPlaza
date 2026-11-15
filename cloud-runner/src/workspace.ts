@@ -1,34 +1,508 @@
+import { Files } from "@cloudflare/sandbox"
 import { DurableObject } from "cloudflare:workers"
-import type { Env } from "./types"
+import { agentArgv, agentEnv, outcome, parseLine } from "./agent"
+import {
+	chunkScript,
+	completeLines,
+	diffScript,
+	eventsPath,
+	exitCodePath,
+	leadingType,
+	lineEvent,
+	longLineScript,
+	pidPath,
+	readLines,
+	readOptionalText,
+	repositoryDirectory,
+	run,
+	runBytes,
+	signalScript,
+	stderrPath,
+	tail,
+	taskDirectory,
+	taskRunningScript,
+	taskScript,
+	trustEnv,
+} from "./container"
+import { EventLog } from "./events"
+import type { OutboundProps } from "./outbound"
+import { admit, conversation, settle, type Observed } from "./runstate"
+import type { Env, Event, RunState, Status } from "./types"
 
-// Stub: Task 5 fills in the container, runs, alarm, push and snapshot. The
-// method names are the ones the router in index.ts calls.
+const inactivityTimeout = 15 * 60 * 1000
+const runCheckInterval = 60 * 1000
+const stopWait = 10 * 1000
+const chunkBytes = 4 * 1024 * 1024
+const recordKey = "workspace"
+const gitEnv = { ...trustEnv, HOME: "/root" }
+
+// Everything the object keeps between requests: one small record, read with one get.
+type Record_ = {
+	repo?: string
+	branch?: string
+	allow: string[]
+	run: number
+	generation: number
+	sessionId?: string
+	hasConversation: boolean
+	resumed?: boolean // the current run resumes sessionId
+	state: RunState
+	result?: string
+	error?: string
+	pushed?: { commit: string }
+	pushError?: string
+	snapshot?: string
+	restored?: "snapshot" | "branch"
+	uncommittedLost?: boolean
+	eventsOffset: number // bytes of stdout.log already in the event log
+}
+
+const blank = (): Record_ => ({ allow: [], run: 0, generation: 0, hasConversation: false, state: "none", eventsOffset: 0 })
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
 export class Workspace extends DurableObject<Env> {
-	async create(_repo: string, _branch: string, _allow: string[]): Promise<unknown> {
-		throw new Error("not implemented")
+	private eventLog: EventLog
+	private ready = false // intercepts and idle timeout are set on the running container
+	private queue: Promise<unknown> = Promise.resolve()
+
+	constructor(ctx: DurableObjectState, env: Env) {
+		super(ctx, env)
+		this.eventLog = new EventLog(ctx.storage.sql)
+
+		const container = ctx.container
+
+		if (container?.running) {
+			void ctx.blockConcurrencyWhile(() => container.setInactivityTimeout(inactivityTimeout))
+		}
 	}
 
-	async status(): Promise<unknown> {
-		throw new Error("not implemented")
+	create(repo: string, branch: string, allow: string[]): Promise<{ status: Status; cloneError?: string } | "conflict"> {
+		return this.exclusive(async () => {
+			const record = await this.refresh()
+
+			if (record.repo !== undefined) {
+				return record.repo === repo && record.branch === branch ? { status: statusOf(record) } : "conflict"
+			}
+
+			await this.ensureStarted(record)
+			await this.intercept({ repoPath: new URL(repo).pathname, allow })
+			const cloned = await this.clone(repo, branch)
+
+			if (cloned !== undefined) {
+				await this.intercept({ repoPath: "", allow: [] })
+				return { status: statusOf(record), cloneError: cloned }
+			}
+
+			Object.assign(record, { repo, branch, allow, state: "idle", hasConversation: false })
+			this.save(record)
+			return { status: statusOf(record) }
+		})
 	}
 
-	async startRun(_prompt: string, _fresh: boolean, _maxTurns: number): Promise<unknown> {
-		throw new Error("not implemented")
+	status(): Promise<Status> {
+		return this.exclusive(async () => statusOf(await this.refresh()))
 	}
 
-	async events(_after: number): Promise<unknown> {
-		throw new Error("not implemented")
+	startRun(prompt: string, fresh: boolean, maxTurns: number): Promise<{ run: number } | "busy" | "missing"> {
+		return this.exclusive(async () => {
+			const record = await this.refresh()
+			const decision = admit(record.state, record.repo !== undefined)
+
+			if (decision !== "start") {
+				return decision
+			}
+
+			// Starting a new instance clones again and forgets the conversation.
+			await this.ensureStarted(record)
+			const { sessionId, resume } = conversation(fresh, record.hasConversation, record.sessionId, crypto.randomUUID())
+
+			await this.files.remove(taskDirectory, { recursive: true, force: true })
+			await this.files.mkdir(taskDirectory, { recursive: true })
+			await this.container.exec(
+				[
+					"/bin/sh",
+					"-c",
+					taskScript,
+					"agent",
+					taskDirectory,
+					...agentArgv({ prompt, model: this.env.MODEL, maxTurns, sessionId, resume }),
+				],
+				{
+					cwd: repositoryDirectory,
+					env: { ...gitEnv, ...agentEnv(this.env.AI_GATEWAY_ACCOUNT_ID, this.env.AI_GATEWAY_ID) },
+					stdout: "ignore",
+					stderr: "ignore",
+				},
+			)
+
+			record.run += 1
+			Object.assign(record, { state: "running", sessionId, resumed: resume, eventsOffset: 0, result: undefined, error: undefined })
+			this.save(record)
+			this.note(record, { notice: "run started", run: record.run })
+			await this.ctx.storage.setAlarm(Date.now() + runCheckInterval)
+			return { run: record.run }
+		})
 	}
 
-	async stop(): Promise<unknown> {
-		throw new Error("not implemented")
+	events(after: number): Promise<{ events: Event[]; next: number } | "missing"> {
+		return this.exclusive(async () => {
+			const record = await this.refresh()
+
+			if (record.repo === undefined) {
+				return "missing"
+			}
+
+			if (record.state === "running") {
+				await this.ingest(record)
+			}
+
+			return this.eventLog.readAfter(after)
+		})
 	}
 
-	async diff(): Promise<unknown> {
-		throw new Error("not implemented")
+	stop(): Promise<Status | "missing"> {
+		return this.exclusive(async () => {
+			const record = await this.refresh()
+
+			if (record.repo === undefined) {
+				return "missing"
+			}
+
+			if (record.state !== "running") {
+				return statusOf(record)
+			}
+
+			// refresh() saw the container running, or the run would be lost.
+			if (!(await this.signalUntilExit("TERM"))) {
+				await this.signalUntilExit("KILL")
+			}
+
+			await this.ingest(record)
+			record.state = "stopped"
+			if (record.resumed) record.hasConversation = true
+			this.save(record)
+			this.note(record, { notice: "run stopped", run: record.run })
+			return statusOf(record)
+		})
 	}
 
-	async destroyWorkspace(): Promise<unknown> {
-		throw new Error("not implemented")
+	diff(): Promise<{ ok: boolean; text: string } | "missing"> {
+		return this.exclusive(async () => {
+			const record = await this.refresh()
+
+			if (record.repo === undefined) {
+				return "missing"
+			}
+
+			await this.ensureStarted(record)
+			const diff = await run(this.container, ["/bin/sh", "-c", diffScript], repositoryDirectory, {})
+			return diff.exitCode === 0 ? { ok: true, text: diff.stdout } : { ok: false, text: tail(diff.stderr) }
+		})
+	}
+
+	destroyWorkspace(): Promise<void> {
+		return this.exclusive(async () => {
+			if (this.ctx.container?.running) {
+				await this.ctx.container.destroy()
+			}
+
+			this.eventLog.clear()
+			await this.ctx.storage.deleteAlarm()
+			await this.ctx.storage.deleteAll()
+			// deleteAll() drops the events table too.
+			this.eventLog = new EventLog(this.ctx.storage.sql)
+			this.ready = false
+		})
+	}
+
+	async alarm(): Promise<void> {
+		await this.exclusive(async () => {
+			const record = await this.refresh()
+
+			if (record.state !== "running") {
+				return
+			}
+
+			await this.ingest(record)
+			await this.ctx.storage.setAlarm(Date.now() + runCheckInterval)
+		})
+	}
+
+	// Task 6: push the branch and snapshot the workspace after a run.
+	private async finishRun(): Promise<void> {}
+
+	private get container(): Container {
+		const container = this.ctx.container
+
+		if (!container) {
+			throw new Error("No container is configured")
+		}
+
+		return container
+	}
+
+	private get files(): Files {
+		return new Files(this.container)
+	}
+
+	// One public method or alarm at a time. A clone can outlast
+	// blockConcurrencyWhile, so this is a promise chain instead.
+	private exclusive<T>(work: () => Promise<T>): Promise<T> {
+		const result = this.queue.then(work, work)
+		this.queue = result.catch(() => undefined)
+		return result
+	}
+
+	private load(): Record_ {
+		return this.ctx.storage.kv.get<Record_>(recordKey) ?? blank()
+	}
+
+	private save(record: Record_): void {
+		this.ctx.storage.kv.put(recordKey, record)
+	}
+
+	private note(record: Record_, payload: unknown): void {
+		this.eventLog.append(record.run, record.generation, "runner", payload)
+	}
+
+	// The stored record, with a running run settled against what the container
+	// shows. Never starts a container.
+	private async refresh(): Promise<Record_> {
+		const record = this.load()
+
+		// After this object restarts, a running container needs its intercepts again.
+		if (this.ctx.container?.running && !this.ready) {
+			await this.setUp(record)
+		}
+
+		if (record.state !== "running") {
+			return record
+		}
+
+		const observed = await this.observe()
+		const settled = settle(record.state, observed)
+
+		if (settled === "lost") {
+			record.state = "lost"
+			record.error = "The container stopped before the run ended"
+			this.save(record)
+			this.note(record, { notice: "run lost", run: record.run })
+		} else if (observed.exitCode !== undefined) {
+			await this.finish(record, observed.exitCode)
+		}
+
+		return record
+	}
+
+	private async observe(): Promise<Observed> {
+		if (!this.ctx.container?.running) {
+			return { containerRunning: false, pidAlive: false }
+		}
+
+		const exitCode = await this.readExitCode()
+
+		if (exitCode !== undefined) {
+			return { containerRunning: true, pidAlive: false, exitCode }
+		}
+
+		if ((await readOptionalText(this.files, pidPath)) === undefined) {
+			// The task writes its process ID right after it starts.
+			return { containerRunning: true, pidAlive: true }
+		}
+
+		const probe = await run(this.container, ["/bin/sh", "-c", taskRunningScript, "probe", pidPath], "/", {})
+
+		if (probe.exitCode === 0) {
+			return { containerRunning: true, pidAlive: true }
+		}
+
+		// The task can finish after the first read, so read the exit code again.
+		return { containerRunning: true, pidAlive: false, exitCode: await this.readExitCode() }
+	}
+
+	private async readExitCode(): Promise<number | undefined> {
+		const text = await readOptionalText(this.files, exitCodePath)
+		return text === undefined ? undefined : Number.parseInt(text, 10)
+	}
+
+	private async finish(record: Record_, exitCode: number): Promise<void> {
+		await this.ingest(record)
+
+		const results: string[] = []
+		for await (const line of readLines((await this.files.readFile(eventsPath)).body)) {
+			if (parseLine(line)?.type === "result") results.push(line)
+		}
+
+		const stderr = await run(this.container, ["tail", "-c", "2000", stderrPath], "/", {})
+		const ended = outcome(results, exitCode, stderr.stdout)
+
+		record.state = ended.state
+		record.result = ended.state === "succeeded" ? ended.result : undefined
+		record.error = ended.state === "failed" ? ended.error : undefined
+		// Claude Code keeps a session once it has answered, or when it was resumed.
+		if (record.resumed || results.length > 0) record.hasConversation = true
+		this.save(record)
+		this.note(record, { notice: "run ended", run: record.run, state: record.state })
+		await this.finishRun()
+	}
+
+	// Adds the complete lines of stdout.log past eventsOffset to the event log.
+	private async ingest(record: Record_): Promise<void> {
+		if (!this.ctx.container?.running) {
+			return
+		}
+
+		for (;;) {
+			const from = String(record.eventsOffset + 1)
+			const chunk = await runBytes(this.container, ["/bin/sh", "-c", chunkScript, "ingest", from, eventsPath, String(chunkBytes)])
+			const { lines, consumed } = completeLines(chunk)
+
+			if (consumed === 0) {
+				if (chunk.byteLength < chunkBytes) {
+					return // nothing new, or a line still being written
+				}
+
+				// One line longer than a whole chunk: skip it, keeping its type and size.
+				const probe = await run(this.container, ["/bin/sh", "-c", longLineScript, "line", from, eventsPath], "/", {})
+				const [bytes, ended] = probe.stdout.trim().split(/\s+/).map(Number)
+
+				if (ended !== 1) {
+					return
+				}
+
+				const type = leadingType(new TextDecoder().decode(chunk.subarray(0, 256)))
+				this.eventLog.append(record.run, record.generation, type, { truncated: true, bytes: bytes - 1 })
+				record.eventsOffset += bytes
+				this.save(record)
+				continue
+			}
+
+			// No await from here to save(): the events and the offset are stored together.
+			for (const line of lines) {
+				const event = lineEvent(line, parseLine)
+				if (event) this.eventLog.append(record.run, record.generation, event.type, event.payload)
+			}
+
+			record.eventsOffset += consumed
+			this.save(record)
+
+			if (chunk.byteLength < chunkBytes) {
+				return
+			}
+		}
+	}
+
+	// TERM or KILL to the run's process group, then up to stopWait for its exit code.
+	private async signalUntilExit(signal: "TERM" | "KILL"): Promise<boolean> {
+		await run(this.container, ["/bin/sh", "-c", signalScript, "signal", pidPath, signal], "/", {})
+
+		for (let waited = 0; waited < stopWait; waited += 500) {
+			if ((await this.readExitCode()) !== undefined) {
+				return true
+			}
+
+			await sleep(500)
+		}
+
+		return false
+	}
+
+	// Makes sure a container runs with this object's intercepts and idle timeout.
+	private async ensureStarted(record: Record_): Promise<void> {
+		if (this.ctx.container?.running) {
+			if (!this.ready) {
+				await this.setUp(record)
+			}
+
+			return
+		}
+
+		await this.startInstance(record)
+	}
+
+	private async startInstance(record: Record_): Promise<void> {
+		if (record.state === "running") {
+			record.state = "lost"
+			record.error = "The container stopped before the run ended"
+			this.note(record, { notice: "run lost", run: record.run })
+		}
+
+		record.generation += 1
+		this.save(record)
+		this.container.start({ image: this.container.images.agent, instance: "standard-1", enableInternet: false })
+		await this.setUp(record)
+
+		if (record.repo !== undefined && record.branch !== undefined) {
+			const cloned = await this.clone(record.repo, record.branch)
+
+			if (cloned !== undefined) {
+				// The next request starts another instance and clones again.
+				await this.container.destroy()
+				this.ready = false
+				throw new Error(`Clone failed on a new instance: ${cloned}`)
+			}
+
+			record.hasConversation = false
+			this.save(record)
+		}
+	}
+
+	private async setUp(record: Record_): Promise<void> {
+		this.ready = false
+
+		try {
+			await this.intercept(record.repo === undefined ? { repoPath: "", allow: [] } : { repoPath: new URL(record.repo).pathname, allow: record.allow })
+			await this.container.setInactivityTimeout(inactivityTimeout)
+		} catch (error) {
+			// The next request starts a new container.
+			await this.container.destroy()
+			throw error
+		}
+
+		this.ready = true
+	}
+
+	// Registering again replaces the handler, so this also changes the policy.
+	private async intercept(props: OutboundProps): Promise<void> {
+		const outbound = this.ctx.exports.Outbound({ props })
+		await this.container.interceptAllOutboundHttp(outbound)
+		await this.container.interceptOutboundHttps("*", outbound)
+	}
+
+	// undefined on success, else the end of git's stderr. A failed clone leaves no directory.
+	private async clone(repo: string, branch: string): Promise<string | undefined> {
+		await this.files.remove(repositoryDirectory, { recursive: true, force: true })
+		const cloned = await run(this.container, ["git", "clone", "--branch", branch, "--", repo, repositoryDirectory], "/workspace", gitEnv)
+
+		if (cloned.exitCode !== 0) {
+			await this.files.remove(repositoryDirectory, { recursive: true, force: true })
+			return tail(cloned.stderr) || `git clone exited with ${cloned.exitCode}`
+		}
+
+		for (const [key, value] of [
+			["user.name", "Plaza cloud agent"],
+			["user.email", "plaza-cloud-agent@users.noreply.github.com"],
+		]) {
+			await run(this.container, ["git", "config", key, value], repositoryDirectory, gitEnv)
+		}
+
+		return undefined
+	}
+}
+
+function statusOf(record: Record_): Status {
+	return {
+		state: record.repo === undefined ? "none" : record.state,
+		run: record.run,
+		generation: record.generation,
+		repo: record.repo,
+		branch: record.branch,
+		result: record.result,
+		error: record.error,
+		pushed: record.pushed,
+		pushError: record.pushError,
+		restored: record.restored,
+		uncommittedLost: record.uncommittedLost,
 	}
 }

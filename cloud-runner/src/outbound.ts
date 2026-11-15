@@ -14,7 +14,14 @@ export function withCredential(request: Request, credential: Credential, env: En
 		// The gateway caches responses for 300 s; a run must never get another's.
 		headers.set("cf-aig-skip-cache", "true")
 	} else if (credential === "github") {
-		headers.set("Authorization", `Basic ${btoa(`x-access-token:${env.GITHUB_TOKEN}`)}`)
+		// The Worker owns this header for github: a value from the container is
+		// never passed on. With no token (local runs on a public repository) the
+		// request goes out with no credential at all.
+		headers.delete("Authorization")
+
+		if (env.GITHUB_TOKEN !== "") {
+			headers.set("Authorization", `Basic ${btoa(`x-access-token:${env.GITHUB_TOKEN}`)}`)
+		}
 	}
 
 	// Never follow a redirect here: the Worker would not re-decide it and would

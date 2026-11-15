@@ -1,97 +1,11 @@
-import { z } from "zod"
+import { CreateBody, MAX_BODY_BYTES, MAX_PROMPT_BYTES, RunBody, authorized, parseRoute } from "./router"
 import type { Env } from "./types"
 
 export { Workspace } from "./workspace"
 export { Outbound } from "./outbound"
 export type { Env } from "./types"
 
-const workspaceName = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/
-
-// Linux rejects a command argument of 128 KiB or more, including its NUL byte.
-export const MAX_PROMPT_BYTES = 128 * 1024 - 1
-
-// A JSON body carries a prompt of up to MAX_PROMPT_BYTES, which JSON escaping
-// can grow to six times that ("\u0001"). Anything over this is refused unread.
-const MAX_BODY_BYTES = 1024 * 1024
-
-export type Action = "create" | "status" | "run" | "events" | "stop" | "diff" | "delete"
-export type Route = { name: string; action: Action }
-
-const methods: Record<string, Partial<Record<string, Action>>> = {
-	"": { PUT: "create", GET: "status", DELETE: "delete" },
-	runs: { POST: "run" },
-	events: { GET: "events" },
-	stop: { POST: "stop" },
-	diff: { GET: "diff" },
-}
-
-export function parseRoute(method: string, pathname: string): Route | { error: 404 | 405 | 400 } {
-	const match = /^\/workspaces\/([^/]+)(?:\/(runs|events|stop|diff))?$/.exec(pathname)
-
-	if (!match) {
-		return { error: 404 }
-	}
-
-	const [, name, resource = ""] = match
-
-	if (!workspaceName.test(name)) {
-		return { error: 400 }
-	}
-
-	const action = methods[resource][method]
-
-	return action === undefined ? { error: 405 } : { name, action }
-}
-
-// Compares in time that depends on the longer input only, not on where the
-// first difference is. An empty secret never matches.
-function sameBytes(left: string, right: string): boolean {
-	const encoder = new TextEncoder()
-	const a = encoder.encode(left)
-	const b = encoder.encode(right)
-	let difference = a.length ^ b.length
-
-	for (let i = 0; i < Math.max(a.length, b.length); i++) {
-		difference |= (a[i] ?? 0) ^ (b[i] ?? 0)
-	}
-
-	return difference === 0
-}
-
-export function authorized(request: Request, secret: string): boolean {
-	if (secret === "") {
-		return false
-	}
-
-	const match = /^Bearer (.*)$/i.exec(request.headers.get("authorization") ?? "")
-
-	return match !== null && sameBytes(match[1], secret) && match[1] !== ""
-}
-
-const hostname = z
-	.string()
-	.max(253)
-	.regex(/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*$/i)
-	.transform((host) => host.toLowerCase())
-
-export const CreateBody = z.object({
-	// https://github.com/<owner>/<repo>: no .git, no query, no trailing path.
-	repo: z
-		.string()
-		.regex(/^https:\/\/github\.com\/[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})\/[A-Za-z0-9._-]{1,100}$/)
-		.refine((repo) => !repo.endsWith(".git") && !/\/\.{1,2}$/.test(repo)),
-	branch: z.string().min(1).max(200).regex(/^[A-Za-z0-9._/][A-Za-z0-9._/-]*$/),
-	allow: z.array(hostname).max(20).default([]),
-})
-
-export const RunBody = z.object({
-	prompt: z
-		.string()
-		.refine((prompt) => prompt.trim() !== "")
-		.refine((prompt) => new TextEncoder().encode(prompt).byteLength <= MAX_PROMPT_BYTES),
-	fresh: z.boolean().default(false),
-	maxTurns: z.number().int().min(1).max(100).default(20),
-})
+const missing = "No such workspace: create it with PUT first"
 
 const text = (body: string, status: number) => new Response(`${body}\n`, { status, headers: { "content-type": "text/plain" } })
 
@@ -159,7 +73,17 @@ export default {
 						return text('Send {"repo": "https://github.com/OWNER/REPO", "branch": "BRANCH", "allow": ["host"]}', 400)
 					}
 
-					return Response.json(await workspace.create(body.data.repo, body.data.branch, body.data.allow))
+					const created = await workspace.create(body.data.repo, body.data.branch, body.data.allow)
+
+					if (created === "conflict") {
+						return text("The workspace exists with another repo or branch", 409)
+					}
+
+					if (created.cloneError !== undefined) {
+						return Response.json({ ...created.status, cloneError: created.cloneError }, { status: 502 })
+					}
+
+					return Response.json(created.status)
 				}
 
 				case "run": {
@@ -181,7 +105,17 @@ export default {
 						return text('Send {"prompt": "...", "fresh": false, "maxTurns": 20}, with maxTurns from 1 to 100', 400)
 					}
 
-					return Response.json(await workspace.startRun(body.data.prompt, body.data.fresh, body.data.maxTurns), { status: 202 })
+					const started = await workspace.startRun(body.data.prompt, body.data.fresh, body.data.maxTurns)
+
+					if (started === "busy") {
+						return text("A run is already active", 409)
+					}
+
+					if (started === "missing") {
+						return text(missing, 404)
+					}
+
+					return Response.json(started, { status: 202 })
 				}
 
 				case "events": {
@@ -191,17 +125,29 @@ export default {
 						return text("after must be a non-negative integer", 400)
 					}
 
-					return Response.json(await workspace.events(after))
+					const events = await workspace.events(after)
+
+					return events === "missing" ? text(missing, 404) : Response.json(events)
 				}
 
 				case "status":
 					return Response.json(await workspace.status())
 
-				case "stop":
-					return Response.json(await workspace.stop())
+				case "stop": {
+					const status = await workspace.stop()
 
-				case "diff":
-					return new Response(String(await workspace.diff()), { headers: { "content-type": "text/plain" } })
+					return status === "missing" ? text(missing, 404) : Response.json(status)
+				}
+
+				case "diff": {
+					const diff = await workspace.diff()
+
+					if (diff === "missing") {
+						return text(missing, 404)
+					}
+
+					return new Response(diff.text, { status: diff.ok ? 200 : 502, headers: { "content-type": "text/plain" } })
+				}
 
 				case "delete":
 					await workspace.destroyWorkspace()

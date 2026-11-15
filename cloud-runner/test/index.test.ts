@@ -1,24 +1,28 @@
 import { describe, expect, it } from "vitest"
-import worker, { CreateBody, RunBody, authorized, parseRoute } from "../src/index"
+import worker from "../src/index"
+import { CreateBody, RunBody, authorized, parseRoute } from "../src/router"
 import type { Env } from "../src/types"
 
 const SECRET = "s3cret-value"
 
 type Call = { method: string; args: unknown[] }
 
-// A fake namespace: records which Workspace method the router called.
-function fakeEnv(calls: Call[] = []): Env {
-  const record = (method: string, result: unknown) => async (...args: unknown[]) => {
+type Results = Partial<Record<"create" | "status" | "startRun" | "events" | "stop" | "diff" | "destroyWorkspace", unknown>>
+
+// A fake namespace: records which Workspace method the router called, and
+// answers with `results` where given.
+function fakeEnv(calls: Call[] = [], results: Results = {}): Env {
+  const record = (method: keyof Results, result: unknown) => async (...args: unknown[]) => {
     calls.push({ method, args })
-    return result
+    return method in results ? results[method] : result
   }
   const stub = {
-    create: record("create", { state: "idle", run: 0, generation: 1 }),
+    create: record("create", { status: { state: "idle", run: 0, generation: 1 } }),
     status: record("status", { state: "none", run: 0, generation: 0 }),
     startRun: record("startRun", { run: 1 }),
     events: record("events", { events: [], next: 0 }),
     stop: record("stop", { state: "stopped", run: 1, generation: 1 }),
-    diff: record("diff", "diff text"),
+    diff: record("diff", { ok: true, text: "diff text" }),
     destroyWorkspace: record("destroyWorkspace", undefined),
   }
   return {
@@ -40,7 +44,7 @@ function req(method: string, path: string, opts: { body?: unknown; raw?: string;
   return new Request(`https://runner.example${path}`, { method, headers, body })
 }
 
-const call = (r: Request, calls: Call[] = []) => worker.fetch(r, fakeEnv(calls))
+const call = (r: Request, calls: Call[] = [], results: Results = {}) => worker.fetch(r, fakeEnv(calls, results))
 
 describe("authorized", () => {
   it("accepts only the exact bearer value", () => {
@@ -254,5 +258,60 @@ describe("routing to Workspace methods", () => {
     const res = await call(req("GET", "/workspaces/a/diff"))
     expect(res.headers.get("content-type")).toContain("text/plain")
     expect(await res.text()).toBe("diff text")
+  })
+})
+
+describe("Workspace answers", () => {
+  const good = { repo: "https://github.com/owner/repo", branch: "main" }
+  const status = { state: "idle", run: 0, generation: 1, repo: good.repo, branch: good.branch }
+
+  it("create: 200 with the Status, 409 on conflict, 502 with cloneError when the clone fails", async () => {
+    const ok = await call(req("PUT", "/workspaces/a", { body: good }), [], { create: { status } })
+    expect(ok.status).toBe(200)
+    expect(await ok.json()).toEqual(status)
+
+    expect((await call(req("PUT", "/workspaces/a", { body: good }), [], { create: "conflict" })).status).toBe(409)
+
+    const none = { state: "none", run: 0, generation: 1 }
+    const failed = await call(req("PUT", "/workspaces/a", { body: good }), [], { create: { status: none, cloneError: "fatal: not found" } })
+    expect(failed.status).toBe(502)
+    expect(await failed.json()).toEqual({ ...none, cloneError: "fatal: not found" })
+  })
+
+  it("run: 202 with the run number, 409 when busy, 404 when the workspace is missing", async () => {
+    const run = (result: unknown) => call(req("POST", "/workspaces/a/runs", { body: { prompt: "hi" } }), [], { startRun: result })
+    const started = await run({ run: 3 })
+    expect(started.status).toBe(202)
+    expect(await started.json()).toEqual({ run: 3 })
+    expect((await run("busy")).status).toBe(409)
+    expect((await run("missing")).status).toBe(404)
+  })
+
+  it("status of a workspace never created: 200 with state none", async () => {
+    const res = await call(req("GET", "/workspaces/a"), [], { status: { state: "none", run: 0, generation: 0 } })
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ state: "none", run: 0, generation: 0 })
+  })
+
+  it("events, stop and diff of a workspace never created: 404", async () => {
+    expect((await call(req("GET", "/workspaces/a/events?after=0"), [], { events: "missing" })).status).toBe(404)
+    expect((await call(req("POST", "/workspaces/a/stop"), [], { stop: "missing" })).status).toBe(404)
+    expect((await call(req("GET", "/workspaces/a/diff"), [], { diff: "missing" })).status).toBe(404)
+  })
+
+  it("diff: 502 with the error text when git fails", async () => {
+    const res = await call(req("GET", "/workspaces/a/diff"), [], { diff: { ok: false, text: "fatal: not a git repository" } })
+    expect(res.status).toBe(502)
+    expect(res.headers.get("content-type")).toContain("text/plain")
+    expect(await res.text()).toBe("fatal: not a git repository")
+  })
+
+  it("an error thrown by the Workspace answers 500", async () => {
+    const env = fakeEnv()
+    const stub = env.WORKSPACE.getByName("a") as unknown as { status: () => Promise<unknown> }
+    stub.status = async () => {
+      throw new Error("boom")
+    }
+    expect((await worker.fetch(req("GET", "/workspaces/a"), env)).status).toBe(500)
   })
 })

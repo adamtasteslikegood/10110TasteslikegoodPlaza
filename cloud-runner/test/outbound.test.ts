@@ -34,6 +34,13 @@ describe("withCredential", () => {
 		expect(out.headers.get("cf-aig-skip-cache")).toBeNull()
 	})
 
+	it("github: an empty token adds no Authorization and drops the container's", () => {
+		const out = withCredential(request({ authorization: "Bearer forged" }), "github", { ...env, GITHUB_TOKEN: "" })
+
+		expect(out.headers.get("authorization")).toBeNull()
+		expect(out.headers.get("cf-aig-authorization")).toBeNull()
+	})
+
 	it.each(["gateway", "github", "none"] as const)("%s: never follows a redirect", (credential) => {
 		expect(withCredential(request(), credential, env).redirect).toBe("manual")
 		expect(withCredential(new Request("https://example.test/x", { redirect: "follow" }), credential, env).redirect).toBe("manual")
