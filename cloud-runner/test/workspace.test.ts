@@ -690,4 +690,22 @@ describe("Workspace task files the agent broke (F1)", () => {
 		expect((await stored(stub)).state).toBe("failed")
 		expect(await alarmAt(stub)).toBeNull()
 	})
+
+	it("ends an overdue run on the alarm when only the stdout.log read keeps failing", async () => {
+		const { stub, fake } = await started()
+		expect((await stub.status()).state).toBe("running")
+		fake.broken.add("readOutput")
+
+		expect(await runDurableObjectAlarm(stub)).toBe(true)
+		expect((await stored(stub)).state).toBe("running") // logged and re-armed
+		expect(await alarmAt(stub)).not.toBeNull()
+
+		await edit(stub, (record) => {
+			record.startedAt = Date.now() - MAX_RUN_MS - 1
+		})
+		expect(await runDurableObjectAlarm(stub)).toBe(true)
+		expect(await stored(stub)).toMatchObject({ state: "failed", error: MAX_RUN_ERROR })
+		expect(fake.count("push work")).toBe(0)
+		expect(await alarmAt(stub)).toBeNull()
+	})
 })

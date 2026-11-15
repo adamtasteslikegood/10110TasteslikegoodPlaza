@@ -340,9 +340,10 @@ the stale snapshot after a lost run (b5df279), `finish()` leaving the task's gro
 - **A process-group id can be reused within one boot** after the group dies, so a late KILL could hit an unrelated
   group. The chance is low.
 - **A broken task file ends the run untrusted, and its work is lost.** A probe that throws (the agent made a log, the
-  pid file or the exit code file a directory or a FIFO) ends the run `failed`, KILLs the stored group and replaces the
-  instance with no push or snapshot. A failure of the `stdout.log` read alone, during `events()` or the alarm's
-  ingest, is not routed there: `events()` answers 500 and the alarm logs it and re-arms.
+  pid file or the exit code file a directory or a FIFO) ends the run `failed` (`stopped` when it happens inside a
+  stop), KILLs the stored group and replaces the instance with no push or snapshot. A failure of the `stdout.log`
+  read alone, during `events()` or the alarm's ingest, is not routed there: `events()` answers 500 and the alarm logs
+  it and re-arms, until the 60-minute cap ends the run.
 - **The Copilot fixes are not on the deploy yet** (see "The development deploy"); their evidence is the local check.
 
 ### Notes on the evidence itself (from the last review, 2026-11-15)
