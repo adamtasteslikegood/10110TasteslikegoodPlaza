@@ -61,6 +61,12 @@ const pushRefused = (reason: string) => new Response(`github.com refused this pu
 // New head bytes between two checks (F2): checkPush parses from offset 0, so a
 // check per chunk is quadratic for a body sent in tiny chunks.
 const CHECK_STEP_BYTES = 4 * 1024
+// Checks on a head that ends in a flush-pkt ("0000"), where a command list
+// ends (R4). Capped, so a body of many flushes cannot make it quadratic again.
+const MAX_FLUSH_CHECKS = 16
+
+const endsInFlush = (head: Uint8Array, filled: number) =>
+	filled >= 4 && head[filled - 4] === 0x30 && head[filled - 3] === 0x30 && head[filled - 2] === 0x30 && head[filled - 1] === 0x30
 
 // Reads a git-receive-pack body only as far as its command list and asks
 // checkPush whether every ref it updates is the workspace branch (Copilot C11).
@@ -68,7 +74,9 @@ const CHECK_STEP_BYTES = 4 * 1024
 // uncopied, to send on unchanged; and a copy of at most MAX_COMMAND_BYTES of
 // their start, which is all the parser sees (Copilot E5). The copy is one
 // buffer filled in place, checked once per CHECK_STEP_BYTES of new bytes, when
-// it is full and at the end of the body (F2). checkPush decides by the time
+// it is full and at the end of the body (F2), and when it ends in a flush-pkt,
+// up to MAX_FLUSH_CHECKS times, so a command list is decided before the pack
+// that follows it arrives (R4). checkPush decides by the time
 // the copy is full, so reading stops there. Allowed, the request goes
 // on with the held chunks, then the rest of the stream as it arrives. Refused,
 // nothing is fetched and the container gets 403. `check` is a seam for tests.
@@ -94,6 +102,7 @@ export async function inspectPush(request: Request, branch: string, check: typeo
 	let filled = 0
 	let checked = 0 // filled at the last check
 	let ended = false
+	let flushChecks = 0
 	let verdict = check(head.subarray(0, 0), branch, ended)
 
 	while (verdict === "more") {
@@ -114,7 +123,10 @@ export async function inspectPush(request: Request, branch: string, check: typeo
 			filled += taken.length
 		}
 
-		if (ended || filled >= MAX_COMMAND_BYTES || filled - checked >= CHECK_STEP_BYTES) {
+		const flush = filled > checked && flushChecks < MAX_FLUSH_CHECKS && endsInFlush(head, filled)
+
+		if (ended || filled >= MAX_COMMAND_BYTES || filled - checked >= CHECK_STEP_BYTES || flush) {
+			if (flush) flushChecks += 1
 			checked = filled
 			verdict = check(head.subarray(0, filled), branch, ended)
 		}

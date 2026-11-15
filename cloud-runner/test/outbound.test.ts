@@ -292,6 +292,40 @@ describe("inspectPush", () => {
 			expect(seen.length).toBeLessThanOrEqual(Math.ceil(data.length / 4096) + 2)
 		})
 
+		// R4: git sends the command list, then the pack. A list that ends in a
+		// flush-pkt is decided then, not after 4 KiB more of the pack.
+		it("decides a command list that arrives as its own chunk, ending in a flush, before any pack byte", async () => {
+			const commands = encoder.encode(pkt(`${A} ${B} refs/heads/work\0report-status agent=git/2`) + "0000")
+			const pack = encoder.encode("PACK" + "p".repeat(300))
+			let release = () => {}
+			const packHeld = new Promise<void>((resolve) => (release = resolve))
+			let step = 0
+			const stream = new ReadableStream<Uint8Array>({
+				async pull(controller) {
+					step += 1
+					if (step === 1) return controller.enqueue(commands)
+					if (step === 2) {
+						await packHeld
+						return controller.enqueue(pack)
+					}
+					controller.close()
+				},
+			})
+			const { seen, check } = watched()
+			let timer: ReturnType<typeof setTimeout> | null = null
+			const timeout = new Promise<"timed out">((resolve) => (timer = setTimeout(() => resolve("timed out"), 2000)))
+
+			const out = await Promise.race([inspectPush(post(stream), "work", check), timeout])
+			clearTimeout(timer)
+			release()
+			expect(out).toBeInstanceOf(Request)
+			expect(seen).toContain(commands.length)
+			const data = new Uint8Array(commands.length + pack.length)
+			data.set(commands)
+			data.set(pack, commands.length)
+			expect(await forwarded(out as Request)).toEqual(data)
+		})
+
 		it("allows a command list whose flush lands just under the cap, read in odd-sized chunks", async () => {
 			const first = pkt(`${A} ${B} refs/heads/work\0report-status agent=git/2`)
 			const line = pkt(`${B} ${A} refs/heads/work`)
