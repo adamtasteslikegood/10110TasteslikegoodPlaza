@@ -28,13 +28,18 @@ spec-set versions, and no application release existed before `v0.1.22`.
   restore probe) runs as the agent, so a hook or diff driver the agent plants
   never runs as root.
 - A snapshot taken from an image with another layout is not restored; the next
-  instance clones the branch. Workspaces from before this change start that way.
+  instance clones the branch. A workspace from before this change is meant to
+  start that way; see the deploy note below for what was seen.
 - The test-only `exec` route runs as the agent; `"root": true` asks for root.
 - New `npm run test:container` runs the runner's commands in a container built
   from the Dockerfile (needs Docker). CI's `Cloud Runner` job runs it.
 - Deployed to the development Worker on 2026-11-15. The acceptance suite and
   the redeploy check ran on it; the results are in
-  `docs/research/cloudflare-durable-objects/spike-c.md` (logs 8 to 10).
+  `docs/research/cloudflare-durable-objects/spike-c.md` (logs 8 to 11). A
+  snapshot with no layout mark was refused there. The one workspace taken
+  across the redeploy was not: the old code still answered it for a short
+  while after the deploy and restored its old snapshot (`cloud-runner/README.md`,
+  known gaps).
 
 ### Fixed — real domain sessions start again: fresh tool-guard evidence (PLZG-309)
 

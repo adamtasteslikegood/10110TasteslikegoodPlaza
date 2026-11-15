@@ -405,11 +405,36 @@ agent user in the image (root: true): 200 exit 0 out "uid=1001(agent) gid=1001(a
 DELETE probe-311a: 204; then GET 200 {"state":"none","run":0,"generation":0}
 ```
 
-So the refusal of a snapshot from the earlier image is still not shown on the deploy, and the old image is gone,
-so this cannot be repeated as it was. What it did show is in Surprises: the old code can answer after the deploy
-returns.
+So no snapshot really built from the earlier image was refused on the deploy, and the old image is gone, so this
+cannot be repeated as it was. What it did show is in Surprises: the old code can answer after the deploy returns.
 
-After all three, `git ls-remote <repo> refs/heads/main` still gave `80f5ccb8968eacd2f6d68740e1990d2076671c10`, and
+**Log 11, `nomark-311.log`: a snapshot with no layout mark is refused** (version b2ecfa8e). A stand-in for log 10,
+by another one-off script: in a new workspace the layout mark was removed as root, which is how a snapshot from the
+earlier image looks to the check, and an uncommitted file was written as the agent. A one-word run saved a snapshot,
+`replace-instance` dropped the instance, and a diff (no model call) started the next one. The new code refused the
+snapshot and cloned the branch: `restored: "branch"`, `uncommittedLost: true`, an empty diff, and a `snapshotError`
+in the `instance started` event. The new instance has the mark again.
+
+```
+2026-11-15T23:56:39.076Z
+PUT nomark-311a: 200 {"state":"idle","run":0,"generation":1,"repo":"https://github.com/adamtasteslikegood/ArtazZen-recipes-TanStack-showcase","branch":"cloud-runner/acceptance"}
+id -u (no root flag): 200 exit 0 out "1001" err ""
+layout mark before (root): 200 exit 0 out "2" err ""
+uncommitted file, as the agent: 200 exit 0 out "-rw-r--r-- 1 agent agent 24 Nov 15 23:56 nomark.txt" err ""
+remove the mark (root): 200 exit 0 out "" err ""
+POST runs: 202 {"run":1}
+run ended: {"state":"succeeded","generation":1}
+runner notices: run started, run ended, pushed, snapshot saved
+replace-instance: 200
+GET diff (starts a new instance): 200, 0 bytes, names nomark.txt: false
+status: {"state":"succeeded","generation":2,"restored":"branch","uncommittedLost":true}
+event: {"notice":"instance started","generation":2,"from":"branch","snapshotError":"The snapshot's image layout is none, not \"2\": it is from another version of the image"}
+layout mark in the new instance (root): 200 exit 0 out "2" err ""
+id -u in the new instance (no root flag): 200 exit 0 out "1001" err ""
+DELETE nomark-311a: 204; then GET 200 {"state":"none","run":0,"generation":0}
+```
+
+After all four, `git ls-remote <repo> refs/heads/main` still gave `80f5ccb8968eacd2f6d68740e1990d2076671c10`, and
 `refs/heads/cloud-runner/acceptance` was at check 1's commit, `0c3c7d2e9c39a8c4b3fa14199282395e3b14408f`.
 
 ### Owed: does a query name leave the platform?
@@ -468,8 +493,8 @@ write about 4–17k tokens of system prompt to the cache (about 1–5 cents for 
 reads it back costs about 0.2–0.5 cents.
 
 The runs of 2026-11-15 with the non-root agent (logs 8 and 9) reported about **$0.075** more: 0.0507 and 0.0108
-for the two acceptance sessions and 0.0135 for the redeploy run. Check 7's runs and the two one-word runs of log 10
-are not in that figure.
+for the two acceptance sessions and 0.0135 for the redeploy run. Check 7's runs, the two one-word runs of log 10
+and the one of log 11 are not in that figure.
 
 None of this measures design §8 item 8, a ten-minute run and an idle hour (see the table: NOT MEASURED).
 
