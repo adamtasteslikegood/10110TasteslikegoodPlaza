@@ -245,12 +245,27 @@ async function main() {
 			note(`raw TCP 1.1.1.1:${port}: ${tcp.stdout.trim()}`)
 			if (tcp.stdout.includes("connected")) throw new Error(`raw TCP to 1.1.1.1:${port} connected`)
 		}
+		// The platform answers every UDP/53 query in the container with a local
+		// stub (one synthetic address for any name, from any destination). A real
+		// resolver would answer differently from an unroutable TEST-NET address
+		// and would say NXDOMAIN for a .invalid name.
+		const dns = (server, host) =>
+			nodeIn(
+				A,
+				`const r=new (require('dns').promises.Resolver)({timeout:3000,tries:1});r.setServers(['${server}']);r.resolve4('${host}').then(a=>console.log('answered',a.join(',')),e=>console.log('error',e.code))`,
+			).then((r) => r.stdout.trim())
+		const viaPublic = await dns("1.1.1.1", "example.com")
+		const viaTestNet = await dns("192.0.2.1", "example.com")
+		const invalid = await dns("1.1.1.1", `nx-${id}.example.invalid`)
+		note(`UDP DNS example.com via 1.1.1.1: ${viaPublic}; via 192.0.2.1 (TEST-NET): ${viaTestNet}; nx-${id}.example.invalid via 1.1.1.1: ${invalid}`)
+		if (invalid.includes("ENOTFOUND")) throw new Error("a .invalid name got NXDOMAIN: a real resolver answered over UDP")
+		if (viaPublic !== viaTestNet) throw new Error("1.1.1.1 and an unroutable address answered differently: UDP/53 reached a real resolver")
 		const udp = await nodeIn(
 			A,
-			"const r=new (require('dns').promises.Resolver)({timeout:3000,tries:1});r.setServers(['1.1.1.1']);r.resolve4('example.com').then(a=>console.log('answered',a.length),e=>console.log('error',e.code))",
+			"const s=require('dgram').createSocket('udp4');const b=Buffer.alloc(48);b[0]=0x1b;s.on('message',m=>{console.log('reply',m.length);s.close()});s.send(b,123,'162.159.200.1');setTimeout(()=>{console.log('no reply');s.close()},3000)",
 		)
-		note(`UDP DNS to 1.1.1.1: ${udp.stdout.trim()}`)
-		if (udp.stdout.includes("answered")) throw new Error("a DNS query over UDP to 1.1.1.1 was answered")
+		note(`UDP NTP to 162.159.200.1:123: ${udp.stdout.trim()}`)
+		if (udp.stdout.includes("reply ")) throw new Error("a UDP NTP query to 162.159.200.1 got a reply")
 		const lookup = await nodeIn(A, "require('dns').lookup('example.com',(e,a)=>console.log(e?'error '+e.code:'resolved '+a))")
 		note(`system resolver for example.com: ${lookup.stdout.trim()}`)
 	})
@@ -341,7 +356,8 @@ async function cleanup() {
 			const deleted = await api("DELETE", `/workspaces/${name}`)
 			const after = await api("GET", `/workspaces/${name}`)
 			note(`DELETE ${name}: ${deleted.status}; then GET ${after.status} ${after.text.trim().slice(0, 120)}`)
-			if (deleted.status !== 200 && deleted.status !== 404) throw new Error(`DELETE answered ${deleted.status}`)
+			if (![200, 204, 404].includes(deleted.status)) throw new Error(`DELETE answered ${deleted.status}`)
+			if (after.json?.state !== "none") throw new Error(`after DELETE the state is ${after.json?.state}, not none`)
 		} catch (error) {
 			failed += 1
 			say(`FAIL cleanup ${name}: ${error instanceof Error ? error.message : error}`)
