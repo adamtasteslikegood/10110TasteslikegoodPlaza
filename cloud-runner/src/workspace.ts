@@ -27,7 +27,6 @@ const inactivityTimeout = 15 * 60 * 1000
 const runCheckInterval = 60 * 1000
 const chunkBytes = 4 * 1024 * 1024
 const recordKey = "workspace"
-// What the record keeps of a result event too large to store.
 
 // Everything the object keeps between requests: one small record, read with one get.
 type Record_ = {
