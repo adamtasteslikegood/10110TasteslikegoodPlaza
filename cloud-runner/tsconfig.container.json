@@ -1,0 +1,9 @@
+{
+  // The container tests run under Node (vitest.container.config.ts), not in the
+  // Workers runtime, so they are checked apart from src and test, with Node's types.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["@cloudflare/workers-types", "node"]
+  },
+  "include": ["test-container", "vitest.container.config.ts", "src/env.d.ts"]
+}

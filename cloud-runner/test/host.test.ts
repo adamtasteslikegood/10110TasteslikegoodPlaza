@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { TASK_FILE_REFUSED } from "../src/container"
+import { agentHome, asAgent, repositoryDirectory, resetTaskCommand, TASK_FILE_REFUSED, taskDirectory } from "../src/container"
 import { ContainerHost, parseExitCode, probeFailure, readFailure, TaskFileError } from "../src/host"
 
 // G2: only the probe scripts' own refusal code, and only the listed file-level
@@ -87,5 +87,67 @@ describe("exit-code file (G6)", () => {
 	// readOptionalText answers undefined for ENOENT; that stays "no exit code yet".
 	it("reads no exit code while the file does not exist", () => {
 		expect(parseExitCode(undefined)).toBeUndefined()
+	})
+})
+
+// PLZG-311: the agent is not root, and the clone's config, hooks and drivers are
+// the agent's to write. The container tests (test-container/) show what these
+// commands do in a real container; here, which user each is sent as.
+describe("who runs what (PLZG-311)", () => {
+	type Sent = { command: string[]; cwd?: string; env?: Record<string, string>; user?: string }
+	const agentPrefix = asAgent([])
+
+	// A container that records every exec and answers it with exit 0 and this stdout.
+	const recording = (stdout = "") => {
+		const sent: Sent[] = []
+		const container = {
+			running: true,
+			exec: async (command: string[], options: { cwd?: string; env?: Record<string, string>; user?: string }) => {
+				sent.push({ command, cwd: options.cwd, env: options.env, user: options.user })
+				return { output: async () => ({ exitCode: 0, stdout: new TextEncoder().encode(stdout), stderr: new Uint8Array() }) }
+			},
+		} as unknown as Container
+		return { sent, host: new ContainerHost(container, () => ({}) as Fetcher) }
+	}
+
+	const asTheAgent = (sent: Sent) => agentPrefix.every((part, i) => sent.command[i] === part)
+
+	it("sends every command of a clone, push, diff and test exec in the clone as the agent, with the agent's home", async () => {
+		const { sent, host } = recording("abc\n")
+		await host.clone("https://github.com/o/r", "main")
+		await host.push("main")
+		await host.diff()
+		await host.exec(["git", "status"])
+
+		const inClone = sent.filter((s) => s.cwd === repositoryDirectory || s.command.includes("git"))
+		expect(inClone.length).toBeGreaterThanOrEqual(6)
+		for (const s of inClone) {
+			expect(asTheAgent(s), s.command.join(" ")).toBe(true)
+			expect(s.env?.HOME ?? agentHome, s.command.join(" ")).toBe(agentHome)
+			expect(s.user).toBeUndefined()
+		}
+	})
+
+	it("starts the task's leader as root and only the agent's command as the agent", async () => {
+		const { sent, host } = recording()
+		await host.startTask(["claude", "--print"], { HOME: agentHome })
+		const [launch] = sent
+		expect(launch.command.slice(0, 2)).toEqual(["/bin/sh", "-c"])
+		expect(launch.command.slice(-(agentPrefix.length + 2))).toEqual([...agentPrefix, "claude", "--print"])
+		expect(launch.command).toContain(taskDirectory)
+	})
+
+	it("makes the task directory as root, for root alone", async () => {
+		const { sent, host } = recording()
+		await host.resetTask()
+		expect(sent.map((s) => s.command)).toEqual([resetTaskCommand])
+		expect(resetTaskCommand.slice(-2)).toEqual(["root", "700"])
+	})
+
+	it("runs a test exec as root, with root's home, only when asked", async () => {
+		const { sent, host } = recording()
+		await host.exec(["id"], true)
+		expect(sent[0].command).toEqual(["id"])
+		expect(sent[0].env?.HOME).toBe("/root")
 	})
 })

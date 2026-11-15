@@ -211,10 +211,10 @@ export default {
 					const body = ExecBody.safeParse(read.value)
 
 					if (!body.success) {
-						return text('Send {"argv": ["command", "arg"]}', 400)
+						return text('Send {"argv": ["command", "arg"], "root"?: boolean}', 400)
 					}
 
-					const result = await workspace.exec(body.data.argv)
+					const result = await workspace.exec(body.data.argv, body.data.root)
 					return result === "missing" ? text(missing, 404) : Response.json(result)
 				}
 			}

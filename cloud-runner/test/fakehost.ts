@@ -210,8 +210,8 @@ export class FakeHost implements Host {
 		return true
 	}
 
-	async exec(argv: string[]): Promise<CommandResult> {
-		this.calls.push(`exec ${argv.join(" ")}`)
+	async exec(argv: string[], root = false): Promise<CommandResult> {
+		this.calls.push(`exec ${root ? "as root " : ""}${argv.join(" ")}`)
 		return this.execResult
 	}
 

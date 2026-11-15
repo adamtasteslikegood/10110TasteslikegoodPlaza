@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { parseLine } from "../src/agent"
-import { capDiff, capOutput, MAX_EXEC_OUTPUT_BYTES, completeLines, diffCutLine, leadingType, lineEvent, MAX_DIFF_BYTES, parseTask, run, runBytes } from "../src/container"
+import { asAgent, capDiff, capOutput, MAX_EXEC_OUTPUT_BYTES, completeLines, diffCutLine, leadingType, lineEvent, MAX_DIFF_BYTES, parseTask, run, runBytes } from "../src/container"
 import { MAX_PAYLOAD_BYTES } from "../src/events"
 
 const bytes = (text: string) => new TextEncoder().encode(text)
@@ -95,6 +95,12 @@ describe("exec timeouts", () => {
 	it("names a shell script by its $0", async () => {
 		const { container } = hung()
 		await expect(runBytes(container, ["/bin/sh", "-c", "tail", "ingest"], "/", {}, 20)).rejects.toThrow("sh ingest timed out")
+	})
+
+	it("names a command run as the agent without the setpriv prefix (PLZG-311)", async () => {
+		const { container } = hung()
+		await expect(run(container, asAgent(["git", "push", "origin"]), "/", {}, 20)).rejects.toThrow("git push timed out")
+		await expect(runBytes(container, asAgent(["/bin/sh", "-c", "git diff", "diff"]), "/", {}, 20)).rejects.toThrow("sh diff timed out")
 	})
 
 	it("passes a signal to every exec", async () => {

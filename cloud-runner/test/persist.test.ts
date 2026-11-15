@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
-import { abandonedPushError, abandonSnapshot, afterAbandon, afterPush, afterSnapshot, MAX_SNAPSHOT_ATTEMPTS, pushErrorText, startFromImage, within } from "../src/persist"
+import { imageLayout, layoutPath } from "../src/container"
+import { abandonedPushError, abandonSnapshot, afterAbandon, afterPush, afterSnapshot, MAX_SNAPSHOT_ATTEMPTS, pushErrorText, startFromImage, startFromSnapshot, within } from "../src/persist"
 
 // Fixtures with userinfo are assembled from parts, so no line of this file looks like a
 // credential in a URL to a secret scanner. Nothing here is a real credential.
@@ -141,5 +142,47 @@ describe("startFromImage (Copilot C9)", () => {
 		const { container, seen } = booting(100)
 		await expect(startFromImage(container, { attempts: 5, delayMs: 1 })).rejects.toThrow("The new instance did not answer after 5 attempts: container is not running")
 		expect(seen).toEqual({ starts: 1, execs: 5, destroyed: true })
+	})
+})
+
+// PLZG-311: a snapshot holds a whole root filesystem. One from an image with
+// another layout (before the agent user: no mark at all) must not be restored.
+describe("startFromSnapshot", () => {
+	const bytes = (text: string) => new TextEncoder().encode(text)
+	// A container restored from a snapshot whose layout mark reads `mark`.
+	const restored = (mark: string | undefined) => {
+		const seen = { started: [] as unknown[], destroyed: false, commands: [] as string[][] }
+		const container = {
+			get running() {
+				return seen.started.length > 0 && !seen.destroyed
+			},
+			start: (options: unknown) => {
+				seen.started.push(options)
+			},
+			destroy: async () => {
+				seen.destroyed = true
+			},
+			exec: async (command: string[]) => {
+				seen.commands.push(command)
+				const readsMark = command.includes(layoutPath)
+				const exitCode = readsMark && mark === undefined ? 1 : 0
+				return { output: async () => ({ exitCode, stdout: bytes(readsMark ? `${mark}\n` : ".git\n"), stderr: bytes(readsMark ? "No such file" : "") }) }
+			},
+		} as unknown as Container
+		return { container, seen }
+	}
+
+	it("keeps an instance whose layout mark is this image's and that holds the clone", async () => {
+		const { container, seen } = restored(imageLayout)
+		expect(await startFromSnapshot(container, "snap-1")).toBeUndefined()
+		expect(seen.destroyed).toBe(false)
+		expect(seen.started).toEqual([{ containerSnapshot: { id: "snap-1" }, instance: "standard-1", enableInternet: false }])
+	})
+
+	it.each([undefined, "1", ""])("destroys an instance whose layout mark is %j and says why", async (mark) => {
+		const { container, seen } = restored(mark)
+		expect(await startFromSnapshot(container, "snap-1")).toMatch(/layout/)
+		expect(seen.destroyed).toBe(true)
+		expect(seen.commands.some((command) => command.includes("git"))).toBe(false)
 	})
 })

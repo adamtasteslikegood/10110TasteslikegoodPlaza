@@ -113,7 +113,10 @@ export const MAX_EXEC_ARGS = 64
 
 // The test-only exec route's body: a command and its arguments, run with no shell
 // unless argv names one. Bounded like a prompt: no NUL, under 128 KiB in all.
+// It runs as the agent user; root: true runs it as root, to look at what the
+// agent cannot (the task directory, another user's processes).
 export const ExecBody = z.object({
+	root: z.boolean().default(false),
 	argv: z
 		.array(z.string().refine((arg) => !arg.includes("\0")))
 		.min(1)
