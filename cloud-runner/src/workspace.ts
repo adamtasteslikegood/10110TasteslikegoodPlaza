@@ -144,18 +144,21 @@ export class Workspace extends DurableObject<Env> {
 			await this.ensureStarted(record)
 
 			// The group of a task an earlier start left behind is KILLed, so it does
-			// not run alongside this one; a process that left the group survives
-			// (README, "Known gaps"). One the pid file cannot name is ended with its
-			// instance (Copilot C4).
+			// not run alongside this one. One the pid file cannot name is ended with
+			// its instance (Copilot C4).
 			if (reused) {
 				const leftover = leftoverAction(await this.host.readTask(), record.task)
 
-				if (leftover === "replace") {
+				if (leftover !== "replace" && leftover !== "none") {
+					await this.host.signalTask(leftover.kill, "KILL")
+				}
+
+				// Then every other process of the agent's, whatever started it. An
+				// instance that still has one is not given another run (PLZG-311).
+				if (leftover === "replace" || !(await this.agentGone())) {
 					await this.host.destroy()
 					this.ready = false
 					await this.startInstance(record)
-				} else if (leftover !== "none") {
-					await this.host.signalTask(leftover.kill, "KILL")
 				}
 			}
 
@@ -418,6 +421,7 @@ export class Workspace extends DurableObject<Env> {
 				const { notice, ...fields } = afterAbandon(record.run)
 				this.settle(record, { fields, notice })
 			} else {
+				await this.sweep(record)
 				this.settle(record, afterPush(record.run, await this.host.push(record.branch)))
 				trySnapshot = true
 			}
@@ -429,6 +433,8 @@ export class Workspace extends DurableObject<Env> {
 			const attempt = (record.snapshotAttempts ?? 0) + 1
 			record.snapshotAttempts = attempt
 			this.save(record)
+			// A hook the push ran, or a diff since, can have started a process.
+			await this.sweep(record)
 			this.settle(record, afterSnapshot(record.run, await within(this.host.snapshot(), this.timing.snapshotWait), attempt))
 		}
 
@@ -440,6 +446,30 @@ export class Workspace extends DurableObject<Env> {
 			}
 
 			record.replaceInstance = false
+			this.save(record)
+		}
+	}
+
+	// Ends every process of the agent user; true once none is left. The group
+	// KILL does not reach a process that left the task's group (setsid), and a
+	// hook or diff driver the agent set can start one outside any task. Only
+	// with no run running: it would end the run's agent too. A sweep that cannot
+	// run counts as one that left a process.
+	private async agentGone(): Promise<boolean> {
+		try {
+			return await this.host.endAgentProcesses()
+		} catch (error) {
+			console.error(`Workspace could not end the agent's processes: ${messageOf(error)}`)
+			return false
+		}
+	}
+
+	// The sweep before a push or a snapshot, so no process of the agent's changes
+	// the clone under either. An instance that still has one is replaced once
+	// the run is persisted (PLZG-311).
+	private async sweep(record: Record_): Promise<void> {
+		if (!(await this.agentGone()) && !record.replaceInstance) {
+			record.replaceInstance = true
 			this.save(record)
 		}
 	}
@@ -694,7 +724,8 @@ export class Workspace extends DurableObject<Env> {
 	// KILLs the current task's group and waits for its logs to be complete. True
 	// when no task id is there to trust: the caller stores replaceInstance with
 	// the end state, and the instance is replaced once the run is persisted (G5).
-	// Best-effort: a process that left the group (setsid) is not reached.
+	// A process that left the group (setsid) is not reached here: the sweep
+	// before the push ends it (finishRun).
 	private async endTask(record: Record_): Promise<boolean> {
 		const task = await this.knownTask(record)
 
@@ -760,9 +791,9 @@ export class Workspace extends DurableObject<Env> {
 	}
 
 	// The leader wrote an exit code. Its group's other members are KILLed before
-	// the output is read and the clone pushed (Copilot C6), though a process that
-	// left the group can still change the clone; the result is the one
-	// ingest kept, not a second read of stdout (Copilot C10).
+	// the output is read (Copilot C6), and every other process of the agent's
+	// before the clone is pushed (finishRun); the result is the one ingest kept,
+	// not a second read of stdout (Copilot C10).
 	private async finish(record: Record_, exitCode: number): Promise<void> {
 		const unnamed = await this.endTask(record)
 		await this.ingest(record)

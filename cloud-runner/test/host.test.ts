@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { agentHome, asAgent, repositoryDirectory, resetTaskCommand, TASK_FILE_REFUSED, taskDirectory } from "../src/container"
+import { agentHome, agentUser, asAgent, repositoryDirectory, resetTaskCommand, TASK_FILE_REFUSED, taskDirectory } from "../src/container"
 import { ContainerHost, parseExitCode, probeFailure, readFailure, TaskFileError } from "../src/host"
 
 // G2: only the probe scripts' own refusal code, and only the listed file-level
@@ -142,6 +142,16 @@ describe("who runs what (PLZG-311)", () => {
 		await host.resetTask()
 		expect(sent.map((s) => s.command)).toEqual([resetTaskCommand])
 		expect(resetTaskCommand.slice(-2)).toEqual(["root", "700"])
+	})
+
+	it("sweeps the agent user's processes by name, and only exit 0 means none is left", async () => {
+		const { sent, host } = recording()
+		expect(await host.endAgentProcesses()).toBe(true)
+		expect(sent[0].command.slice(0, 2)).toEqual(["/bin/sh", "-c"])
+		expect(sent[0].command.at(-1)).toBe(agentUser)
+		expect(sent[0].command[2]).toContain('[ "$uid" -gt 0 ] || exit 2')
+
+		for (const code of [1, 2, 137]) expect(await hostExiting(code).endAgentProcesses()).toBe(false)
 	})
 
 	it("runs a test exec as root, with root's home, only when asked", async () => {

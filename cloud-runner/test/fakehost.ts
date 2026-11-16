@@ -4,7 +4,7 @@ import type { OutboundProps } from "../src/outbound"
 import type { Pushed, Saved } from "../src/persist"
 
 type Group = { alive: boolean; ignoresTerm: boolean }
-type Probe = "push" | "exitCode" | "readTask" | "readOutput" | "outputBytes" | "outputDone" | "taskAlive" | "signal" | "setPolicy"
+type Probe = "push" | "exitCode" | "readTask" | "readOutput" | "outputBytes" | "outputDone" | "taskAlive" | "signal" | "setPolicy" | "sweep"
 
 // A container in memory, behind the Workspace's one seam. It models what the
 // rules depend on: the pid file, the task's process groups, the exit code the
@@ -184,6 +184,19 @@ export class FakeHost implements Host {
 			group.alive = false
 			if (this.task?.pid === task.pid) this.exit = 143 // the leader writes it
 		}
+	}
+
+	// Processes of the agent's outside every task group, as setsid leaves them.
+	strays = 0
+	// Whether a sweep ends them all.
+	sweepClean = true
+
+	async endAgentProcesses(): Promise<boolean> {
+		this.calls.push("sweep")
+		this.fail("sweep")
+		if (!this.sweepClean) return false
+		this.strays = 0
+		return true
 	}
 
 	async exitCode(): Promise<number | undefined> {

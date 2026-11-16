@@ -1,11 +1,13 @@
 import { Files, SandboxFileError } from "@cloudflare/sandbox"
 import {
+	agentUser,
 	asAgent,
 	capDiff,
 	capOutput,
 	type CommandResult,
 	chunkScript,
 	diffScript,
+	endUserScript,
 	eventsPath,
 	execOutput,
 	execTimeout,
@@ -71,6 +73,10 @@ export interface Host {
 	// Whether a live (not zombie) process of the task's group runs in this instance.
 	taskAlive(task: Task): Promise<boolean>
 	signalTask(task: Task, signal: Signal): Promise<void>
+	// KILLs every process of the agent user, in a task's group or not; true once
+	// none is left. It ends a running task's agent too, and the leader then
+	// records 137: only for an instance with no run running.
+	endAgentProcesses(): Promise<boolean>
 	exitCode(): Promise<number | undefined>
 	// Up to max bytes of stdout.log from byte offset (0-based).
 	readOutput(offset: number, max: number): Promise<Uint8Array>
@@ -180,6 +186,10 @@ export class ContainerHost implements Host {
 
 		// Fails when the group is gone already, which is fine.
 		await run(this.c, ["/bin/sh", "-c", signalScript, "signal", String(task.pid), task.boot, signal], "/", {})
+	}
+
+	async endAgentProcesses(): Promise<boolean> {
+		return (await run(this.c, ["/bin/sh", "-c", endUserScript, "sweep", agentUser], "/", {})).exitCode === 0
 	}
 
 	async exitCode(): Promise<number | undefined> {
