@@ -144,6 +144,9 @@ export const NO_AGENT_USER = 66
 // the Uid line of /proc/PID/status (a process can make its /proc directory
 // root's, but not that line), and tries again for up to 2 s. A zombie waiting
 // to be reaped is no process. Never for root: -1 would then be every process.
+// The KILL's own exit status is not read: it is non-zero whenever the user has
+// no other process, and the answer is what root finds, whether or not the KILL
+// could be sent. If it could not, a process that is there is still found.
 export const endUserScript = `uid=$(id -u "$1" 2>/dev/null) || exit ${NO_AGENT_USER}
 [ "$uid" -gt 0 ] || exit ${NO_AGENT_USER}
 n=0

@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
-import { agentHome, agentUser, asAgent, endUserScript, eventsPath, MAX_STDERR_BYTES, MAX_STDOUT_FILE_BYTES, NO_AGENT_USER, stderrPath, TASK_FILE_REFUSED, taskDirectory } from "../src/container"
+import { AGENT_LEFT, agentHome, agentUser, asAgent, endUserScript, eventsPath, MAX_STDERR_BYTES, MAX_STDOUT_FILE_BYTES, NO_AGENT_USER, stderrPath, TASK_FILE_REFUSED, taskDirectory } from "../src/container"
 import { ContainerHost, TaskFileError, type Task } from "../src/host"
 import { containerOf, inBox, startBox, stopBox, until } from "./box"
 
@@ -79,6 +79,21 @@ describe("ending the agent's processes", () => {
 
 		expect(await running("sleep 3003")).toBe(1)
 		expect(await running("sleep infinity")).toBe(1)
+	})
+
+	it("answers by what root finds, also when the KILL could not be sent", async () => {
+		// A setpriv that only fails, first on the PATH: no KILL is sent.
+		await rootSh("mkdir -p /tmp/shim && printf '#!/bin/sh\\nexit 1\\n' >/tmp/shim/setpriv && chmod +x /tmp/shim/setpriv")
+		const sweep = () => inBox(box, ["env", "PATH=/tmp/shim:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin", "/bin/sh", "-c", endUserScript, "sweep", agentUser])
+
+		expect((await sweep()).exitCode).toBe(0)
+
+		await inBox(box, asAgent(["env", `HOME=${agentHome}`, "/bin/sh", "-c", "setsid -f sleep 3008"]))
+		expect((await sweep()).exitCode).toBe(AGENT_LEFT)
+		expect(await running("sleep 3008")).toBe(1)
+
+		expect(await host.endAgentProcesses()).toBe(true)
+		expect(await running("sleep 3008")).toBe(0)
 	})
 
 	it("alone would let the leader record 137, which is why the group KILL comes first", async () => {

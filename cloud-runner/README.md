@@ -415,7 +415,7 @@ files are root's; see "Who runs what in the container" and the local check. The 
 the same day, and the acceptance suite's check `U` shows it there (spike C, log 8).
 
 Closed in code on 2026-11-15 by a second PLZG-311 change, and **not deployed yet**: the refused bare root of an
-allowed host (`https://host` is now judged as `https://host/`; acceptance check 3 asks for it from now on), the
+allowed host (`https://host` is now judged as `https://host/`; acceptance check `R` asks for it from now on), the
 gateway's older header names (`cf-skip-cache` and `cf-cache-ttl`, which its documentation says still work, are now
 dropped like every `cf-aig-` header), and the 409 for a changed host list, which now reads `The workspace exists with
 another repo, branch or host list`. A diff or a test exec no longer replaces an instance whose snapshot is still
@@ -540,7 +540,7 @@ best-effort group KILL, the instance with an old layout and the untested shell s
   The committed version produced logs 7 and 9. Run it under the same memory cap as any deploy.
 - The cause given for the refused bare host root (the intercept passing `https://host` without its slash) is inferred
   from the code and a local reproduction, not seen in a log. The fix rests on that cause and on unit tests of
-  `decide`; a bare root has not been fetched on the deploy since. Acceptance check 3 now fetches
+  `decide`; a bare root has not been fetched on the deploy since. Acceptance check `R` now fetches
   `https://registry.npmjs.org` and fails if the answer is not 200.
 - The sweep of the agent's processes was shown in a local container only (`test-container/task-end.ctest.ts`): a
   `setsid` child survives the group KILL and is gone after the sweep, root's processes are untouched, and a sweep
