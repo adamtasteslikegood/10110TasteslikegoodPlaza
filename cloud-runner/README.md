@@ -250,17 +250,16 @@ user. The image has no `ps`, so processes were read from `/proc`.
 | the layout mark overwritten with `1` (as root), a run stopped so a snapshot is taken, `replace-instance`, then the diff | 200, an empty diff; `generation: 3`, `restored: "branch"`, `uncommittedLost: true`; event `{"notice":"instance started","from":"branch","snapshotError":"The snapshot's image layout is \"1\", not \"2\": it is from another version of the image"}`; the new instance's mark reads `2` |
 | `c DELETE /workspaces/nr1`, then `c GET` | 204; `state: "none"` |
 
-After the sweep of the agent's processes (2026-11-15), same setup with `ALLOW_TEST_ROUTES` on, workspace `sw1`
-(Hello-World, `master`):
+After the sweep of the agent's processes (2026-11-15, the code at 435873e), same setup with `ALLOW_TEST_ROUTES` on,
+workspace `sw2` (Hello-World, `master`):
 
 | Step | Answer |
 |---|---|
-| `c PUT /workspaces/sw1 ...`, then the same with `"allow":["example.com"]` | 200 `generation: 1`; 409 `The workspace exists with another repo, branch or host list` |
+| `c PUT /workspaces/sw2 ...`, then the same with `"allow":["example.com"]` | 200 `generation: 1`; 409 `The workspace exists with another repo, branch or host list` |
 | an exec: `fetch("https://registry.npmjs.org")`, the same with a final slash, and `fetch("https://example.com")` | 200, 200 and 403: the bare root of an allowed host is reachable, and one of a host not allowed is still refused |
 | an exec `setsid -f sleep 86001` as the agent, then `c POST .../runs` | the sleep was running before the run and gone right after the run started |
 | an exec `setsid -f sleep 86002` during the run | running during the run as uid 1001, next to `claude`, outside the task's group |
 | the run left to end (`failed`, 401, as before) | the sleep is gone; only `tini` and `sleep infinity` are left; `generation` still 1; notices `run started`, `run ended`, `push failed`, `snapshot saved`, and no `agent processes left` |
-| a second run on the same instance | 202, ended the same way, `generation` still 1 |
 
 Not shown by this check: a push that succeeds and a run that ends `succeeded`
 (both need real credentials). The acceptance suite on the deploy shows both
