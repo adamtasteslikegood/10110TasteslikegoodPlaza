@@ -238,7 +238,8 @@ user. The image has no `ps`, so processes were read from `/proc`.
 | `c DELETE /workspaces/nr1`, then `c GET` | 204; `state: "none"` |
 
 Not shown by this check: a push that succeeds and a run that ends `succeeded`
-(both need real credentials). Under local Docker, root has no `CAP_SYS_PTRACE`,
+(both need real credentials). The acceptance suite on the deploy shows both
+(spike C, log 8). Under local Docker, root has no `CAP_SYS_PTRACE`,
 so root cannot read the `environ` of the agent's processes; the agent can read
 its own. `scripts/acceptance.mjs` check 4 therefore scans as both users.
 
@@ -265,10 +266,17 @@ acceptance suite and the redeploy check were re-run on it (spike C, logs 6 and 7
 The fixes' own failure paths (an unreadable task file, a snapshot that times out, an oversized result) were not
 provoked on the deploy; they rest on the unit tests and the `wrangler dev` checks.
 
-**The deploy does not have the non-root agent yet** (PLZG-311). It still runs the image in which the agent is root.
-A redeploy builds the new image. A workspace from before it keeps working, but its first new instance clones the
-branch (`restored: "branch"`, `uncommittedLost: true`): its snapshot has the old layout and is refused. A run that
-is in progress during that redeploy may lose its unpushed work, so redeploy with no run active.
+**The deploy runs the non-root agent** (PLZG-311): redeployed 2026-11-15 from `dev` at b5687c7 with the new image
+(the `agent` user, layout mark `2`), by the owner's go-ahead. The full acceptance suite ran on it (spike C, log 8):
+same outcome as before, and the new check `U` passes. Check 1 is the first run that ended `succeeded` and pushed as
+the non-root agent. The redeploy check passed as well (log 9).
+
+A redeploy that changes the image layout is meant to leave a workspace from before it working, with its first new
+instance cloning the branch (`restored: "branch"`, `uncommittedLost: true`) because its snapshot has the old layout
+and is refused. On this redeploy that was seen only for a stand-in: a snapshot of a current instance whose layout
+mark had been removed was refused that way (spike C, log 11). The one workspace really taken across the redeploy
+was started while the old code still answered, and got its old snapshot back (see the known gaps). A run that is in
+progress during such a redeploy may lose its unpushed work, so redeploy with no run active.
 
 ### Parts
 
@@ -371,15 +379,21 @@ blocks the development deploy. Closed since, and so removed: the leftover agent 
 the stale snapshot after a lost run (b5df279), `finish()` leaving the task's group (b5df279), PID 1 not reaping
 (9cb4a90), the first PUT answering 500 (b5df279), and unbounded run output (b5df279). Closed on 2026-11-15 by
 PLZG-311: the agent could write the run's control files (it ran as root). It now runs as the `agent` user and the
-files are root's; see "Who runs what in the container" and the local check.
+files are root's; see "Who runs what in the container" and the local check. The development deploy runs it since
+the same day, and the acceptance suite's check `U` shows it there (spike C, log 8).
 
-- **The non-root agent is not deployed, and was not run with real credentials.** It rests on the container tests
-  and the `wrangler dev` check, where every run ended in the 401 of a throwaway token. `scripts/acceptance.mjs` has
-  a new check `U` and passes `root` where a check needs it, and `scripts/redeploy.mjs` reads the exit code as root;
-  neither has been run since. Owed: a redeploy and the acceptance suite, by the owner's go-ahead.
 - **An instance that is live when the image changes keeps its old layout** until it is replaced. A run started on it
   fails (the `agent` user is missing, so `setpriv` exits 1) and its pushes fail the same way. The next instance
   clones the branch. Nothing checks the layout of a running instance.
+- **The old Worker code can still answer for a short while after `wrangler deploy` returns**, and an instance it
+  starts then has the old layout. Seen on the 2026-11-15 redeploy (spike C, log 10): requests to a workspace made two
+  minutes before the deploy were still answered by the old code 33 s after the deploy returned, and that code
+  restored the workspace's old snapshot into a new instance (`restored: "snapshot"`, an exec as uid 0, no layout
+  mark). A workspace made 78 s after the deploy got the new code and image. Such an instance is in the state of
+  the entry above once the new code takes over. Whether the delay belongs to that workspace's object or to the
+  whole Worker was not told apart. How long the delay can last is not known. After a deploy that changes the
+  layout, check a workspace before trusting it: an exec with no `root` flag must print a non-zero uid, and
+  `cat /etc/plaza-runner-layout` as root must print the current mark. If either is wrong, replace its instance.
 
 - **Routes can still wait behind a slow push and snapshot.** Each snapshot try is now cut off after 3 minutes and
   tried at most 3 times, one try per alarm, but a route queued behind the alarm can still wait for the push (up to
@@ -447,12 +461,16 @@ files are root's; see "Who runs what in the container" and the local check.
 
 ### Notes on the evidence itself (from the last review, 2026-11-15)
 
-- The refusal of a snapshot with another layout (PLZG-311) was shown by overwriting the layout mark in a current
-  instance and snapshotting that. No snapshot built from the earlier image, where the mark is absent, was restored;
-  the absent mark is covered by the unit and container tests only.
+- The refusal of a snapshot with another layout (PLZG-311) was shown on changed copies of a current instance:
+  locally with the layout mark overwritten with `1`, and on the deploy with the mark removed, which is how a
+  snapshot from the earlier image looks to the check (spike C, log 11). No snapshot really built from the earlier
+  image was refused by the new code. One attempt was made at the 2026-11-15 redeploy: a workspace with a snapshot
+  from the old image was left with no instance, and started again after the deploy. The old code answered that
+  start (see the known gaps), so it restored the snapshot and showed nothing about the refusal. The old image is no
+  longer deployed, so the attempt cannot be repeated as it was.
 
-- `scripts/redeploy.mjs` is a rewrite of the scratch script that produced the redeploy log; the committed version
-  has not been run. Run it under the same memory cap as any deploy.
+- `scripts/redeploy.mjs` is a rewrite of the scratch script that produced the first redeploy log (spike C, log 5).
+  The committed version produced logs 7 and 9. Run it under the same memory cap as any deploy.
 - The cause given for the refused bare host root (the intercept passing `https://host` without its slash) is inferred
   from the code and a local reproduction, not seen in a log.
 - The raw TCP and UDP probes target IPv4 only, although the container's resolver configuration lists an IPv6 server.
