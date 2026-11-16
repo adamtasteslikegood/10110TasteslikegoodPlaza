@@ -492,9 +492,12 @@ three runs were stopped or lost and wrote no `result` event, so their cost is no
 write about 4–17k tokens of system prompt to the cache (about 1–5 cents for the first run); a resumed one-word run that
 reads it back costs about 0.2–0.5 cents.
 
-The runs of 2026-11-15 with the non-root agent (logs 8 and 9) reported about **$0.075** more: 0.0507 and 0.0108
-for the two acceptance sessions and 0.0135 for the redeploy run. Check 7's runs, the two one-word runs of log 10
-and the one of log 11 are not in that figure.
+The runs of 2026-11-15 with the non-root agent (logs 8 and 9) add about **$0.075**, counted the same way: the
+last cumulative figure of each session, not the sum of every `result` line. Workspace `acc-80197f-a` is one resumed
+session whose runs 1, 2, 3, 4 and 6 reported 0.0247, 0.0274, 0.0338, 0.0357 and 0.0507, so it counts as 0.0507;
+`acc-80197f-b` counts as 0.0108 and the redeploy run as 0.0135. Adding all seven `result` lines (about $0.197)
+would count the first session's earlier runs several times. Check 7's runs, the two one-word runs of log 10 and
+the one of log 11 are not in the figure.
 
 None of this measures design §8 item 8, a ten-minute run and an idle hour (see the table: NOT MEASURED).
 
