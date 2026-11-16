@@ -466,8 +466,11 @@ export class Workspace extends DurableObject<Env> {
 
 	// The sweep before a push or a snapshot, so no process of the agent's changes
 	// the clone under either. An instance that still has one is replaced once
-	// the run is persisted (PLZG-311).
+	// the run is persisted (PLZG-311). Both come only after a run has ended; the
+	// check is here so no later caller can end a running run's agent.
 	private async sweep(record: Record_): Promise<void> {
+		if (record.state === "running") return
+
 		if (!(await this.agentGone()) && !record.replaceInstance) {
 			record.replaceInstance = true
 			this.save(record)
