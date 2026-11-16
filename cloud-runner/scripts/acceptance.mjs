@@ -270,13 +270,16 @@ async function main() {
 		const plain = await nodeIn(A, "fetch('http://example.com/').then(r=>console.log(r.status),e=>console.log('error',e.cause?.code??e.message))")
 		note(`http://example.com: ${plain.stdout.trim()}`)
 		if (plain.stdout.trim() === "200") throw new Error("plain HTTP reached example.com")
-		// registry.npmjs.org is on the allow list over HTTPS; the policy accepts https:// only. (Not the bare root: the
-		// intercept hands the Worker "https://registry.npmjs.org" without its slash, which the normal-form rule refuses.)
+		// registry.npmjs.org is on the allow list over HTTPS; the policy accepts https:// only.
 		const npmHttps = await nodeIn(A, "fetch('https://registry.npmjs.org/left-pad').then(r=>console.log(r.status),e=>console.log('error',e.cause?.code??e.message))")
 		const npmHttp = await nodeIn(A, "fetch('http://registry.npmjs.org/left-pad').then(r=>console.log(r.status),e=>console.log('error',e.cause?.code??e.message))")
 		note(`https://registry.npmjs.org/left-pad: ${npmHttps.stdout.trim()}; http://registry.npmjs.org/left-pad: ${npmHttp.stdout.trim()}`)
 		if (npmHttps.stdout.trim() !== "200") throw new Error(`https://registry.npmjs.org answered ${npmHttps.stdout.trim()}: the allowed host is not reachable, so the HTTP refusal proves nothing`)
 		if (npmHttp.stdout.trim() !== "403") throw new Error(`http://registry.npmjs.org answered ${npmHttp.stdout.trim()}, not 403`)
+		// The bare root was refused before PLZG-311: it reached the Worker as "https://registry.npmjs.org", with no slash.
+		const npmRoot = await nodeIn(A, "fetch('https://registry.npmjs.org').then(r=>console.log(r.status),e=>console.log('error',e.cause?.code??e.message))")
+		note(`https://registry.npmjs.org (bare root): ${npmRoot.stdout.trim()}`)
+		if (npmRoot.stdout.trim() !== "200") throw new Error(`the bare root https://registry.npmjs.org answered ${npmRoot.stdout.trim()}, not 200`)
 		const other = await inBox(A, ["git", "push", "https://github.com/octocat/Hello-World", "HEAD:refs/heads/x"])
 		note(`push to octocat/Hello-World: exit ${other.exitCode}, ${other.stderr.trim().split("\n").at(-1)}`)
 		if (other.exitCode === 0) throw new Error("a push to another repository succeeded")

@@ -115,7 +115,7 @@ export default {
 					const created = await workspace.create(body.data.repo, body.data.branch, body.data.allow)
 
 					if (created === "conflict") {
-						return text("The workspace exists with another repo or branch", 409)
+						return text("The workspace exists with another repo, branch or host list", 409)
 					}
 
 					if (created.cloneError !== undefined) {

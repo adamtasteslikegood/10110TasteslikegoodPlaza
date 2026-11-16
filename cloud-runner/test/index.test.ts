@@ -327,7 +327,9 @@ describe("Workspace answers", () => {
     expect(ok.status).toBe(200)
     expect(await ok.json()).toEqual(status)
 
-    expect((await call(req("PUT", "/workspaces/a", { body: good }), [], { create: "conflict" })).status).toBe(409)
+    const conflict = await call(req("PUT", "/workspaces/a", { body: good }), [], { create: "conflict" })
+    expect(conflict.status).toBe(409)
+    expect(await conflict.text()).toBe("The workspace exists with another repo, branch or host list\n")
 
     const none = { state: "none", run: 0, generation: 1 }
     const failed = await call(req("PUT", "/workspaces/a", { body: good }), [], { create: { status: none, cloneError: "fatal: not found" } })

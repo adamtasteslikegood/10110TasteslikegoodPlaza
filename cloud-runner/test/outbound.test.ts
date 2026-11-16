@@ -34,6 +34,8 @@ describe("withCredential", () => {
 				"cf-aig-collect-log": "false",
 				"CF-AIG-Metadata": '{"a":1}',
 				"cf-aig-cache-ttl": "9999",
+				"cf-skip-cache": "false",
+				"cf-cache-ttl": "9999",
 				authorization: "Bearer sk-ant-other-key",
 				"anthropic-beta": "kept",
 			}),
@@ -45,6 +47,8 @@ describe("withCredential", () => {
 		expect(out.headers.get("cf-aig-collect-log")).toBeNull()
 		expect(out.headers.get("cf-aig-metadata")).toBeNull()
 		expect(out.headers.get("cf-aig-cache-ttl")).toBeNull()
+		expect(out.headers.get("cf-skip-cache")).toBeNull()
+		expect(out.headers.get("cf-cache-ttl")).toBeNull()
 		expect(out.headers.get("authorization")).toBeNull()
 		expect(out.headers.get("anthropic-beta")).toBe("kept")
 		expect([...out.headers.keys()].filter((name) => name.startsWith("cf-aig-")).sort()).toEqual(["cf-aig-authorization", "cf-aig-skip-cache"])
