@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { agentHome, agentUser, asAgent, repositoryDirectory, resetTaskCommand, TASK_FILE_REFUSED, taskDirectory } from "../src/container"
+import { AGENT_LEFT, agentHome, agentUser, asAgent, NO_AGENT_USER, repositoryDirectory, resetTaskCommand, TASK_FILE_REFUSED, taskDirectory } from "../src/container"
 import { ContainerHost, parseExitCode, probeFailure, readFailure, TaskFileError } from "../src/host"
 
 // G2: only the probe scripts' own refusal code, and only the listed file-level
@@ -149,9 +149,14 @@ describe("who runs what (PLZG-311)", () => {
 		expect(await host.endAgentProcesses()).toBe(true)
 		expect(sent[0].command.slice(0, 2)).toEqual(["/bin/sh", "-c"])
 		expect(sent[0].command.at(-1)).toBe(agentUser)
-		expect(sent[0].command[2]).toContain('[ "$uid" -gt 0 ] || exit 2')
+		expect(sent[0].command[2]).toContain(`[ "$uid" -gt 0 ] || exit ${NO_AGENT_USER}`)
 
-		for (const code of [1, 2, 137]) expect(await hostExiting(code).endAgentProcesses()).toBe(false)
+		// The script's own answers: a process is left, or the image has no such user.
+		for (const code of [AGENT_LEFT, NO_AGENT_USER]) expect(await hostExiting(code).endAgentProcesses()).toBe(false)
+	})
+
+	it.each([137, 143, 126, 127, 255, 1, 2])("treats exit %i of the sweep as a plain error, which says nothing about the agent's processes (G2)", async (code) => {
+		await expect(hostExiting(code).endAgentProcesses()).rejects.toThrow(`exited ${code}`)
 	})
 
 	it("runs a test exec as root, with root's home, only when asked", async () => {

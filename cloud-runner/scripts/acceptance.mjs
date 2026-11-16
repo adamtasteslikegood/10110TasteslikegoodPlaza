@@ -276,10 +276,6 @@ async function main() {
 		note(`https://registry.npmjs.org/left-pad: ${npmHttps.stdout.trim()}; http://registry.npmjs.org/left-pad: ${npmHttp.stdout.trim()}`)
 		if (npmHttps.stdout.trim() !== "200") throw new Error(`https://registry.npmjs.org answered ${npmHttps.stdout.trim()}: the allowed host is not reachable, so the HTTP refusal proves nothing`)
 		if (npmHttp.stdout.trim() !== "403") throw new Error(`http://registry.npmjs.org answered ${npmHttp.stdout.trim()}, not 403`)
-		// The bare root was refused before PLZG-311: it reached the Worker as "https://registry.npmjs.org", with no slash.
-		const npmRoot = await nodeIn(A, "fetch('https://registry.npmjs.org').then(r=>console.log(r.status),e=>console.log('error',e.cause?.code??e.message))")
-		note(`https://registry.npmjs.org (bare root): ${npmRoot.stdout.trim()}`)
-		if (npmRoot.stdout.trim() !== "200") throw new Error(`the bare root https://registry.npmjs.org answered ${npmRoot.stdout.trim()}, not 200`)
 		const other = await inBox(A, ["git", "push", "https://github.com/octocat/Hello-World", "HEAD:refs/heads/x"])
 		note(`push to octocat/Hello-World: exit ${other.exitCode}, ${other.stderr.trim().split("\n").at(-1)}`)
 		if (other.exitCode === 0) throw new Error("a push to another repository succeeded")
@@ -326,6 +322,33 @@ async function main() {
 		if (odd.stdout.includes("reply ")) throw new Error("a UDP datagram to 1.1.1.1:9999 got a reply")
 		const lookup = await nodeIn(A, "require('dns').lookup('example.com',(e,a)=>console.log(e?'error '+e.code:'resolved '+a))")
 		note(`system resolver for example.com: ${lookup.stdout.trim()}`)
+	})
+
+	await check("R", "the bare root of an allowed host is reachable (PLZG-311)", async () => {
+		// Refused before: it reached the Worker as "https://registry.npmjs.org", with no slash.
+		const root = await nodeIn(A, "fetch('https://registry.npmjs.org').then(r=>console.log(r.status),e=>console.log('error',e.cause?.code??e.message))")
+		note(`https://registry.npmjs.org (bare root): ${root.stdout.trim()}`)
+		if (root.stdout.trim() !== "200") throw new Error(`the bare root https://registry.npmjs.org answered ${root.stdout.trim()}, not 200`)
+	})
+
+	await check("S", "a process the agent left outside any task is ended before the next run, on the same instance (PLZG-311)", async () => {
+		const mark = `86${String(Math.floor(Math.random() * 1000)).padStart(3, "0")}`
+		const listed = async () => (await inBox(A, ["/bin/sh", "-c", `for d in /proc/[0-9]*; do tr '\\0' ' ' <"$d/cmdline" 2>/dev/null; echo; done | grep -c "^sleep ${mark} $"`], true)).stdout.trim()
+		const planted = await inBox(A, ["setsid", "-f", "sleep", mark])
+		if (planted.exitCode !== 0) throw new Error(`could not start the process: ${planted.stderr.slice(0, 200)}`)
+		if ((await listed()) !== "1") throw new Error(`the planted process is not running (${await listed()})`)
+		const before = await status(A)
+		const seq = await lastSeq(A)
+		const runNumber = await startRun(A, "Reply with the single word: ready", 2)
+		const s = await waitEnd(A)
+		const events = (await allEvents(A, seq)).filter((e) => e.run === runNumber || e.type === "runner")
+		costNote("check S", events, runNumber)
+		const notices = events.filter((e) => e.type === "runner").map((e) => e.payload?.notice)
+		const left = await listed()
+		note(`check S: sleep ${mark} planted as the agent; after run ${runNumber} (${s.state}) ${left} left; generation ${before.generation} then ${s.generation}; notices ${JSON.stringify(notices)}`)
+		if (left !== "0") throw new Error(`the planted process survived the run: ${left} left`)
+		if (s.generation !== before.generation) throw new Error(`the instance was replaced: generation ${before.generation} then ${s.generation}`)
+		if (notices.includes("agent processes left")) throw new Error("a sweep left a process")
 	})
 
 	await check(4, "no credential in env, any process's environ, .git/config, ~/.gitconfig, home, /workspace or the workspace's events", async () => {

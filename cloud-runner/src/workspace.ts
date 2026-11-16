@@ -154,8 +154,11 @@ export class Workspace extends DurableObject<Env> {
 				}
 
 				// Then every other process of the agent's, whatever started it. An
-				// instance that still has one is not given another run (PLZG-311).
-				if (leftover === "replace" || !(await this.agentGone())) {
+				// instance that still has one is not given another run (PLZG-311). A
+				// sweep that could not run throws: the start fails and nothing is
+				// replaced, since a new instance can lose uncommitted work.
+				if (leftover === "replace" || !(await this.host.endAgentProcesses())) {
+					if (leftover !== "replace") this.note(record, { notice: "agent processes left", run: record.run })
 					await this.host.destroy()
 					this.ready = false
 					await this.startInstance(record)
@@ -325,7 +328,7 @@ export class Workspace extends DurableObject<Env> {
 				return "missing"
 			}
 
-			await this.ensureStarted(record)
+			await this.ensureStarted(record, false)
 			return this.host.diff()
 		})
 	}
@@ -374,7 +377,7 @@ export class Workspace extends DurableObject<Env> {
 				return "missing"
 			}
 
-			await this.ensureStarted(record)
+			await this.ensureStarted(record, false)
 			return this.host.exec(argv, root)
 		})
 	}
@@ -450,30 +453,32 @@ export class Workspace extends DurableObject<Env> {
 		}
 	}
 
-	// Ends every process of the agent user; true once none is left. The group
-	// KILL does not reach a process that left the task's group (setsid), and a
-	// hook or diff driver the agent set can start one outside any task. Only
-	// with no run running: it would end the run's agent too. A sweep that cannot
-	// run counts as one that left a process.
-	private async agentGone(): Promise<boolean> {
-		try {
-			return await this.host.endAgentProcesses()
-		} catch (error) {
-			console.error(`Workspace could not end the agent's processes: ${messageOf(error)}`)
-			return false
-		}
-	}
-
-	// The sweep before a push or a snapshot, so no process of the agent's changes
-	// the clone under either. An instance that still has one is replaced once
-	// the run is persisted (PLZG-311). Both come only after a run has ended; the
-	// check is here so no later caller can end a running run's agent.
+	// The sweep before a push or a snapshot: every process of the agent user is
+	// ended, so none changes the clone under either. The group KILL does not
+	// reach a process that left the task's group (setsid), and a hook or diff
+	// driver the agent set can start one outside any task. An instance that
+	// still has one is replaced once the run is persisted (PLZG-311). A sweep
+	// that could not run counts the same here, so it never holds up a push. Both
+	// callers come only after a run has ended; the check is here so no later
+	// caller can end a running run's agent.
 	private async sweep(record: Record_): Promise<void> {
 		if (record.state === "running") return
 
 		if (!(await this.agentGone()) && !record.replaceInstance) {
 			record.replaceInstance = true
 			this.save(record)
+			this.note(record, { notice: "agent processes left", run: record.run })
+		}
+	}
+
+	// Ends every process of the agent user; true once none is left. A sweep that
+	// could not run counts as one that left a process.
+	private async agentGone(): Promise<boolean> {
+		try {
+			return await this.host.endAgentProcesses()
+		} catch (error) {
+			console.error(`Workspace could not end the agent's processes: ${messageOf(error)}`)
+			return false
 		}
 	}
 
@@ -724,21 +729,28 @@ export class Workspace extends DurableObject<Env> {
 		return this.finishRun(record)
 	}
 
-	// KILLs the current task's group and waits for its logs to be complete. True
-	// when no task id is there to trust: the caller stores replaceInstance with
-	// the end state, and the instance is replaced once the run is persisted (G5).
-	// A process that left the group (setsid) is not reached here: the sweep
-	// before the push ends it (finishRun).
+	// KILLs the current task's group, then every other process of the agent's,
+	// and waits for its logs to be complete. A process that left the group
+	// (setsid) can hold the task's pipes open, and the copiers write the last of
+	// the output only at the end of their pipes, so without the sweep the result
+	// line could be missing. The group goes first: its leader, which is root's,
+	// would record 137 for an agent the sweep ended. True when the instance is
+	// not to be trusted with another run, because no task id is there to trust
+	// or a process of the agent's is left: the caller stores replaceInstance
+	// with the end state, and the instance is replaced once the run is
+	// persisted (G5).
 	private async endTask(record: Record_): Promise<boolean> {
 		const task = await this.knownTask(record)
+		if (task !== undefined) await this.host.signalTask(task, "KILL")
+		const clean = await this.agentGone()
+		if (!clean) this.note(record, { notice: "agent processes left", run: record.run })
 
 		if (task === undefined) {
 			return true
 		}
 
-		await this.host.signalTask(task, "KILL")
 		await this.waitForOutput()
-		return false
+		return !clean
 	}
 
 	// Up to stopWait for the stdout and stderr copiers to drain what the task wrote.
@@ -793,10 +805,10 @@ export class Workspace extends DurableObject<Env> {
 		return task
 	}
 
-	// The leader wrote an exit code. Its group's other members are KILLed before
-	// the output is read (Copilot C6), and every other process of the agent's
-	// before the clone is pushed (finishRun); the result is the one ingest kept,
-	// not a second read of stdout (Copilot C10).
+	// The leader wrote an exit code. Its group's other members and every other
+	// process of the agent's are KILLed before the output is read and the clone
+	// pushed (Copilot C6, PLZG-311); the result is the one ingest kept, not a
+	// second read of stdout (Copilot C10).
 	private async finish(record: Record_, exitCode: number): Promise<void> {
 		const unnamed = await this.endTask(record)
 		await this.ingest(record)
@@ -883,9 +895,13 @@ export class Workspace extends DurableObject<Env> {
 	}
 
 	// Makes sure a container runs with this object's intercepts and idle timeout.
-	private async ensureStarted(record: Record_): Promise<void> {
-		// An instance that may hold an unnamed process is not reused (Copilot C4).
-		if (record.replaceInstance) {
+	// forRun is false for a read (the diff, a test exec).
+	private async ensureStarted(record: Record_, forRun = true): Promise<void> {
+		// An instance that may hold an unnamed process is not reused for a run
+		// (Copilot C4). A read still uses it: it is only still there because its
+		// snapshot is pending, and replacing it now would drop what the snapshot
+		// is to save (PLZG-311).
+		if (record.replaceInstance && (forRun || !this.host.running)) {
 			if (this.host.running) {
 				if (record.snapshotPending) {
 					this.settle(record, abandonSnapshot(record.run, "The instance was replaced before the snapshot was saved"))

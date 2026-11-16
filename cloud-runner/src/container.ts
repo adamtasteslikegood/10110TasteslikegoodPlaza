@@ -130,6 +130,12 @@ exit 1`
 // sh is dash, whose kill takes no "--": "-$1" right after the signal names a group.
 export const signalScript = `[ "$2" = "$(cat /proc/sys/kernel/random/boot_id)" ] && kill -"$3" "-$1"`
 
+// The sweep's own answers, apart from 0: a process of the user is still there,
+// or the image has no such user (an instance from before the agent user) or
+// the user is root. Any other exit says nothing about the user's processes.
+export const AGENT_LEFT = 65
+export const NO_AGENT_USER = 66
+
 // Ends every process of user $1; succeeds once none is left. A process of
 // that user sends KILL to -1, every process it may signal: its own user's and
 // no other, since it has no privilege, and all in one call, so a process that
@@ -138,8 +144,8 @@ export const signalScript = `[ "$2" = "$(cat /proc/sys/kernel/random/boot_id)" ]
 // the Uid line of /proc/PID/status (a process can make its /proc directory
 // root's, but not that line), and tries again for up to 2 s. A zombie waiting
 // to be reaped is no process. Never for root: -1 would then be every process.
-export const endUserScript = `uid=$(id -u "$1") || exit 2
-[ "$uid" -gt 0 ] || exit 2
+export const endUserScript = `uid=$(id -u "$1" 2>/dev/null) || exit ${NO_AGENT_USER}
+[ "$uid" -gt 0 ] || exit ${NO_AGENT_USER}
 n=0
 while :; do
 	setpriv --reuid="$1" --regid="$1" --init-groups --no-new-privs -- /bin/sh -c 'kill -KILL -1' 2>/dev/null
@@ -153,7 +159,7 @@ while :; do
 	done
 	[ "$left" = 0 ] && exit 0
 	n=$((n + 1))
-	[ "$n" -ge 20 ] && exit 1
+	[ "$n" -ge 20 ] && exit ${AGENT_LEFT}
 	sleep 0.1
 done`
 

@@ -204,9 +204,12 @@ export class FakeHost implements Host {
 		return this.exit
 	}
 
+	// While a stray holds the task's pipes the copier has not seen their end, and
+	// its last block (here: the last line) is not in stdout.log yet.
 	async readOutput(offset: number, max: number): Promise<Uint8Array> {
 		this.fail("readOutput")
-		return this.stdout.slice(offset, offset + max)
+		const written = this.strays > 0 ? this.stdout.subarray(0, this.stdout.lastIndexOf(0x0a, this.stdout.length - 2) + 1) : this.stdout
+		return written.slice(offset, offset + max)
 	}
 
 	async lineLength(): Promise<{ bytes: number; ended: boolean }> {
@@ -220,7 +223,7 @@ export class FakeHost implements Host {
 
 	async outputDone(): Promise<boolean> {
 		this.fail("outputDone")
-		return true
+		return this.strays === 0
 	}
 
 	async exec(argv: string[], root = false): Promise<CommandResult> {

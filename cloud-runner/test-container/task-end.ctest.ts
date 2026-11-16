@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
-import { agentHome, agentUser, asAgent, eventsPath, MAX_STDERR_BYTES, MAX_STDOUT_FILE_BYTES, stderrPath, TASK_FILE_REFUSED, taskDirectory } from "../src/container"
+import { agentHome, agentUser, asAgent, endUserScript, eventsPath, MAX_STDERR_BYTES, MAX_STDOUT_FILE_BYTES, NO_AGENT_USER, stderrPath, TASK_FILE_REFUSED, taskDirectory } from "../src/container"
 import { ContainerHost, TaskFileError, type Task } from "../src/host"
 import { containerOf, inBox, startBox, stopBox, until } from "./box"
 
@@ -68,6 +68,17 @@ describe("ending the agent's processes", () => {
 		expect(await running("sleep 3004")).toBe(1)
 		expect(await host.endAgentProcesses()).toBe(true)
 		expect(await running("sleep 3004")).toBe(0)
+	})
+
+	it("is refused for root and for a user the image does not have, and signals nothing then", async () => {
+		expect(await running("sleep 3003")).toBe(1)
+
+		for (const user of ["root", "no-such-user"]) {
+			expect((await inBox(box, ["/bin/sh", "-c", endUserScript, "sweep", user])).exitCode).toBe(NO_AGENT_USER)
+		}
+
+		expect(await running("sleep 3003")).toBe(1)
+		expect(await running("sleep infinity")).toBe(1)
 	})
 
 	it("alone would let the leader record 137, which is why the group KILL comes first", async () => {
