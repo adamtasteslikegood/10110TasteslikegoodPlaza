@@ -41,6 +41,24 @@ spec-set versions, and no application release existed before `v0.1.22`.
   while after the deploy and restored its old snapshot (`cloud-runner/README.md`,
   known gaps).
 
+### Changed — the cloud runner ends every process of the agent's after a run (PLZG-311)
+
+- In `cloud-runner/`, a process the agent starts in a new session (`setsid`)
+  used to survive the KILL of the task's process group and could change the
+  clone during the push, the snapshot and the next run. The runner now ends
+  every process of the `agent` user before the push, before each snapshot try
+  and before the next run starts, and replaces an instance where one is left.
+- A request for the bare root of an allowed host (`https://host`) is no longer
+  refused.
+- The AI Gateway's older cache headers (`cf-skip-cache`, `cf-cache-ttl`) are
+  dropped from the container's requests like every `cf-aig-` header.
+- The 409 for a workspace that exists with other settings now names the host
+  list too.
+- The container tests now drive every shell script the runner sends, apart
+  from one branch that root cannot reach.
+- Not deployed: the development Worker still runs the code from before these
+  changes. What stays open is in `cloud-runner/README.md`, known gaps.
+
 ### Fixed — real domain sessions start again: fresh tool-guard evidence (PLZG-309)
 
 - Every real domain Start failed with `sdk_error` since relay work claims landed

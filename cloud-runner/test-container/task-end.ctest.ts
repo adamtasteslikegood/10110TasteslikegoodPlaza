@@ -166,8 +166,8 @@ describe("the stdout.log probes", () => {
 	])("refuse %s in the file's place with the task-file code", async (_what, plant) => {
 		expect((await rootSh(plant)).exitCode).toBe(0)
 
-		for (const probe of [host.outputBytes(), host.readOutput(0, 100)]) {
-			const error = await probe.then(
+		for (const probe of [() => host.outputBytes(), () => host.readOutput(0, 100)]) {
+			const error = await probe().then(
 				() => undefined,
 				(e: unknown) => e,
 			)
