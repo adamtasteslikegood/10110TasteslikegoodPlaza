@@ -297,7 +297,7 @@ the non-root agent. The redeploy check passed as well (log 9).
 
 **The deploy runs the sweep of the agent's processes and the small fixes** (PLZG-311): redeployed 2026-11-17 from
 `dev` at 7fc2982, code only, by the owner's go-ahead. The redeploy check was that deploy and passed (spike C,
-log 12); the version is `eb2cf0ed`, and the image and its layout mark `2` are unchanged. The acceptance suite ran
+log 12); the version was `eb2cf0ed`, and the image and its layout mark `2` are unchanged. The acceptance suite ran
 on it (log 13). Check `R` passes: the bare root of an allowed host answers 200. Check `S` passes: a process started
 as the agent outside any task was gone after the next run, on the same instance, with no `agent processes left`
 event. `S` first failed in its own setup and was corrected (59daae9; see "Notes on the evidence itself"). Check H
@@ -310,8 +310,8 @@ What had never been tried on the deploy was tried the same day (spike C, log 14)
   alarm, once a minute, that keeps the instance up; the run did not tell that apart from other causes.
 - The idle stop. An instance nobody asked anything of was stopped, and the next request started a new one: from
   the snapshot with its uncommitted file where a run had ended, and from the branch without it where no run had
-  ever taken a snapshot. The stops came 18.5 and 25.5 minutes after the last request, not 15 (see the known
-  gaps).
+  ever taken a snapshot. On that version the stops came 18.5 and 25.5 minutes after the last request, not 15;
+  since the next redeploy they come after about 15 (below).
 - An unreadable task file: `stdout.log` replaced with a directory during a run. The run ended `failed` with
   `the run's task files could not be read` at the third check, nothing was pushed, and the instance was replaced.
 - An oversized result line, written into a run's output by root: over one 4 MiB chunk the run ends `failed` with
@@ -319,9 +319,19 @@ What had never been tried on the deploy was tried the same day (spike C, log 14)
   `succeeded` with an empty result and a `result truncated` event. Both runs were pushed and snapshotted.
 - Four containers ran at once.
 
-**The deploy does not have the two fixes those tests led to** (c258fc4 and cf868b2, 2026-11-17): the stdout copier
-that no longer buffers, and the exec timeout whose timer ends with the command. Both are tested locally only. A
-redeploy needs the owner's go-ahead; neither changes the image.
+**The deploy runs the two fixes those tests led to** (c258fc4 and cf868b2): the stdout copier that no longer
+buffers, and the exec timeout whose timer ends with the command. It was redeployed again on 2026-11-17 from `dev`
+at a190791, code only, by the owner's go-ahead. The redeploy check was that deploy and passed (spike C, log 15);
+the version is `d1e6e606`, and the image is unchanged. On it (logs 16 and 17):
+
+- The full acceptance suite passes eleven of twelve checks, check `S` among them in the full run. Check H fails
+  as before.
+- A running run's output is in the log at once. Nine seconds into a run, with the agent in its `sleep`,
+  `stdout.log` held 3,627 bytes, less than one 4 KiB block, and the event log had the tool call that started the
+  sleep. A line of 41 bytes written into the run's output was in `stdout.log` in the same exec and in the event
+  log a second later.
+- The idle stop comes about 15 minutes after the last request: 15.1 to 15.6 minutes for a workspace that had
+  only been cloned, and 15.9 to 16.3 for one whose run had ended. Each case was measured once.
 
 A redeploy that changes the image layout is meant to leave a workspace from before it working, with its first new
 instance cloning the branch (`restored: "branch"`, `uncommittedLost: true`) because its snapshot has the old layout
@@ -484,19 +494,26 @@ best-effort group KILL, the instance with an old layout and the untested shell s
   runs as the agent (git in the clone) is ended by the next sweep of the agent's processes; one that runs as root
   is not. Seen on the deploy (spike C, log 14): an exec of `setsid -f sleep N` answered 500 after 30 s because the
   detached process kept the exec's output pipes open, and the process ran on.
-- **The log of a running run trailed its output by up to 4 KiB.** Closed in code (c258fc4), **not deployed**. The
+- **The log of a running run trailed its output by up to 4 KiB.** Closed (c258fc4) and deployed 2026-11-17. The
   stdout copier was `head -c`, which writes through stdio, so the last events of a running task reached
   `stdout.log`, and with it the event log, only once more output came or the task ended. A tool call showed in the
   event log a minute or more late. The copier is now `stdbuf -o0 head -c`, and a container test reads a line
-  while its task still sleeps. Nothing was lost before the fix: the buffer is written when the task ends. Stage 2
-  reads these events live, so redeploy before wiring the bridge.
-- **The idle stop comes later than 15 minutes after the last request.** Closed in code (cf868b2), **not
-  deployed**. The 15-minute timeout starts only when the Durable Object has left memory, and each exec left a
-  timer pending for its whole timeout (10 minutes for a clone, 5 for a push), which keeps the object there. Seen
+  while its task still sleeps. Nothing was lost before the fix: the buffer is written when the task ends. On the
+  deploy since, a line written during a run's sleep was in the log in the same exec (spike C, log 17). Stage 2
+  reads these events live.
+- **The idle stop came later than 15 minutes after the last request.** Closed (cf868b2) and deployed
+  2026-11-17. The 15-minute timeout starts only when the Durable Object has left memory, and each exec left a
+  timer pending for its whole timeout (10 minutes for a clone, 5 for a push), which kept the object there. Seen
   twice (spike C, log 14): 25.5 minutes after the last request to a workspace that had only been cloned, and 18.5
   minutes after the last request to one whose run had ended. Each is 15 minutes after such a timer ran out, to
-  within a minute. The cost is up to 10 minutes more of an idle instance per stop. The cause is inferred from
-  those two stops and Cloudflare's lifecycle page; the fix has not run on the deploy.
+  within a minute. The cost was up to 10 minutes more of an idle instance per stop. The cause is inferred from
+  those two stops and Cloudflare's lifecycle page. With the fix deployed, the same two cases stopped 15.1 to 15.6
+  and 15.9 to 16.3 minutes after the last request (log 17), once each, which fits that cause.
+- **A run that commits nothing reports a push error when the branch has moved.** Every run ends with a push of
+  the clone's HEAD. If something else moved the branch after the clone, git refuses that push (`fetch first`)
+  and the status carries `pushError`, although the run `succeeded` and had nothing to push. Seen on the deploy
+  (spike C, log 17), where an acceptance run pushed to the branch another workspace had cloned. Not changed
+  here; the bridge of stage 2 will see this whenever two writers share a branch.
 - **A workspace that never ran has no snapshot.** Its files outside a commit are gone after the idle stop (seen in
   log 14: `restored: "branch"`, `uncommittedLost: true`). That is how it is built: a snapshot is taken when a run
   ends. Listed because a caller that writes files through the test exec route, or a later route, would lose them.
@@ -584,18 +601,21 @@ best-effort group KILL, the instance with an old layout and the untested shell s
 - The sweep of the agent's processes is shown in a local container (`test-container/task-end.ctest.ts`): a
   `setsid` child survives the group KILL and is gone after the sweep, root's processes are untouched, and a sweep
   with no group KILL before it makes the leader record 137. On the deploy, acceptance check `S` shows the sweep
-  before a run's start once (spike C, log 13). A sweep that leaves a process could not be produced in a container
+  before a run's start twice (spike C, logs 13 and 16). A sweep that leaves a process could not be produced in a container
   or on the deploy; that path rests on unit tests with a fake host.
 - Acceptance check `S` was wrong as first written: it planted its process with the exec's output attached, which
   returned at once under `wrangler dev` and timed out on the deploy. The check passed locally and failed on its
-  first run against the deploy, in its setup. It was corrected and passed alone; the full suite has not been run
-  again with the corrected check.
+  first run against the deploy, in its setup. It was corrected, passed alone, and then passed in the full suite on
+  the next deploy (spike C, log 16).
 - The account of the buffered copier has one point it does not explain: in a first attempt a 5 MB line reached
   the event log four minutes after it was written, with the agent still asleep (spike C, Surprises). The local
   reproduction and the container test carry the mechanism.
 - The live tests of 2026-11-17 (spike C, log 14) were run once each, by a one-off script that is not in the
   repository. The instance counts come from `wrangler containers info`, read once a minute, so each stop is known
-  to within a minute.
+  to within a minute. The checks of the two fixes on the deploy (log 17) were run once each as well, with the
+  count read every half minute. The count rose about 50 s after an instance started, so a stop may show that
+  much late; the earlier figures were read the same way. Which of the two instances stopped first is taken from
+  the order of their last requests, since the count does not name them.
 - The two 409 rows in "Local check" quote the text as it was on the day of each check.
 - The six areas Copilot's review summaries named without a finding (PLZG-311, review coverage) were read once on
   2026-11-15 by a separate Claude session that was given the code and the area names, not by a person. Push size
