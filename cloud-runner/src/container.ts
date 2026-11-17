@@ -58,7 +58,11 @@ export const copyScript = `"$@" <"$0.fifo" >"$0.log"; : >"$0.done"`
 // Starts argv detached in its own session and process group under task
 // directory $1, with copyScript as $2. The leader writes the pid file, then the agent's exit code once
 // argv returns. Both streams go through fifos to capped copiers (Copilot C10):
-// stdout through head, stderr through tail. A failed setup still writes an exit
+// stdout through head, stderr through tail. head runs under stdbuf -o0: it
+// writes through stdio, so without it stdout.log trailed a running task by up to
+// a block (4 KiB), and its last events showed only once more output came or the
+// task ended (PLZG-311). dd is no replacement: on a pipe its count_bytes counts
+// short reads as blocks and stops before the cap. A failed setup still writes an exit
 // code, so the run ends instead of hanging. The leader and the copiers are
 // root's and so is everything they write; argv is the one part that runs as the
 // agent (taskCommand), holding only the two fifos the leader opened for it.
@@ -67,7 +71,7 @@ exec setsid -f sh -c 'trap : TERM
 echo "$$ $(cat /proc/sys/kernel/random/boot_id)" >"$0/pid.tmp" && mv "$0/pid.tmp" "$0/pid"
 copy=$1; shift
 mkfifo -m 600 "$0/stdout.fifo" "$0/stderr.fifo" &&
-setsid -f sh -c "$copy" "$0/stdout" head -c ${MAX_STDOUT_FILE_BYTES} </dev/null &&
+setsid -f sh -c "$copy" "$0/stdout" stdbuf -o0 head -c ${MAX_STDOUT_FILE_BYTES} </dev/null &&
 setsid -f sh -c "$copy" "$0/stderr" tail -c ${MAX_STDERR_BYTES} </dev/null &&
 "$@" >"$0/stdout.fifo" 2>"$0/stderr.fifo"
 echo "$?" >"$0/exit-code.tmp" && mv "$0/exit-code.tmp" "$0/exit-code"' "$dir" "$copy" "$@" </dev/null >/dev/null 2>&1`

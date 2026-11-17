@@ -140,6 +140,22 @@ describe("ending a task's group", () => {
 	})
 })
 
+describe("the output of a task that still runs", () => {
+	it("is in stdout.log as soon as the task wrote it, not only once a block has filled", async () => {
+		const task = await startTask(["/bin/sh", "-c", "echo first; sleep 3009"])
+		await until(async () => (await running("sleep 3009")) === 1)
+
+		// A copier that writes through stdio keeps these 6 bytes until 4 KiB more arrive or the task ends.
+		await until(async () => (await host.outputBytes()) === 6, 5000)
+		expect(new TextDecoder().decode(await host.readOutput(0, 100))).toBe("first\n")
+		expect(await host.outputDone()).toBe(false)
+
+		await host.signalTask(task, "KILL")
+		await until(async () => !(await host.taskAlive(task)))
+		await until(() => host.outputDone())
+	})
+})
+
 describe("the output caps", () => {
 	it("keeps one byte more of stdout than a run may write, so a run over the cap shows", async () => {
 		await startTask(["/bin/sh", "-c", `head -c ${MAX_STDOUT_FILE_BYTES + 1024 * 1024} /dev/zero`])
