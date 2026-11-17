@@ -507,8 +507,9 @@ best-effort group KILL, the instance with an old layout and the untested shell s
   twice (spike C, log 14): 25.5 minutes after the last request to a workspace that had only been cloned, and 18.5
   minutes after the last request to one whose run had ended. Each is 15 minutes after such a timer ran out, to
   within a minute. The cost was up to 10 minutes more of an idle instance per stop. The cause is inferred from
-  those two stops and Cloudflare's lifecycle page. With the fix deployed, the same two cases stopped 15.1 to 15.6
-  and 15.9 to 16.3 minutes after the last request (log 17), once each, which fits that cause.
+  those two stops and Cloudflare's lifecycle page. With the fix deployed, a workspace that was only cloned and one
+  whose run had ended stopped 15.1 to 15.6 and 15.9 to 16.3 minutes after the last request (log 17), once each,
+  which fits that cause.
 - **A run that commits nothing reports a push error when the branch has moved.** Every run ends with a push of
   the clone's HEAD. If something else moved the branch after the clone, git refuses that push (`fetch first`)
   and the status carries `pushError`, although the run `succeeded` and had nothing to push. Seen on the deploy

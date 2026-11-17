@@ -863,9 +863,12 @@ workspaces of log 16 lived (deleted at 16:08:46) and 2 from 16:09:26.
 
 The count fell to 1 between 16:17:16 and 16:17:44, which is 15 min 6 s to 15 min 34 s after the idle workspace's
 last request, and to 0 between 16:23:43 and 16:24:11, which is 15 min 51 s to 16 min 19 s after the other's. Both
-are inside the band, and they differ by under a minute. On version eb2cf0ed the same two cases took 25.5 and 18.5
-minutes (log 14). Which instance went first is taken from the order of the last requests: the count does not name
-them, and `wrangler containers instances` showed every instance as `inactive`, the running ones too. The count
+are inside the band, and they differ by under a minute. On version eb2cf0ed a workspace that never ran took 25.5
+minutes and one whose run had ended took 18.5 (log 14). That run's push had succeeded and this one's was refused;
+the push exec, whose timer is the one in question, ran both times. Which instance went first is taken from the
+order of the last requests: the count does not name them, and `wrangler containers instances` listed the idle
+workspace's instance as `inactive` in each of seven readings in the two and a half minutes after its start, and
+all 30 instances it listed as `inactive` while the count read 1. The count
 also lags: after the PUT at 16:02:10 it still read 0 at 16:02:39 and read 1 at 16:03:02. Each case was measured
 once.
 
@@ -886,6 +889,11 @@ its marker file, the other from its snapshot with its marker file and its clone 
 ea8d60a403be88898d15e93c629e59f5ca59c852	refs/heads/cloud-runner/acceptance
 80f5ccb8968eacd2f6d68740e1990d2076671c10	refs/heads/main
 ```
+
+After it, `refs/heads/main` was still at `80f5ccb8968eacd2f6d68740e1990d2076671c10`, and
+`refs/heads/cloud-runner/acceptance` at check 1's commit of log 16, `ea8d60a403be88898d15e93c629e59f5ca59c852`
+(the last two lines above). Both workspaces were deleted, and the count of live instances read 0 a minute
+later; that reading is not in a saved log.
 
 ### Owed: does a query name leave the platform?
 
@@ -1036,16 +1044,17 @@ The Cloudflare dashboard's billed figures (Containers, AI Gateway logs) are left
   from 2026-10-01). Every exec armed `AbortSignal.timeout()`, which cannot be cancelled: 10 minutes for a clone,
   5 for a push. Both stops in log 14 came 15 minutes after such a timer ran out, to within a minute. That is an
   inference from two stops and the documentation. Fixed in cf868b2 (the timer is cleared when the command ends)
-  and deployed the same day: on version d1e6e606 the same two cases stopped 15.1 to 15.6 and 15.9 to 16.3 minutes
+  and deployed the same day: on version d1e6e606 the two like cases stopped 15.1 to 15.6 and 15.9 to 16.3 minutes
   after the last request (log 17). That fits the cause; each case was measured once, and nothing else was
   changed between the two deploys but the copier.
 - **A run that commits nothing reports a push error when the branch has moved.** Every run ends with a push of
   the clone's HEAD. In log 17 the acceptance run pushed to the test branch after `live-311d-out` had cloned it,
   so that workspace's push was refused (`rejected ... fetch first`) and its status carries `pushError`, although
   the run `succeeded` and had made no commit. The snapshot was still saved.
-- **`wrangler containers instances` shows every instance as `inactive`**, the running ones too (wrangler
-  4.162.0), so it does not say which instance stopped. The count in `wrangler containers info` does change, about
-  50 s after an instance starts.
+- **`wrangler containers instances` listed a running instance as `inactive`** (wrangler 4.162.0): the one
+  instance watched, in every reading for two and a half minutes after its start, and all 30 listed while the
+  count read 1. So it did not say which instance stopped. The count in `wrangler containers info` does change;
+  it rose about 50 s after that instance started.
 - **The image has no `pkill`** (`procps` is not installed). The runner does not use it; a one-off test script did.
 - **`wrangler containers list` lags.** Right after a `replace-instance` or a DELETE it still counted the instance
   as live; under a minute later it showed 0.
