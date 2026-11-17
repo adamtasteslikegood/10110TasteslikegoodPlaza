@@ -295,13 +295,32 @@ provoked on the deploy; they rest on the unit tests and the `wrangler dev` check
 same outcome as before, and the new check `U` passes. Check 1 is the first run that ended `succeeded` and pushed as
 the non-root agent. The redeploy check passed as well (log 9).
 
-**The deploy does not have the runner changes made after b5687c7** (PLZG-311, 2026-11-15): the sweep of the
-agent's processes ("Who runs what in the container"), the bare host root, the gateway's older header names and the
-new 409 text. They are tested locally only (`npm test`, `npm run test:container` and the `wrangler dev` run in
-"Local check"). A redeploy needs the owner's go-ahead. It changes the Worker's code and not the image, so the layout
-mark stays `2`, and neither the uid nor the mark tells the new code from the old. `scripts/acceptance.mjs` has two
-new checks for that, which have not run on the deploy: `R` fetches the bare root of an allowed host, and `S` starts
-a process as the agent outside any task and expects it gone after the next run, on the same instance.
+**The deploy runs the sweep of the agent's processes and the small fixes** (PLZG-311): redeployed 2026-11-17 from
+`dev` at 7fc2982, code only, by the owner's go-ahead. The redeploy check was that deploy and passed (spike C,
+log 12); the version is `eb2cf0ed`, and the image and its layout mark `2` are unchanged. The acceptance suite ran
+on it (log 13). Check `R` passes: the bare root of an allowed host answers 200. Check `S` passes: a process started
+as the agent outside any task was gone after the next run, on the same instance, with no `agent processes left`
+event. `S` first failed in its own setup and was corrected (59daae9; see "Notes on the evidence itself"). Check H
+fails as before (the hidden `--max-turns`).
+
+What had never been tried on the deploy was tried the same day (spike C, log 14):
+
+- A run of 1,204 s, longer than the 15-minute idle timeout, with no request from outside while it ran. It ended
+  `succeeded` on the same instance, pushed and snapshotted. The object's alarm, once a minute, is what keeps the
+  instance up.
+- The idle stop. An instance nobody asked anything of was stopped, and the next request started a new one: from
+  the snapshot with its uncommitted file where a run had ended, and from the branch without it where no run had
+  ever taken a snapshot. The stop came 20 to 25 minutes after the last request, not 15 (see the known gaps).
+- An unreadable task file: `stdout.log` replaced with a directory during a run. The run ended `failed` with
+  `the run's task files could not be read` at the third check, nothing was pushed, and the instance was replaced.
+- An oversized result line, written into a run's output by root: over one 4 MiB chunk the run ends `failed` with
+  `the run's result was over 256 KiB and could not be read`; from 256 KiB to 4 MiB with `is_error: false` it ends
+  `succeeded` with an empty result and a `result truncated` event. Both runs were pushed and snapshotted.
+- Four containers ran at once.
+
+**The deploy does not have the two fixes those tests led to** (c258fc4 and cf868b2, 2026-11-17): the stdout copier
+that no longer buffers, and the exec timeout whose timer ends with the command. Both are tested locally only. A
+redeploy needs the owner's go-ahead; neither changes the image.
 
 A redeploy that changes the image layout is meant to leave a workspace from before it working, with its first new
 instance cloning the branch (`restored: "branch"`, `uncommittedLost: true`) because its snapshot has the old layout
@@ -402,7 +421,9 @@ the deploy.
 - The detached task survived a Worker redeploy mid-run, and its exit code was written.
 - A second start during a run answers 409.
 - Two containers ran at once.
-- A run longer than the 15-minute idle timeout was **not exercised**; the longest run was about 160 s.
+- A run longer than the 15-minute idle timeout was not exercised then; the longest run was about 160 s. On
+  2026-11-17 a run of 1,204 s ended `succeeded` (spike C, log 14).
+- Four containers ran at once (2026-11-17).
 
 ## Known gaps to close before stage 2
 
@@ -414,8 +435,8 @@ PLZG-311: the agent could write the run's control files (it ran as root). It now
 files are root's; see "Who runs what in the container" and the local check. The development deploy runs it since
 the same day, and the acceptance suite's check `U` shows it there (spike C, log 8).
 
-Closed in code on 2026-11-15 by a second PLZG-311 change, and **not deployed yet**: the refused bare root of an
-allowed host (`https://host` is now judged as `https://host/`; acceptance check `R` asks for it from now on), the
+Closed on 2026-11-15 by a second PLZG-311 change, deployed on 2026-11-17: the refused bare root of an
+allowed host (`https://host` is now judged as `https://host/`; acceptance check `R` asks for it and passes on the deploy), the
 gateway's older header names (`cf-skip-cache` and `cf-cache-ttl`, which its documentation says still work, are now
 dropped like every `cf-aig-` header), and the 409 for a changed host list, which now reads `The workspace exists with
 another repo, branch or host list`. A diff or a test exec no longer replaces an instance whose snapshot is still
@@ -424,7 +445,7 @@ best-effort group KILL, the instance with an old layout and the untested shell s
 
 - **An instance that is live when the image changes keeps its old layout** until it is replaced. With the code on
   the deploy, a run started on it fails (the `agent` user is missing, so `setpriv` exits 1) and its pushes fail the
-  same way. With the sweep (not deployed), the next run's start finds no `agent` user, replaces the instance and
+  same way. With the sweep (deployed 2026-11-17), the next run's start finds no `agent` user, replaces the instance and
   clones the branch; its event reads `agent processes left`, which is not the reason. That follows from the code and
   was not tried on an instance from an old image. A diff or a push on such an instance still fails, and nothing
   checks the layout of a running instance as such.
@@ -460,8 +481,22 @@ best-effort group KILL, the instance with an old layout and the untested shell s
   established. A pending push runs again on every refresh.
 - **A timed-out exec may keep running in the container**, and `diff` can leave its temp index lock behind. One that
   runs as the agent (git in the clone) is ended by the next sweep of the agent's processes; one that runs as root
-  is not.
-- **A run longer than the 15-minute idle timeout** has not been tried on the deploy.
+  is not. Seen on the deploy (spike C, log 14): an exec of `setsid -f sleep N` answered 500 after 30 s because the
+  detached process kept the exec's output pipes open, and the process ran on.
+- **The log of a running run trailed its output by up to 4 KiB.** Closed in code (c258fc4), **not deployed**. The
+  stdout copier was `head -c`, which writes through stdio, so the last events of a running task reached
+  `stdout.log`, and with it the event log, only once more output came or the task ended. A tool call showed in the
+  event log a minute or more late. The copier is now `stdbuf -o0 head -c`, and a container test reads a line
+  while its task still sleeps. Nothing was lost before the fix: the buffer is written when the task ends. Stage 2
+  reads these events live, so redeploy before wiring the bridge.
+- **The idle stop comes 20 to 25 minutes after the last request, not 15.** Closed in code (cf868b2), **not
+  deployed**. The 15-minute timeout starts only when the Durable Object has left memory, and each exec left a
+  timer pending for its whole timeout (10 minutes for a clone, 5 for a push), which keeps the object there. The
+  cost is up to 10 minutes more of an idle instance per stop. The cause is inferred: the two stops seen fit it to
+  within a minute and Cloudflare's lifecycle page describes it, but the fix has not run on the deploy.
+- **A workspace that never ran has no snapshot.** Its files outside a commit are gone after the idle stop (seen in
+  log 14: `restored: "branch"`, `uncommittedLost: true`). That is how it is built: a snapshot is taken when a run
+  ends. Listed because a caller that writes files through the test exec route, or a later route, would lose them.
 - **`--max-turns` is a hidden flag** of Claude Code 2.1.308. It is accepted and enforced (spike C, check T), but it is
   not in `--help`, so a later version could drop it without notice. Check T in `scripts/acceptance.mjs` would catch that.
 - **DNS name leakage is unverified.** Every UDP/53 query gets one synthetic answer from a platform stub, so no packet
@@ -522,9 +557,10 @@ best-effort group KILL, the instance with an old layout and the untested shell s
   (G4). An agent can still stay `running` until the cap without a task-file failure, for example by starving the
   container so execs time out, or by making a read hang. A failed `stdout.log` read in `events()` answers 500, and one
   in the alarm's ingest while the run is live is logged and re-armed; neither counts toward either limit.
-- **The fixes' failure paths were not provoked on the deploy.** The deploy runs the fixed code (spike C, logs 6
-  and 7), but an unreadable task file, a timed-out snapshot and an oversized result were exercised only in the
-  unit tests and under `wrangler dev`.
+- **One of the fixes' failure paths was not provoked on the deploy: a snapshot that times out.** It rests on the
+  unit tests. An unreadable task file and an oversized result were provoked on 2026-11-17 and ended as written
+  above (spike C, log 14). The oversized lines were written by root into the task's output, and the agent was then
+  KILLed so that the line was the last result; Claude Code itself never produced such a line.
 
 ### Notes on the evidence itself (from the last review, 2026-11-15)
 
@@ -542,10 +578,18 @@ best-effort group KILL, the instance with an old layout and the untested shell s
   from the code and a local reproduction, not seen in a log. The fix rests on that cause and on unit tests of
   `decide`; a bare root has not been fetched on the deploy since. Acceptance check `R` now fetches
   `https://registry.npmjs.org` and fails if the answer is not 200.
-- The sweep of the agent's processes was shown in a local container only (`test-container/task-end.ctest.ts`): a
+- The sweep of the agent's processes is shown in a local container (`test-container/task-end.ctest.ts`): a
   `setsid` child survives the group KILL and is gone after the sweep, root's processes are untouched, and a sweep
-  with no group KILL before it makes the leader record 137. A sweep that leaves a process could not be produced in
-  a container; that path rests on unit tests with a fake host.
+  with no group KILL before it makes the leader record 137. On the deploy, acceptance check `S` shows the sweep
+  before a run's start once (spike C, log 13). A sweep that leaves a process could not be produced in a container
+  or on the deploy; that path rests on unit tests with a fake host.
+- Acceptance check `S` was wrong as first written: it planted its process with the exec's output attached, which
+  returned at once under `wrangler dev` and timed out on the deploy. The check passed locally and failed on its
+  first run against the deploy, in its setup. It was corrected and passed alone; the full suite has not been run
+  again with the corrected check.
+- The live tests of 2026-11-17 (spike C, log 14) were run once each, by a one-off script that is not in the
+  repository. The instance counts come from `wrangler containers info`, read once a minute, so each stop is known
+  to within a minute.
 - The two 409 rows in "Local check" quote the text as it was on the day of each check.
 - The six areas Copilot's review summaries named without a finding (PLZG-311, review coverage) were read once on
   2026-11-15 by a separate Claude session that was given the code and the area names, not by a person. Push size
