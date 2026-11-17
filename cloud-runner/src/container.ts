@@ -234,17 +234,27 @@ type Output = { exitCode: number; stdout: ArrayBuffer | Uint8Array; stderr: Arra
 
 // Runs a command to its end, or rejects once timeoutMs has passed. The signal
 // stops the process; the race makes sure the promise ends even if it does not.
+// The timer is cleared when the command ends. AbortSignal.timeout() cannot be:
+// its timer stayed pending for the whole timeout (10 minutes after a clone),
+// which keeps the Durable Object in memory, and the container's idle timeout
+// starts only once the object has left it (PLZG-311).
 export async function execOutput(container: Container, command: string[], options: ContainerExecOptions, timeoutMs: number): Promise<Output> {
-	const signal = AbortSignal.timeout(timeoutMs)
+	const controller = new AbortController()
+	const signal = controller.signal
 	// Named without the asAgent prefix, which says nothing about the command.
 	const plain = command[0] === "setpriv" ? command.slice(command.indexOf("--") + 1) : command
 	const name = plain[0] === "/bin/sh" && plain[1] === "-c" ? `sh ${plain[3] ?? ""}`.trim() : plain.slice(0, 2).join(" ")
 	const aborted = new Promise<never>((_resolve, reject) => {
 		signal.addEventListener("abort", () => reject(new Error(`${name} timed out after ${timeoutMs / 1000} s`)), { once: true })
 	})
-	aborted.catch(() => undefined) // a timer that fires after the command ended is no error
+	aborted.catch(() => undefined) // the race already ended on the command's own failure
+	const timer = setTimeout(() => controller.abort(), timeoutMs)
 
-	return Promise.race([(async () => (await container.exec(command, { ...options, signal })).output())(), aborted])
+	try {
+		return await Promise.race([(async () => (await container.exec(command, { ...options, signal })).output())(), aborted])
+	} finally {
+		clearTimeout(timer)
+	}
 }
 
 export async function run(container: Container, command: string[], cwd: string, env: Record<string, string>, timeoutMs = execTimeout.short): Promise<CommandResult> {
