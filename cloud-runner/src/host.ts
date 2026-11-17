@@ -1,16 +1,20 @@
 import { Files, SandboxFileError } from "@cloudflare/sandbox"
 import {
+	AGENT_LEFT,
+	agentUser,
 	asAgent,
 	capDiff,
 	capOutput,
 	type CommandResult,
 	chunkScript,
 	diffScript,
+	endUserScript,
 	eventsPath,
 	execOutput,
 	execTimeout,
 	exitCodePath,
 	longLineScript,
+	NO_AGENT_USER,
 	outputBytesScript,
 	outputDoneScript,
 	parseTask,
@@ -71,6 +75,12 @@ export interface Host {
 	// Whether a live (not zombie) process of the task's group runs in this instance.
 	taskAlive(task: Task): Promise<boolean>
 	signalTask(task: Task, signal: Signal): Promise<void>
+	// KILLs every process of the agent user, in a task's group or not; true once
+	// none is left, false when one is or the image has no such user. Throws when
+	// the sweep itself could not run, which says nothing about them. It ends a
+	// running task's agent too, and the leader then records 137: only for an
+	// instance with no run running.
+	endAgentProcesses(): Promise<boolean>
 	exitCode(): Promise<number | undefined>
 	// Up to max bytes of stdout.log from byte offset (0-based).
 	readOutput(offset: number, max: number): Promise<Uint8Array>
@@ -180,6 +190,13 @@ export class ContainerHost implements Host {
 
 		// Fails when the group is gone already, which is fine.
 		await run(this.c, ["/bin/sh", "-c", signalScript, "signal", String(task.pid), task.boot, signal], "/", {})
+	}
+
+	async endAgentProcesses(): Promise<boolean> {
+		const swept = await run(this.c, ["/bin/sh", "-c", endUserScript, "sweep", agentUser], "/", {})
+		if (swept.exitCode === 0) return true
+		if (swept.exitCode === AGENT_LEFT || swept.exitCode === NO_AGENT_USER) return false
+		throw new Error(`Could not end the agent's processes: the sweep exited ${swept.exitCode}: ${tail(swept.stderr, 500)}`)
 	}
 
 	async exitCode(): Promise<number | undefined> {

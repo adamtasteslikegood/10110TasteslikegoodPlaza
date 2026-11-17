@@ -4,7 +4,7 @@ import type { OutboundProps } from "../src/outbound"
 import type { Pushed, Saved } from "../src/persist"
 
 type Group = { alive: boolean; ignoresTerm: boolean }
-type Probe = "push" | "exitCode" | "readTask" | "readOutput" | "outputBytes" | "outputDone" | "taskAlive" | "signal" | "setPolicy"
+type Probe = "push" | "exitCode" | "readTask" | "readOutput" | "outputBytes" | "outputDone" | "taskAlive" | "signal" | "setPolicy" | "sweep"
 
 // A container in memory, behind the Workspace's one seam. It models what the
 // rules depend on: the pid file, the task's process groups, the exit code the
@@ -186,14 +186,30 @@ export class FakeHost implements Host {
 		}
 	}
 
+	// Processes of the agent's outside every task group, as setsid leaves them.
+	strays = 0
+	// Whether a sweep ends them all.
+	sweepClean = true
+
+	async endAgentProcesses(): Promise<boolean> {
+		this.calls.push("sweep")
+		this.fail("sweep")
+		if (!this.sweepClean) return false
+		this.strays = 0
+		return true
+	}
+
 	async exitCode(): Promise<number | undefined> {
 		this.fail("exitCode")
 		return this.exit
 	}
 
+	// While a stray holds the task's pipes the copier has not seen their end, and
+	// its last block (here: the last line) is not in stdout.log yet.
 	async readOutput(offset: number, max: number): Promise<Uint8Array> {
 		this.fail("readOutput")
-		return this.stdout.slice(offset, offset + max)
+		const written = this.strays > 0 ? this.stdout.subarray(0, this.stdout.lastIndexOf(0x0a, this.stdout.length - 2) + 1) : this.stdout
+		return written.slice(offset, offset + max)
 	}
 
 	async lineLength(): Promise<{ bytes: number; ended: boolean }> {
@@ -207,7 +223,7 @@ export class FakeHost implements Host {
 
 	async outputDone(): Promise<boolean> {
 		this.fail("outputDone")
-		return true
+		return this.strays === 0
 	}
 
 	async exec(argv: string[], root = false): Promise<CommandResult> {

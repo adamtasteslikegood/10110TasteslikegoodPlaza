@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
-import { agentHome, agentUser, asAgent, imageLayout, layoutPath, repositoryDirectory, taskDirectory } from "../src/container"
+import { agentHome, agentUser, asAgent, diffCutLine, imageLayout, layoutPath, MAX_DIFF_BYTES, repositoryDirectory, taskDirectory } from "../src/container"
 import { ContainerHost } from "../src/host"
 import { gitEnv, restoredProblem } from "../src/persist"
 import { containerOf, inBox, startBox, stopBox, until } from "./box"
@@ -136,6 +136,18 @@ describe("the clone", () => {
 		const diff = await host.diff()
 		expect(diff.ok).toBe(true)
 		expect(diff.text).toContain("+++ b/NEW.txt")
+	})
+
+	it("cuts a diff longer than 1 MiB at a line and says so", async () => {
+		expect(await taskSh("seq 1 400000 >BIG.txt")).toBe(0)
+		const diff = await host.diff()
+		expect(diff.ok).toBe(true)
+		expect(diff.text.endsWith(`\n${diffCutLine}`)).toBe(true)
+		expect(new TextEncoder().encode(diff.text).byteLength).toBeLessThanOrEqual(MAX_DIFF_BYTES + diffCutLine.length)
+		expect(diff.text).toContain("+++ b/BIG.txt")
+		// Read-only for the clone: no index lock and no temp file is left.
+		expect((await rootSh(`ls ${repositoryDirectory}/.git/index.lock /tmp/tmp.* 2>/dev/null | wc -l`)).stdout.trim()).toBe("0")
+		expect(await taskSh("rm BIG.txt")).toBe(0)
 	})
 
 	it("pushes the agent's commit, and runs a hook the agent planted as the agent", async () => {

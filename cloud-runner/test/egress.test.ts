@@ -17,6 +17,11 @@ const allowed: [string, string, string][] = [
 	["GET", "https://files.pythonhosted.org/packages/x", "none"],
 	["HEAD", "https://example.org/x", "none"],
 	["GET", "https://Example.ORG/x", "none"],
+	// the bare root of a host is its "/" (PLZG-311): the intercept hands it over without the slash
+	["GET", "https://registry.npmjs.org", "none"],
+	["HEAD", "https://example.org", "none"],
+	["GET", "https://Example.ORG", "none"],
+	["GET", "https://example.org#top", "none"],
 ]
 
 const refused: [string, string][] = [
@@ -93,6 +98,18 @@ const refused: [string, string][] = [
 	["POST", "https://gateway.ai.cloudflare.com/v1/acct/gw/anthropic/.\t./openai/x"],
 	["GET", "https:github.com/acme/app"],
 	["GET", "https://github.com\t/acme/app"],
+	// a bare root is "/" and nothing more (PLZG-311): the hosts with a path rule still refuse it
+	["GET", "https://github.com"],
+	["GET", "https://gateway.ai.cloudflare.com"],
+	["POST", "https://gateway.ai.cloudflare.com"],
+	["POST", "https://registry.npmjs.org"],
+	["GET", "https://evil.test"],
+	["GET", "https://registry.npmjs.org?x=1"],
+	["GET", "https://registry.npmjs.org:443"],
+	["GET", "https://registry.npmjs.org:8443"],
+	["GET", "https://registry.npmjs.org\t"],
+	["GET", "https://registry.npmjs.org\\"],
+	["GET", "https://user@registry.npmjs.org"],
 ]
 
 describe("decide", () => {
@@ -164,6 +181,9 @@ describe("isContainerCredentialHeader", () => {
 	it("names the headers the container may not set, in any case (Copilot C3)", () => {
 		for (const name of ["authorization", "Authorization", "proxy-authorization", "Proxy-Authorization", "x-api-key", "X-Api-Key", "cf-aig-authorization", "CF-AIG-Metadata", "cf-aig-"])
 			expect(isContainerCredentialHeader(name), name).toBe(true)
+	})
+	it("names the gateway's older cache headers, which it still honours (PLZG-311)", () => {
+		for (const name of ["cf-skip-cache", "CF-Skip-Cache", "cf-cache-ttl", "CF-Cache-TTL"]) expect(isContainerCredentialHeader(name), name).toBe(true)
 	})
 	it("leaves other headers alone", () => {
 		for (const name of ["anthropic-version", "content-type", "x-api-key-id", "cf-ray", "aig-authorization", "user-agent"])

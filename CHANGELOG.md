@@ -41,6 +41,30 @@ spec-set versions, and no application release existed before `v0.1.22`.
   while after the deploy and restored its old snapshot (`cloud-runner/README.md`,
   known gaps).
 
+### Changed — the cloud runner ends every process of the agent's after a run (PLZG-311)
+
+- In `cloud-runner/`, a process the agent starts in a new session (`setsid`)
+  used to survive the KILL of the task's process group and could change the
+  clone during the push, the snapshot and the next run, and could keep the
+  last of the run's output back. The runner now ends every process of the
+  `agent` user when a run ends, before the push, before each snapshot try and
+  before the next run starts, and replaces an instance where one is left.
+- A diff or a test exec no longer replaces an instance whose snapshot is still
+  pending; it used to drop the snapshot and clone the branch.
+- A request for the bare root of an allowed host (`https://host`) is no longer
+  refused.
+- The AI Gateway's older cache headers (`cf-skip-cache`, `cf-cache-ttl`) are
+  dropped from the container's requests like every `cf-aig-` header.
+- The 409 for a workspace that exists with other settings now names the host
+  list too.
+- The container tests now drive every shell script the runner sends; the
+  branches they do not reach are listed in the README.
+- `scripts/acceptance.mjs` has two new checks, `R` (the bare root) and `S`
+  (the sweep).
+- Not deployed: the development Worker still runs the code from before these
+  changes. What stays open is in `cloud-runner/README.md`, known gaps, with
+  three entries added from an independent read of the code.
+
 ### Fixed — real domain sessions start again: fresh tool-guard evidence (PLZG-309)
 
 - Every real domain Start failed with `sdk_error` since relay work claims landed

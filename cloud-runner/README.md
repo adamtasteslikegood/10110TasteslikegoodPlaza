@@ -27,6 +27,19 @@ config, hooks and diff drivers are the agent's to write, so root must never run
 them. The image carries a layout mark (`/etc/plaza-runner-layout`, `imageLayout`
 in `src/container.ts`); change both when who owns what changes.
 
+**Nothing of the agent's is left running after a run.** When a run ends, right
+after the KILL of its process group, then before its push, before each snapshot
+try and before the next run starts, the runner ends every process of the `agent`
+user: a process of that user sends KILL to every process it may signal, and root
+then checks that none is left. This reaches a process that left the task's
+process group with `setsid`, which the group KILL does not, and one that a git
+hook or diff driver started. An instance that still has such a process gets no
+further run: it is replaced once the run is pushed and snapshotted, and a
+`runner` event says `agent processes left`. If the check cannot run at all, the
+end of a run treats it the same way, and the start of a run fails and is to be
+tried again, with nothing replaced. The runner never does this while a run is
+running, since it would end the run's agent.
+
 `npm run test:container` shows all of this in a container built from the
 Dockerfile (it needs Docker; `npm test` runs in the Workers runtime and has
 no containers).
@@ -237,6 +250,17 @@ user. The image has no `ps`, so processes were read from `/proc`.
 | the layout mark overwritten with `1` (as root), a run stopped so a snapshot is taken, `replace-instance`, then the diff | 200, an empty diff; `generation: 3`, `restored: "branch"`, `uncommittedLost: true`; event `{"notice":"instance started","from":"branch","snapshotError":"The snapshot's image layout is \"1\", not \"2\": it is from another version of the image"}`; the new instance's mark reads `2` |
 | `c DELETE /workspaces/nr1`, then `c GET` | 204; `state: "none"` |
 
+After the sweep of the agent's processes (2026-11-15, the code at 435873e), same setup with `ALLOW_TEST_ROUTES` on,
+workspace `sw2` (Hello-World, `master`):
+
+| Step | Answer |
+|---|---|
+| `c PUT /workspaces/sw2 ...`, then the same with `"allow":["example.com"]` | 200 `generation: 1`; 409 `The workspace exists with another repo, branch or host list` |
+| an exec: `fetch("https://registry.npmjs.org")`, the same with a final slash, and `fetch("https://example.com")` | 200, 200 and 403: the bare root of an allowed host is reachable, and one of a host not allowed is still refused |
+| an exec `setsid -f sleep 86001` as the agent, then `c POST .../runs` | the sleep was running before the run and gone right after the run started |
+| an exec `setsid -f sleep 86002` during the run | running during the run as uid 1001, next to `claude`, outside the task's group |
+| the run left to end (`failed`, 401, as before) | the sleep is gone; only `tini` and `sleep infinity` are left; `generation` still 1; notices `run started`, `run ended`, `push failed`, `snapshot saved`, and no `agent processes left` |
+
 Not shown by this check: a push that succeeds and a run that ends `succeeded`
 (both need real credentials). The acceptance suite on the deploy shows both
 (spike C, log 8). Under local Docker, root has no `CAP_SYS_PTRACE`,
@@ -270,6 +294,14 @@ provoked on the deploy; they rest on the unit tests and the `wrangler dev` check
 (the `agent` user, layout mark `2`), by the owner's go-ahead. The full acceptance suite ran on it (spike C, log 8):
 same outcome as before, and the new check `U` passes. Check 1 is the first run that ended `succeeded` and pushed as
 the non-root agent. The redeploy check passed as well (log 9).
+
+**The deploy does not have the runner changes made after b5687c7** (PLZG-311, 2026-11-15): the sweep of the
+agent's processes ("Who runs what in the container"), the bare host root, the gateway's older header names and the
+new 409 text. They are tested locally only (`npm test`, `npm run test:container` and the `wrangler dev` run in
+"Local check"). A redeploy needs the owner's go-ahead. It changes the Worker's code and not the image, so the layout
+mark stays `2`, and neither the uid nor the mark tells the new code from the old. `scripts/acceptance.mjs` has two
+new checks for that, which have not run on the deploy: `R` fetches the bare root of an allowed host, and `S` starts
+a process as the agent outside any task and expects it gone after the next run, on the same instance.
 
 A redeploy that changes the image layout is meant to leave a workspace from before it working, with its first new
 instance cloning the branch (`restored: "branch"`, `uncommittedLost: true`) because its snapshot has the old layout
@@ -382,9 +414,20 @@ PLZG-311: the agent could write the run's control files (it ran as root). It now
 files are root's; see "Who runs what in the container" and the local check. The development deploy runs it since
 the same day, and the acceptance suite's check `U` shows it there (spike C, log 8).
 
-- **An instance that is live when the image changes keeps its old layout** until it is replaced. A run started on it
-  fails (the `agent` user is missing, so `setpriv` exits 1) and its pushes fail the same way. The next instance
-  clones the branch. Nothing checks the layout of a running instance.
+Closed in code on 2026-11-15 by a second PLZG-311 change, and **not deployed yet**: the refused bare root of an
+allowed host (`https://host` is now judged as `https://host/`; acceptance check `R` asks for it from now on), the
+gateway's older header names (`cf-skip-cache` and `cf-cache-ttl`, which its documentation says still work, are now
+dropped like every `cf-aig-` header), and the 409 for a changed host list, which now reads `The workspace exists with
+another repo, branch or host list`. A diff or a test exec no longer replaces an instance whose snapshot is still
+pending (it used to drop the snapshot and clone the branch, so a read could discard uncommitted files). The
+best-effort group KILL, the instance with an old layout and the untested shell scripts are narrowed below.
+
+- **An instance that is live when the image changes keeps its old layout** until it is replaced. With the code on
+  the deploy, a run started on it fails (the `agent` user is missing, so `setpriv` exits 1) and its pushes fail the
+  same way. With the sweep (not deployed), the next run's start finds no `agent` user, replaces the instance and
+  clones the branch; its event reads `agent processes left`, which is not the reason. That follows from the code and
+  was not tried on an instance from an old image. A diff or a push on such an instance still fails, and nothing
+  checks the layout of a running instance as such.
 - **The old Worker code can still answer for a short while after `wrangler deploy` returns**, and an instance it
   starts then has the old layout. Seen on the 2026-11-15 redeploy (spike C, log 10): requests to a workspace made two
   minutes before the deploy were still answered by the old code 33 s after the deploy returned, and that code
@@ -397,8 +440,27 @@ the same day, and the acceptance suite's check `U` shows it there (spike C, log 
 
 - **Routes can still wait behind a slow push and snapshot.** Each snapshot try is now cut off after 3 minutes and
   tried at most 3 times, one try per alarm, but a route queued behind the alarm can still wait for the push (up to
-  5 minutes) and one snapshot try. A timed-out snapshot is not cancelled; its late result is ignored.
-- **A timed-out exec may keep running in the container**, and `diff` can leave its temp index lock behind.
+  5 minutes) and one snapshot try. A timed-out snapshot is not cancelled; its late result is ignored. What
+  `snapshotContainer` answers to the retry while the first call is still in flight is not known; an error answer is
+  final and drops the stored snapshot.
+- **A finished run's unsaved work is destroyed if the intercepts cannot be registered after the object restarts**
+  (independent read, 2026-11-15). When the object restarts while a run's push or snapshot is still pending and one
+  registration of the intercepts then fails, `setUp` destroys the container, because no run is running. The pending
+  push is then given up (`The container stopped before the branch was pushed`), or the pending snapshot is dropped
+  and the next instance clones the branch. A running run in the same spot keeps its container and is retried. How
+  often a registration fails is not known. Not fixed: keeping the container needs a rule for when to stop retrying.
+- **A snapshot that fails drops the stored one even when nothing was pushed** (independent read, 2026-11-15). The
+  rule is there so a later instance never restores files older than the pushed branch. But when a run's push was
+  refused and its snapshot fails, or a new run starts before a pending snapshot is saved, the dropped snapshot was
+  the only copy of the earlier commits: once the instance goes away, the next one clones the branch and they are
+  gone. This is how the code is written and tested, so it needs the owner's ruling, not a fix by default.
+- **The Worker holds the whole output of some commands the agent can influence** (independent read, 2026-11-15):
+  what a git hook prints during a push (up to 5 minutes), the diff's stderr, and a test exec's output, which is cut
+  to 64 KiB only after it was read whole. What the platform does when that outgrows the object's memory was not
+  established. A pending push runs again on every refresh.
+- **A timed-out exec may keep running in the container**, and `diff` can leave its temp index lock behind. One that
+  runs as the agent (git in the clone) is ended by the next sweep of the agent's processes; one that runs as root
+  is not.
 - **A run longer than the 15-minute idle timeout** has not been tried on the deploy.
 - **`--max-turns` is a hidden flag** of Claude Code 2.1.308. It is accepted and enforced (spike C, check T), but it is
   not in `--help`, so a later version could drop it without notice. Check T in `scripts/acceptance.mjs` would catch that.
@@ -406,25 +468,30 @@ the same day, and the acceptance suite's check `U` shows it there (spike C, log 
   reaches a real resolver directly. If the stub logs or forwards query names upstream, a process could carry data
   out in the labels of the names it looks up. To settle it, resolve a fresh random label under a zone the owner
   controls, then look for it in that zone's authoritative query log. This needs an owner-controlled zone and is owed.
-- **The bare root of an allowed host is refused.** The intercept passes `https://host` without its slash, and the
-  normal-form rule refuses it; `https://host/path` is allowed. This fails closed.
 - **A ten-minute run and an idle hour were not measured** (design §8 item 8). The idle cost is computed from
   published rates only, and the dashboard's billed figures are owed by the owner.
-- **Older AI Gateway header names** without the `cf-aig-` prefix (for example `cf-skip-cache`) are not stripped.
-  Check the gateway documentation and strip them if the gateway still honours them.
 - **The workspace branch can still be force-pushed.** The push guard (f8c9d0a) lets a push update only
   `refs/heads/<workspace branch>` and never delete it, but it does not check that the update is a fast-forward, and it
   trusts git's wire format as GitHub reads it. GitHub branch rules remain the control for both.
 - **Git LFS is refused** by the smart-HTTP-only rule.
-- **The 409 text for a changed host list** says "another repo or branch".
-- **Some shell scripts in `container.ts` have no automated test.** The container tests (`npm run test:container`,
-  PLZG-311) drive the task launcher, the copiers, the TERM signal, the alive probe, the ranged read and the diff.
-  Not driven there: the refusals of `outputBytesScript` and `chunkScript`, `longLineScript`, the output caps and the
-  KILL path. Those were checked by hand and under `wrangler dev`.
-- **The group KILL is best-effort.** A process the agent starts in a new session (`setsid`) leaves the task's process
-  group, survives the KILL in finish, end and stop, and can keep changing the clone during the push, the snapshot and
-  the next run. Only replacing the instance ends it for certain. Since PLZG-311 such a process is the `agent` user's
-  and cannot touch the task directory, and a KILL of every process of that user would reach it; that is not built.
+- **Some branches of the shell scripts have no automated test.** The container tests (`npm run test:container`) now
+  drive every shell script in `container.ts`: the task launcher, the copiers and both output caps, TERM and KILL, the
+  alive probe, the sweep of the agent's processes and its refusal of root and of a missing user, the ranged read,
+  the long-line probe, the diff and its cut at 1 MiB, and the refusal of a directory, a FIFO or a link in
+  `stdout.log`'s place. Not driven: the "cannot read" refusal of `outputBytesScript` and `chunkScript` (the probes
+  run as root, which can read any file, so the branch is not reached in the container), the sweep's answer when a
+  process is left and its rule that a zombie is no process, the diff's failure paths, and the launcher's path for a
+  setup that fails.
+- **A process the agent starts in a new session (`setsid`) is ended by a sweep, not by the group KILL.** It leaves
+  the task's process group and survives the group KILL. The sweep of the `agent` user's processes ends it when the
+  run ends, before the output is read, and again before the push, before each snapshot try and before the next run
+  ("Who runs what in the container"). What is left: on a stop, the sweep comes only after the wait for the output
+  (up to 10 s, since such a process can hold the task's pipes open). If a sweep leaves a process or cannot run, the
+  push and the snapshot still go ahead with it alive, and the instance is replaced after them. A process that a diff
+  driver, a hook or the test `exec` route starts while no run is active lives until the next sweep, which is the
+  next run's start or snapshot try. A process that a git hook starts during the push itself can change the clone
+  while git reads it; it is ended before the snapshot. The sweep ran in a local container and under `wrangler dev`
+  ("Local check"), not on the deploy.
 - **A process-group id can be reused within one boot** after the group dies, so a late KILL could hit an unrelated
   group. The chance is low.
 - **Three counted task-file failures end the run untrusted, and its work is lost on purpose.** Since PLZG-311 the
@@ -472,7 +539,20 @@ the same day, and the acceptance suite's check `U` shows it there (spike C, log 
 - `scripts/redeploy.mjs` is a rewrite of the scratch script that produced the first redeploy log (spike C, log 5).
   The committed version produced logs 7 and 9. Run it under the same memory cap as any deploy.
 - The cause given for the refused bare host root (the intercept passing `https://host` without its slash) is inferred
-  from the code and a local reproduction, not seen in a log.
+  from the code and a local reproduction, not seen in a log. The fix rests on that cause and on unit tests of
+  `decide`; a bare root has not been fetched on the deploy since. Acceptance check `R` now fetches
+  `https://registry.npmjs.org` and fails if the answer is not 200.
+- The sweep of the agent's processes was shown in a local container only (`test-container/task-end.ctest.ts`): a
+  `setsid` child survives the group KILL and is gone after the sweep, root's processes are untouched, and a sweep
+  with no group KILL before it makes the leader record 137. A sweep that leaves a process could not be produced in
+  a container; that path rests on unit tests with a fake host.
+- The two 409 rows in "Local check" quote the text as it was on the day of each check.
+- The six areas Copilot's review summaries named without a finding (PLZG-311, review coverage) were read once on
+  2026-11-15 by a separate Claude session that was given the code and the area names, not by a person. Push size
+  and the task's validation showed no defect. The others are the three entries above marked "independent read", the
+  diff that replaced an instance (fixed), the missing result line behind a process that holds the pipes (fixed by
+  the sweep), and what was already listed. Each was checked against the code before it was written here; only the
+  two fixed ones have a test that fails without the fix.
 - The raw TCP and UDP probes target IPv4 only, although the container's resolver configuration lists an IPv6 server.
 - The process-environment scan in check 4 ran while no agent was alive, so the agent process's own environment was
   scanned only in the local check.

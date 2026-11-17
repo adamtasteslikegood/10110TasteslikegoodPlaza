@@ -429,6 +429,31 @@ describe("Workspace replaces an instance it cannot trust (Copilot C4)", () => {
 	})
 })
 
+describe("Workspace keeps an instance whose snapshot is pending for a read (PLZG-311)", () => {
+	it("answers a diff and a test exec from the instance, and replaces it only once the snapshot is settled", async () => {
+		const fake = new FakeHost()
+		fake.startMode = "no-pid"
+		fake.snapshotDelayMs = 100
+		const { stub } = await started(fake)
+		await edit(stub, (record) => {
+			record.startedAt = Date.now() - PID_GRACE_MS - 1
+		})
+		expect((await stub.status()).state).toBe("lost")
+		expect(await stored(stub)).toMatchObject({ snapshotPending: true, replaceInstance: true })
+
+		expect(await stub.diff()).toEqual({ ok: true, text: "" })
+		await stub.exec(["git", "status"])
+		expect(fake.count("destroy")).toBe(0)
+		expect(fake.count("clone work")).toBe(1)
+		expect(await stored(stub)).toMatchObject({ snapshotPending: true, replaceInstance: true })
+
+		fake.snapshotDelayMs = 0
+		await runDurableObjectAlarm(stub)
+		expect(await stored(stub)).toMatchObject({ snapshot: "snap-2", snapshotPending: false, replaceInstance: false })
+		expect(fake.count("destroy")).toBe(1)
+	})
+})
+
 describe("Workspace stale snapshot (Copilot C5)", () => {
 	it("restores the old snapshot after a run lost with its container, says the work was lost and starts a new conversation", async () => {
 		const { stub, fake } = await afterOneRun()
@@ -472,6 +497,130 @@ describe("Workspace finish (Copilot C6)", () => {
 		expect(fake.groups.get(100)?.alive).toBe(false)
 		const order = fake.calls.filter((c) => ["signal 100 KILL", "push work", "snapshot"].includes(c))
 		expect(order).toEqual(["signal 100 KILL", "push work", "snapshot"])
+	})
+})
+
+describe("Workspace ends every process of the agent's (PLZG-311)", () => {
+	it("sweeps after the group KILL and before the push, and again before the snapshot", async () => {
+		const { stub, fake } = await started()
+		fake.strays = 1
+		fake.finishTask(0, [resultLine], true)
+
+		expect(await stub.status()).toMatchObject({ state: "succeeded" })
+		const order = fake.calls.filter((c) => ["signal 100 KILL", "sweep", "push work", "snapshot"].includes(c)).slice(-6)
+		expect(order).toEqual(["signal 100 KILL", "sweep", "sweep", "push work", "sweep", "snapshot"])
+		expect(fake.strays).toBe(0)
+		expect(fake.running).toBe(true)
+	})
+
+	it("reads a run's result after the sweep, since a stray that holds the pipes keeps the last of the output back", async () => {
+		const { stub, fake } = await started()
+		fake.strays = 1
+		fake.finishTask(0, [JSON.stringify({ type: "system" }), resultLine], true)
+
+		expect(await stub.status()).toMatchObject({ state: "succeeded", result: "done" })
+	})
+
+	it("sweeps before a stopped run is pushed", async () => {
+		const { stub, fake } = await started()
+		expect(await stub.stop()).toMatchObject({ state: "stopped" })
+		const order = fake.calls.filter((c) => ["signal 100 KILL", "sweep", "push work", "snapshot"].includes(c)).slice(-5)
+		expect(order).toEqual(["signal 100 KILL", "sweep", "push work", "sweep", "snapshot"])
+	})
+
+	it("never sweeps while a run is running, since that would end the run's agent", async () => {
+		const { stub, fake } = await started()
+		const before = fake.count("sweep")
+
+		await stub.status()
+		await stub.events(0)
+		await stub.diff()
+		await stub.exec(["git", "status"])
+		await runDurableObjectAlarm(stub)
+		expect(await stub.status()).toMatchObject({ state: "running" })
+		expect(fake.count("sweep")).toBe(before)
+	})
+
+	it("replaces the instance once the run is persisted when a sweep leaves a process", async () => {
+		const { stub, fake } = await started()
+		fake.sweepClean = false
+		fake.finishTask(0, [resultLine])
+
+		expect(await stub.status()).toMatchObject({ state: "succeeded", pushed: { commit: "commit-1" } })
+		expect(fake.calls.filter((c) => ["push work", "snapshot", "destroy"].includes(c))).toEqual(["push work", "snapshot", "destroy"])
+		expect(fake.running).toBe(false)
+		expect((await stored(stub)).replaceInstance).toBeFalsy()
+	})
+
+	it("treats a sweep that cannot run as one that left a process, and still pushes", async () => {
+		const { stub, fake } = await started()
+		fake.flaky.add("sweep")
+		fake.finishTask(0, [resultLine])
+
+		expect(await stub.status()).toMatchObject({ state: "succeeded", pushed: { commit: "commit-1" } })
+		expect(fake.calls.filter((c) => ["push work", "snapshot", "destroy"].includes(c))).toEqual(["push work", "snapshot", "destroy"])
+	})
+
+	it("says so in the events when a sweep leaves a process", async () => {
+		const { stub, fake } = await started()
+		fake.sweepClean = false
+		fake.finishTask(0, [resultLine])
+		expect(await stub.status()).toMatchObject({ state: "succeeded" })
+
+		expect((await notices(stub)).filter((n) => n === "agent processes left")).toHaveLength(1)
+	})
+
+	it("does not sweep for a push that is pending under a run stored as running", async () => {
+		const { stub, fake } = await started()
+		const before = fake.count("sweep")
+		await edit(stub, (record) => {
+			record.persistPending = true
+		})
+
+		expect(await stub.status()).toMatchObject({ state: "running" })
+		expect(fake.count("sweep")).toBe(before)
+		expect([...fake.groups.values()].filter((g) => g.alive)).toHaveLength(1)
+	})
+
+	it("fails a start, and replaces nothing, when the sweep before it cannot run", async () => {
+		const { stub, fake } = await started()
+		fake.finishTask(0, [resultLine])
+		expect(await stub.status()).toMatchObject({ state: "succeeded" })
+		fake.failOnce.sweep = new Error("sweep timed out")
+		fake.calls.length = 0
+
+		await expect(direct(stub, (w) => w.startRun("next", false, 5))).rejects.toThrow(/sweep timed out/)
+		expect(fake.calls.filter((c) => ["destroy", "resetTask", "startTask"].includes(c))).toEqual([])
+		expect(await stub.status()).toMatchObject({ state: "succeeded", run: 1 })
+
+		expect(await stub.startRun("next", false, 5)).toEqual({ run: 2 })
+		expect(fake.count("destroy")).toBe(0)
+	})
+
+	it("sweeps a reused instance before the next run's task directory is made", async () => {
+		const { stub, fake } = await started()
+		fake.finishTask(0, [resultLine])
+		expect(await stub.status()).toMatchObject({ state: "succeeded" })
+		fake.strays = 1
+		fake.calls.length = 0
+
+		expect(await stub.startRun("next", false, 5)).toEqual({ run: 2 })
+		expect(fake.calls.filter((c) => ["sweep", "resetTask", "startTask", "destroy"].includes(c))).toEqual(["sweep", "resetTask", "startTask"])
+		expect(fake.strays).toBe(0)
+	})
+
+	it("starts the next run on a new instance when the sweep before it leaves a process", async () => {
+		const { stub, fake } = await started()
+		fake.finishTask(0, [resultLine])
+		expect(await stub.status()).toMatchObject({ state: "succeeded" })
+		fake.sweepClean = false
+		fake.calls.length = 0
+
+		expect(await stub.startRun("next", false, 5)).toEqual({ run: 2 })
+		const order = fake.calls.filter((c) => ["sweep", "destroy", "startFromSnapshot snap-1", "resetTask", "startTask"].includes(c))
+		expect(order).toEqual(["sweep", "destroy", "startFromSnapshot snap-1", "resetTask", "startTask"])
+		expect((await stored(stub)).replaceInstance).toBeFalsy()
+		expect(await stub.status()).toMatchObject({ state: "running", restored: "snapshot" })
 	})
 })
 
