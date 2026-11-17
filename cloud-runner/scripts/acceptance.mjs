@@ -334,7 +334,9 @@ async function main() {
 	await check("S", "a process the agent left outside any task is ended before the next run, on the same instance (PLZG-311)", async () => {
 		const mark = `86${String(Math.floor(Math.random() * 1000)).padStart(3, "0")}`
 		const listed = async () => (await inBox(A, ["/bin/sh", "-c", `for d in /proc/[0-9]*; do tr '\\0' ' ' <"$d/cmdline" 2>/dev/null; echo; done | grep -c "^sleep ${mark} $"`], true)).stdout.trim()
-		const planted = await inBox(A, ["setsid", "-f", "sleep", mark])
+		// Its three streams go to /dev/null: left on the exec's pipes, the process
+		// keeps them open and the exec times out (500) with the process running.
+		const planted = await inBox(A, ["/bin/sh", "-c", `setsid -f sleep ${mark} >/dev/null 2>&1 </dev/null`])
 		if (planted.exitCode !== 0) throw new Error(`could not start the process: ${planted.stderr.slice(0, 200)}`)
 		if ((await listed()) !== "1") throw new Error(`the planted process is not running (${await listed()})`)
 		const before = await status(A)

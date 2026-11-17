@@ -41,6 +41,29 @@ spec-set versions, and no application release existed before `v0.1.22`.
   while after the deploy and restored its old snapshot (`cloud-runner/README.md`,
   known gaps).
 
+### Fixed — the cloud runner's live output and idle stop, found on the deploy (PLZG-311)
+
+- The development Worker was redeployed on 2026-11-17 from `dev` at 7fc2982
+  (code only) and runs the sweep of the agent's processes. The acceptance
+  suite's new check `R` passes there in the full run. Check `S` failed in that
+  run in its own setup (the exec that plants the stray process timed out), was
+  corrected, and passes when run alone (`ONLY=S`); the full suite was not run
+  again with the corrected check. A run of 20 minutes, the idle
+  stop, an unreadable task file and an oversized result line were tried on the
+  deploy for the first time; the evidence is in spike C, logs 12 to 14.
+- A running run's output reaches `stdout.log` at once. The copier (`head -c`)
+  wrote through stdio, so the event log trailed a running run by up to 4 KiB
+  of output. It now runs under `stdbuf -o0`.
+- An exec's timeout timer ends with its command. It used to stay pending for
+  the whole timeout (10 minutes after a clone, 5 after a push), which kept the
+  Durable Object in memory and put off the container's 15-minute idle stop:
+  it came 18.5 and 25.5 minutes after the last request in the two cases seen.
+- Acceptance check `S` plants its process with its streams on `/dev/null`. With
+  them attached, the exec timed out on the deploy and the check failed in its
+  setup.
+- The two runner fixes are **not deployed**; a redeploy needs the owner's
+  go-ahead.
+
 ### Changed — the cloud runner ends every process of the agent's after a run (PLZG-311)
 
 - In `cloud-runner/`, a process the agent starts in a new session (`setsid`)
@@ -61,9 +84,9 @@ spec-set versions, and no application release existed before `v0.1.22`.
   branches they do not reach are listed in the README.
 - `scripts/acceptance.mjs` has two new checks, `R` (the bare root) and `S`
   (the sweep).
-- Not deployed: the development Worker still runs the code from before these
-  changes. What stays open is in `cloud-runner/README.md`, known gaps, with
-  three entries added from an independent read of the code.
+- Deployed to the development Worker on 2026-11-17 (see the entry above). What
+  stays open is in `cloud-runner/README.md`, known gaps, with three entries
+  added from an independent read of the code.
 
 ### Fixed — real domain sessions start again: fresh tool-guard evidence (PLZG-309)
 

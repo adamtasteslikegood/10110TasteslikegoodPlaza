@@ -92,6 +92,22 @@ describe("exec timeouts", () => {
 		expect(seen.signal?.aborted).toBe(true)
 	})
 
+	it("leaves no timeout pending once the command has ended (PLZG-311)", async () => {
+		// A pending timer keeps the Durable Object in memory, and the container's
+		// idle timeout only starts once it has left: the timer must go with the command.
+		const seen: { signal?: AbortSignal } = {}
+		const container = {
+			exec: async (_command: string[], options: { signal?: AbortSignal }) => {
+				seen.signal = options.signal
+				return { output: async () => ({ exitCode: 0, stdout: bytes("done"), stderr: bytes("") }) }
+			},
+		} as unknown as Container
+
+		expect((await run(container, ["git", "status"], "/", {}, 20)).stdout).toBe("done")
+		await new Promise((resolve) => setTimeout(resolve, 80))
+		expect(seen.signal?.aborted).toBe(false)
+	})
+
 	it("names a shell script by its $0", async () => {
 		const { container } = hung()
 		await expect(runBytes(container, ["/bin/sh", "-c", "tail", "ingest"], "/", {}, 20)).rejects.toThrow("sh ingest timed out")

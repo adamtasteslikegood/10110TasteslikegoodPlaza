@@ -58,7 +58,11 @@ export const copyScript = `"$@" <"$0.fifo" >"$0.log"; : >"$0.done"`
 // Starts argv detached in its own session and process group under task
 // directory $1, with copyScript as $2. The leader writes the pid file, then the agent's exit code once
 // argv returns. Both streams go through fifos to capped copiers (Copilot C10):
-// stdout through head, stderr through tail. A failed setup still writes an exit
+// stdout through head, stderr through tail. head runs under stdbuf -o0: it
+// writes through stdio, so without it stdout.log trailed a running task by up to
+// a block (4 KiB), and its last events showed only once more output came or the
+// task ended (PLZG-311). dd is no replacement: on a pipe its count_bytes counts
+// short reads as blocks and stops before the cap. A failed setup still writes an exit
 // code, so the run ends instead of hanging. The leader and the copiers are
 // root's and so is everything they write; argv is the one part that runs as the
 // agent (taskCommand), holding only the two fifos the leader opened for it.
@@ -67,7 +71,7 @@ exec setsid -f sh -c 'trap : TERM
 echo "$$ $(cat /proc/sys/kernel/random/boot_id)" >"$0/pid.tmp" && mv "$0/pid.tmp" "$0/pid"
 copy=$1; shift
 mkfifo -m 600 "$0/stdout.fifo" "$0/stderr.fifo" &&
-setsid -f sh -c "$copy" "$0/stdout" head -c ${MAX_STDOUT_FILE_BYTES} </dev/null &&
+setsid -f sh -c "$copy" "$0/stdout" stdbuf -o0 head -c ${MAX_STDOUT_FILE_BYTES} </dev/null &&
 setsid -f sh -c "$copy" "$0/stderr" tail -c ${MAX_STDERR_BYTES} </dev/null &&
 "$@" >"$0/stdout.fifo" 2>"$0/stderr.fifo"
 echo "$?" >"$0/exit-code.tmp" && mv "$0/exit-code.tmp" "$0/exit-code"' "$dir" "$copy" "$@" </dev/null >/dev/null 2>&1`
@@ -230,17 +234,27 @@ type Output = { exitCode: number; stdout: ArrayBuffer | Uint8Array; stderr: Arra
 
 // Runs a command to its end, or rejects once timeoutMs has passed. The signal
 // stops the process; the race makes sure the promise ends even if it does not.
+// The timer is cleared when the command ends. AbortSignal.timeout() cannot be:
+// its timer stayed pending for the whole timeout (10 minutes after a clone),
+// which keeps the Durable Object in memory, and the container's idle timeout
+// starts only once the object has left it (PLZG-311).
 export async function execOutput(container: Container, command: string[], options: ContainerExecOptions, timeoutMs: number): Promise<Output> {
-	const signal = AbortSignal.timeout(timeoutMs)
+	const controller = new AbortController()
+	const signal = controller.signal
 	// Named without the asAgent prefix, which says nothing about the command.
 	const plain = command[0] === "setpriv" ? command.slice(command.indexOf("--") + 1) : command
 	const name = plain[0] === "/bin/sh" && plain[1] === "-c" ? `sh ${plain[3] ?? ""}`.trim() : plain.slice(0, 2).join(" ")
 	const aborted = new Promise<never>((_resolve, reject) => {
 		signal.addEventListener("abort", () => reject(new Error(`${name} timed out after ${timeoutMs / 1000} s`)), { once: true })
 	})
-	aborted.catch(() => undefined) // a timer that fires after the command ended is no error
+	aborted.catch(() => undefined) // the race already ended on the command's own failure
+	const timer = setTimeout(() => controller.abort(), timeoutMs)
 
-	return Promise.race([(async () => (await container.exec(command, { ...options, signal })).output())(), aborted])
+	try {
+		return await Promise.race([(async () => (await container.exec(command, { ...options, signal })).output())(), aborted])
+	} finally {
+		clearTimeout(timer)
+	}
 }
 
 export async function run(container: Container, command: string[], cwd: string, env: Record<string, string>, timeoutMs = execTimeout.short): Promise<CommandResult> {

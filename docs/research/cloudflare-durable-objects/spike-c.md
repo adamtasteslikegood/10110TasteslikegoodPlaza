@@ -1,6 +1,7 @@
 # Spike C: Claude Code in a Cloudflare Sandbox container (M14 stage 1 deploy)
 
-Run on 2026-11-15 against the development deploy of `cloud-runner/` (PLZG-310).
+Run on 2026-11-15 against the development deploy of `cloud-runner/` (PLZG-310), with later runs
+on 2026-11-17 for PLZG-311 (logs 12 to 14).
 **Research evidence**, not a product decision. Design:
 [2026-11-14-m14-cloudflare-runner-design.md](../../superpowers/specs/2026-11-14-m14-cloudflare-runner-design.md) §7–§9.
 
@@ -17,8 +18,10 @@ Run on 2026-11-15 against the development deploy of `cloud-runner/` (PLZG-310).
   (log 7) then made version `2aad8fcd-30fd-42df-a66e-d4a09bc07b4f` (same code and image).
 - For the non-root agent (PLZG-311, 2026-11-15) the Worker was redeployed from `dev` at b5687c7 with a new image
   (an `agent` user, layout mark `2`): version `71ae6191-736a-4052-b2eb-63243f22d95e`, on which log 8 ran. The
-  redeploy check (log 9) then made version `b2ecfa8e-a7a8-4f78-a6b9-dafbd8844962`, which is live (same code and
-  image).
+  redeploy check (log 9) then made version `b2ecfa8e-a7a8-4f78-a6b9-dafbd8844962` (same code and image).
+- For the sweep of the agent's processes and the small fixes (PLZG-311, 2026-11-17) the Worker was redeployed
+  from `dev` at 7fc2982, code only (the image push was skipped), by the redeploy check itself (log 12): version
+  `eb2cf0ed-f8f2-4ac7-9618-b06266788cca`, which is live. Logs 13 and 14 ran on it.
 - One container application, `plaza-cloud-runner-dev-workspace` (class `Workspace`, `durable_object`
   scheduling, instance `standard-1`, Internet off), image built from `cloud-runner/Dockerfile`:
   `node:24-trixie-slim`, git, ripgrep, `@anthropic-ai/claude-code@2.1.308`, the sandbox shim 1.0.3.
@@ -179,7 +182,7 @@ result: duration_ms 154387 turns 2 cost 0.013517999999999999
 | 6 | replace-instance: snapshot restores an uncommitted file and the conversation | PASS |
 | 7 | stop; lost after a mid-run replacement; next run accepted | PASS |
 | d | detached task survives a Worker redeploy mid-run | PASS (log 5) |
-| e | longest run exercised | about 160 s; the 15-minute idle timeout was **not exercised** |
+| e | longest run exercised | about 160 s then; 1,204 s on 2026-11-17, with the idle stop seen as well (log 14) |
 | 8 | measured cost of a ten-minute run and an idle hour (design §8 item 8) | **NOT MEASURED:** no ten-minute run was made; the idle hour is computed from published rates; the dashboard's billed figures are owed by the owner. Short runs are measured under Cost |
 
 In check (d), a run of `sleep 150` started. 20 s in, `wrangler deploy` made a new version in 11 s. Nothing had
@@ -437,6 +440,273 @@ DELETE nomark-311a: 204; then GET 200 {"state":"none","run":0,"generation":0}
 After all four, `git ls-remote <repo> refs/heads/main` still gave `80f5ccb8968eacd2f6d68740e1990d2076671c10`, and
 `refs/heads/cloud-runner/acceptance` was at check 1's commit, `0c3c7d2e9c39a8c4b3fa14199282395e3b14408f`.
 
+**Log 12, `redeploy-311c.log`: check (d) as the deploy of the sweep code** (2026-11-17, `dev` at 7fc2982), by
+`scripts/redeploy.mjs`. This run was the one approved redeploy: the script's own `wrangler deploy` made version
+eb2cf0ed from the new code and the unchanged image, 32 s into a run that then ended on generation 1 with exit
+code 0. It does not show the sweep: a clean sweep leaves no trace, and which code ended the run is not known (the
+old code has answered for a while after a deploy before, log 10).
+
+```
+2026-11-17T12:51:04Z
+7fc298271f3b3068b36dee3cd4055f9cf3a5dd87
+2s version before b2ecfa8e-a7a8-4f78-a6b9-dafbd8844962
+2s PUT 200
+12s run 202 {"run":1}
+32s before redeploy running generation 1
+45s redeploy ok version after eb2cf0ed-f8f2-4ac7-9618-b06266788cca image unchanged
+45s after redeploy running generation 1
+175s ended succeeded generation 1
+175s task exit-code file: "0"
+runner notices: run started, run ended, pushed, snapshot saved
+result: duration_ms 154602 turns 2 total_cost_usd 0.043650600000000005
+176s DELETE 204 then state none
+PASS d the run survived the redeploy on the same instance and wrote exit code 0
+exit 0
+2026-11-17T12:54:00Z
+```
+
+After it (the script ended at 12:54:00), a second PUT of a workspace with another host list answered `The
+workspace exists with another repo, branch or host list`, the new text, three times at 20 s intervals between
+12:54:08 and 12:55:16.
+
+**Log 13, `acc-311c.log` and `acc-311c-s.log`: the full suite on the sweep code** (version eb2cf0ed). Ten of
+twelve checks pass. Check H fails as in every run (the hidden `--max-turns`). Check `R` (new) passes: the bare root
+of `registry.npmjs.org` answers 200. Check `S` (new) failed in its own setup: the exec that plants the process
+answered 500. The cause is in the check, not in the sweep (see Surprises, and the probe in log 14): the detached
+`sleep` kept the exec's output pipes open, so the exec ran into its 30 s timeout. 59daae9 plants it with its three
+streams on `/dev/null`, and `S` then passed alone (`ONLY=S`, second block): the process was gone after the run, the
+generation stayed 1, and no `agent processes left` notice was written. The failed plant of the first block very
+likely left its `sleep` running in workspace A, as the same exec did in the probe of log 14; nobody looked. The
+runs after it on A started and ended normally.
+
+```
+2026-11-17T12:55:22Z
+NOTE workspaces acc-851d6f-a and acc-851d6f-b, branch cloud-runner/acceptance
+NOTE ls-remote main before the checks: 80f5ccb8968eacd2f6d68740e1990d2076671c10
+NOTE PUT acc-851d6f-a: generation 1, state idle
+NOTE claude --version: 2.1.308 (Claude Code)
+NOTE claude -p --max-turns 1 </dev/null: exit 1 Error: Input must be provided either through stdin or as a prompt argument when using --print
+NOTE claude -p --no-such-flag-xyz </dev/null: exit 1 error: unknown option '--no-such-flag-xyz'
+FAIL H claude --help in the image lists --session-id, --resume, --max-turns: not in --help: --max-turns
+NOTE cost check 1 run 1: events span 9.12 s; result duration_ms=4716 num_turns=3 input=6 output=366 cache_read=45809 cache_write=4569 total_cost_usd=0.0196754 model=claude-sonnet-5-5
+NOTE pushed.commit 261006466bee10506a01d6065f3a4906d5b57f66; ls-remote 261006466bee10506a01d6065f3a4906d5b57f66
+PASS 1 a prompt runs to completion, writes and pushes NOTES.md
+NOTE an exec as the agent: uid 1001 (agent), NoNewPrivs:	1
+NOTE owners: /workspace root 755; /workspace/task root 700; /workspace/task/exit-code root 644; /workspace/repo agent 755
+PASS U the agent is not root, and /workspace and the task directory are out of its reach (PLZG-311)
+NOTE cost check T run 2: events span 8.439 s; result duration_ms=1738 num_turns=2 input=2 output=47 cache_read=17137 cache_write=174 total_cost_usd=0.022298099999999998 model=claude-sonnet-5-5
+NOTE check T: state failed, error "error_max_turns", result subtype error_max_turns, is_error true, num_turns 2, tool calls 1
+PASS T maxTurns 1 stops a run that needs two tool calls (result subtype error_max_turns)
+NOTE cost check 2 run 3: events span 53.844 s; result duration_ms=48234 num_turns=2 input=4 output=164 cache_read=34775 cache_write=353 total_cost_usd=0.0283061 model=claude-sonnet-5-5
+NOTE check 2: 15 events read incrementally, same as one full read; run ended succeeded
+PASS 2 events read twice agree, after=next never repeats, a second start answers 409
+NOTE http://example.com: 403
+NOTE https://registry.npmjs.org/left-pad: 200; http://registry.npmjs.org/left-pad: 403
+NOTE push to octocat/Hello-World: exit 128, fatal: unable to access 'https://github.com/octocat/Hello-World/': The requested URL returned error: 403
+NOTE raw TCP 1.1.1.1:53: timeout
+NOTE raw TCP 1.1.1.1:22: timeout
+NOTE raw TCP 1.1.1.1:25: timeout
+NOTE raw TCP 1.1.1.1:8080: timeout
+NOTE UDP DNS example.com via 8.8.8.8: answered 11.9.0.1
+NOTE /etc/resolv.conf: "nameserver 1.1.1.1\nnameserver 9.9.9.9\nnameserver 2606:4700:4700::1111"
+NOTE UDP DNS example.com via 1.1.1.1: answered 11.9.0.1; via 192.0.2.1 (TEST-NET): answered 11.9.0.1; nx-851d6f.example.invalid via 1.1.1.1: answered 11.9.0.1
+NOTE UDP NTP to 162.159.200.1:123: no reply
+NOTE UDP to 1.1.1.1:9999: no reply
+NOTE system resolver for example.com: resolved fd00::119:1
+PASS 3 egress: unlisted host 403, plain HTTP refused, push elsewhere refused, own repository reachable, no raw TCP, no direct UDP (DNS name leakage not tested)
+NOTE https://registry.npmjs.org (bare root): 200
+PASS R the bare root of an allowed host is reachable (PLZG-311)
+FAIL S a process the agent left outside any task is ended before the next run, on the same instance (PLZG-311): exec setsid answered 500 Workspace request failed
+
+NOTE scanned 1392 bytes of container output, the environ of 6 processes (2484 bytes) and 35 events (check 1's: 12)
+PASS 4 no credential in env, any process's environ, .git/config, ~/.gitconfig, home, /workspace or the workspace's events
+NOTE right after both starts: acc-851d6f-a running, acc-851d6f-b running
+NOTE cost check 5 a run 4: events span 8.411 s; result duration_ms=1756 num_turns=1 input=2 output=4 cache_read=17664 cache_write=48 total_cost_usd=0.0302365 model=claude-sonnet-5-5
+NOTE cost check 5 b run 1: events span 8.56 s; result duration_ms=1273 num_turns=1 input=2 output=4 cache_read=12568 cache_write=3778 total_cost_usd=0.0107458 model=claude-sonnet-5-5
+PASS 5 two workspaces run at once and do not see each other's files
+NOTE scratch.txt before replacement: "42"; pushError none
+NOTE run 5 runner notices: run started, run ended, pushed, snapshot saved
+NOTE cost check 6 run 6: events span 9.23 s; result duration_ms=1459 num_turns=1 input=2 output=28 cache_read=17926 cache_write=120 total_cost_usd=0.0382449 model=claude-sonnet-5-5
+NOTE check 6: restored=snapshot uncommittedLost=false instance note={"notice":"instance started","generation":2,"from":"snapshot"}; session same (5a402473-3815-49fb-afd1-bd641958b91f); reports 42: true; reports heliotrope: true; state succeeded
+NOTE check 6 answer: "The word is **heliotrope**, and `scratch.txt` contains `42`."
+PASS 6 after replace-instance the snapshot restores an uncommitted file
+NOTE stop answered stopped in 3.563 s
+NOTE after replace-instance mid-run: lost (The container stopped before the run ended), pushError none
+NOTE run after lost: generation 3, restored snapshot, uncommittedLost true
+PASS 7 stop interrupts a run; a replaced instance mid-run reports lost; both accept the next run
+NOTE ls-remote main after the checks: 80f5ccb8968eacd2f6d68740e1990d2076671c10
+NOTE DELETE acc-851d6f-a: 204; then GET 200 {"state":"none","run":0,"generation":0}
+NOTE DELETE acc-851d6f-b: 204; then GET 200 {"state":"none","run":0,"generation":0}
+exit 1
+2026-11-17T12:59:06Z
+```
+
+```
+2026-11-17T13:01:23Z
+NOTE workspaces acc-dd4da0-a and acc-dd4da0-b, branch cloud-runner/acceptance
+NOTE ls-remote main before the checks: 80f5ccb8968eacd2f6d68740e1990d2076671c10
+NOTE PUT acc-dd4da0-a: generation 1, state idle
+NOTE cost check S run 1: events span 8.181 s; result duration_ms=1542 num_turns=1 input=2 output=4 cache_read=12568 cache_write=3770 total_cost_usd=0.010725799999999999 model=claude-sonnet-5-5
+NOTE check S: sleep 86282 planted as the agent; after run 1 (succeeded) 0 left; generation 1 then 1; notices ["run started","run ended","pushed","snapshot saved"]
+PASS S a process the agent left outside any task is ended before the next run, on the same instance (PLZG-311)
+NOTE ls-remote main after the checks: 80f5ccb8968eacd2f6d68740e1990d2076671c10
+NOTE DELETE acc-dd4da0-a: 204; then GET 200 {"state":"none","run":0,"generation":0}
+NOTE DELETE acc-dd4da0-b: 204; then GET 200 {"state":"none","run":0,"generation":0}
+exit 0
+2026-11-17T13:01:35Z
+```
+
+**Log 14, `live-311c*.log`: what had never been tried on the deploy** (version eb2cf0ed, 2026-11-17), by a one-off
+script that is not in the repository. Every workspace used the test branch. The process listings the script printed
+are left out, and long lines are cut at `[…]`. Times are UTC.
+
+*A run longer than the idle timeout, and the idle stop.* Two workspaces were made at 13:00:06. In `live-311c-long`
+the agent ran `sleep 590` twice. No request was sent to it between 13:00:32 and 13:22:16, so only the object's own
+alarm touched the container. The run ended `succeeded` after 1,204 s on generation 1, pushed and snapshotted. The
+run does not show what kept the instance up; Cloudflare's lifetime page says a running alarm counts as activity
+and that nothing inside the instance does.
+`live-311c-idle` got one exec at 13:00:06 and no request after it.
+
+```
+13:00:04 remote head: 261006466bee10506a01d6065f3a4906d5b57f66
+13:00:06 PUT live-311c-long: 200 {"state":"idle","run":0,"generation":1,"repo":"https://github.com/adamtasteslikegood/ArtazZen-recipes-TanStack-showcase","branch":"cloud-runner/acceptance"} (1590 ms)
+13:00:06 PUT live-311c-idle: 200 {"state":"idle","run":0,"generation":1,"repo":"https://github.com/adamtasteslikegood/ArtazZen-recipes-TanStack-showcase","branch":"cloud-runner/acceptance"} (2115 ms)
+13:00:06 idle: marker written as the agent: 13:00:06
+13:00:06 idle: last request to it is now; it is not touched again until its instance is gone
+13:00:06 long: marker written as the agent, outside the clone: long-marker
+13:00:06 POST live-311c-long/runs: 202 {"run":1}
+13:00:32 long: status 25 s in (the last request to it until the run is over): {"state":"running","run":1,"generation":1}
+13:22:16 long: status: {"state":"succeeded","run":1,"generation":1,"result":"done","pushed":{"commit":"261006466bee10506a01d6065f3a4906d5b57f66"}}
+13:22:17 long: run facts: {"first":"2026-11-17T13:00:06.825Z","last":"2026-11-17T13:20:11.100Z","wallSeconds":1204.275,"duration_ms":1185077,"num_turns":3,"subtype":"success","total_cost_usd":0.0350124}
+13:22:17 long: runner notices: [{"at":"13:00:06","notice":"run started","run":1},{"at":"13:20:07","notice":"run ended","run":1,"state":"succeeded"},{"at":"13:20:08","notice":"pushed","run":1,"commit":"261006466bee10506a01d6065f3a4906d5b57f66"},{"at":"13:20:11","notice":"snapshot saved","run":1,"bytes":318064}]
+13:22:17 long: tool calls: [{"at":"13:02:06","command":"sleep 590","timeout":600000},{"at":"13:12:07","command":"sleep 590","timeout":600000}]
+13:22:17 long: tool results at: ["13:12:07","13:20:07"]
+13:22:17 remote head: 261006466bee10506a01d6065f3a4906d5b57f66
+13:50:15 idle: status (first request since the marker): {"state":"idle","run":0,"generation":1}
+13:50:16 idle: marker and clone after the wake: {"code":0,"out":"cat: /home/agent/live-marker: No such file or directory\n261006466bee10506a01d6065f3a4906d5b57f66","err":""}
+13:50:16 idle: status after the wake: {"state":"idle","run":0,"generation":2,"restored":"branch","uncommittedLost":true}
+13:50:16 idle: runner notices: [{"at":"13:50:16","notice":"instance started","generation":2,"from":"branch"}]
+13:50:17 long: status (first request since the run's end was read): {"state":"succeeded","run":1,"generation":1,"result":"done","pushed":{"commit":"261006466bee10506a01d6065f3a4906d5b57f66"}}
+13:50:24 long: marker and clone after the wake: {"code":0,"out":"long-marker\n261006466bee10506a01d6065f3a4906d5b57f66","err":""}
+13:50:24 long: status after the wake: {"state":"succeeded","run":1,"generation":2,"result":"done","pushed":{"commit":"261006466bee10506a01d6065f3a4906d5b57f66"},"restored":"snapshot","uncommittedLost":false}
+13:50:24 long: runner notices: [{"at":"13:00:06","notice":"run started","run":1},{"at":"13:20:07","notice":"run ended","run":1,"state":"succeeded"},{"at":"13:20:08","notice":"pushed","run":1,"commit":"261006466bee10506a01d6065f3a4906d5b57f66"},{"at":"13:20:11","notice":"snapshot saved","run":1,"bytes":318064},{"at":"13:50:24","n […]
+13:50:25 DELETE live-311c-idle: 204; then state none
+13:50:25 DELETE live-311c-long: 204; then state none
+```
+
+The count of live instances (`wrangler containers info`, once a minute; the other test workspaces of this log come
+and go in it):
+
+```
+13:00:36 {"active":2,"starting":0}
+13:01:33 {"active":2,"starting":0}
+13:02:30 {"active":4,"starting":0}
+13:05:20 {"active":4,"starting":0}
+13:06:17 {"active":3,"starting":0}
+13:16:43 {"active":3,"starting":0}
+13:17:39 {"active":2,"starting":0}
+13:25:14 {"active":2,"starting":0}
+13:26:11 {"active":1,"starting":0}
+13:40:22 {"active":1,"starting":0}
+13:41:19 {"active":0,"starting":0}
+13:49:51 {"active":0,"starting":0}
+```
+
+Read with the deletes below: 2 after the two starts, 4 with the two failure tests, 3 after `live-311c-tf` was
+deleted (13:05:06), 2 after `live-311c-big` was deleted (13:16:55). The idle workspace's instance was gone between
+13:25:14 and 13:26:11, about 25 minutes after its last request and not 15. The long workspace's instance was gone
+between 13:40:22 and 13:41:19, about 18.5 minutes after its last request (13:22:17). Both times are 15 minutes
+after the last exec's timeout would have run out: the clone's 10 minutes from 13:00:05, and the push's 5 minutes
+from 13:20:08 (see Surprises). On the next request the idle workspace, which never ran and so had no snapshot,
+came back from the branch without its marker file (`restored: "branch"`, `uncommittedLost: true`); the long one
+came back from its snapshot with its marker file.
+
+*An unreadable task file.* During a run in its `sleep`, a commit was made in the clone as the agent, and root
+replaced `stdout.log` with a directory. The object's alarm counted a task-file failure once a minute. At the third
+(180 s after the start) the run ended `failed` with `the run's task files could not be read`. No `pushed` and no
+snapshot notice was written, the branch on GitHub did not move, and the next request got a new instance cloned
+from the branch, without the commit.
+
+```
+13:01:45 remote head before: 261006466bee10506a01d6065f3a4906d5b57f66
+13:01:47 PUT live-311c-tf: 200 {"state":"idle","run":0,"generation":1,"repo":"https://github.com/adamtasteslikegood/ArtazZen-recipes-TanStack-showcase","branch":"cloud-runner/acceptance"} (1825 ms)
+13:01:47 POST live-311c-tf/runs: 202 {"run":1}
+13:01:54 the agent is in its sleep; status: {"state":"running","run":1,"generation":1}
+13:01:54 a commit made in the clone as the agent: {"code":0,"out":"8225168dda28ac0bea2a9f1bc4e68c7f55b730c4","err":""}
+13:01:54 stdout.log replaced with a directory, as root: {"code":0,"out":"total 4\ndrwx------ 1 root root 90 Nov 17 13:01 .\ndrwxr-xr-x 1 root root 16 Nov 17 13:01 ..\n-rw-r--r-- 1 root root 40 Nov 17 13:01 pid\nprw------- 1 root root  0 Nov 17 13:01 stderr.fifo\n-rw-r--r-- 1 root root  0 Nov 17 13:01 stderr.log\nprw------- 1 roo […]
+13:02:54 status 60 s after the plant: {"state":"running","run":1,"generation":1}
+13:03:55 status 121 s after the plant: {"state":"running","run":1,"generation":1}
+13:04:55 status 181 s after the plant: {"state":"failed","run":1,"generation":1,"error":"the run's task files could not be read"}
+13:04:55 runner notices: [{"at":"13:01:47","notice":"run started","run":1},{"at":"13:04:47","notice":"run ended","run":1,"state":"failed","error":"the run's task files could not be read"}]
+13:04:55 run facts: {"first":"2026-11-17T13:01:47.125Z","last":"2026-11-17T13:04:47.293Z","wallSeconds":180.168}
+13:04:55 remote head after: 261006466bee10506a01d6065f3a4906d5b57f66 (unchanged)
+13:04:57 the clone and task directory on the next exec: {"code":0,"out":"ls: cannot access '/workspace/task': No such file or directory","err":"fatal: detected dubious ownership in repository at '/workspace/repo'\nTo add an exception for this directory, call:\n\n\tgit config --global --add safe.directory /workspace/repo"}
+13:04:57 status after that exec: {"state":"failed","run":1,"generation":2,"error":"the run's task files could not be read","restored":"branch","uncommittedLost":true}
+exit 0
+13:05:06 the clone on the new instance, as the agent:
+13:05:06 DELETE live-311c-tf 204
+```
+
+*An oversized result line.* During a run in its `sleep`, root wrote one line that starts `{"type":"result"` into
+the task's stdout fifo, then KILLed the agent process (the leader's child) so that this line was the run's last
+result. The leader wrote exit code 137 and the run ended through the usual path. A 5 MB line (over one 4 MiB
+chunk, never read whole) ended the run `failed` with `the run's result was over 256 KiB and could not be read`. A
+1 MB line with `is_error: false` ended it `succeeded` with an empty result and a `result truncated` notice. Both
+were pushed and snapshotted. The lines came from root, not from Claude Code. In the 5 MB case the script waited
+135 s (two alarm ticks) before the KILL, and the line was not in the event log until the run ended (see Surprises).
+
+```
+13:13:11 PUT live-311c-big: 200 {"state":"succeeded","run":2,"generation":1,"repo":"https://github.com/adamtasteslikegood/ArtazZen-recipes-TanStack-showcase","branch":"cloud-runner/acceptance","result":"done","pushed":{"commit":"261006466bee10506a01d6065f3a4906d5b57f66"}} (322 ms)
+13:13:12 remote head before: 261006466bee10506a01d6065f3a4906d5b57f66
+13:13:12 --- a result line of about 5 MB (over one 4 MiB chunk)
+13:13:12 POST live-311c-big/runs: 202 {"run":3}
+13:13:18 task leader pid: 2093
+13:13:19 line written into the task's stdout fifo as root; stdout.log bytes: {"code":0,"out":"5001216","err":""}
+13:13:22 status with the line in the log, agent still running: {"state":"running","run":3,"generation":1,"pushed":{"commit":"261006466bee10506a01d6065f3a4906d5b57f66"}}
+13:15:39 result events 135 s after the write (this read is the first that ingests on request): []
+13:15:39 the agent process (the leader's child) KILLed as root: {"code":0,"out":"KILLed 1","err":""}
+13:15:43 status at the end: {"state":"failed","run":3,"generation":1,"error":"the run's result was over 256 KiB and could not be read","pushed":{"commit":"261006466bee10506a01d6065f3a4906d5b57f66"}}
+13:15:43 result events of this run: [{"at":"13:15:40","payload":"{\"truncated\":true,\"bytes\":5000066}"}]
+13:15:43 runner notices of this run: [{"at":"13:13:12","notice":"run started","run":3},{"at":"13:15:40","notice":"run ended","run":3,"state":"failed"},{"at":"13:15:40","notice":"pushed","run":3,"commit":"261006466bee10506a01d6065f3a4906d5b57f66"},{"at":"13:15:43","notice":"snapshot saved","run":3,"bytes":543000}]
+13:15:43 exit-code file: 137
+13:15:44 runner notices once settled: [{"at":"13:13:12","notice":"run started","run":3},{"at":"13:15:40","notice":"run ended","run":3,"state":"failed"},{"at":"13:15:40","notice":"pushed","run":3,"commit":"261006466bee10506a01d6065f3a4906d5b57f66"},{"at":"13:15:43","notice":"snapshot saved","run":3,"bytes":543000}]
+13:15:44 --- a result line of about 1 MB (over 256 KiB, under one 4 MiB chunk), is_error false
+13:15:44 POST live-311c-big/runs: 202 {"run":4}
+13:15:47 task leader pid: 2453
+13:15:48 line written into the task's stdout fifo as root; stdout.log bytes: {"code":0,"out":"999424","err":""}
+13:15:51 status with the line in the log, agent still running: {"state":"running","run":4,"generation":1,"pushed":{"commit":"261006466bee10506a01d6065f3a4906d5b57f66"}}
+13:15:51 the agent process (the leader's child) KILLed as root: {"code":0,"out":"KILLed 1","err":""}
+13:15:54 status at the end: {"state":"succeeded","run":4,"generation":1,"result":"","pushed":{"commit":"261006466bee10506a01d6065f3a4906d5b57f66"}}
+13:15:54 result events of this run: [{"at":"13:15:51","payload":"{\"truncated\":true,\"bytes\":1000066}"}]
+13:15:54 runner notices of this run: [{"at":"13:15:44","notice":"run started","run":4},{"at":"13:15:51","notice":"result truncated","run":4},{"at":"13:15:51","notice":"run ended","run":4,"state":"succeeded"},{"at":"13:15:52","notice":"pushed","run":4,"commit":"261006466bee10506a01d6065f3a4906d5b57f66"},{"at":"13:15:54","notice": […]
+13:15:54 exit-code file: 137
+13:15:55 runner notices once settled: [{"at":"13:15:44","notice":"run started","run":4},{"at":"13:15:51","notice":"result truncated","run":4},{"at":"13:15:51","notice":"run ended","run":4,"state":"succeeded"},{"at":"13:15:52","notice":"pushed","run":4,"commit":"261006466bee10506a01d6065f3a4906d5b57f66"},{"at":"13:15:54","notice" […]
+13:15:55 remote head after: 261006466bee10506a01d6065f3a4906d5b57f66
+13:15:55 status: {"state":"succeeded","run":4,"generation":1,"result":"","pushed":{"commit":"261006466bee10506a01d6065f3a4906d5b57f66"}}
+exit 0
+13:16:55 DELETE live-311c-big 204
+```
+
+A first attempt (`live-311c-big.log`) used `pkill`, which the image does not have, so the agent was not ended and
+its own later result line replaced the written one: both runs ended `succeeded` with `done`. It still showed both
+lines in the event log as `{"truncated":true,"bytes":1000066}` and `{"truncated":true,"bytes":5000066}` with the
+run going on, and four containers running at once.
+
+*Why check `S`'s plant failed.* In a new workspace:
+
+```
+13:00:42 PUT live-311c-probe: 200 {"state":"idle","run":0,"generation":1,"repo":"https://github.com/adamtasteslikegood/ArtazZen-recipes-TanStack-showcase","branch":"cloud-runner/acceptance"} (2106 ms)
+13:01:13 exec setsid -f sleep 86001 (its output left attached): 500 Workspace request failed (30080 ms)
+13:01:13 sleep 86001 running: 1
+13:01:13 exec sh -c 'setsid -f sleep 86002 >/dev/null 2>&1 </dev/null': 200 {"exitCode":0,"stdout":"","stderr":""} (135 ms)
+13:01:13 sleep 86002 running: 1
+13:01:13 DELETE live-311c-probe: 204
+```
+
+After all of it, `refs/heads/main` was still at `80f5ccb8968eacd2f6d68740e1990d2076671c10`, and
+`refs/heads/cloud-runner/acceptance` at check 1's commit of log 13, `261006466bee10506a01d6065f3a4906d5b57f66`.
+Every workspace was deleted, and the count of live instances was 0.
+
 ### Owed: does a query name leave the platform?
 
 Check 3 shows that no UDP packet from the container reaches a real resolver directly. Every UDP/53 query gets the
@@ -499,13 +769,22 @@ session whose runs 1, 2, 3, 4 and 6 reported 0.0247, 0.0274, 0.0338, 0.0357 and 
 would count the first session's earlier runs several times. Check 7's runs, the two one-word runs of log 10 and
 the one of log 11 are not in the figure.
 
-None of this measures design §8 item 8, a ten-minute run and an idle hour (see the table: NOT MEASURED).
+The runs of 2026-11-17 (logs 12 to 14) add about **$0.138**, counted the same way: the redeploy run 0.0437,
+`acc-851d6f-a` 0.0382 (its last cumulative figure), `acc-851d6f-b` 0.0107, the re-run of check `S` 0.0107, and the
+20-minute run 0.0350 (3 turns; its cost is the model's, not the wait's). Not in the figure: check 7's runs, the
+task-file run and the two runs whose agent was KILLed (no `result` event of Claude Code's), and the two runs of the
+first oversized-line attempt, whose workspace was deleted before their figures were read.
+
+The 20-minute run is the first longer than ten minutes. Its container time is computed, not billed: about
+$0.013–0.025 at the rates below. An idle hour was still not measured.
 
 **Computed** from design §9 (a `standard-1` instance costs about $0.04/h idle and up to about $0.075/h at full CPU;
 snapshots are free in beta):
 
 - a 15 s run: about $0.0002–0.0003 of container time; the 160 s run: about $0.0018–0.0033;
-- an instance left to the 15-minute idle stop after a run: about $0.01 more;
+- an instance left to the 15-minute idle stop after a run: about $0.01 more. On 2026-11-17 the instance of the
+  run that had ended was up for about 20.5 minutes after the run's end (log 14), so about $0.014 until the timer
+  fix is deployed;
 - an hour of continuous agent work: about $0.04–0.075 for the container, which is small next to the model cost.
 
 The Cloudflare dashboard's billed figures (Containers, AI Gateway logs) are left for the owner to read.
@@ -553,5 +832,26 @@ The Cloudflare dashboard's billed figures (Containers, AI Gateway logs) are left
   the deploy was still served by the old Worker code 33 s after the deploy returned, and that code started a new
   instance from the workspace's old snapshot. A workspace made 78 s after the deploy got the new code and image.
   Whether the delay belongs to a workspace's already-loaded object or to the whole Worker was not told apart.
+- **An exec that leaves a process on its output pipes times out.** `setsid -f sleep N` through the test exec route
+  answered 500 after 30 s on the deploy, with the process running; with its streams on `/dev/null` the same exec
+  answered in 135 ms (log 14). Under `wrangler dev` the first form had returned at once, which is why acceptance
+  check `S` passed locally and failed on the deploy (log 13).
+- **`stdout.log` trailed a running task by up to a block.** The copier was `head -c`, which writes through stdio:
+  a line the task wrote stayed in its buffer until 4 KiB more came or the task ended. On the deploy a 5 MB line
+  written into a run's output was not in the event log 135 s later, and the two tool calls of the 20-minute run
+  were logged at 13:02:06 and 13:12:07 for calls made at about 13:00:10 and 13:10:00 (log 14; the call times are
+  worked out from the run's start and the sleeps' length). The same `head`
+  shows it locally, and a container test now fails on it. One point is not explained: in the first oversized-line
+  attempt the 5 MB line reached the event log at 13:11:06, four minutes after it was written, with the agent
+  still in its `sleep` and no output of its known. Fixed in c258fc4 (`stdbuf -o0 head -c`), **not
+  deployed**. `dd` was tried first and is no replacement: on a pipe its `count_bytes` counts short reads as blocks
+  and stopped 80 KiB before the cap.
+- **The idle stop came 18.5 and 25.5 minutes after the last request, not 15.** The inactivity timeout starts only when the Durable
+  Object has left memory, and a pending timer keeps it there (Cloudflare's lifecycle page, for compatibility dates
+  from 2026-10-01). Every exec armed `AbortSignal.timeout()`, which cannot be cancelled: 10 minutes for a clone,
+  5 for a push. Both stops in log 14 came 15 minutes after such a timer ran out, to within a minute. That is an
+  inference from two stops and the documentation; no deploy has run the fix yet. Fixed in cf868b2 (the timer is
+  cleared when the command ends), **not deployed**.
+- **The image has no `pkill`** (`procps` is not installed). The runner does not use it; a one-off test script did.
 - **`wrangler containers list` lags.** Right after a `replace-instance` or a DELETE it still counted the instance
   as live; under a minute later it showed 0.
