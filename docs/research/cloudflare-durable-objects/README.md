@@ -28,7 +28,8 @@ for recorded owner answers, governance conflicts and the next-session review gat
   pinned source inspection, applicability to Plaza, and recovery/auth gaps.
 - [Spike C: Claude Code in a Sandbox container](spike-c.md): the M14 stage 1
   development deploy of `cloud-runner/`, its acceptance results, login path,
-  resume after replacement, cost, and surprises (2026-11-15).
+  resume after replacement, cost, and surprises (2026-11-15, with live tests
+  added on 2026-11-17).
 
 
 ## Imported project artifacts

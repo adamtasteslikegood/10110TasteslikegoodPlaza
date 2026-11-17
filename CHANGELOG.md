@@ -45,7 +45,10 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 - The development Worker was redeployed on 2026-11-17 from `dev` at 7fc2982
   (code only) and runs the sweep of the agent's processes. The acceptance
-  suite's new checks `R` and `S` pass there. A run of 20 minutes, the idle
+  suite's new check `R` passes there in the full run. Check `S` failed in that
+  run in its own setup (the exec that plants the stray process timed out), was
+  corrected, and passes when run alone (`ONLY=S`); the full suite was not run
+  again with the corrected check. A run of 20 minutes, the idle
   stop, an unreadable task file and an oversized result line were tried on the
   deploy for the first time; the evidence is in spike C, logs 12 to 14.
 - A running run's output reaches `stdout.log` at once. The copier (`head -c`)

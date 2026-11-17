@@ -1,6 +1,7 @@
 # Spike C: Claude Code in a Cloudflare Sandbox container (M14 stage 1 deploy)
 
-Run on 2026-11-15 against the development deploy of `cloud-runner/` (PLZG-310).
+Run on 2026-11-15 against the development deploy of `cloud-runner/` (PLZG-310), with later runs
+on 2026-11-17 for PLZG-311 (logs 12 to 14).
 **Research evidence**, not a product decision. Design:
 [2026-11-14-m14-cloudflare-runner-design.md](../../superpowers/specs/2026-11-14-m14-cloudflare-runner-design.md) §7–§9.
 
