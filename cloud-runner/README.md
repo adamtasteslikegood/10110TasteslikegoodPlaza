@@ -306,11 +306,12 @@ fails as before (the hidden `--max-turns`).
 What had never been tried on the deploy was tried the same day (spike C, log 14):
 
 - A run of 1,204 s, longer than the 15-minute idle timeout, with no request from outside while it ran. It ended
-  `succeeded` on the same instance, pushed and snapshotted. The object's alarm, once a minute, is what keeps the
-  instance up.
+  `succeeded` on the same instance, pushed and snapshotted. By Cloudflare's lifetime page it is the object's
+  alarm, once a minute, that keeps the instance up; the run did not tell that apart from other causes.
 - The idle stop. An instance nobody asked anything of was stopped, and the next request started a new one: from
   the snapshot with its uncommitted file where a run had ended, and from the branch without it where no run had
-  ever taken a snapshot. The stop came 20 to 25 minutes after the last request, not 15 (see the known gaps).
+  ever taken a snapshot. The stops came 18.5 and 25.5 minutes after the last request, not 15 (see the known
+  gaps).
 - An unreadable task file: `stdout.log` replaced with a directory during a run. The run ended `failed` with
   `the run's task files could not be read` at the third check, nothing was pushed, and the instance was replaced.
 - An oversized result line, written into a run's output by root: over one 4 MiB chunk the run ends `failed` with
@@ -489,11 +490,13 @@ best-effort group KILL, the instance with an old layout and the untested shell s
   event log a minute or more late. The copier is now `stdbuf -o0 head -c`, and a container test reads a line
   while its task still sleeps. Nothing was lost before the fix: the buffer is written when the task ends. Stage 2
   reads these events live, so redeploy before wiring the bridge.
-- **The idle stop comes 20 to 25 minutes after the last request, not 15.** Closed in code (cf868b2), **not
+- **The idle stop comes later than 15 minutes after the last request.** Closed in code (cf868b2), **not
   deployed**. The 15-minute timeout starts only when the Durable Object has left memory, and each exec left a
-  timer pending for its whole timeout (10 minutes for a clone, 5 for a push), which keeps the object there. The
-  cost is up to 10 minutes more of an idle instance per stop. The cause is inferred: the two stops seen fit it to
-  within a minute and Cloudflare's lifecycle page describes it, but the fix has not run on the deploy.
+  timer pending for its whole timeout (10 minutes for a clone, 5 for a push), which keeps the object there. Seen
+  twice (spike C, log 14): 25.5 minutes after the last request to a workspace that had only been cloned, and 18.5
+  minutes after the last request to one whose run had ended. Each is 15 minutes after such a timer ran out, to
+  within a minute. The cost is up to 10 minutes more of an idle instance per stop. The cause is inferred from
+  those two stops and Cloudflare's lifecycle page; the fix has not run on the deploy.
 - **A workspace that never ran has no snapshot.** Its files outside a commit are gone after the idle stop (seen in
   log 14: `restored: "branch"`, `uncommittedLost: true`). That is how it is built: a snapshot is taken when a run
   ends. Listed because a caller that writes files through the test exec route, or a later route, would lose them.
@@ -587,6 +590,9 @@ best-effort group KILL, the instance with an old layout and the untested shell s
   returned at once under `wrangler dev` and timed out on the deploy. The check passed locally and failed on its
   first run against the deploy, in its setup. It was corrected and passed alone; the full suite has not been run
   again with the corrected check.
+- The account of the buffered copier has one point it does not explain: in a first attempt a 5 MB line reached
+  the event log four minutes after it was written, with the agent still asleep (spike C, Surprises). The local
+  reproduction and the container test carry the mechanism.
 - The live tests of 2026-11-17 (spike C, log 14) were run once each, by a one-off script that is not in the
   repository. The instance counts come from `wrangler containers info`, read once a minute, so each stop is known
   to within a minute.

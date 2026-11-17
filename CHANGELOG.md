@@ -52,9 +52,9 @@ spec-set versions, and no application release existed before `v0.1.22`.
   wrote through stdio, so the event log trailed a running run by up to 4 KiB
   of output. It now runs under `stdbuf -o0`.
 - An exec's timeout timer ends with its command. It used to stay pending for
-  the whole timeout (10 minutes after a clone), which kept the Durable Object
-  in memory and put off the container's 15-minute idle stop to 20 to 25
-  minutes.
+  the whole timeout (10 minutes after a clone, 5 after a push), which kept the
+  Durable Object in memory and put off the container's 15-minute idle stop:
+  it came 18.5 and 25.5 minutes after the last request in the two cases seen.
 - Acceptance check `S` plants its process with its streams on `/dev/null`. With
   them attached, the exec timed out on the deploy and the check failed in its
   setup.

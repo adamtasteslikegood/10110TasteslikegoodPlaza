@@ -441,9 +441,9 @@ After all four, `git ls-remote <repo> refs/heads/main` still gave `80f5ccb8968ea
 
 **Log 12, `redeploy-311c.log`: check (d) as the deploy of the sweep code** (2026-11-17, `dev` at 7fc2982), by
 `scripts/redeploy.mjs`. This run was the one approved redeploy: the script's own `wrangler deploy` made version
-eb2cf0ed from the new code and the unchanged image. The run started under the old code and ended under the new
-one, on generation 1, with exit code 0. It does not show the sweep: a clean sweep leaves no trace, and the old code
-may still have answered when the run ended.
+eb2cf0ed from the new code and the unchanged image, 32 s into a run that then ended on generation 1 with exit
+code 0. It does not show the sweep: a clean sweep leaves no trace, and which code ended the run is not known (the
+old code has answered for a while after a deploy before, log 10).
 
 ```
 2026-11-17T12:51:04Z
@@ -464,8 +464,9 @@ exit 0
 2026-11-17T12:54:00Z
 ```
 
-After it, a second PUT of a workspace with another host list answered `The workspace exists with another repo,
-branch or host list` three times over 40 s (the new text), 14 s to 54 s after the script ended.
+After it (the script ended at 12:54:00), a second PUT of a workspace with another host list answered `The
+workspace exists with another repo, branch or host list`, the new text, three times at 20 s intervals between
+12:54:08 and 12:55:16.
 
 **Log 13, `acc-311c.log` and `acc-311c-s.log`: the full suite on the sweep code** (version eb2cf0ed). Ten of
 twelve checks pass. Check H fails as in every run (the hidden `--max-turns`). Check `R` (new) passes: the bare root
@@ -473,8 +474,9 @@ of `registry.npmjs.org` answers 200. Check `S` (new) failed in its own setup: th
 answered 500. The cause is in the check, not in the sweep (see Surprises, and the probe in log 14): the detached
 `sleep` kept the exec's output pipes open, so the exec ran into its 30 s timeout. 59daae9 plants it with its three
 streams on `/dev/null`, and `S` then passed alone (`ONLY=S`, second block): the process was gone after the run, the
-generation stayed 1, and no `agent processes left` notice was written. The failed plant of the first block left its
-`sleep` running in workspace A; the runs after it on A started and ended normally, and nobody looked for it.
+generation stayed 1, and no `agent processes left` notice was written. The failed plant of the first block very
+likely left its `sleep` running in workspace A, as the same exec did in the probe of log 14; nobody looked. The
+runs after it on A started and ended normally.
 
 ```
 2026-11-17T12:55:22Z
@@ -559,7 +561,9 @@ are left out, and long lines are cut at `[…]`. Times are UTC.
 
 *A run longer than the idle timeout, and the idle stop.* Two workspaces were made at 13:00:06. In `live-311c-long`
 the agent ran `sleep 590` twice. No request was sent to it between 13:00:32 and 13:22:16, so only the object's own
-alarm touched the container. The run ended `succeeded` after 1,204 s on generation 1, pushed and snapshotted.
+alarm touched the container. The run ended `succeeded` after 1,204 s on generation 1, pushed and snapshotted. The
+run does not show what kept the instance up; Cloudflare's lifetime page says a running alarm counts as activity
+and that nothing inside the instance does.
 `live-311c-idle` got one exec at 13:00:06 and no request after it.
 
 ```
@@ -777,8 +781,9 @@ $0.013–0.025 at the rates below. An idle hour was still not measured.
 snapshots are free in beta):
 
 - a 15 s run: about $0.0002–0.0003 of container time; the 160 s run: about $0.0018–0.0033;
-- an instance left to the 15-minute idle stop after a run: about $0.01 more. On 2026-11-17 the stop came 20 to
-  25 minutes after the last request (log 14), so about $0.013–0.017 until the timer fix is deployed;
+- an instance left to the 15-minute idle stop after a run: about $0.01 more. On 2026-11-17 the instance of the
+  run that had ended was up for about 20.5 minutes after the run's end (log 14), so about $0.014 until the timer
+  fix is deployed;
 - an hour of continuous agent work: about $0.04–0.075 for the container, which is small next to the model cost.
 
 The Cloudflare dashboard's billed figures (Containers, AI Gateway logs) are left for the owner to read.
@@ -835,10 +840,12 @@ The Cloudflare dashboard's billed figures (Containers, AI Gateway logs) are left
   written into a run's output was not in the event log 135 s later, and the two tool calls of the 20-minute run
   were logged at 13:02:06 and 13:12:07 for calls made at about 13:00:10 and 13:10:00 (log 14; the call times are
   worked out from the run's start and the sleeps' length). The same `head`
-  shows it locally, and a container test now fails on it. Fixed in c258fc4 (`stdbuf -o0 head -c`), **not
+  shows it locally, and a container test now fails on it. One point is not explained: in the first oversized-line
+  attempt the 5 MB line reached the event log at 13:11:06, four minutes after it was written, with the agent
+  still in its `sleep` and no output of its known. Fixed in c258fc4 (`stdbuf -o0 head -c`), **not
   deployed**. `dd` was tried first and is no replacement: on a pipe its `count_bytes` counts short reads as blocks
   and stopped 80 KiB before the cap.
-- **The idle stop came after 20 to 25 minutes, not 15.** The inactivity timeout starts only when the Durable
+- **The idle stop came 18.5 and 25.5 minutes after the last request, not 15.** The inactivity timeout starts only when the Durable
   Object has left memory, and a pending timer keeps it there (Cloudflare's lifecycle page, for compatibility dates
   from 2026-10-01). Every exec armed `AbortSignal.timeout()`, which cannot be cancelled: 10 minutes for a clone,
   5 for a push. Both stops in log 14 came 15 minutes after such a timer ran out, to within a minute. That is an
