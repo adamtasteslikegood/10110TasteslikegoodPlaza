@@ -47,8 +47,8 @@ spec-set versions, and no application release existed before `v0.1.22`.
   (code only) and runs the sweep of the agent's processes. The acceptance
   suite's new check `R` passes there in the full run. Check `S` failed in that
   run in its own setup (the exec that plants the stray process timed out), was
-  corrected, and passes when run alone (`ONLY=S`); the full suite was not run
-  again with the corrected check. A run of 20 minutes, the idle
+  corrected, and passes when run alone (`ONLY=S`); the full suite ran with
+  the corrected check on the second deploy (below). A run of 20 minutes, the idle
   stop, an unreadable task file and an oversized result line were tried on the
   deploy for the first time; the evidence is in spike C, logs 12 to 14.
 - A running run's output reaches `stdout.log` at once. The copier (`head -c`)
@@ -61,8 +61,15 @@ spec-set versions, and no application release existed before `v0.1.22`.
 - Acceptance check `S` plants its process with its streams on `/dev/null`. With
   them attached, the exec timed out on the deploy and the check failed in its
   setup.
-- The two runner fixes are **not deployed**; a redeploy needs the owner's
-  go-ahead.
+- The two runner fixes were deployed the same day from `dev` at a190791
+  (version `d1e6e606`, code only). On that deploy the acceptance suite passes
+  eleven of twelve checks, `S` among them in the full run (H fails as
+  before); a line written during a run was in the log in the same exec; and
+  the idle stop came 15.1 to 16.3 minutes after the last request in the two
+  cases, each measured once (spike C, logs 15 to 17).
+- Seen on that deploy and not changed: a run that commits nothing reports a
+  push error when another writer has moved its branch since the clone
+  (`cloud-runner/README.md`, known gaps).
 
 ### Changed — the cloud runner ends every process of the agent's after a run (PLZG-311)
 
