@@ -17,6 +17,17 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
 
+### Decided — the six stage 2 proposals for the cloud runner (PLZG-311)
+
+- On 2026-11-19 the owner confirmed the six proposals in the M14 runner
+  design, §6.7: a cloud department keeps its local worktree; the bridge pushes
+  `plaza/workspace-*` branches only, never by force, when a department starts
+  on the cloud or switches to it; the runner uses one token per repository now
+  and a GitHub App later; End session starts a new cloud conversation and the
+  workspace goes only with the department; a cloud run finishes and pushes
+  when its claim lapses; workspace names stay per checkout. No code changes
+  with this, and stage 2 has no plan yet.
+
 ### Changed — the cloud runner's agent is no longer root (PLZG-311)
 
 - In `cloud-runner/`, Claude Code now runs as a user of its own (`agent`) in

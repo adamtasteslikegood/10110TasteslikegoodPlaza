@@ -5,6 +5,7 @@ API key, through the AI Gateway already on his account unless its setup makes a 
 better) and use of his Workers Paid plan. Update 2026-11-15: stage 1 is implemented
 (`cloud-runner/`) and deployed for development; the evidence and its gaps are in
 `docs/research/cloudflare-durable-objects/spike-c.md` and `cloud-runner/README.md`. Stage 2 is planned, not built.
+Update 2026-11-19: Adam confirmed the six stage 2 proposals in §6.7; stage 2 still has no plan and no code.
 **Baseline:** dev `eb6b170`. Cloudflare facts were read from developers.cloudflare.com on
 2026-11-14 (pages listed in §11); `@cloudflare/sandbox` latest is 1.0.3.
 
@@ -185,7 +186,11 @@ GitHub are still recommended for `dev` and `main`.
 Stage 1 is planned and built from this document. Stage 2 is not: it starts when Adam
 has read the stage 1 results, and the proposals marked below are confirmed or changed
 then. A failed conversation resume in stage 1 does not block stage 2; it means the
-bridge sends its M13 recap on every cloud run.
+bridge sends its M13 recap on every cloud run. (Stage 1 showed the conversation does
+resume from the snapshot: spike C, question 3.)
+
+On 2026-11-19 Adam went through the six proposals and confirmed each as marked below.
+Stage 2 still gets its own plan before anything is built.
 
 Settled:
 
@@ -199,26 +204,34 @@ Settled:
 - The runner gets no relay credential. The bridge holds the relay claim as today.
 - Only repositories hosted on GitHub can run in the cloud.
 
-Proposed, to confirm at the stage 2 gate:
+Confirmed by Adam on 2026-11-19 (each was a proposal until then):
 
 1. **Local worktree.** A cloud department still gets its local worktree, branch and
    lease, as today, so results and diffs read the same way. The agent does not run
    there. After each run the bridge fetches the branch and fast-forwards the worktree;
    anything else is an error, not a merge. Switching a department between `local` and
-   `cloud` needs a stopped session and a clean worktree.
+   `cloud` needs a stopped session and a clean worktree. **Confirmed as written.**
 2. **The bridge and GitHub.** Today the bridge never pushes (`bridge/PROTOCOL.md`).
    Stage 2 has it push `plaza/workspace-*` branches to the project's own repository
    with the git login already on the machine. This is a real change to a stated rule.
+   **Confirmed, kept narrow:** only `plaza/workspace-*` branches, never a force-push, and
+   only when a department starts on the cloud or switches to it. `bridge/PROTOCOL.md`
+   changes with the code, not before.
 3. **Runner token for real projects.** Stage 1 uses one token for one test repository.
-   Real projects need a token per repository or a GitHub App.
+   Real projects need a token per repository or a GitHub App. **Ruled: a token now, an
+   App later.** Stage 2 uses one fine-grained token per repository (contents read and
+   write), which Adam creates and which is stored as a Worker secret. A GitHub App is
+   its own follow-up, due before the runner is used beyond development.
 4. **Sessions.** Ending a session starts a new cloud conversation on the next run; the
    workspace is deleted only when the department is. The recap is sent when a
-   conversation starts new.
+   conversation starts new. **Confirmed as written.**
 5. **Claims while the bridge is away.** The claim lapses and the cloud run finishes
    and pushes anyway, matching the 2026-11-13 ruling that a run in progress is not
-   interrupted when its claim is lost.
+   interrupted when its claim is lost. **Confirmed as written.**
 6. **Names.** `project_id` is a hash of the local git directory path, so a workspace
-   name belongs to one checkout on one machine.
+   name belongs to one checkout on one machine. **Confirmed as written:** two machines
+   do not share a cloud department. Stage 1 showed what a second writer on a branch
+   does (the other workspace's closing push is refused; PLZG-312).
 
 **Cost of stage 2:** it changes `project_service.py`, `domain_manager.py`,
 `domain_session.py`, `config.py` and `domain_protocol.py`, all guarded files, so the
