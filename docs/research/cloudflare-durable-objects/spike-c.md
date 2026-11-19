@@ -1045,8 +1045,9 @@ The Cloudflare dashboard's billed figures (Containers, AI Gateway logs) are left
   5 for a push. Both stops in log 14 came 15 minutes after such a timer ran out, to within a minute. That is an
   inference from two stops and the documentation. Fixed in cf868b2 (the timer is cleared when the command ends)
   and deployed the same day: on version d1e6e606 the two like cases stopped 15.1 to 15.6 and 15.9 to 16.3 minutes
-  after the last request (log 17). That fits the cause; each case was measured once, and nothing else was
-  changed between the two deploys but the copier.
+  after the last request (log 17). That fits the cause; each case was measured once. The two fixes (c258fc4 for
+  the copier, cf868b2 for the timer) were the only changes to the deployed code between the two deploys, and
+  both are in `src/container.ts`; the image was the same.
 - **A run that commits nothing reports a push error when the branch has moved.** Every run ends with a push of
   the clone's HEAD. In log 17 the acceptance run pushed to the test branch after `live-311d-out` had cloned it,
   so that workspace's push was refused (`rejected ... fetch first`) and its status carries `pushError`, although
