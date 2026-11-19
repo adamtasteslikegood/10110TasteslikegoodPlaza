@@ -4,8 +4,8 @@
 API key, through the AI Gateway already on his account unless its setup makes a fresh one
 better) and use of his Workers Paid plan. Update 2026-11-15: stage 1 is implemented
 (`cloud-runner/`) and deployed for development; the evidence and its gaps are in
-`docs/research/cloudflare-durable-objects/spike-c.md` and `cloud-runner/README.md`. Stage 2 is planned, not built.
-Update 2026-11-19: Adam confirmed the six stage 2 proposals in §6.7; stage 2 still has no plan and no code.
+`docs/research/cloudflare-durable-objects/spike-c.md` and `cloud-runner/README.md`. Stage 2 is outlined (§6.7), not built.
+Update 2026-11-19: Adam confirmed the six stage 2 proposals in §6.7; stage 2 has that outline, no plan yet and no code.
 **Baseline:** dev `eb6b170`. Cloudflare facts were read from developers.cloudflare.com on
 2026-11-14 (pages listed in §11); `@cloudflare/sandbox` latest is 1.0.3.
 
@@ -229,9 +229,11 @@ Confirmed by Adam on 2026-11-19 (each was a proposal until then):
    and pushes anyway, matching the 2026-11-13 ruling that a run in progress is not
    interrupted when its claim is lost. **Confirmed as written.**
 6. **Names.** `project_id` is a hash of the local git directory path, so a workspace
-   name belongs to one checkout on one machine. **Confirmed as written:** two machines
-   do not share a cloud department. Stage 1 showed what a second writer on a branch
-   does (the other workspace's closing push is refused; PLZG-312).
+   name belongs to one checkout on one machine. **Confirmed as written.** Two machines
+   share a name, and so a cloud department, only when their checkouts sit at the same
+   path (`bridge/PROTOCOL.md`); the relay claim is what keeps two bridges apart then.
+   Stage 1 showed what a second writer on a branch does (the other workspace's closing
+   push is refused; PLZG-312).
 
 **Cost of stage 2:** it changes `project_service.py`, `domain_manager.py`,
 `domain_session.py`, `config.py` and `domain_protocol.py`, all guarded files, so the
@@ -296,3 +298,5 @@ are free during the beta. Model tokens will be the larger cost.
 - `/sandbox/coding-agents/claude-code/` and `/sandbox/get-started/build-a-coding-agent-runner/`
 - `/sandbox/concepts/security/` and `/sandbox/concepts/lifetime/`
 - `/containers/platform/pricing/` and `/containers/platform/limits/`
+
+*Last updated: November 2026*
