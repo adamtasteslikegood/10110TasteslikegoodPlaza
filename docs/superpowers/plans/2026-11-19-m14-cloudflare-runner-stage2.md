@@ -496,10 +496,12 @@ Rules:
 - After every end state whose status has `pushed.commit`: `fast_forward_to(workspace, commit)`.
   A `CloudSyncError` turns a `success` into `error` / `cloud_sync_failed`; the answer is kept.
 - `stop()`: with no run active, `CleanupOutcome(True, None)` and no request. With one:
-  `runner.stop(name)`, tried again up to 3 times, `POLL_SECONDS` apart, on a 409; then
-  `fast_forward_to` as above. `RunnerDown` or a fourth 409 is
-  `CleanupOutcome(False, "cloud_unavailable")`; a sync error is
-  `CleanupOutcome(False, "cloud_sync_failed")`.
+  `runner.stop(name)`, tried again up to 3 times, `POLL_SECONDS` apart, on a 409; then it
+  waits up to 60 s for the `execute()` in flight to return. That `execute()` sees the
+  `stopped` state and does the fast-forward; `stop()` never runs git itself, so the two
+  cannot race. `RunnerDown`, a fourth 409, or an `execute()` that has not returned is
+  `CleanupOutcome(False, "cloud_unavailable")`; otherwise the outcome is clean.
+- `healthy` is true from a successful `start()` until `stop()` is called.
 
 The preamble, exactly:
 
@@ -533,7 +535,9 @@ PREAMBLE = (
 # test_the_prompt_starts_with_the_preamble_and_carries_the_local_command_json
 # test_conversation_is_new_until_the_runner_holds_this_key
 # test_stop_with_no_run_sends_nothing
-# test_stop_retries_a_409_then_reports_unclean
+# test_stop_mid_run_ends_the_run_as_stopped_and_syncs_once   -> one fast-forward, done by execute()
+# test_stop_retries_a_409_then_reports_unclean               -> CleanupOutcome(False, "cloud_unavailable")
+# test_healthy_only_between_start_and_stop
 ```
 
 - [ ] **Step 2: Run `python -m pytest bridge/tests/test_cloud_owner.py -v`; it fails.**
