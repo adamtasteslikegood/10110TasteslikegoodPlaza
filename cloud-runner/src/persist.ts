@@ -14,7 +14,12 @@ const pushEnv = { ...gitEnv, GIT_TERMINAL_PROMPT: "0" }
 // appear; anything between "://" and "@" is cut anyway, before truncating, so
 // no part of one is ever stored.
 export function pushErrorText(stderr: string, exitCode: number): string {
-	return tail(stderr.replace(/:\/\/[^\s@]*@/g, "://")) || `git push exited with ${exitCode}`
+	return gitErrorText(stderr, exitCode, "push")
+}
+
+// The same for any git command that talks to the remote or reports a path.
+export function gitErrorText(stderr: string, exitCode: number, command: string): string {
+	return tail(stderr.replace(/:\/\/[^\s@]*@/g, "://")) || `git ${command} exited with ${exitCode}`
 }
 
 export type Pushed = { commit: string } | { error: string }
@@ -132,20 +137,25 @@ export async function push(container: Container, branch: string): Promise<Pushed
 	}
 }
 
-export type Synced = "current" | "fast-forwarded" | { diverged: true } | { error: string }
+// reason says why, for the runner's event only: a fixed text, with the end of
+// git's stderr, scrubbed as a push error is, when git refused the fast-forward.
+export type Synced = "current" | "fast-forwarded" | { diverged: true; reason: string } | { error: string }
+
+const bothSides = "The clone and the branch on GitHub each have a commit the other lacks"
 
 // Moves the clone to the branch as it is on the remote, when that is a
 // fast-forward, so a run starts from what is on GitHub. Git talks to the remote
 // through the Worker's proxy, as in a push: no credential is passed here. The
 // only way HEAD moves is `merge --ff-only`; an uncommitted file is never
 // discarded. Commits the remote lacks (a push that failed) stay for the closing
-// push. Never throws.
+// push. The branch is fetched by its full ref, so a tag of the same name is
+// never taken for it. Never throws.
 export async function syncBranch(container: Container, branch: string): Promise<Synced> {
 	const git = (args: string[], timeoutMs = execTimeout.short, env = gitEnv) => run(container, asAgent(["git", ...args]), repositoryDirectory, env, timeoutMs)
 
 	try {
-		const fetched = await git(["fetch", "origin", branch], execTimeout.push, pushEnv)
-		if (fetched.exitCode !== 0) return { error: pushErrorText(fetched.stderr, fetched.exitCode) }
+		const fetched = await git(["fetch", "origin", `refs/heads/${branch}`], execTimeout.push, pushEnv)
+		if (fetched.exitCode !== 0) return { error: gitErrorText(fetched.stderr, fetched.exitCode, "fetch") }
 
 		const [head, theirs] = await Promise.all([git(["rev-parse", "HEAD"]), git(["rev-parse", "FETCH_HEAD"])])
 		if (head.exitCode !== 0 || theirs.exitCode !== 0) return { error: tail(head.stderr || theirs.stderr) || "git rev-parse failed" }
@@ -156,15 +166,17 @@ export async function syncBranch(container: Container, branch: string): Promise<
 		if (behind.exitCode > 1) return { error: tail(behind.stderr) || `git merge-base exited with ${behind.exitCode}` }
 
 		if (behind.exitCode === 0) {
+			// A file in the way, a stale index.lock or any other fault of the merge.
 			const merged = await git(["merge", "--ff-only", "FETCH_HEAD"])
-			return merged.exitCode === 0 ? "fast-forwarded" : { diverged: true }
+			if (merged.exitCode === 0) return "fast-forwarded"
+			return { diverged: true, reason: `The clone could not be fast-forwarded to the branch on GitHub: ${gitErrorText(merged.stderr, merged.exitCode, "merge")}` }
 		}
 
 		const ahead = await git(["merge-base", "--is-ancestor", "FETCH_HEAD", "HEAD"])
 		if (ahead.exitCode > 1) return { error: tail(ahead.stderr) || `git merge-base exited with ${ahead.exitCode}` }
-		return ahead.exitCode === 0 ? "current" : { diverged: true }
+		return ahead.exitCode === 0 ? "current" : { diverged: true, reason: bothSides }
 	} catch (error) {
-		return { error: pushErrorText(messageOf(error), -1) }
+		return { error: gitErrorText(messageOf(error), -1, "fetch") }
 	}
 }
 

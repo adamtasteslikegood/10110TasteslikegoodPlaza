@@ -128,12 +128,26 @@ describe("Workspace start (I3)", () => {
 		const fake = new FakeHost()
 		const { stub } = await created(fake)
 		const before = await stored(stub)
-		fake.syncResult = { diverged: true }
+		fake.syncResult = { diverged: true, reason: "The clone and the branch on GitHub each have a commit the other lacks" }
 
 		expect(await stub.startRun("again", false, 5, "k")).toBe("diverged")
 		expect(fake.count("startTask")).toBe(0)
 		expect(await stored(stub)).toEqual(before)
 		expect(await notices(stub)).toContain("run refused")
+	})
+
+	it("carries git's reason for a refused fast-forward into the run refused event, and nothing else", async () => {
+		const fake = new FakeHost()
+		const { stub } = await created(fake)
+		const gitSays = "error: Your local changes to the following files would be overwritten by merge:\n\tclash.txt"
+		fake.syncResult = { diverged: true, reason: `The clone could not be fast-forwarded to the branch on GitHub: ${gitSays}` }
+
+		expect(await stub.startRun("again", false, 5)).toBe("diverged")
+		const read = await direct(stub, (w) => w.events(0))
+		if (read === "missing") throw new Error("the workspace is missing")
+		const refused = read.events.map((e) => e.payload as { notice?: string; reason?: string; run?: number }).find((p) => p.notice === "run refused")
+		expect(refused?.reason).toContain(gitSays)
+		expect(refused).not.toHaveProperty("run")
 	})
 
 	it("refuses a start whose branch cannot be fetched, with the error", async () => {
@@ -694,7 +708,7 @@ describe("Workspace ends every process of the agent's (PLZG-311)", () => {
 		fake.calls.length = 0
 
 		expect(await stub.startRun("next", false, 5)).toEqual({ run: 2 })
-		expect(fake.calls.filter((c) => ["sweep", "resetTask", "startTask", "destroy"].includes(c))).toEqual(["sweep", "resetTask", "startTask"])
+		expect(fake.calls.filter((c) => ["sweep", "sync work", "resetTask", "startTask", "destroy"].includes(c))).toEqual(["sweep", "sync work", "sweep", "resetTask", "startTask"])
 		expect(fake.strays).toBe(0)
 	})
 
@@ -702,14 +716,66 @@ describe("Workspace ends every process of the agent's (PLZG-311)", () => {
 		const { stub, fake } = await started()
 		fake.finishTask(0, [resultLine])
 		expect(await stub.status()).toMatchObject({ state: "succeeded" })
-		fake.sweepClean = false
+		fake.sweepCleanNext = [false]
 		fake.calls.length = 0
 
 		expect(await stub.startRun("next", false, 5)).toEqual({ run: 2 })
-		const order = fake.calls.filter((c) => ["sweep", "destroy", "startFromSnapshot snap-1", "resetTask", "startTask"].includes(c))
-		expect(order).toEqual(["sweep", "destroy", "startFromSnapshot snap-1", "resetTask", "startTask"])
+		const order = fake.calls.filter((c) => ["sweep", "destroy", "startFromSnapshot snap-1", "sync work", "resetTask", "startTask"].includes(c))
+		expect(order).toEqual(["sweep", "destroy", "startFromSnapshot snap-1", "sync work", "sweep", "resetTask", "startTask"])
 		expect((await stored(stub)).replaceInstance).toBeFalsy()
 		expect(await stub.status()).toMatchObject({ state: "running", restored: "snapshot" })
+	})
+
+	// git fetch and the fast-forward run as the agent, and can start hooks or a
+	// detached `maintenance --auto` (final review F3).
+	it("sweeps once more after the branch sync of the first run", async () => {
+		const { fake } = await started()
+		const order = fake.calls.filter((c) => ["sweep", "sync work", "resetTask", "startTask"].includes(c))
+		expect(order.slice(order.indexOf("sync work"))).toEqual(["sync work", "sweep", "resetTask", "startTask"])
+	})
+
+	for (const [kind, refusal] of [
+		["diverged", { diverged: true, reason: "The clone and the branch on GitHub each have a commit the other lacks" }],
+		["fetch error", { error: "fetch broke" }],
+	] as const) {
+		it(`sweeps after a sync refused as ${kind}, and still answers the refusal`, async () => {
+			const { stub, fake } = await started()
+			fake.finishTask(0, [resultLine])
+			expect(await stub.status()).toMatchObject({ state: "succeeded" })
+			fake.syncResult = refusal
+			fake.calls.length = 0
+
+			await stub.startRun("next", false, 5)
+			expect(fake.calls.filter((c) => ["sweep", "sync work", "startTask"].includes(c))).toEqual(["sweep", "sync work", "sweep"])
+		})
+
+		it(`marks the instance for replacing when the sweep after a sync refused as ${kind} leaves a process`, async () => {
+			const { stub, fake } = await started()
+			fake.finishTask(0, [resultLine])
+			expect(await stub.status()).toMatchObject({ state: "succeeded" })
+			fake.syncResult = refusal
+			fake.sweepCleanNext = [true, false]
+
+			expect(await stub.startRun("next", false, 5)).toEqual("diverged" in refusal ? "diverged" : { fetchError: refusal.error })
+			expect((await stored(stub)).replaceInstance).toBe(true)
+			expect(await notices(stub)).toContain("agent processes left")
+		})
+	}
+
+	it("fails a start, starts no task and replaces the instance next time, when the sweep after the sync leaves a process", async () => {
+		const { stub, fake } = await started()
+		fake.finishTask(0, [resultLine])
+		expect(await stub.status()).toMatchObject({ state: "succeeded" })
+		fake.sweepCleanNext = [true, false]
+		fake.calls.length = 0
+
+		await expect(direct(stub, (w) => w.startRun("next", false, 5))).rejects.toThrow(/left after the branch sync/)
+		expect(fake.calls.filter((c) => ["destroy", "resetTask", "startTask"].includes(c))).toEqual([])
+		expect(await stored(stub)).toMatchObject({ state: "succeeded", run: 1, replaceInstance: true })
+		expect(await notices(stub)).toContain("agent processes left")
+
+		expect(await stub.startRun("next", false, 5)).toEqual({ run: 2 })
+		expect(fake.count("destroy")).toBe(1)
 	})
 })
 
@@ -769,7 +835,7 @@ describe("Workspace snapshot timeout (Copilot C8)", () => {
 		fake.snapshotDelayMs = 100
 		await stub.status()
 		expect(await stored(stub)).toMatchObject({ snapshot: "snap-1", snapshotPending: true })
-		fake.sweepClean = false
+		fake.sweepCleanNext = [false]
 		fake.calls.length = 0
 
 		expect(await stub.startRun("third", false, 5)).toEqual({ run: 3 })
@@ -778,7 +844,7 @@ describe("Workspace snapshot timeout (Copilot C8)", () => {
 	})
 
 	for (const [kind, refusal, answer] of [
-		["diverged", { diverged: true }, "diverged"],
+		["diverged", { diverged: true, reason: "The clone and the branch on GitHub each have a commit the other lacks" }, "diverged"],
 		["fetch error", { error: "fetch broke" }, { fetchError: "fetch broke" }],
 	] as const) {
 		it(`keeps a pending snapshot, and the alarm that retries it, through a start refused as ${kind}`, async () => {

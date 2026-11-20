@@ -22,14 +22,16 @@ cannot move those directories aside. The agent holds only the two pipes its
 output goes into.
 
 The runner's own commands are root's, with one rule: **git in the clone always
-runs as the agent** (clone, push, diff, the check after a restore). The clone's
+runs as the agent** (clone, the fetch and fast-forward before a run, push, diff,
+the check after a restore). The clone's
 config, hooks and diff drivers are the agent's to write, so root must never run
 them. The image carries a layout mark (`/etc/plaza-runner-layout`, `imageLayout`
 in `src/container.ts`); change both when who owns what changes.
 
 **Nothing of the agent's is left running after a run.** When a run ends, right
 after the KILL of its process group, then before its push, before each snapshot
-try and before the next run starts, the runner ends every process of the `agent`
+try, and before the next run starts both before and after the branch sync (and
+after a sync that refuses the start), the runner ends every process of the `agent`
 user: a process of that user sends KILL to every process it may signal, and root
 then checks that none is left. This reaches a process that left the task's
 process group with `setsid`, which the group KILL does not, and one that a git
@@ -37,7 +39,8 @@ hook or diff driver started. An instance that still has such a process gets no
 further run: it is replaced once the run is pushed and snapshotted, and a
 `runner` event says `agent processes left`. If the check cannot run at all, the
 end of a run treats it the same way, and the start of a run fails and is to be
-tried again, with nothing replaced. The runner never does this while a run is
+tried again, with nothing replaced. A process left after the sync before a run
+fails that start too, and the next start replaces the instance. The runner never does this while a run is
 running, since it would end the run's agent.
 
 `npm run test:container` shows all of this in a container built from the

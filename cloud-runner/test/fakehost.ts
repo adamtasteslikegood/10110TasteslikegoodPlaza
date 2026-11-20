@@ -198,11 +198,13 @@ export class FakeHost implements Host {
 	strays = 0
 	// Whether a sweep ends them all.
 	sweepClean = true
+	// One-shot answers, taken before sweepClean: [false] leaves a process once.
+	sweepCleanNext: boolean[] = []
 
 	async endAgentProcesses(): Promise<boolean> {
 		this.calls.push("sweep")
 		this.fail("sweep")
-		if (!this.sweepClean) return false
+		if (!(this.sweepCleanNext.shift() ?? this.sweepClean)) return false
 		this.strays = 0
 		return true
 	}

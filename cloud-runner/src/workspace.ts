@@ -176,12 +176,28 @@ export class Workspace extends DurableObject<Env> {
 
 			// The run starts from the branch as it is on GitHub. A refused start stores
 			// nothing but its notice: the state, run number, key and session stay.
+			// The notice carries git's reason; the answer to the caller does not.
 			const synced = await this.host.sync(record.branch as string)
 
+			// The fetch and the fast-forward ran git as the agent, and git can start
+			// hooks or a detached `maintenance --auto`: the agent's processes are
+			// ended once more. After a refusal a sweep that leaves one marks the
+			// instance for replacing and never throws, so the refusal still answers.
 			if (typeof synced === "object") {
-				const reason = "diverged" in synced ? "The clone is not a fast-forward of the branch on GitHub" : synced.error
+				await this.sweep(record)
+				const reason = "diverged" in synced ? synced.reason : synced.error
 				this.note(record, { notice: "run refused", reason })
 				return "diverged" in synced ? "diverged" : { fetchError: synced.error }
+			}
+
+			// Before a run, one left fails the start: nothing is replaced now, and the
+			// next start replaces the instance. A sweep that could not run throws, as
+			// the one before the sync does.
+			if (!(await this.host.endAgentProcesses())) {
+				record.replaceInstance = true
+				this.save(record)
+				this.note(record, { notice: "agent processes left", run: record.run })
+				throw new Error("A process of the agent's was left after the branch sync; the next start replaces the instance")
 			}
 
 			const { sessionId, resume } = conversation(isFresh(fresh, conversationKey, record.conversation), record.hasConversation, record.sessionId, crypto.randomUUID())
@@ -486,9 +502,10 @@ export class Workspace extends DurableObject<Env> {
 	// reach a process that left the task's group (setsid), and a hook or diff
 	// driver the agent set can start one outside any task. An instance that
 	// still has one is replaced once the run is persisted (PLZG-311). A sweep
-	// that could not run counts the same here, so it never holds up a push. Both
-	// callers come only after a run has ended; the check is here so no later
-	// caller can end a running run's agent.
+	// that could not run counts the same here, so it never holds up a push. It
+	// also follows a branch sync that refused a start. Every caller comes only
+	// when no run is running; the check is here so no later caller can end a
+	// running run's agent.
 	private async sweep(record: Record_): Promise<void> {
 		if (record.state === "running") return
 
