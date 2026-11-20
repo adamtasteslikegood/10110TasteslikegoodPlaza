@@ -92,6 +92,13 @@ export function conversation(fresh: boolean, hasConversation: boolean, storedId:
 	return { sessionId: newId, resume: false }
 }
 
+// Whether a run starts a new conversation: when asked to, or when the caller's
+// key names another conversation than the stored one. A run with no key leaves
+// the choice to `fresh` and the stored conversation.
+export function isFresh(fresh: boolean, key: string | undefined, storedKey: string | undefined): boolean {
+	return fresh || (key !== undefined && key !== storedKey)
+}
+
 export type StopObserved = { exitCode?: number; pidPresent: boolean; taskAlive: boolean; resultSeen: boolean }
 
 const signalExits = new Set([143, 137]) // TERM and KILL

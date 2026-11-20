@@ -11,6 +11,7 @@ import {
 	conversation,
 	conversationAfter,
 	countsNow,
+	isFresh,
 	judgeRun,
 	leftoverAction,
 	MAX_OUTPUT_BYTES,
@@ -43,6 +44,7 @@ type Record_ = {
 	generation: number
 	sessionId?: string
 	hasConversation: boolean
+	conversation?: string // the caller's key of the conversation sessionId belongs to
 	resumed?: boolean // the current run resumes sessionId
 	state: RunState
 	startedAt?: number // ms epoch of the current run's start
@@ -124,7 +126,7 @@ export class Workspace extends DurableObject<Env> {
 		return this.exclusive(async () => statusOf(await this.refresh()))
 	}
 
-	startRun(prompt: string, fresh: boolean, maxTurns: number): Promise<{ run: number } | "busy" | "missing"> {
+	startRun(prompt: string, fresh: boolean, maxTurns: number, conversationKey?: string): Promise<{ run: number } | "busy" | "missing"> {
 		return this.exclusive(async () => {
 			const record = await this.refresh()
 			const decision = admit(record.state, record.repo !== undefined)
@@ -165,7 +167,7 @@ export class Workspace extends DurableObject<Env> {
 				}
 			}
 
-			const { sessionId, resume } = conversation(fresh, record.hasConversation, record.sessionId, crypto.randomUUID())
+			const { sessionId, resume } = conversation(isFresh(fresh, conversationKey, record.conversation), record.hasConversation, record.sessionId, crypto.randomUUID())
 			await this.host.resetTask()
 
 			// The run is stored and watched before the task starts, so a start that
@@ -177,6 +179,7 @@ export class Workspace extends DurableObject<Env> {
 				task: undefined,
 				persistPending: undefined,
 				sessionId,
+				conversation: conversationKey ?? record.conversation,
 				resumed: resume,
 				hasConversation: conversationAfter("started", resume, false),
 				eventsOffset: 0,
@@ -997,5 +1000,6 @@ function statusOf(record: Record_): Status {
 		pushError: record.pushError,
 		restored: record.restored,
 		uncommittedLost: record.uncommittedLost,
+		conversation: record.hasConversation ? record.conversation : undefined,
 	}
 }

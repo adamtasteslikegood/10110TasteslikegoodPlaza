@@ -10,6 +10,7 @@ export type Status = {
 	branch?: string
 	result?: string
 	error?: string
+	conversation?: string // the caller's key of the conversation a later run with it would resume; absent when none can be resumed
 	pushed?: { commit: string } // head of branch after the last successful push
 	pushError?: string
 	restored?: "snapshot" | "branch" // how the current instance got its files

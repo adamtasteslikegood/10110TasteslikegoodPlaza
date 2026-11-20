@@ -5,6 +5,7 @@ import {
 	afterRestore,
 	conversation,
 	conversationAfter,
+	isFresh,
 	judgeRun,
 	leftoverAction,
 	MAX_OUTPUT_BYTES,
@@ -138,6 +139,22 @@ describe("conversation", () => {
 	})
 	it("starts a new one when the stored id is missing", () => {
 		expect(conversation(false, true, undefined, "b")).toEqual({ sessionId: "b", resume: false })
+	})
+})
+
+describe("isFresh", () => {
+	it("is true when the caller's key differs from the stored one", () => {
+		expect(isFresh(false, "b", "a")).toBe(true)
+		expect(isFresh(false, "a", undefined)).toBe(true)
+	})
+	it("is false when the key matches, or the caller sent none", () => {
+		expect(isFresh(false, "a", "a")).toBe(false)
+		expect(isFresh(false, undefined, "a")).toBe(false)
+		expect(isFresh(false, undefined, undefined)).toBe(false)
+	})
+	it("is true whenever fresh is asked for", () => {
+		expect(isFresh(true, "a", "a")).toBe(true)
+		expect(isFresh(true, undefined, undefined)).toBe(true)
 	})
 })
 

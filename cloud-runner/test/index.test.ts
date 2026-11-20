@@ -211,6 +211,15 @@ describe("RunBody", () => {
     }
     expect(RunBody.safeParse({ prompt: "hi", fresh: "yes" }).success).toBe(false)
   })
+  it("takes an optional conversation key of letters, digits and dashes, 1 to 128 long", () => {
+    expect(RunBody.parse({ prompt: "p" }).conversation).toBeUndefined()
+    for (const conversation of ["a", "Abc-123", "x".repeat(128)]) {
+      expect(RunBody.safeParse({ prompt: "p", conversation }).success, conversation).toBe(true)
+    }
+    for (const conversation of ["bad key!", "", "x".repeat(129), "a_b", "a/b", 1]) {
+      expect(RunBody.safeParse({ prompt: "p", conversation }).success, String(conversation)).toBe(false)
+    }
+  })
 })
 
 describe("run requests", () => {
@@ -237,12 +246,16 @@ describe("run requests", () => {
     expect((await run({ prompt: "é".repeat(65535) + "a" })).status).toBe(202)
   })
 
-  it("passes prompt, fresh and maxTurns to startRun", async () => {
+  it("passes prompt, fresh, maxTurns and the conversation key to startRun", async () => {
     const calls: Call[] = []
     const res = await run({ prompt: "do it", fresh: true, maxTurns: 7 }, calls)
     expect(res.status).toBe(202)
     expect(await res.json()).toEqual({ run: 1 })
-    expect(calls).toEqual([{ method: "startRun", args: ["do it", true, 7] }])
+    expect(calls).toEqual([{ method: "startRun", args: ["do it", true, 7, undefined] }])
+
+    const keyed: Call[] = []
+    await run({ prompt: "do it", conversation: "k-1" }, keyed)
+    expect(keyed).toEqual([{ method: "startRun", args: ["do it", false, 20, "k-1"] }])
   })
 
   it("answers 413 for a body over the 1 MiB request cap", async () => {

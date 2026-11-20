@@ -150,7 +150,7 @@ export default {
 						return text('Send {"prompt": "...", "fresh": false, "maxTurns": 20}, with maxTurns from 1 to 100', 400)
 					}
 
-					const started = await workspace.startRun(body.data.prompt, body.data.fresh, body.data.maxTurns)
+					const started = await workspace.startRun(body.data.prompt, body.data.fresh, body.data.maxTurns, body.data.conversation)
 
 					if (started === "busy") {
 						return text("A run is already active", 409)

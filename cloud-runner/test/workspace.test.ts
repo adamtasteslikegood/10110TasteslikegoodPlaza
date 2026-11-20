@@ -37,6 +37,8 @@ type Stored = {
 	snapshotStale?: boolean
 	replaceInstance?: boolean
 	resumed?: boolean
+	sessionId?: string
+	conversation?: string
 	resultLine?: string
 	taskFileFailures?: number
 	lastTaskFileFailureAt?: number
@@ -484,6 +486,64 @@ describe("Workspace stale snapshot (Copilot C5)", () => {
 		expect(await stored(stub)).toMatchObject({ snapshot: "snap-1", snapshotStale: true })
 		await stub.startRun("third", false, 5)
 		expect(await stub.status()).toMatchObject({ restored: "snapshot", uncommittedLost: true })
+	})
+})
+
+describe("Workspace conversation key", () => {
+	async function keyed(key: string, fake = new FakeHost()) {
+		const { stub } = await created(fake)
+		expect(await stub.startRun("hello", false, 5, key)).toEqual({ run: 1 })
+		fake.finishTask(0, [resultLine])
+		return { stub, fake }
+	}
+
+	it("reports the key once its conversation has answered", async () => {
+		const { stub } = await keyed("a")
+		expect(await stub.status()).toMatchObject({ state: "succeeded", conversation: "a" })
+	})
+
+	it("resumes the conversation for the same key and starts a new one for another", async () => {
+		const { stub, fake } = await keyed("a")
+		const first = (await stored(stub)).sessionId
+		expect(await stub.startRun("again", false, 5, "a")).toEqual({ run: 2 })
+		expect(await stored(stub)).toMatchObject({ resumed: true, sessionId: first, conversation: "a" })
+		fake.finishTask(0, [resultLine])
+
+		expect(await stub.startRun("other", false, 5, "b")).toEqual({ run: 3 })
+		const record = await stored(stub)
+		expect(record).toMatchObject({ resumed: false, conversation: "b" })
+		expect(record.sessionId).not.toBe(first)
+		fake.finishTask(0, [resultLine])
+		expect(await stub.status()).toMatchObject({ conversation: "b" })
+	})
+
+	it("keeps the stored key, and resumes, for a run with no key", async () => {
+		const { stub, fake } = await keyed("a")
+		expect(await stub.startRun("again", false, 5)).toEqual({ run: 2 })
+		expect(await stored(stub)).toMatchObject({ resumed: true, conversation: "a" })
+		fake.finishTask(0, [resultLine])
+		expect(await stub.status()).toMatchObject({ conversation: "a" })
+	})
+
+	it("stores no key for a run refused as busy", async () => {
+		const { stub } = await created()
+		expect(await stub.startRun("hello", false, 5, "a")).toEqual({ run: 1 })
+		expect(await stub.startRun("again", false, 5, "b")).toBe("busy")
+		expect((await stored(stub)).conversation).toBe("a")
+	})
+
+	it("has no conversation in status after a restore from the branch", async () => {
+		const { stub, fake } = await keyed("a")
+		expect(await stub.status()).toMatchObject({ conversation: "a" })
+		fake.running = false
+		await edit(stub, (record) => {
+			record.snapshot = undefined
+		})
+
+		expect(await stub.startRun("next", false, 5, "a")).toEqual({ run: 2 })
+		expect(await stub.status()).toMatchObject({ restored: "branch" })
+		expect((await stub.status()).conversation).toBeUndefined()
+		expect((await stored(stub)).resumed).toBe(false)
 	})
 })
 

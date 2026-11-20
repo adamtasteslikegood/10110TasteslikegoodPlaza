@@ -106,6 +106,8 @@ export const RunBody = z.object({
 		.refine((prompt) => !prompt.includes("\0"))
 		.refine((prompt) => new TextEncoder().encode(prompt).byteLength <= MAX_PROMPT_BYTES),
 	fresh: z.boolean().default(false),
+	// The caller's name for the conversation: a key other than the stored one starts a new conversation.
+	conversation: z.string().regex(/^[A-Za-z0-9-]{1,128}$/).optional(),
 	maxTurns: z.number().int().min(1).max(100).default(20),
 })
 
