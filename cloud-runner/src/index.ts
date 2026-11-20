@@ -147,7 +147,7 @@ export default {
 					const body = RunBody.safeParse(read.value)
 
 					if (!body.success) {
-						return text('Send {"prompt": "...", "fresh": false, "maxTurns": 20}, with maxTurns from 1 to 100', 400)
+						return text('Send {"prompt": "...", "fresh": false, "maxTurns": 20, "conversation": "key"}, with maxTurns from 1 to 100 and conversation, if sent, of 1 to 128 letters, digits or hyphens ([A-Za-z0-9-]{1,128})', 400)
 					}
 
 					const started = await workspace.startRun(body.data.prompt, body.data.fresh, body.data.maxTurns, body.data.conversation)
