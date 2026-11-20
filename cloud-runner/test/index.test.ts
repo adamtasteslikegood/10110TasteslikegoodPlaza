@@ -337,6 +337,28 @@ describe("Workspace answers", () => {
     expect(await failed.json()).toEqual({ ...none, cloneError: "fatal: not found" })
   })
 
+  it("create: 422 and no workspace when no GitHub token is configured for the repository", async () => {
+    const calls: Call[] = []
+    const env = fakeEnv(calls, {}, { GITHUB_TOKENS: '{"other/repo":"secret-token-value"}' })
+    const res = await worker.fetch(req("PUT", "/workspaces/a", { body: good }), env)
+    expect(res.status).toBe(422)
+    const text = await res.text()
+    expect(text).toBe("No GitHub token is configured for this repository\n")
+    expect(text).not.toContain("secret-token-value")
+    expect(calls).toEqual([])
+
+    const mapped = fakeEnv(calls, { create: { status } }, { GITHUB_TOKENS: '{"owner/repo":"t"}' })
+    expect((await worker.fetch(req("PUT", "/workspaces/a", { body: good }), mapped)).status).toBe(200)
+    expect(calls).toHaveLength(1)
+  })
+
+  it("create: an empty GITHUB_TOKEN is no token to send, not a refusal", async () => {
+    const calls: Call[] = []
+    const res = await worker.fetch(req("PUT", "/workspaces/a", { body: good }), fakeEnv(calls, {}, { GITHUB_TOKEN: "" }))
+    expect(res.status).toBe(200)
+    expect(calls).toHaveLength(1)
+  })
+
   it("run: 202 with the run number, 409 when busy, 404 when the workspace is missing", async () => {
     const run = (result: unknown) => call(req("POST", "/workspaces/a/runs", { body: { prompt: "hi" } }), [], { startRun: result })
     const started = await run({ run: 3 })

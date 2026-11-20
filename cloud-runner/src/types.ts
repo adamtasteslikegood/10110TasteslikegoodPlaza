@@ -30,6 +30,8 @@ export type Env = {
 	RUNNER_CALLER_SECRET: string
 	AI_GATEWAY_TOKEN: string
 	GITHUB_TOKEN: string
+	// Optional JSON object from "owner/repo" (lower case) to a token; when set, it replaces GITHUB_TOKEN.
+	GITHUB_TOKENS?: string
 	AI_GATEWAY_ACCOUNT_ID: string
 	AI_GATEWAY_ID: string
 	MODEL: string

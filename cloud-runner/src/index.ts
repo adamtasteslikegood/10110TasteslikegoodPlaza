@@ -1,4 +1,5 @@
 import { CreateBody, ExecBody, MAX_BODY_BYTES, MAX_PROMPT_BYTES, RunBody, authorized, parseRoute } from "./router"
+import { tokenFor } from "./tokens"
 import type { Env } from "./types"
 
 export { Workspace } from "./workspace"
@@ -110,6 +111,11 @@ export default {
 
 					if (!body.success) {
 						return text('Send {"repo": "https://github.com/OWNER/REPO", "branch": "BRANCH", "allow": ["host"]}', 400)
+					}
+
+					// No workspace is made, and no container started, for a repository with no token.
+					if (tokenFor(env, body.data.repo) === undefined) {
+						return text("No GitHub token is configured for this repository", 422)
 					}
 
 					const created = await workspace.create(body.data.repo, body.data.branch, body.data.allow)

@@ -62,6 +62,22 @@ describe("withCredential", () => {
 		expect(out.headers.get("cf-aig-skip-cache")).toBeNull()
 	})
 
+	it("github: sends the token mapped to the repository of the workspace", () => {
+		const mapped = { ...env, GITHUB_TOKENS: '{"acme/app":"mapped-token-value"}' } as Env
+		const out = withCredential(request({ authorization: "Bearer forged" }), "github", mapped, "/Acme/App")
+
+		expect(out.headers.get("authorization")).toBe(`Basic ${btoa("x-access-token:mapped-token-value")}`)
+	})
+
+	it("github: no mapped token sends no Authorization, and never GITHUB_TOKEN", () => {
+		const mapped = { ...env, GITHUB_TOKENS: '{"acme/app":"mapped-token-value"}' } as Env
+		const other = withCredential(request({ authorization: "Bearer forged" }), "github", mapped, "/acme/other")
+		const none = withCredential(request({ authorization: "Bearer forged" }), "github", mapped)
+
+		expect(other.headers.get("authorization")).toBeNull()
+		expect(none.headers.get("authorization")).toBeNull()
+	})
+
 	it("github: an empty token adds no Authorization and drops the container's", () => {
 		const out = withCredential(request({ authorization: "Bearer forged" }), "github", { ...env, GITHUB_TOKEN: "" })
 
