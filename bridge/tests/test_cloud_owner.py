@@ -340,6 +340,73 @@ async def test_the_cursor_carries_on_to_the_next_run(cloud):
     assert outcome.provider_session_id == "session-2"
 
 
+def bounded(cloud):
+    """A Run that has not ended in 5 s fails the test instead of hanging it."""
+    return asyncio.wait_for(run(cloud), 5)
+
+
+@pytest.mark.asyncio
+async def test_a_later_run_in_the_status_ends_ours_as_lost(cloud, fast_forwards):
+    await cloud.owner.start()
+    cloud.runner.log = [event(1, 1, "system", {"session_id": "session-1"})]
+    cloud.runner.script("status", ended(run=2, state="running"))
+    outcome = await bounded(cloud)
+    assert (outcome.status, outcome.reason) == ("error", "cloud_run_lost")
+    assert methods(cloud.runner).count("status") == 2  # start's, and one poll
+    assert cloud.note() is True
+    assert fast_forwards == []
+    # The owner is usable for a later Run, and its cursor carries on.
+    cloud.runner.calls.clear()
+    cloud.runner.script("status", ended(run=2, result="two"))
+    outcome = await bounded(cloud)
+    assert (outcome.status, outcome.output) == ("success", "two")
+    assert [call[2] for call in cloud.runner.calls if call[0] == "events"][0] == 1
+
+
+@pytest.mark.parametrize(
+    "answer",
+    [ended(run=0, state="running"), {"state": "idle"}, ended(run="1"), ended(run=True)],
+)
+@pytest.mark.asyncio
+async def test_a_status_that_never_names_this_run_ends_as_lost_after_the_limit(
+    cloud, monkeypatch, fast_forwards, answer
+):
+    monkeypatch.setattr(CloudOwner, "OUTAGE_SECONDS", 0.05)
+    await cloud.owner.start()
+    cloud.runner.script("status", answer)
+    outcome = await bounded(cloud)
+    assert (outcome.status, outcome.reason) == ("error", "cloud_run_lost")
+    assert cloud.note() is True
+    assert fast_forwards == []
+    cloud.runner.script("status", ended(run=2, result="two"))
+    outcome = await bounded(cloud)
+    assert (outcome.status, outcome.output) == ("success", "two")
+
+
+@pytest.mark.asyncio
+async def test_outages_and_wrong_run_answers_share_one_limit(
+    cloud, monkeypatch, fast_forwards
+):
+    monkeypatch.setattr(CloudOwner, "OUTAGE_SECONDS", 0.05)
+    await cloud.owner.start()
+    seen = []
+
+    def status(name):
+        # Down, then an answer that does not name this run, in turn.
+        seen.append("down" if len(seen) % 2 == 0 else "wrong")
+        if seen[-1] == "down":
+            raise RunnerDown("down")
+        return ended(run=0, state="running")
+
+    cloud.runner.status = status
+    outcome = await bounded(cloud)
+    assert outcome.status == "error"
+    last = "transport_error" if seen[-1] == "down" else "cloud_run_lost"
+    assert outcome.reason == last
+    assert cloud.note() is True
+    assert fast_forwards == []
+
+
 @pytest.mark.parametrize(
     "status, reason", [(404, "cloud_run_lost"), (401, "transport_error")]
 )

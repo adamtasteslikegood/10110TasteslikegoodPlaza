@@ -251,22 +251,20 @@ class CloudOwner:
 
     async def _answer(self, method: str, *args, since: list):
         """One runner call; RunnerDown is retried with the same arguments until
-        OUTAGE_SECONDS pass with no answer. ``since`` holds the last answer's time."""
+        OUTAGE_SECONDS pass since ``since[0]``: the last status that named this
+        run, or when start_run returned. Only ``_poll`` moves that clock."""
         loop = asyncio.get_running_loop()
         while True:
             try:
-                answer = await self._call(method, self._name, *args)
+                return await self._call(method, self._name, *args)
             except RunnerDown:
                 if loop.time() - since[0] >= self.OUTAGE_SECONDS:
                     raise _Ended("transport_error") from None
                 await asyncio.sleep(self.POLL_SECONDS)
-                continue
             except RunnerRefused as error:
                 raise _Ended(
                     "cloud_run_lost" if error.status == 404 else "transport_error"
                 ) from None
-            since[0] = loop.time()
-            return answer
 
     async def _events(self, run: int, seen: dict, since: list) -> bool:
         """Read one page; True when it held events and moved the cursor."""
@@ -278,13 +276,26 @@ class CloudOwner:
         return bool(events) and self._cursor > after
 
     async def _poll(self, run: int, seen: dict) -> dict:
-        since = [asyncio.get_running_loop().time()]
+        loop = asyncio.get_running_loop()
+        # One limit: no status naming this run for OUTAGE_SECONDS, whether the
+        # runner was down or answered about another run.
+        since = [loop.time()]
         while True:
             await asyncio.sleep(self.POLL_SECONDS)
             await self._events(run, seen, since)
             status = await self._answer("status", since=since)
-            if status.get("run") == run and status.get("state") in ENDED:
-                break
+            named = status.get("run")
+            if not isinstance(named, int) or isinstance(named, bool):
+                named = None
+            if named == run:
+                since[0] = loop.time()
+                if status.get("state") in ENDED:
+                    break
+            elif named is not None and named > run:
+                # A later run: ours is over and its end state can't be read.
+                raise _Ended("cloud_run_lost")
+            elif loop.time() - since[0] >= self.OUTAGE_SECONDS:
+                raise _Ended("cloud_run_lost")
         # The events written before the end state; more than one page if need be.
         while await self._events(run, seen, since):
             pass
