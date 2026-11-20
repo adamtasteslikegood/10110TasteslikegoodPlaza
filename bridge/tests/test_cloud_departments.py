@@ -13,7 +13,7 @@ import pytest
 import pytest_asyncio
 
 from bridge.cloud_git import mark_cloud
-from bridge.cloud_owner import CloudOwner
+from bridge.cloud_owner import CloudOwner, CloudStartRefused
 from bridge.cloud_runner import RunnerDown
 from bridge.config import ConfigError, default_config, load_config
 from bridge.domain_manager import DomainManager
@@ -651,15 +651,23 @@ async def test_a_cloud_run_delivers_one_domain_result_and_checkpoints_the_pushed
 @pytest.mark.asyncio
 async def test_the_recap_goes_only_with_a_new_cloud_conversation(bridge):
     await send(bridge, "activate_domain", "start")
-    await send(bridge, "domain_query", "first")
-    await send(bridge, "domain_query", "second")
+    runs = [await send(bridge, "domain_query", "first")]
+    runs.append(await send(bridge, "domain_query", "second"))
     bridge.runner.held = None  # a new instance, started from the branch
-    await send(bridge, "domain_query", "third")
+    runs.append(await send(bridge, "domain_query", "third"))
+    # Every Run succeeds, the second and third as well as the first.
+    for packets in runs:
+        results = [p for p in packets if p["type"] == "domain_result"]
+        assert [(r["status"], r["reason"]) for r in results] == [
+            ("success", "completed")
+        ]
     assert len(bridge.contexts) == 3
     first, second, third = (packet.continuity for packet in bridge.contexts)
     assert first is not None
     assert second is None
     assert third is not None
+    workspace = bridge.service.workspace
+    assert git(workspace.worktree_path, "rev-parse", "HEAD") == bridge.runner.pushed
 
 
 @pytest.mark.asyncio
@@ -828,3 +836,138 @@ async def test_a_cloud_department_with_no_runner_is_refused_at_start(
     assert service.capacity_snapshot("core")["available"]
     assert session.snapshot()["state"] == "inactive"
     await _close(service, session)
+
+
+def _hold(runner, stop_fault=None):
+    """The runner keeps the Run going until it is told to stop."""
+    held = {"stopped": False}
+    real_status = runner.status
+
+    def status(name):
+        if runner.run and not held["stopped"]:
+            runner.calls.append(("status", name))
+            return dict(
+                state="running", run=runner.run, generation=1, conversation=runner.held
+            )
+        answer = real_status(name)
+        return dict(answer, state="stopped") if runner.run else answer
+
+    def stop(name):
+        runner.calls.append(("stop", name))
+        if stop_fault is not None:
+            raise stop_fault
+        held["stopped"] = True
+        return dict(state="stopped")
+
+    runner.status, runner.stop = status, stop
+
+
+async def _run_then_stop(bridge):
+    packets = []
+    current = bridge.manager.snapshot("engineering")
+
+    async def emit(packet):
+        packets.append(packet)
+
+    run = asyncio.create_task(
+        bridge.manager.handle(
+            dict(
+                type="domain_query",
+                protocol_version=2,
+                request_id="first",
+                domain_id="engineering",
+                execution_id=current["execution_id"],
+                domain_session_id=current["domain_session_id"],
+                agent_id="backend-architect",
+                task="Build first",
+            ),
+            context=context("first"),
+            emit=emit,
+        )
+    )
+    async with asyncio.timeout(5):
+        while "start_run" not in [c[0] for c in bridge.runner.calls]:
+            await asyncio.sleep(0.005)
+    stopped = await send(bridge, "deactivate_domain", "stop")
+    await asyncio.wait_for(run, 5)
+    return packets, stopped
+
+
+def _results(packets):
+    return [(p["status"], p["reason"]) for p in packets if p["type"] == "domain_result"]
+
+
+@pytest.mark.asyncio
+async def test_a_stop_during_a_cloud_run_stops_it_cleanly(bridge, monkeypatch):
+    from bridge import cloud_owner
+
+    forwards = []
+    real = cloud_owner.fast_forward_to
+
+    def counting(workspace, commit):
+        forwards.append(commit)
+        return real(workspace, commit)
+
+    monkeypatch.setattr(cloud_owner, "fast_forward_to", counting)
+    _hold(bridge.runner)
+    await send(bridge, "activate_domain", "start")
+    forwards.clear()  # the Start's own sync is not the Run's
+    packets, stopped = await _run_then_stop(bridge)
+    assert _results(packets) == [("cancelled", "stopped")]
+    assert [(p["type"], p.get("state")) for p in stopped] == [
+        ("domain_state", "inactive")
+    ]
+    assert forwards == [bridge.runner.pushed]
+    workspace = bridge.service.workspace
+    assert git(workspace.worktree_path, "rev-parse", "HEAD") == bridge.runner.pushed
+    assert bridge.service.capacity is None and bridge.service.reservation is None
+    note = workspace.common_git_dir / "plaza/cloud" / "engineering.json"
+    assert json.loads(note.read_text()) == {"unsynced": False}
+
+
+@pytest.mark.asyncio
+async def test_a_refused_stop_during_a_cloud_run_is_cleanup_failed(bridge, capsys):
+    _hold(bridge.runner, stop_fault=RunnerDown("no answer"))
+    await send(bridge, "activate_domain", "start")
+    packets, stopped = await _run_then_stop(bridge)
+    assert _results(packets) == [("cancelled", "stopped")]
+    assert [(p["type"], p.get("state")) for p in stopped] == [
+        ("domain_state", "cleanup_failed")
+    ]
+    assert bridge.manager.snapshot("engineering")["state"] == "cleanup_failed"
+    assert bridge.service.capacity is not None  # the place is kept
+    note = bridge.service.workspace.common_git_dir / "plaza/cloud/engineering.json"
+    assert json.loads(note.read_text()) == {"unsynced": True}
+    assert "engineering: stop: unclean: " in capsys.readouterr().err
+
+
+class _RefusingOwner(FakeOwner):
+    async def start(self):
+        raise CloudStartRefused("cloud_unavailable")
+
+
+@pytest.mark.asyncio
+async def test_a_refused_cloud_start_gives_its_place_back_to_the_cloud_pool(
+    tmp_path, monkeypatch
+):
+    service = await _service(
+        tmp_path,
+        monkeypatch,
+        cloud_domains=frozenset({"core", "engineering"}),
+        cloud_domain_limit=1,
+    )
+    monkeypatch.setattr("bridge.domain_session.CloudOwner", _RefusingOwner)
+    core = _session(service, "core", "first")
+    with pytest.raises(DomainCommandError) as error:
+        await core.start()
+    assert error.value.code == "cloud_unavailable"
+    assert core.snapshot()["state"] == "inactive"
+    assert not core._lease.held
+    assert service.capacity_snapshot("engineering") == dict(
+        limit=1, available=True, domain_id=None, domain_session_id=None, pool="cloud"
+    )
+    monkeypatch.setattr("bridge.domain_session.CloudOwner", FakeOwner)
+    engineering = _session(service, "engineering", "second")
+    await engineering.start()
+    assert engineering.snapshot()["state"] == "active"
+    await _close(service, core, engineering)
