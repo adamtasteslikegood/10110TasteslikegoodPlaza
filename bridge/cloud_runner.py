@@ -77,6 +77,8 @@ def _read_secret(path: Path) -> str:
         secret = path.read_text().strip()
     except (OSError, UnicodeDecodeError):
         raise ValueError(f"{path} could not be read") from None
+    if not secret.isascii():
+        raise ValueError(f"{path} must hold an ASCII secret")
     if len(secret) < SECRET_MIN:
         raise ValueError(
             f"{path} must hold a secret of {SECRET_MIN} characters or more"
@@ -138,13 +140,18 @@ class CloudRunner:
 
     @classmethod
     def from_env(cls, config, environ=None) -> "CloudRunner | None":
+        # Every run's log manifest carries the URL, so a set one is checked
+        # even with no cloud department.
+        url = config.cloud_runner_url.strip()
+        if url:
+            url = _check_url(url)
         if not config.cloud_domains:
             return None
         unknown = sorted(config.cloud_domains - DOMAIN_IDS)
         if unknown:
             raise ValueError(f"CLOUD_DOMAINS names unknown departments: {unknown}")
         environ = os.environ if environ is None else environ
-        url = _check_url(config.cloud_runner_url)
+        url = _check_url(url)
         named = environ.get(SECRET_FILE_VARIABLE)
         secret = _read_secret(Path(named) if named else DEFAULT_SECRET_FILE)
         return cls(url, secret, environ=environ)
@@ -185,6 +192,10 @@ class CloudRunner:
 
     def _clean(self, text: str) -> str:
         return text.replace(self._secret, "***")
+
+    def redactions(self) -> tuple[str]:
+        """The caller secret, for the recorder's redaction list only."""
+        return (self._secret,)
 
     def clean(self, text: str) -> str:
         """``text`` with the caller secret replaced, for the bridge's own log lines."""

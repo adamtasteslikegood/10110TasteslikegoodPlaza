@@ -922,6 +922,7 @@ async def serve(*, stop_event: asyncio.Event | None = None):
         redactions=(
             *(os.environ.get(name, "") for name in _SDK_ENV_PASSTHROUGH),
             *_relay_redactions(os.environ),
+            *(() if cloud is None else cloud.redactions()),
         ),
     )
     server = None

@@ -621,3 +621,17 @@ def test_a_git_fault_is_git_failed_with_a_short_scrubbed_detail(tmp_path, monkey
     assert len(raised.value.detail) <= 300
     assert raised.value.__cause__ is None
     assert raised.value.__suppress_context__
+
+
+def test_a_note_that_cannot_be_read_is_git_failed_not_unsynced(tmp_path, monkeypatch):
+    origin, workspace = setup(tmp_path)
+    mark_cloud(workspace, unsynced=False)
+
+    def denied(*args, **kwargs):
+        raise PermissionError(13, "Permission denied")
+
+    monkeypatch.setattr(cloud_git.files, "read_regular", denied)
+    with pytest.raises(CloudSyncError) as raised:
+        check_switch_to_local(workspace)
+    assert raised.value.code == "git_failed"
+    assert raised.value.detail == "the cloud note could not be read"

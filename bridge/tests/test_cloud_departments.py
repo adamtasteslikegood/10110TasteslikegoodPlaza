@@ -17,7 +17,7 @@ from bridge.cloud_owner import CloudOwner
 from bridge.cloud_runner import RunnerDown
 from bridge.config import ConfigError, default_config, load_config
 from bridge.domain_manager import DomainManager
-from bridge.domain_protocol import ERROR_MESSAGES
+from bridge.domain_protocol import ERROR_MESSAGES, DomainCommandError
 from bridge.project_service import ProjectService
 from bridge.relay_claims import RelayClaims
 from bridge.state_coordinator import StateCoordinator, VolatileStateRepository
@@ -121,6 +121,7 @@ async def _service(tmp_path, monkeypatch, **settings):
 def _session(service, domain_id, generation, **kwargs):
     from bridge.domain_session import DomainSession
 
+    kwargs.setdefault("cloud", object())  # a cloud department needs a runner
     return DomainSession(
         domain_id,
         generation,
@@ -749,3 +750,81 @@ async def test_a_department_never_in_the_cloud_starts_with_no_switch_check(
     packets = await send(bridge, "activate_domain", "start")
     assert not errors(packets)
     assert bridge.manager.snapshot("engineering")["state"] == "active"
+
+
+@pytest.mark.asyncio
+async def test_a_bad_runner_url_stops_the_bridge_with_no_cloud_department(
+    monkeypatch, capsys
+):
+    from bridge import server as server_module
+
+    for name in ("RELAY_WORK_REPO", "PR_GATE_RELAY_URL"):
+        monkeypatch.delenv(name, raising=False)
+    settings = replace(default_config(), cloud_runner_url="ftp://runner.example")
+    monkeypatch.setattr(server_module, "load_config", MagicMock(return_value=settings))
+    server = MagicMock()
+    monkeypatch.setattr(server_module, "BridgeServer", server)
+    with pytest.raises(SystemExit) as error:
+        await server_module.serve()
+    assert error.value.code == 2
+    server.assert_not_called()
+    err = capsys.readouterr().err
+    assert "Bridge configuration error" in err and "CLOUD_RUNNER_URL" in err
+
+
+@pytest.mark.asyncio
+async def test_the_recorder_redacts_the_caller_secret(tmp_path, monkeypatch):
+    from bridge import server as server_module
+    from bridge.tests.test_cloud_runner import SECRET, secret_file
+
+    for name in ("RELAY_WORK_REPO", "PR_GATE_RELAY_URL"):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("CLOUD_RUNNER_SECRET_FILE", str(secret_file(tmp_path)))
+    settings = replace(
+        default_config(),
+        cloud_domains=frozenset({"core"}),
+        cloud_runner_url="https://runner.example",
+    )
+    monkeypatch.setattr(server_module, "load_config", MagicMock(return_value=settings))
+
+    class Built(Exception):
+        pass
+
+    recorder = MagicMock(side_effect=Built)
+    monkeypatch.setattr(server_module, "BridgeRecorder", recorder)
+    with pytest.raises(Built):
+        await server_module.serve()
+    assert SECRET in recorder.call_args.kwargs["redactions"]
+
+
+@pytest.mark.asyncio
+async def test_the_switch_check_is_owned_io(tmp_path, monkeypatch):
+    from bridge import domain_session
+
+    service = await _service(tmp_path, monkeypatch, cloud_domains=frozenset())
+    real, called = domain_session.owned_io, []
+
+    async def recording(function, *args, **kwargs):
+        called.append(getattr(function, "__name__", ""))
+        return await real(function, *args, **kwargs)
+
+    monkeypatch.setattr(domain_session, "owned_io", recording)
+    session = _session(service, "design", "first")
+    await session.start()
+    assert session.snapshot()["state"] == "active"
+    assert "check_switch_to_local" in called
+    await _close(service, session)
+
+
+@pytest.mark.asyncio
+async def test_a_cloud_department_with_no_runner_is_refused_at_start(
+    tmp_path, monkeypatch
+):
+    service = await _service(tmp_path, monkeypatch, cloud_domains=frozenset({"core"}))
+    session = _session(service, "core", "first", cloud=None)
+    with pytest.raises(DomainCommandError) as error:
+        await session.start()
+    assert error.value.code == "cloud_unavailable"
+    assert service.capacity_snapshot("core")["available"]
+    assert session.snapshot()["state"] == "inactive"
+    await _close(service, session)

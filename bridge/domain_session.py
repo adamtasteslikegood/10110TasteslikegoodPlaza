@@ -316,6 +316,8 @@ class DomainSession:
         return task
 
     async def _reserve(self):
+        if self.runs_on == "cloud" and self._cloud is None:
+            raise DomainCommandError("cloud_unavailable")
         self._service.reserve_capacity(self)
         self._workspace = await self._service.prepare_domain(self.domain_id)
         self._memory = self._service.require_memory()
@@ -338,7 +340,7 @@ class DomainSession:
             # A department whose last run was in the cloud starts here only once
             # that run's commits are on this machine; with no cloud note, no check.
             try:
-                await asyncio.to_thread(check_switch_to_local, self._workspace)
+                await owned_io(check_switch_to_local, self._workspace)
             except CloudSyncError as error:
                 cloud_log.warn(
                     self.domain_id,

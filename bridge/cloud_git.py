@@ -381,7 +381,10 @@ def check_switch_to_local(workspace) -> None:
         data = json.loads(files.read_regular(note, max_bytes=4096))
     except FileNotFoundError:
         return
-    except (OSError, ValueError):
+    except OSError:
+        # Unreadable is not proof either way: still refuse, but say so.
+        raise CloudSyncError("git_failed", "the cloud note could not be read") from None
+    except ValueError:
         data = None
     if not isinstance(data, dict) or data.get("unsynced") is not False:
         raise CloudSyncError("unsynced", "the cloud may hold commits not fetched here")

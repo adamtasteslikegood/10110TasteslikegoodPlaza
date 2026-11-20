@@ -393,3 +393,38 @@ def test_ssl_cert_file_comes_from_the_given_environ(tmp_path):
     bad = tmp_path / "missing.pem"
     with pytest.raises((OSError, ValueError)):
         CloudRunner(URL, SECRET, environ={"SSL_CERT_FILE": str(bad)})
+
+
+@pytest.mark.parametrize("bad_url", ["ftp://runner.example", "https://a@b.example"])
+def test_a_bad_url_is_refused_even_with_no_cloud_department(tmp_path, bad_url):
+    config = settings(cloud_domains=frozenset(), cloud_runner_url=bad_url)
+    with pytest.raises(ValueError, match="CLOUD_RUNNER_URL"):
+        CloudRunner.from_env(config, {})
+
+
+@pytest.mark.parametrize("url", ["", "   "])
+def test_no_url_and_no_cloud_department_is_no_client(url):
+    config = settings(cloud_domains=frozenset(), cloud_runner_url=url)
+    assert CloudRunner.from_env(config, {}) is None
+
+
+def test_the_url_is_stripped(tmp_path):
+    config, environ = good(tmp_path)
+    config = replace(config, cloud_runner_url=f"  {URL}/ \n")
+    assert CloudRunner.from_env(config, environ).url == URL
+
+
+def test_a_secret_that_is_not_ascii_is_refused_without_its_content(tmp_path):
+    config, environ = good(tmp_path)
+    text = "s3cr3t-" + "é" * 40
+    environ["CLOUD_RUNNER_SECRET_FILE"] = str(secret_file(tmp_path, text=text))
+    with pytest.raises(ValueError, match="ASCII") as raised:
+        CloudRunner.from_env(config, environ)
+    assert "s3cr3t" not in str(raised.value) and "é" not in str(raised.value)
+
+
+def test_the_client_names_its_secret_for_redaction_only(tmp_path):
+    config, environ = good(tmp_path)
+    runner = CloudRunner.from_env(config, environ)
+    assert runner.redactions() == (SECRET,)
+    assert SECRET not in repr(runner)
