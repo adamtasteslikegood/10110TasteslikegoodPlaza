@@ -12,8 +12,9 @@ raises for what the runner or git does: every failure is an ``SDKOutcome``.
 
 import asyncio
 import json
-import logging
 from pathlib import Path
+
+from bridge import cloud_log
 
 from bridge.cloud_git import (
     CloudSyncError,
@@ -26,8 +27,6 @@ from bridge.cloud_runner import RunnerDown, RunnerRefused
 from bridge.conversation_backend import PROJECT_REPLY_INSTRUCTIONS, decode_project_reply
 from bridge.domain_sdk import MAX_OUTPUT_BYTES, CleanupOutcome, SDKOutcome
 from bridge.failure_diagnostics import failure_reason
-
-log = logging.getLogger(__name__)
 
 PREAMBLE = (
     "Follow the selected agent definition and current task. Each query includes fresh "
@@ -63,11 +62,6 @@ class _Ended(Exception):
 
 class _Aborted(Exception):
     """An unclean stop() told the execute() in flight to end as a stop."""
-
-
-def _sync_failed(error: CloudSyncError) -> None:
-    # The detail is scrubbed by cloud_git; the player sees only the fixed code.
-    log.warning("cloud sync failed: %s: %s", error.code, error.detail)
 
 
 def _commit(status: dict) -> str | None:
@@ -117,6 +111,24 @@ class CloudOwner:
     def healthy(self) -> bool:
         return self._healthy
 
+    def _warn(self, step: str, what: str, *args) -> None:
+        cloud_log.warn(self._workspace.domain_id, step, what, *args)
+
+    def _remote(self, text) -> str:
+        """The runner's words, made safe for a log line (the caller secret too)."""
+        return cloud_log.remote(text, getattr(self._runner, "clean", None))
+
+    def _sync_failed(self, step: str, error: CloudSyncError) -> None:
+        # The player sees only the fixed code; the reason is in this line.
+        self._warn(
+            step, "sync failed: %s: %s", error.code, cloud_log.remote(error.detail)
+        )
+
+    def _refused(self, step: str, error: RunnerRefused) -> None:
+        self._warn(
+            step, "runner refused: %s: %s", error.status, self._remote(error.text)
+        )
+
     async def _call(self, method, *args, **kwargs):
         return await asyncio.to_thread(getattr(self._runner, method), *args, **kwargs)
 
@@ -125,7 +137,7 @@ class CloudOwner:
         try:
             await asyncio.to_thread(mark_cloud, self._workspace, unsynced=unsynced)
         except CloudSyncError as error:
-            _sync_failed(error)
+            self._sync_failed("cloud note", error)
             self._unsynced = True  # an unwritten note is read as unsynced
             return False
         self._unsynced = unsynced
@@ -180,11 +192,13 @@ class CloudOwner:
             await asyncio.to_thread(mark_cloud, workspace, unsynced=unsynced)
             self._unsynced = unsynced
         except CloudSyncError as error:
-            _sync_failed(error)
+            self._sync_failed("start", error)
             raise CloudStartRefused("cloud_sync_failed") from None
-        except RunnerDown:
+        except RunnerDown as error:
+            self._warn("start", "runner did not answer: %s", self._remote(error))
             raise CloudStartRefused("cloud_unavailable") from None
-        except RunnerRefused:
+        except RunnerRefused as error:
+            self._refused("start", error)
             raise CloudStartRefused("cloud_refused") from None
         self._abandon()
         self._healthy = True
@@ -246,6 +260,7 @@ class CloudOwner:
                 max_turns=min(self._config.domain_max_turns, MAX_TURNS),
             )
         except RunnerRefused as error:
+            self._refused("run start", error)
             await self._mark(before)  # nothing ran
             reason = START_RUN_REFUSALS.get(error.status, "sdk_error")
             return SDKOutcome("", "error", reason, None, None)
@@ -313,6 +328,7 @@ class CloudOwner:
                     raise _Ended("transport_error") from None
                 await self._pause()
             except RunnerRefused as error:
+                self._refused("run", error)
                 self._check_abort()
                 raise _Ended(
                     "cloud_run_lost" if error.status == 404 else "transport_error"
@@ -363,6 +379,10 @@ class CloudOwner:
 
     async def _settle(self, status: dict, seen: dict) -> SDKOutcome:
         state, push_error = status.get("state"), bool(status.get("pushError"))
+        if push_error:
+            self._warn("run", "push failed: %s", self._remote(status["pushError"]))
+        if state == "failed" and status.get("error"):
+            self._warn("run", "run failed: %s", self._remote(status["error"]))
         result = status.get("result")
         output, cut = _cut(result if isinstance(result, str) else "")
         if seen["truncated"]:
@@ -390,7 +410,7 @@ class CloudOwner:
             try:
                 await asyncio.to_thread(fast_forward_to, self._workspace, commit)
             except CloudSyncError as error:
-                _sync_failed(error)
+                self._sync_failed("run", error)
                 synced = False
                 if outcome == "success":
                     outcome, reason = "error", "cloud_sync_failed"
@@ -410,34 +430,36 @@ class CloudOwner:
             try:
                 await asyncio.wait_for(started.wait(), self.STOP_WAIT_SECONDS)
             except TimeoutError:
+                self._warn("stop", "unclean: the start did not settle in time")
                 return CleanupOutcome(False, "cloud_unavailable")
         finished, launched, abort = self._finished, self._launched, self._abort
         if finished is None:
             return CleanupOutcome(True, None)
 
-        def unclean() -> CleanupOutcome:
+        def unclean(why: str) -> CleanupOutcome:
+            self._warn("stop", "unclean: %s", why)
             abort.set()  # the execute() in flight ends as a stop, now
             return CleanupOutcome(False, "cloud_unavailable")
 
         try:
             await asyncio.wait_for(launched.wait(), deadline - loop.time())
         except TimeoutError:
-            return unclean()
+            return unclean("the run start did not answer in time")
         if self._run is not None and not finished.is_set():
             for attempt in range(self.STOP_RETRIES + 1):
                 try:
                     await self._call("stop", self._name)
                     break
                 except RunnerDown:
-                    return unclean()
+                    return unclean("the runner did not answer")
                 except RunnerRefused as error:
                     if error.status != 409:
                         break  # execute() sees what the runner holds
                     if attempt == self.STOP_RETRIES:
-                        return unclean()
+                        return unclean("the runner kept answering 409")
                     await asyncio.sleep(self.POLL_SECONDS)
         try:
             await asyncio.wait_for(finished.wait(), max(0.0, deadline - loop.time()))
         except TimeoutError:
-            return unclean()
+            return unclean("the run did not end in time")
         return CleanupOutcome(True, None)

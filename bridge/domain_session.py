@@ -11,7 +11,6 @@ from copy import deepcopy
 from dataclasses import asdict, dataclass, replace
 from enum import Enum
 import hashlib
-import logging
 import time
 from typing import TYPE_CHECKING
 from uuid import uuid4
@@ -21,6 +20,7 @@ from bridge.agents import load_agent
 from bridge.agent_bindings import require_working_binding, InvalidBinding
 from bridge.config import BridgeConfig
 from bridge.application_state import StateCommand, StateError, StateView
+from bridge import cloud_log
 from bridge.cloud_git import CloudSyncError, check_switch_to_local
 from bridge.cloud_owner import CloudOwner, CloudStartRefused
 from datetime import datetime, timezone
@@ -44,8 +44,6 @@ from bridge.workspace_lease import WorkspaceLease
 
 if TYPE_CHECKING:
     from bridge.project_service import ProjectService
-
-log = logging.getLogger(__name__)
 
 DomainSink = Callable[[dict], Awaitable[None]]
 # Existing server diagnostics import the credential-name inventory. This is not
@@ -342,7 +340,13 @@ class DomainSession:
             try:
                 await asyncio.to_thread(check_switch_to_local, self._workspace)
             except CloudSyncError as error:
-                log.warning("cloud switch refused: %s: %s", error.code, error.detail)
+                cloud_log.warn(
+                    self.domain_id,
+                    "switch to local",
+                    "sync failed: %s: %s",
+                    error.code,
+                    cloud_log.remote(error.detail),
+                )
                 raise DomainCommandError("cloud_switch_refused") from None
         if self._claim is not None:
             try:

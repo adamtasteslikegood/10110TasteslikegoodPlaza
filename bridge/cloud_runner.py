@@ -186,6 +186,10 @@ class CloudRunner:
     def _clean(self, text: str) -> str:
         return text.replace(self._secret, "***")
 
+    def clean(self, text: str) -> str:
+        """``text`` with the caller secret replaced, for the bridge's own log lines."""
+        return self._clean(text)
+
     @staticmethod
     def _path(name: str, tail: str = "") -> str:
         return f"/workspaces/{quote(name, safe='')}{tail}"

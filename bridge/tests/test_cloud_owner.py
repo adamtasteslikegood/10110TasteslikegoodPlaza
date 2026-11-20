@@ -213,22 +213,20 @@ async def test_start_is_refused_while_an_earlier_run_is_active(
     ],
 )
 @pytest.mark.asyncio
-async def test_start_maps_down_refused_and_sync_errors(cloud, caplog, fault, code):
+async def test_start_maps_down_refused_and_sync_errors(cloud, capsys, fault, code):
     if fault == "down":
         cloud.runner.script("status", RunnerDown("no answer"))
     elif fault == "refused":
         cloud.runner.script("create", RunnerRefused(422, "No GitHub token"))
     else:
         (cloud.workspace.worktree_path / "loose.txt").write_text("local\n")
-    with caplog.at_level("WARNING", logger="bridge.cloud_owner"):
-        with pytest.raises(CloudStartRefused) as refused:
-            await cloud.owner.start()
+    with pytest.raises(CloudStartRefused) as refused:
+        await cloud.owner.start()
     assert refused.value.code == code
     assert not cloud.owner.healthy
     if fault == "dirty":
         assert "create" not in methods(cloud.runner)
-        assert [record.levelname for record in caplog.records] == ["WARNING"]
-        assert "dirty" in caplog.records[0].getMessage()
+        one_line(capsys, cloud, "dirty")
 
 
 @pytest.mark.asyncio
@@ -924,3 +922,121 @@ async def test_a_start_run_with_no_answer_is_transport_error_and_stays_unsynced(
     outcome = await run(cloud)
     assert (outcome.status, outcome.reason) == ("error", "transport_error")
     assert cloud.note() is True
+
+
+# The bridge.cloud log: one stderr line per event, naming the department.
+
+
+def cloud_lines(capsys):
+    return [
+        line for line in capsys.readouterr().err.splitlines() if "bridge.cloud " in line
+    ]
+
+
+def one_line(capsys, cloud, *parts):
+    lines = cloud_lines(capsys)
+    assert len(lines) == 1, lines
+    assert f"bridge.cloud {cloud.workspace.domain_id}: " in lines[0]
+    for part in parts:
+        assert part in lines[0], (part, lines[0])
+    return lines[0]
+
+
+@pytest.mark.parametrize(
+    "fault, parts",
+    [
+        ("down", ["start: runner did not answer: no answer"]),
+        ("refused", ["start: runner refused: 422: No GitHub token"]),
+        ("dirty", ["start: sync failed: dirty: "]),
+    ],
+)
+@pytest.mark.asyncio
+async def test_a_refused_start_is_one_line(cloud, capsys, fault, parts):
+    if fault == "down":
+        cloud.runner.script("status", RunnerDown("no answer"))
+    elif fault == "refused":
+        cloud.runner.script("create", RunnerRefused(422, "No GitHub token"))
+    else:
+        (cloud.workspace.worktree_path / "loose.txt").write_text("local\n")
+    with pytest.raises(CloudStartRefused):
+        await cloud.owner.start()
+    one_line(capsys, cloud, *parts)
+
+
+@pytest.mark.parametrize(
+    "script, part",
+    [
+        (
+            ("start_run", RunnerRefused(409, "busy")),
+            "run start: runner refused: 409: busy",
+        ),
+        (("status", RunnerRefused(401, "who")), "run: runner refused: 401: who"),
+        (
+            ("status", ended(result="done", pushError="fatal: denied")),
+            "run: push failed: fatal: denied",
+        ),
+        (
+            ("status", ended(state="failed", error="max turns")),
+            "run: run failed: max turns",
+        ),
+    ],
+)
+@pytest.mark.asyncio
+async def test_a_refused_or_failed_run_is_one_line(cloud, capsys, script, part):
+    await cloud.owner.start()
+    capsys.readouterr()
+    cloud.runner.script(*script)
+    await run(cloud)
+    one_line(capsys, cloud, part)
+
+
+@pytest.mark.asyncio
+async def test_a_failed_sync_after_a_run_is_one_line(cloud, capsys):
+    await cloud.owner.start()
+    commit(cloud.workspace.worktree_path, "local.txt")  # diverges from the cloud
+    sha = cloud.push_from_cloud("cloud.txt")
+    cloud.runner.script("status", ended(result="done", pushed={"commit": sha}))
+    capsys.readouterr()
+    await run(cloud)
+    one_line(capsys, cloud, "run: sync failed: diverged: ")
+
+
+@pytest.mark.asyncio
+async def test_an_unclean_stop_is_one_line_with_why(cloud, capsys):
+    await cloud.owner.start()
+    cloud.runner.script("status", ended(state="running"))
+    cloud.runner.script("stop", RunnerRefused(409, "busy"))
+    execution = asyncio.create_task(run(cloud))
+    await until(lambda: "start_run" in methods(cloud.runner))
+    assert (await cloud.owner.stop()).clean is False
+    await asyncio.wait_for(execution, 5)
+    line = one_line(capsys, cloud, "stop: unclean: the runner kept answering 409")
+    assert "busy" not in line
+
+
+@pytest.mark.asyncio
+async def test_a_clean_run_logs_nothing_and_never_the_result_or_the_prompt(
+    cloud, capsys
+):
+    await cloud.owner.start()
+    cloud.runner.script(
+        "status", ended(state="failed", error="max turns", result="SECRET-RESULT")
+    )
+    await run(cloud, task="SECRET-PROMPT")
+    err = capsys.readouterr().err
+    assert "SECRET-RESULT" not in err and "SECRET-PROMPT" not in err
+    cloud.runner.script("status", ended(result="done"))
+    await run(cloud)
+    assert cloud_lines(capsys) == []
+
+
+@pytest.mark.asyncio
+async def test_a_remote_text_is_one_line_cut_and_scrubbed(cloud, capsys):
+    cloud.runner.secret = "s3cr3t-value"
+    noisy = "first\nsecond https://user:pw@github.com/x s3cr3t-value " + "y" * 400
+    cloud.runner.script("create", RunnerRefused(422, noisy))
+    with pytest.raises(CloudStartRefused):
+        await cloud.owner.start()
+    line = one_line(capsys, cloud, "first second https://github.com/x *** y")
+    assert "s3cr3t-value" not in line and "user:pw" not in line
+    assert line.endswith("y" * 10) and "y" * 301 not in line

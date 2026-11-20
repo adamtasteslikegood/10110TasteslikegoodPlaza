@@ -4,7 +4,6 @@ import inspect
 import http.client
 import io
 import json
-import logging
 import os
 import urllib.error
 import urllib.request
@@ -14,6 +13,7 @@ from email.message import Message
 
 import pytest
 
+from bridge import cloud_log
 from bridge.cloud_runner import CloudRunner, RunnerDown, RunnerRefused, _NoRedirect
 from bridge.config import default_config
 from bridge.tests.cloud_fakes import FakeRunner
@@ -274,11 +274,10 @@ def test_from_env_reads_the_default_file_when_no_variable_is_set(tmp_path, monke
         CloudRunner.from_env(config, {})
 
 
-def test_the_secret_is_in_no_repr_and_no_error_text(tmp_path, caplog):
+def test_the_secret_is_in_no_repr_and_no_error_text(tmp_path):
     config, environ = good(tmp_path)
     runner = CloudRunner.from_env(config, environ)
     assert SECRET not in repr(runner) and SECRET not in str(runner)
-    caplog.set_level(logging.DEBUG)
     echoing = f"you sent Bearer {SECRET}"
     for answer in (
         urllib.error.URLError(echoing),
@@ -291,14 +290,16 @@ def test_the_secret_is_in_no_repr_and_no_error_text(tmp_path, caplog):
             runner.status("w")
         assert SECRET not in str(caught.value)
         assert SECRET not in getattr(caught.value, "text", "")
+        # What the owner logs goes through the client's own scrub as well.
+        assert SECRET not in cloud_log.remote(caught.value, runner.clean)
+    assert runner.clean(echoing) == "you sent Bearer ***"
     short = secret_file(tmp_path, "x" * 5)
     with pytest.raises(ValueError):
         CloudRunner.from_env(config, {"CLOUD_RUNNER_SECRET_FILE": str(short)})
-    assert SECRET not in caplog.text
 
 
 def test_the_fake_has_the_same_methods_and_signatures():
-    for name in ("create", "status", "start_run", "events", "stop"):
+    for name in ("create", "status", "start_run", "events", "stop", "clean"):
         assert inspect.signature(getattr(FakeRunner, name)) == inspect.signature(
             getattr(CloudRunner, name)
         )

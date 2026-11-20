@@ -15,6 +15,10 @@ class FakeRunner:
         self.calls: list[tuple] = []
         self._scripts: dict[str, list] = {}
         self._runs = 0
+        self.secret: str | None = None  # what ``clean`` replaces, as the client does
+
+    def clean(self, text: str) -> str:
+        return text.replace(self.secret, "***") if self.secret else text
 
     def script(self, method: str, *answers) -> None:
         self._scripts[method] = list(answers)

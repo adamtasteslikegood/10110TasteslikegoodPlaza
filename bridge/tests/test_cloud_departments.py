@@ -704,7 +704,7 @@ async def test_a_half_made_cloud_setting_stops_the_bridge_at_startup(
 
 @pytest.mark.asyncio
 async def test_a_local_start_is_refused_until_the_last_cloud_run_is_back(
-    bridge, caplog
+    bridge, capsys
 ):
     await send(bridge, "activate_domain", "start")
     workspace = bridge.service.workspace
@@ -717,7 +717,10 @@ async def test_a_local_start_is_refused_until_the_last_cloud_run_is_back(
     packets = await send(bridge, "activate_domain", "local")
     assert errors(packets) == ["cloud_switch_refused"]
     assert packets[-1]["message"] == ERROR_MESSAGES["cloud_switch_refused"]
-    assert "cloud switch refused: unsynced" in caplog.text
+    err = capsys.readouterr().err.splitlines()
+    lines = [line for line in err if "bridge.cloud" in line]
+    assert len(lines) == 1
+    assert "engineering: switch to local: sync failed: unsynced: " in lines[0]
     assert "claim" not in [op for op, _, _ in bridge.work.calls[before:]]
     # The error packet can go out before the failed start's cleanup ends.
     async with asyncio.timeout(3):
