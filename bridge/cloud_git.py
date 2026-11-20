@@ -42,7 +42,7 @@ _GITHUB_FORMS = (
 
 # Repository-level (scope local or worktree) keys that can run a command or
 # send a push elsewhere. The user's global configuration is trusted.
-_UNSAFE_SECTIONS = frozenset({"credential", "http", "url", "protocol"})
+_UNSAFE_SECTIONS = frozenset({"credential", "http", "url", "protocol", "bundle"})
 _UNSAFE_KEYS = frozenset(
     {
         ("core", "sshcommand"),
@@ -50,6 +50,7 @@ _UNSAFE_KEYS = frozenset(
         ("core", "askpass"),
         ("core", "alternaterefscommand"),
         ("ssh", "variant"),
+        ("fetch", "bundleuri"),
     }
 )
 _UNSAFE_ORIGIN = frozenset({"pushurl", "proxy", "uploadpack", "receivepack", "vcs"})
@@ -69,7 +70,10 @@ def _scrub(text: str) -> str:
 
 
 def _fault(args, error: BaseException) -> CloudSyncError:
-    command = args[0] if args else "git"
+    words = list(args)
+    while words[:1] == ["-c"]:
+        words = words[2:]
+    command = words[0] if words else "git"
     output = getattr(error, "stderr", None) or getattr(error, "output", None) or b""
     if isinstance(output, bytes):
         output = output.decode("utf-8", errors="replace")
@@ -96,7 +100,8 @@ def _local(root: Path, *args: str, answers: tuple[int, ...] = ()) -> str | int:
         raise _fault(args, error) from None
 
 
-def _check_config(root: Path) -> None:
+def _check_config(root: Path, expected: str) -> None:
+    """Refuse unsafe repository keys, and an origin other than ``expected``."""
     listing = _local(root, "config", "--show-scope", "--list", "-z")
     fields = listing.split("\0")
     for scope, entry in zip(fields[0::2], fields[1::2]):
@@ -118,11 +123,20 @@ def _check_config(root: Path) -> None:
             raise CloudSyncError(
                 "unsafe_config", f"repository {scope} configuration sets {key}"
             )
+    # The worktree's own view of origin (config.worktree, includeIf onbranch)
+    # can differ from the project's: read it from the root the command uses.
+    seen = _origin_repo(root)
+    if seen.lower() != expected.lower():
+        raise CloudSyncError("not_github", f"the worktree's origin is {seen}")
 
 
-def _network_git(root: Path, *args: str) -> str:
-    """Run ls-remote, fetch or push with the machine's login and no repo hooks."""
-    _check_config(root)
+def _network_git(root: Path, *args: str, expected: str) -> str:
+    """Run ls-remote, fetch or push with the machine's login and no repo hooks.
+
+    ``expected`` is the project's GitHub repository; origin as seen from
+    ``root`` must be exactly that one repository.
+    """
+    _check_config(root, expected)
     environment = {
         key: value for key, value in os.environ.items() if not key.startswith("GIT_")
     }
@@ -166,11 +180,13 @@ def _normalise(url: str) -> str | None:
 
 def github_repo(project_root: Path) -> str:
     """The origin's GitHub repository; its fetch and push URLs must agree."""
+    return _origin_repo(project_root)
+
+
+def _origin_repo(root: Path) -> str:
     found = []
     for args in (("--all",), ("--push", "--all")):
-        output = _local(
-            project_root, "remote", "get-url", *args, "origin", answers=(2,)
-        )
+        output = _local(root, "remote", "get-url", *args, "origin", answers=(2,))
         urls = output.splitlines() if isinstance(output, str) else []
         if len(urls) != 1:
             raise CloudSyncError(
@@ -210,17 +226,18 @@ def _local_tip(root: Path, branch: str) -> str:
 
 
 def _has_commit(root: Path, commit: str) -> bool:
-    # cat-file -e exits 128 both for a missing object and for a non-commit.
-    return (
-        _local(root, "cat-file", "-e", f"{commit}^{{commit}}", answers=(1, 128)) == ""
+    # Exit 1 is the answer "no such commit"; 128 (e.g. a corrupt object) is a fault.
+    found = _local(
+        root, "rev-parse", "-q", "--verify", f"{commit}^{{commit}}", answers=(1,)
     )
+    return found != 1
 
 
 def _is_ancestor(root: Path, older: str, newer: str) -> bool:
     return _local(root, "merge-base", "--is-ancestor", older, newer, answers=(1,)) == ""
 
 
-def _fetch(root: Path, branch: str) -> None:
+def _fetch(root: Path, branch: str, expected: str) -> None:
     _network_git(
         root,
         "fetch",
@@ -229,10 +246,11 @@ def _fetch(root: Path, branch: str) -> None:
         "--no-auto-maintenance",
         "origin",
         f"refs/heads/{branch}",
+        expected=expected,
     )
 
 
-def _push(root: Path, branch: str) -> None:
+def _push(root: Path, branch: str, expected: str) -> None:
     _network_git(
         root,
         "push",
@@ -242,12 +260,25 @@ def _push(root: Path, branch: str) -> None:
         "--recurse-submodules=no",
         "origin",
         f"refs/heads/{branch}:refs/heads/{branch}",
+        expected=expected,
     )
 
 
 def _fast_forward(root: Path, commit: str) -> None:
-    # A repository's merge.verifySignatures would run its gpg.program.
-    _local(root, "merge", "--ff-only", "--no-stat", "--no-verify-signatures", commit)
+    # A repository's merge.verifySignatures would run its gpg.program, and
+    # auto-maintenance would start a background gc after the merge.
+    _local(
+        root,
+        "-c",
+        "maintenance.auto=false",
+        "-c",
+        "gc.auto=0",
+        "merge",
+        "--ff-only",
+        "--no-stat",
+        "--no-verify-signatures",
+        commit,
+    )
     if _local(root, "rev-parse", "--verify", "HEAD^{commit}") != commit:
         raise CloudSyncError("git_failed", "fast-forward did not reach the commit")
 
@@ -257,19 +288,22 @@ def sync_before_start(workspace) -> str:
     root, branch = Path(workspace.worktree_path), _branch(workspace)
     _require_clean(root)
     local = _local_tip(root, branch)
+    expected = github_repo(Path(workspace.project_root))
     ref = f"refs/heads/{branch}"
-    listing = _network_git(root, "ls-remote", "--heads", "origin", ref)
+    listing = _network_git(
+        root, "ls-remote", "--heads", "origin", ref, expected=expected
+    )
     remote = None
     for line in listing.splitlines():
         sha, _, name = line.partition("\t")
         if name == ref:
             remote = sha
     if remote is None:
-        _push(root, branch)
+        _push(root, branch, expected)
         return local
     if remote == local:
         return local
-    _fetch(root, branch)
+    _fetch(root, branch, expected)
     remote = _local(root, "rev-parse", "--verify", "FETCH_HEAD^{commit}")
     if remote == local:
         return local
@@ -277,7 +311,7 @@ def sync_before_start(workspace) -> str:
         _fast_forward(root, remote)
         return remote
     if _is_ancestor(root, remote, local):
-        _push(root, branch)
+        _push(root, branch, expected)
         return local
     raise CloudSyncError("diverged", f"local {local[:12]} and origin {remote[:12]}")
 
@@ -293,8 +327,13 @@ def fast_forward_to(workspace, commit: str) -> None:
     ):
         return
     _require_clean(root)
-    _fetch(root, branch)
-    if not _has_commit(root, commit):
+    expected = github_repo(Path(workspace.project_root))
+    _fetch(root, branch, expected)
+    # The commit must be on origin's branch, not only somewhere in the store.
+    fetched = _local(root, "rev-parse", "--verify", "FETCH_HEAD^{commit}")
+    if not _has_commit(root, commit) or not (
+        commit == fetched or _is_ancestor(root, commit, fetched)
+    ):
         raise CloudSyncError("diverged", f"commit {commit[:12]} is not on origin")
     if not _is_ancestor(root, local, commit):
         raise CloudSyncError(

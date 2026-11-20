@@ -33,7 +33,18 @@ def isolated_home(tmp_path, monkeypatch):
 
 
 @pytest.fixture
-def file_protocol(monkeypatch):
+def path_origin(monkeypatch):
+    """Accept an absolute path as origin's repository, for this test only."""
+    github = cloud_git._normalise
+    monkeypatch.setattr(
+        cloud_git,
+        "_normalise",
+        lambda url: url if os.path.isabs(url) else github(url),
+    )
+
+
+@pytest.fixture
+def file_protocol(monkeypatch, path_origin):
     """The bare origin is a path remote; allow it only for this test."""
     monkeypatch.setattr(
         cloud_git, "NETWORK_PROTOCOLS", (*cloud_git.NETWORK_PROTOCOLS, "file")
@@ -270,6 +281,10 @@ def test_fast_forward_to_does_nothing_when_the_commit_is_already_here(
         ("core.sshCommand", "touch pwned"),
         ("credential.helper", "!touch pwned"),
         ("url.https://evil.example/.insteadOf", "https://github.com/"),
+        ("core.askpass", "touch pwned"),
+        ("core.alternateRefsCommand", "touch pwned"),
+        ("fetch.bundleURI", "https://evil.example/b.bundle"),
+        ("bundle.mode", "all"),
     ],
 )
 def test_repository_level_transport_config_is_refused(
@@ -302,13 +317,149 @@ def test_worktree_scope_transport_config_is_refused(tmp_path, file_protocol):
     assert remote_tip(origin, workspace.branch) is None
 
 
-def test_a_file_remote_is_refused_without_the_test_allowance(tmp_path):
+def test_a_file_remote_is_refused_without_the_test_allowance(tmp_path, path_origin):
     origin, workspace = setup(tmp_path)
     assert cloud_git.NETWORK_PROTOCOLS == ("https", "ssh")
     with pytest.raises(CloudSyncError) as raised:
         sync_before_start(workspace)
     assert raised.value.code == "git_failed"
+    assert "not allowed" in raised.value.detail
     assert remote_tip(origin, workspace.branch) is None
+
+
+def test_a_path_origin_is_not_github_without_the_test_allowance(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        cloud_git, "NETWORK_PROTOCOLS", (*cloud_git.NETWORK_PROTOCOLS, "file")
+    )
+    origin, workspace = setup(tmp_path)
+    with pytest.raises(CloudSyncError) as raised:
+        sync_before_start(workspace)
+    assert raised.value.code == "not_github"
+    assert remote_tip(origin, workspace.branch) is None
+
+
+def second_origin(tmp_path):
+    second = tmp_path / "second.git"
+    subprocess.run(
+        ["git", "init", "-q", "--bare", "-b", "main", str(second)], check=True
+    )
+    return second
+
+
+def all_refs(bare):
+    return git(bare, "for-each-ref", "--format=%(refname)").split()
+
+
+@pytest.mark.parametrize("how", ["worktree", "onbranch"])
+def test_a_second_origin_url_seen_only_from_the_worktree_is_refused(
+    tmp_path, file_protocol, how
+):
+    origin, workspace = setup(tmp_path)
+    second = second_origin(tmp_path)
+    if how == "worktree":
+        git(workspace.project_root, "config", "extensions.worktreeConfig", "true")
+        git(
+            workspace.worktree_path,
+            "config",
+            "--worktree",
+            "--add",
+            "remote.origin.url",
+            str(second),
+        )
+    else:
+        extra = tmp_path / "extra.config"
+        extra.write_text(f'[remote "origin"]\n\turl = {second}\n')
+        git(
+            workspace.project_root,
+            "config",
+            "includeIf.onbranch:plaza/**.path",
+            str(extra),
+        )
+    # The project's own view is untouched: one URL.
+    assert git(workspace.project_root, "remote", "get-url", "--all", "origin") == str(
+        origin
+    )
+    with pytest.raises(CloudSyncError) as raised:
+        sync_before_start(workspace)
+    assert raised.value.code == "not_github"
+    assert all_refs(origin) == ["refs/heads/main"]
+    assert all_refs(second) == []
+
+
+def test_a_worktree_origin_that_differs_from_the_project_is_refused(
+    tmp_path, file_protocol, monkeypatch
+):
+    origin, workspace = setup(tmp_path)
+    sync_before_start(workspace)
+    other = other_clone(tmp_path, origin, workspace.branch)
+    ahead = commit(other, "cloud.txt")
+    git(other, "push", "-q", "origin", workspace.branch)
+    local = commit(workspace.worktree_path, "local.txt")
+    # The project names another repository than the one the worktree sees,
+    # as after a change between the caller's github_repo and the sync.
+    monkeypatch.setattr(
+        cloud_git, "github_repo", lambda root: "https://github.com/Owner/Other"
+    )
+    for call in (
+        lambda: sync_before_start(workspace),
+        lambda: fast_forward_to(workspace, ahead),
+    ):
+        with pytest.raises(CloudSyncError) as raised:
+            call()
+        assert raised.value.code == "not_github"
+    assert head(workspace) == local
+    assert remote_tip(origin, workspace.branch) == ahead
+
+
+def test_a_key_set_after_a_first_sync_refuses_the_next_network_command(
+    tmp_path, file_protocol
+):
+    origin, workspace = setup(tmp_path)
+    sync_before_start(workspace)
+    other = other_clone(tmp_path, origin, workspace.branch)
+    ahead = commit(other, "cloud.txt")
+    git(other, "push", "-q", "origin", workspace.branch)
+    before = head(workspace)
+    git(workspace.project_root, "config", "core.sshCommand", "touch pwned")
+    for call in (
+        lambda: sync_before_start(workspace),
+        lambda: fast_forward_to(workspace, ahead),
+    ):
+        with pytest.raises(CloudSyncError) as raised:
+            call()
+        assert raised.value.code == "unsafe_config"
+    assert head(workspace) == before
+
+
+def test_a_commit_in_the_shared_store_but_not_on_origin_is_diverged(
+    tmp_path, file_protocol
+):
+    origin, workspace = setup(tmp_path)
+    sync_before_start(workspace)
+    before = head(workspace)
+    # A child of the tip that exists locally (one object store for every
+    # department) but was never pushed.
+    stray = git(
+        workspace.worktree_path, "commit-tree", "HEAD^{tree}", "-p", "HEAD", "-m", "x"
+    )
+    with pytest.raises(CloudSyncError) as raised:
+        fast_forward_to(workspace, stray)
+    assert raised.value.code == "diverged"
+    assert head(workspace) == before
+
+
+def test_a_corrupt_commit_object_is_a_fault_not_an_answer(tmp_path, file_protocol):
+    origin, workspace = setup(tmp_path)
+    sync_before_start(workspace)
+    stray = git(
+        workspace.worktree_path, "commit-tree", "HEAD^{tree}", "-p", "HEAD", "-m", "x"
+    )
+    loose = workspace.common_git_dir / "objects" / stray[:2] / stray[2:]
+    loose.chmod(0o644)
+    loose.write_bytes(b"garbage")
+    with pytest.raises(CloudSyncError) as raised:
+        fast_forward_to(workspace, stray)
+    assert raised.value.code == "git_failed"
 
 
 def test_a_repository_filter_and_fsmonitor_are_never_run(tmp_path, file_protocol):
