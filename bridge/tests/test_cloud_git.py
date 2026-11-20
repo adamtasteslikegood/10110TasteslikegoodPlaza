@@ -352,6 +352,60 @@ def test_a_repository_filter_and_fsmonitor_are_never_run(tmp_path, file_protocol
     assert marker.exists()
 
 
+def test_a_repository_signature_program_is_never_run(tmp_path, file_protocol):
+    origin, workspace = setup(tmp_path)
+    sync_before_start(workspace)
+    other = other_clone(tmp_path, origin, workspace.branch)
+    parent = git(other, "rev-parse", "HEAD")
+    tree = git(other, "rev-parse", "HEAD^{tree}")
+    body = (
+        f"tree {tree}\nparent {parent}\n"
+        "author A <a@example.invalid> 1 +0000\n"
+        "committer A <a@example.invalid> 1 +0000\n"
+        "gpgsig -----BEGIN PGP SIGNATURE-----\n \n x\n -----END PGP SIGNATURE-----\n"
+        "\nsigned\n"
+    )
+    signed = subprocess.run(
+        ["git", "-C", str(other), "hash-object", "-t", "commit", "-w", "--stdin"],
+        input=body,
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.strip()
+    git(other, "update-ref", f"refs/heads/{workspace.branch}", signed)
+    git(other, "push", "-q", "origin", workspace.branch)
+
+    marker = tmp_path / "marker"
+    program = tmp_path / "gpg"
+    program.write_text(f"#!/bin/sh\ntouch {marker}\nexit 1\n")
+    program.chmod(0o755)
+    git(workspace.project_root, "config", "merge.verifySignatures", "true")
+    git(workspace.project_root, "config", "gpg.program", str(program))
+
+    fast_forward_to(workspace, signed)
+    assert head(workspace) == signed
+    assert not marker.exists()
+
+    # The configuration is live: plain Git runs the program.
+    with pytest.raises(subprocess.CalledProcessError):
+        git(workspace.worktree_path, "verify-commit", signed)
+    assert marker.exists()
+
+
+def test_fast_forward_to_refuses_a_dirty_worktree(tmp_path, file_protocol):
+    origin, workspace = setup(tmp_path)
+    sync_before_start(workspace)
+    other = other_clone(tmp_path, origin, workspace.branch)
+    ahead = commit(other, "cloud.txt")
+    git(other, "push", "-q", "origin", workspace.branch)
+    before = head(workspace)
+    (workspace.worktree_path / "untracked.txt").write_text("draft\n")
+    with pytest.raises(CloudSyncError) as raised:
+        fast_forward_to(workspace, ahead)
+    assert raised.value.code == "dirty"
+    assert head(workspace) == before
+
+
 def test_the_cloud_note_gates_the_switch_to_local(tmp_path):
     origin, workspace = setup(tmp_path)
     note = workspace.common_git_dir / "plaza/cloud" / f"{workspace.domain_id}.json"

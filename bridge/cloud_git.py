@@ -246,7 +246,8 @@ def _push(root: Path, branch: str) -> None:
 
 
 def _fast_forward(root: Path, commit: str) -> None:
-    _local(root, "merge", "--ff-only", "--no-stat", commit)
+    # A repository's merge.verifySignatures would run its gpg.program.
+    _local(root, "merge", "--ff-only", "--no-stat", "--no-verify-signatures", commit)
     if _local(root, "rev-parse", "--verify", "HEAD^{commit}") != commit:
         raise CloudSyncError("git_failed", "fast-forward did not reach the commit")
 
