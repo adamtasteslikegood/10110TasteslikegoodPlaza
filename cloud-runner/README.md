@@ -356,9 +356,9 @@ All need `Authorization: Bearer <RUNNER_CALLER_SECRET>`.
 
 | Route | Does |
 |---|---|
-| `PUT /workspaces/:name` `{repo, branch, allow?}` | create (clone) or confirm the workspace |
+| `PUT /workspaces/:name` `{repo, branch, allow?}` | create (clone) or confirm the workspace; 422 `No GitHub token is configured for this repository` when `GITHUB_TOKENS` lists none for it |
 | `GET /workspaces/:name` | status |
-| `POST /workspaces/:name/runs` `{prompt, fresh?, maxTurns?}` | start a run, 202 `{run}`; 409 while one is active |
+| `POST /workspaces/:name/runs` `{prompt, fresh?, maxTurns?, conversation?}` | start a run, 202 `{run}`; 409 while one is active. The clone is first fast-forwarded to the branch on GitHub: 412 when it cannot be (a commit on each side, or an uncommitted file in the way), 502 when the branch cannot be fetched; no run starts in either case and the state is unchanged (a `run refused` event says why). `conversation` is the caller's key: the same key resumes the conversation, another starts a new one; the status carries the key a later run would resume |
 | `GET /workspaces/:name/events?after=N` | events after `seq` N, and `next` |
 | `POST /workspaces/:name/stop` | stop the run |
 | `GET /workspaces/:name/diff` | `git diff` of the clone, new files included |
@@ -367,7 +367,8 @@ All need `Authorization: Bearer <RUNNER_CALLER_SECRET>`.
 
 ### Where the secrets live
 
-- Worker secrets `AI_GATEWAY_TOKEN`, `GITHUB_TOKEN` and `RUNNER_CALLER_SECRET`, on Cloudflare only.
+- Worker secrets `AI_GATEWAY_TOKEN`, `GITHUB_TOKEN` and `RUNNER_CALLER_SECRET`, on Cloudflare only. `GITHUB_TOKENS`, a JSON object from
+  `owner/repo` (lower case) to a token, replaces `GITHUB_TOKEN` once set: a repository it does not list is refused with 422.
 - Locally, in the owner's checkout and git-ignored: `.dev/deploy.env` (the two tokens) and `.dev/caller.env`
   (the caller secret, 32 random bytes in hex). Both are mode 600.
 - `wrangler.dev.jsonc` (git-ignored) is `wrangler.jsonc` plus `AI_GATEWAY_ACCOUNT_ID` and `ALLOW_TEST_ROUTES: "1"`.
@@ -510,11 +511,12 @@ best-effort group KILL, the instance with an old layout and the untested shell s
   those two stops and Cloudflare's lifecycle page. With the fix deployed, a workspace that was only cloned and one
   whose run had ended stopped 15.1 to 15.6 and 15.9 to 16.3 minutes after the last request (log 17), once each,
   which fits that cause.
-- **A run that commits nothing reports a push error when the branch has moved.** Every run ends with a push of
-  the clone's HEAD. If something else moved the branch after the clone, git refuses that push (`fetch first`)
-  and the status carries `pushError`, although the run `succeeded` and had nothing to push. Seen on the deploy
-  (spike C, log 17), where an acceptance run pushed to the branch another workspace had cloned. Not changed
-  here; the bridge of stage 2 will see this whenever two writers share a branch.
+- **A branch that moves during a run still ends in a push error** (PLZG-312). Every run ends with a push of the
+  clone's HEAD. A branch that moved before the run is now picked up: a run starts with `git fetch` and a
+  fast-forward (`git merge --ff-only`), and is refused (412 diverged, 502 fetch failed) when that cannot be done.
+  One that moves while the run is going is refused by git (`fetch first`) at the closing push: the status carries
+  `pushError`, although the run `succeeded` and had nothing to push. Seen on the deploy (spike C, log 17). The
+  fast-forward and the container test (`test-container/sync.ctest.ts`) were not tried on the deploy.
 - **A workspace that never ran has no snapshot.** Its files outside a commit are gone after the idle stop (seen in
   log 14: `restored: "branch"`, `uncommittedLost: true`). That is how it is built: a snapshot is taken when a run
   ends. Listed because a caller that writes files through the test exec route, or a later route, would lose them.

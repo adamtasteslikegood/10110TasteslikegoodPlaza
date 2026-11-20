@@ -124,6 +124,35 @@ describe("Workspace create", () => {
 })
 
 describe("Workspace start (I3)", () => {
+	it("refuses a start whose clone is diverged, and changes nothing", async () => {
+		const fake = new FakeHost()
+		const { stub } = await created(fake)
+		const before = await stored(stub)
+		fake.syncResult = { diverged: true }
+
+		expect(await stub.startRun("again", false, 5, "k")).toBe("diverged")
+		expect(fake.count("startTask")).toBe(0)
+		expect(await stored(stub)).toEqual(before)
+		expect(await notices(stub)).toContain("run refused")
+	})
+
+	it("refuses a start whose branch cannot be fetched, with the error", async () => {
+		const fake = new FakeHost()
+		const { stub } = await created(fake)
+		const before = await stored(stub)
+		fake.syncResult = { error: "fetch broke" }
+
+		expect(await stub.startRun("again", false, 5)).toEqual({ fetchError: "fetch broke" })
+		expect(fake.count("startTask")).toBe(0)
+		expect(await stored(stub)).toEqual(before)
+	})
+
+	it("syncs the branch after the instance is up and before the task starts", async () => {
+		const { fake } = await started()
+		expect(fake.calls.indexOf("sync work")).toBeGreaterThan(fake.calls.indexOf("image ready"))
+		expect(fake.calls.indexOf("sync work")).toBeLessThan(fake.calls.indexOf("startTask"))
+	})
+
 	it("answers busy to a second start during a run, and starts one task", async () => {
 		const { stub, fake } = await started()
 		expect(await stub.startRun("again", false, 5)).toBe("busy")

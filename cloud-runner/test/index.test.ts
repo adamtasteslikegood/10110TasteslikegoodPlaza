@@ -379,6 +379,10 @@ describe("Workspace answers", () => {
     expect(await started.json()).toEqual({ run: 3 })
     expect((await run("busy")).status).toBe(409)
     expect((await run("missing")).status).toBe(404)
+    expect((await run("diverged")).status).toBe(412)
+    const unfetched = await run({ fetchError: "could not read from remote" })
+    expect(unfetched.status).toBe(502)
+    expect(await unfetched.text()).not.toContain("could not read")
   })
 
   it("status of a workspace never created: 200 with state none", async () => {

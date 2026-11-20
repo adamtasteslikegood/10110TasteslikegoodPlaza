@@ -1,7 +1,7 @@
 import type { CommandResult } from "../src/container"
 import { TaskFileError, type Host, type Signal, type Task } from "../src/host"
 import type { OutboundProps } from "../src/outbound"
-import type { Pushed, Saved } from "../src/persist"
+import type { Pushed, Saved, Synced } from "../src/persist"
 
 type Group = { alive: boolean; ignoresTerm: boolean }
 type Probe = "push" | "exitCode" | "readTask" | "readOutput" | "outputBytes" | "outputDone" | "taskAlive" | "signal" | "setPolicy" | "sweep"
@@ -111,6 +111,14 @@ export class FakeHost implements Host {
 	async clone(_repo: string, branch: string): Promise<string | undefined> {
 		this.calls.push(`clone ${branch}`)
 		return this.cloneError
+	}
+
+	// What syncBranch answers.
+	syncResult: Synced = "current"
+
+	async sync(branch: string): Promise<Synced> {
+		this.calls.push(`sync ${branch}`)
+		return this.syncResult
 	}
 
 	async push(branch: string): Promise<Pushed> {

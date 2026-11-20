@@ -126,7 +126,7 @@ export class Workspace extends DurableObject<Env> {
 		return this.exclusive(async () => statusOf(await this.refresh()))
 	}
 
-	startRun(prompt: string, fresh: boolean, maxTurns: number, conversationKey?: string): Promise<{ run: number } | "busy" | "missing"> {
+	startRun(prompt: string, fresh: boolean, maxTurns: number, conversationKey?: string): Promise<{ run: number } | "busy" | "missing" | "diverged" | { fetchError: string }> {
 		return this.exclusive(async () => {
 			const record = await this.refresh()
 			const decision = admit(record.state, record.repo !== undefined)
@@ -165,6 +165,16 @@ export class Workspace extends DurableObject<Env> {
 					this.ready = false
 					await this.startInstance(record)
 				}
+			}
+
+			// The run starts from the branch as it is on GitHub. A refused start stores
+			// nothing but its notice: the state, run number, key and session stay.
+			const synced = await this.host.sync(record.branch as string)
+
+			if (typeof synced === "object") {
+				const reason = "diverged" in synced ? "The clone is not a fast-forward of the branch on GitHub" : synced.error
+				this.note(record, { notice: "run refused", reason })
+				return "diverged" in synced ? "diverged" : { fetchError: synced.error }
 			}
 
 			const { sessionId, resume } = conversation(isFresh(fresh, conversationKey, record.conversation), record.hasConversation, record.sessionId, crypto.randomUUID())

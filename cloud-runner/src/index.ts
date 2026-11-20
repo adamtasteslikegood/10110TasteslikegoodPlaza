@@ -160,6 +160,14 @@ export default {
 						return text(missing, 404)
 					}
 
+					if (started === "diverged") {
+						return text("The clone cannot be fast-forwarded to the branch on GitHub", 412)
+					}
+
+					if ("fetchError" in started) {
+						return text("The branch could not be fetched from GitHub", 502)
+					}
+
 					return Response.json(started, { status: 202 })
 				}
 

@@ -132,6 +132,42 @@ export async function push(container: Container, branch: string): Promise<Pushed
 	}
 }
 
+export type Synced = "current" | "fast-forwarded" | { diverged: true } | { error: string }
+
+// Moves the clone to the branch as it is on the remote, when that is a
+// fast-forward, so a run starts from what is on GitHub. Git talks to the remote
+// through the Worker's proxy, as in a push: no credential is passed here. The
+// only way HEAD moves is `merge --ff-only`; an uncommitted file is never
+// discarded. Commits the remote lacks (a push that failed) stay for the closing
+// push. Never throws.
+export async function syncBranch(container: Container, branch: string): Promise<Synced> {
+	const git = (args: string[], timeoutMs = execTimeout.short, env = gitEnv) => run(container, asAgent(["git", ...args]), repositoryDirectory, env, timeoutMs)
+
+	try {
+		const fetched = await git(["fetch", "origin", branch], execTimeout.push, pushEnv)
+		if (fetched.exitCode !== 0) return { error: pushErrorText(fetched.stderr, fetched.exitCode) }
+
+		const [head, theirs] = await Promise.all([git(["rev-parse", "HEAD"]), git(["rev-parse", "FETCH_HEAD"])])
+		if (head.exitCode !== 0 || theirs.exitCode !== 0) return { error: tail(head.stderr || theirs.stderr) || "git rev-parse failed" }
+		if (head.stdout.trim() === theirs.stdout.trim()) return "current"
+
+		// Exit 0: an ancestor; 1: not one; anything else is git failing.
+		const behind = await git(["merge-base", "--is-ancestor", "HEAD", "FETCH_HEAD"])
+		if (behind.exitCode > 1) return { error: tail(behind.stderr) || `git merge-base exited with ${behind.exitCode}` }
+
+		if (behind.exitCode === 0) {
+			const merged = await git(["merge", "--ff-only", "FETCH_HEAD"])
+			return merged.exitCode === 0 ? "fast-forwarded" : { diverged: true }
+		}
+
+		const ahead = await git(["merge-base", "--is-ancestor", "FETCH_HEAD", "HEAD"])
+		if (ahead.exitCode > 1) return { error: tail(ahead.stderr) || `git merge-base exited with ${ahead.exitCode}` }
+		return ahead.exitCode === 0 ? "current" : { diverged: true }
+	} catch (error) {
+		return { error: pushErrorText(messageOf(error), -1) }
+	}
+}
+
 // Saves the instance's root filesystem. Never throws: snapshots are in public
 // beta and may be missing under wrangler dev.
 export async function snapshot(container: Container): Promise<Saved> {
