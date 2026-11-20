@@ -17,6 +17,21 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
 
+### Changed — the cloud runner's contract, ahead of stage 2 (PLZG-311)
+
+- Not deployed: the development deploy still runs the earlier code.
+- `GITHUB_TOKENS`, an optional secret, maps `owner/repo` to a GitHub token.
+  With it set, `PUT /workspaces/:name` answers 422 for a repository it does
+  not name. Without it, `GITHUB_TOKEN` is used as before.
+- A run may carry a `conversation` key. A key that differs from the stored one
+  starts a new conversation, and the status shows the key while that
+  conversation can be resumed.
+- A run now starts from the branch as it is on GitHub: the clone is
+  fast-forwarded first. A clone that cannot be fast-forwarded answers 412, a
+  branch that cannot be fetched answers 502, and no run starts. `DELETE` is
+  the only way out of a 412 today, and it destroys the clone's unpushed work.
+  This narrows the PLZG-312 gap and does not close it.
+
 ### Decided — the six stage 2 proposals for the cloud runner (PLZG-311)
 
 - On 2026-11-19 the owner confirmed the six proposals in the M14 runner
