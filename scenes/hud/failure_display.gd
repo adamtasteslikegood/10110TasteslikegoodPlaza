@@ -57,14 +57,14 @@ static func cause(result: Dictionary) -> String:
 		"missing_terminal": "Execution ended without a confirmed result. Stop before starting a fresh session.",
 		"deferred_tool_use": "A required tool could not complete in this run. Review the partial answer and task.",
 		"cloud_run_active": "A cloud run from an earlier session is still going. Wait for it to end, then Run again.",
-		"cloud_sync_failed": "The cloud run finished, but its commit could not be brought onto this machine's branch. See the bridge log before another Run.",
+		"cloud_sync_failed": "The department's branch on this machine and the cloud could not be kept in step, so its work may not be here. See the bridge log before another Run.",
 		"cloud_push_failed": "The cloud run could not push its commit to GitHub. Its changes are not on this machine; see the bridge log before another Run.",
 		"cloud_run_lost": "The cloud runner lost this run. Its outcome is unknown; review the branch before another explicit Run.",
 	}.get(result.get("reason", ""), "The task could not complete. Review the partial answer; Stop before starting a fresh session.")
 
 ## Next-step sentences for the cloud error codes; the message itself is the bridge's fixed copy.
 const CLOUD_GUIDANCE := {
-	"cloud_switch_refused": "Start it in the cloud once more so its last run comes back, then Stop and Start it here.",
+	"cloud_switch_refused": "Where a department runs is the operator's CLOUD_DOMAINS setting, changed with a bridge restart; the bridge log names the reason.",
 	"cloud_unavailable": "Try Start again later; nothing was started.",
 	"cloud_refused": "Have the operator check the cloud runner settings, then Start again.",
 	"cloud_sync_failed": "Have the operator bring the branch in step with GitHub, then Start again.",

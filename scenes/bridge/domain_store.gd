@@ -679,7 +679,7 @@ func _valid_state(p: Dictionary) -> bool:
 		for generation in p.available_generations:
 			if not valid_id(generation): return false
 	if p.has("work_claim") and p.work_claim not in WORK_CLAIMS: return false
-	if p.has("runs_on") and p.runs_on != "cloud": return false
+	if p.has("runs_on") and not (p.runs_on is String and p.runs_on == "cloud"): return false
 	if p.has("memory_reconciliation"):
 		if not p.memory_reconciliation is Array or p.memory_reconciliation.size() > 256: return false
 		for fact in p.memory_reconciliation:

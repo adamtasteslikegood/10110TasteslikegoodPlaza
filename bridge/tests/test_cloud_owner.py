@@ -149,6 +149,19 @@ async def test_start_asks_the_status_then_syncs_then_creates_the_workspace_named
 
 
 @pytest.mark.asyncio
+async def test_a_second_start_asks_nothing_and_a_start_after_stop_is_refused(cloud):
+    await cloud.owner.start()
+    calls = len(cloud.runner.calls)
+    await cloud.owner.start()  # the session calls start() before every Run
+    assert len(cloud.runner.calls) == calls
+    await cloud.owner.stop()
+    calls = len(cloud.runner.calls)
+    with pytest.raises(RuntimeError, match="stopped"):
+        await cloud.owner.start()
+    assert len(cloud.runner.calls) == calls
+
+
+@pytest.mark.asyncio
 async def test_start_pushes_nothing_while_an_earlier_run_is_active(cloud):
     await cloud.owner.start()
     before = remote_tip(cloud.origin, cloud.workspace.branch)
