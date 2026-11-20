@@ -135,10 +135,12 @@ export class Workspace extends DurableObject<Env> {
 				return decision
 			}
 
-			// A snapshot still pending would replace one taken before the last push;
-			// the stored one is behind the branch, so a new instance clones instead.
-			if (record.snapshotPending) {
-				this.settle(record, abandonSnapshot(record.run, "A new run started before the snapshot was saved"))
+			// A pending snapshot is kept until the run is stored, so a refused start
+			// leaves it for the alarm to retry. Only an instance that is gone or about
+			// to be replaced drops it first: the stored snapshot is behind the branch,
+			// so a new instance must clone instead of restoring it.
+			if (record.snapshotPending && !this.host.running) {
+				this.settle(record, abandonSnapshot(record.run, "The container stopped before the snapshot was saved"))
 			}
 
 			// Starting a new instance clones again and forgets the conversation.
@@ -161,6 +163,11 @@ export class Workspace extends DurableObject<Env> {
 				// replaced, since a new instance can lose uncommitted work.
 				if (leftover === "replace" || !(await this.host.endAgentProcesses())) {
 					if (leftover !== "replace") this.note(record, { notice: "agent processes left", run: record.run })
+
+					if (record.snapshotPending) {
+						this.settle(record, abandonSnapshot(record.run, "The instance was replaced before the snapshot was saved"))
+					}
+
 					await this.host.destroy()
 					this.ready = false
 					await this.startInstance(record)
@@ -179,6 +186,14 @@ export class Workspace extends DurableObject<Env> {
 
 			const { sessionId, resume } = conversation(isFresh(fresh, conversationKey, record.conversation), record.hasConversation, record.sessionId, crypto.randomUUID())
 			await this.host.resetTask()
+
+			// A snapshot still pending would be taken under the new run, and would
+			// replace one taken before the last push: it is dropped here, once the
+			// run is sure to start. The stored one is behind the branch, so a new
+			// instance clones instead.
+			if (record.snapshotPending) {
+				this.settle(record, abandonSnapshot(record.run, "A new run started before the snapshot was saved"))
+			}
 
 			// The run is stored and watched before the task starts, so a start that
 			// fails halfway still leaves a record of it.

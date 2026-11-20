@@ -760,6 +760,54 @@ describe("Workspace snapshot timeout (Copilot C8)", () => {
 		expect(await stub.startRun("third", false, 5)).toEqual({ run: 3 })
 		expect(await stored(stub)).toMatchObject({ snapshot: undefined, snapshotPending: false })
 	})
+
+	it("drops a pending snapshot before it replaces an instance the sweep could not clear, and clones instead of restoring it", async () => {
+		const fake = new FakeHost()
+		const { stub } = await afterOneRun(fake)
+		await stub.startRun("second", false, 5)
+		fake.finishTask(0, [resultLine])
+		fake.snapshotDelayMs = 100
+		await stub.status()
+		expect(await stored(stub)).toMatchObject({ snapshot: "snap-1", snapshotPending: true })
+		fake.sweepClean = false
+		fake.calls.length = 0
+
+		expect(await stub.startRun("third", false, 5)).toEqual({ run: 3 })
+		expect(fake.calls).not.toContain("startFromSnapshot snap-1")
+		expect(await stub.status()).toMatchObject({ restored: "branch" })
+	})
+
+	for (const [kind, refusal, answer] of [
+		["diverged", { diverged: true }, "diverged"],
+		["fetch error", { error: "fetch broke" }, { fetchError: "fetch broke" }],
+	] as const) {
+		it(`keeps a pending snapshot, and the alarm that retries it, through a start refused as ${kind}`, async () => {
+			const fake = new FakeHost()
+			const { stub } = await afterOneRun(fake)
+			await stub.startRun("second", false, 5)
+			fake.finishTask(0, [resultLine])
+			fake.snapshotDelayMs = 100
+			await stub.status()
+			const pending = await stored(stub)
+			expect(pending).toMatchObject({ snapshot: "snap-1", snapshotPending: true, snapshotAttempts: 1 })
+
+			fake.syncResult = refusal
+			expect(await stub.startRun("third", false, 5)).toEqual(answer)
+			const after = await stored(stub)
+			expect({ snapshot: after.snapshot, snapshotPending: after.snapshotPending, snapshotAttempts: after.snapshotAttempts, snapshotStale: after.snapshotStale }).toEqual({
+				snapshot: pending.snapshot,
+				snapshotPending: pending.snapshotPending,
+				snapshotAttempts: pending.snapshotAttempts,
+				snapshotStale: pending.snapshotStale,
+			})
+			expect(await notices(stub)).not.toContain("snapshot failed")
+			expect(await alarmAt(stub)).not.toBeNull()
+
+			fake.snapshotDelayMs = 0
+			expect(await runDurableObjectAlarm(stub)).toBe(true)
+			expect(await stored(stub)).toMatchObject({ snapshot: "snap-3", snapshotPending: false })
+		})
+	}
 })
 
 describe("Workspace new instance readiness (Copilot C9)", () => {
