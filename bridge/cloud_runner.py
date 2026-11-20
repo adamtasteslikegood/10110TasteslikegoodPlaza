@@ -15,6 +15,7 @@ Two failures, told apart on purpose:
 
 from __future__ import annotations
 
+import http.client
 import json
 import os
 import ssl
@@ -33,6 +34,14 @@ TEXT_MAX = 300
 SECRET_MIN = 32
 DEFAULT_SECRET_FILE = Path.home() / ".config" / "plaza" / "cloud-runner-secret"
 SECRET_FILE_VARIABLE = "CLOUD_RUNNER_SECRET_FILE"
+
+
+_TRANSPORT = (
+    urllib.error.URLError,
+    http.client.HTTPException,
+    TimeoutError,
+    OSError,
+)
 
 
 class RunnerDown(Exception):
@@ -101,13 +110,20 @@ def _check_url(url: str) -> str:
 
 
 class CloudRunner:
-    def __init__(self, url: str, secret: str, timeout: float = TIMEOUT_SECONDS):
+    def __init__(
+        self,
+        url: str,
+        secret: str,
+        timeout: float = TIMEOUT_SECONDS,
+        environ=None,
+    ):
+        environ = os.environ if environ is None else environ
         self.url = _check_url(url)
         if len(secret) < SECRET_MIN:
             raise ValueError(f"the secret must be at least {SECRET_MIN} characters")
         self._secret = secret
         self.timeout = timeout
-        cafile = os.environ.get("SSL_CERT_FILE")
+        cafile = environ.get("SSL_CERT_FILE")
         context = (
             ssl.create_default_context(cafile=cafile)
             if cafile
@@ -131,7 +147,7 @@ class CloudRunner:
         url = _check_url(config.cloud_runner_url)
         named = environ.get(SECRET_FILE_VARIABLE)
         secret = _read_secret(Path(named) if named else DEFAULT_SECRET_FILE)
-        return cls(url, secret)
+        return cls(url, secret, environ=environ)
 
     def _send(self, method: str, path: str, body: dict[str, Any] | None = None) -> Any:
         headers = {"authorization": f"Bearer {self._secret}", "user-agent": USER_AGENT}
@@ -146,18 +162,26 @@ class CloudRunner:
             with self.opener.open(request, timeout=self.timeout) as res:
                 status, text = res.status, res.read().decode(errors="replace")
         except urllib.error.HTTPError as error:
-            status, text = error.code, error.read().decode(errors="replace")
-        except (urllib.error.URLError, TimeoutError, OSError) as error:
-            raise RunnerDown(self._clean(str(error))) from error
+            status = error.code
+            try:
+                text = error.read().decode(errors="replace")
+            except _TRANSPORT:
+                # The status arrived; only its body was lost.
+                text = ""
+        except _TRANSPORT as error:
+            raise RunnerDown(self._clean(str(error))) from None
         text = self._clean(text)
         if status >= 500 and status != 502:
             raise RunnerDown(f"{status}: {text[:TEXT_MAX]}")
         if not 200 <= status < 300:
             raise RunnerRefused(status, text[:TEXT_MAX])
         try:
-            return json.loads(text)
+            answer = json.loads(text)
         except ValueError:
             raise RunnerRefused(status, text[:TEXT_MAX]) from None
+        if not isinstance(answer, dict):
+            raise RunnerRefused(status, "the runner's answer was not an object")
+        return answer
 
     def _clean(self, text: str) -> str:
         return text.replace(self._secret, "***")
@@ -180,7 +204,7 @@ class CloudRunner:
             self._path(name, "/runs"),
             {"prompt": prompt, "conversation": conversation, "maxTurns": max_turns},
         )
-        run = answer.get("run") if isinstance(answer, dict) else None
+        run = answer.get("run")
         if not isinstance(run, int) or isinstance(run, bool):
             raise RunnerRefused(202, "the runner did not name the run")
         return run
@@ -188,7 +212,11 @@ class CloudRunner:
     def events(self, name: str, after: int) -> tuple[list[dict], int]:
         answer = self._send("GET", self._path(name, f"/events?after={int(after)}"))
         events, following = answer.get("events"), answer.get("next")
-        if not isinstance(events, list) or not isinstance(following, int):
+        if (
+            not isinstance(events, list)
+            or not isinstance(following, int)
+            or isinstance(following, bool)
+        ):
             raise RunnerRefused(200, "the runner's events answer was malformed")
         return events, following
 

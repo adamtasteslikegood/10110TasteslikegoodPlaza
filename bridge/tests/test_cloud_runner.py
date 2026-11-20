@@ -1,6 +1,7 @@
 """The cloud runner client: requests, failure kinds and settings. No test opens a network connection."""
 
 import inspect
+import http.client
 import io
 import json
 import logging
@@ -314,3 +315,80 @@ def test_the_fake_records_calls_and_plays_a_script():
     assert fake.create("w", "o/r", "b")["state"] == "idle"
     assert fake.calls[0] == ("start_run", "w", "p", "c", 2)
     assert fake.calls[-1] == ("create", "w", "o/r", "b")
+
+
+class BrokenBody:
+    def __init__(self, status, error):
+        self.status, self._error = status, error
+
+    def read(self):
+        raise self._error
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+
+class BrokenOpener:
+    def __init__(self, response=None, http_error=None):
+        self.response, self.http_error = response, http_error
+
+    def open(self, request, timeout=None):
+        if self.http_error is not None:
+            raise self.http_error
+        return self.response
+
+
+def broken_error(status, error):
+    http_error = urllib.error.HTTPError(URL, status, "x", Message(), io.BytesIO(b""))
+    http_error.read = lambda *a: (_ for _ in ()).throw(error)
+    return BrokenOpener(http_error=http_error)
+
+
+def test_a_body_that_drops_mid_read_is_down():
+    runner = CloudRunner(URL, SECRET)
+    runner.opener = BrokenOpener(BrokenBody(200, http.client.IncompleteRead(b"x")))
+    with pytest.raises(RunnerDown):
+        runner.status("w")
+
+
+def test_an_error_body_that_cannot_be_read_keeps_its_status():
+    runner = CloudRunner(URL, SECRET)
+    runner.opener = broken_error(409, TimeoutError("slow"))
+    with pytest.raises(RunnerRefused) as caught:
+        runner.status("w")
+    assert (caught.value.status, caught.value.text) == (409, "")
+    runner.opener = broken_error(502, OSError("reset"))
+    with pytest.raises(RunnerRefused) as caught:
+        runner.status("w")
+    assert caught.value.status == 502
+    runner.opener = broken_error(503, OSError("reset"))
+    with pytest.raises(RunnerDown):
+        runner.status("w")
+
+
+@pytest.mark.parametrize("body", ["[]", "null"])
+def test_a_2xx_that_is_not_an_object_is_refused(body):
+    calls = (
+        lambda r: r.status("w"),
+        lambda r: r.create("w", "o/r", "b"),
+        lambda r: r.stop("w"),
+        lambda r: r.events("w", 0),
+        lambda r: r.start_run("w", "p", conversation="c", max_turns=1),
+    )
+    for call in calls:
+        with pytest.raises(RunnerRefused):
+            call(client((200, body)))
+
+
+def test_a_next_of_true_is_refused():
+    with pytest.raises(RunnerRefused):
+        client((200, '{"events": [], "next": true}')).events("w", 0)
+
+
+def test_ssl_cert_file_comes_from_the_given_environ(tmp_path):
+    bad = tmp_path / "missing.pem"
+    with pytest.raises((OSError, ValueError)):
+        CloudRunner(URL, SECRET, environ={"SSL_CERT_FILE": str(bad)})
