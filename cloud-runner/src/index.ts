@@ -1,4 +1,5 @@
 import { CreateBody, ExecBody, MAX_BODY_BYTES, MAX_PROMPT_BYTES, RunBody, authorized, parseRoute } from "./router"
+import { tokenFor } from "./tokens"
 import type { Env } from "./types"
 
 export { Workspace } from "./workspace"
@@ -112,6 +113,11 @@ export default {
 						return text('Send {"repo": "https://github.com/OWNER/REPO", "branch": "BRANCH", "allow": ["host"]}', 400)
 					}
 
+					// No workspace is made, and no container started, for a repository with no token.
+					if (tokenFor(env, body.data.repo) === undefined) {
+						return text("No GitHub token is configured for this repository", 422)
+					}
+
 					const created = await workspace.create(body.data.repo, body.data.branch, body.data.allow)
 
 					if (created === "conflict") {
@@ -141,10 +147,10 @@ export default {
 					const body = RunBody.safeParse(read.value)
 
 					if (!body.success) {
-						return text('Send {"prompt": "...", "fresh": false, "maxTurns": 20}, with maxTurns from 1 to 100', 400)
+						return text('Send {"prompt": "...", "fresh": false, "maxTurns": 20, "conversation": "key"}, with maxTurns from 1 to 100 and conversation, if sent, of 1 to 128 letters, digits or hyphens ([A-Za-z0-9-]{1,128})', 400)
 					}
 
-					const started = await workspace.startRun(body.data.prompt, body.data.fresh, body.data.maxTurns)
+					const started = await workspace.startRun(body.data.prompt, body.data.fresh, body.data.maxTurns, body.data.conversation)
 
 					if (started === "busy") {
 						return text("A run is already active", 409)
@@ -152,6 +158,14 @@ export default {
 
 					if (started === "missing") {
 						return text(missing, 404)
+					}
+
+					if (started === "diverged") {
+						return text("The clone cannot be fast-forwarded to the branch on GitHub", 412)
+					}
+
+					if ("fetchError" in started) {
+						return text("The branch could not be fetched from GitHub", 502)
 					}
 
 					return Response.json(started, { status: 202 })

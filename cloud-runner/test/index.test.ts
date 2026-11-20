@@ -211,6 +211,15 @@ describe("RunBody", () => {
     }
     expect(RunBody.safeParse({ prompt: "hi", fresh: "yes" }).success).toBe(false)
   })
+  it("takes an optional conversation key of letters, digits and dashes, 1 to 128 long", () => {
+    expect(RunBody.parse({ prompt: "p" }).conversation).toBeUndefined()
+    for (const conversation of ["a", "Abc-123", "x".repeat(128)]) {
+      expect(RunBody.safeParse({ prompt: "p", conversation }).success, conversation).toBe(true)
+    }
+    for (const conversation of ["bad key!", "", "x".repeat(129), "a_b", "a/b", 1]) {
+      expect(RunBody.safeParse({ prompt: "p", conversation }).success, String(conversation)).toBe(false)
+    }
+  })
 })
 
 describe("run requests", () => {
@@ -237,12 +246,16 @@ describe("run requests", () => {
     expect((await run({ prompt: "é".repeat(65535) + "a" })).status).toBe(202)
   })
 
-  it("passes prompt, fresh and maxTurns to startRun", async () => {
+  it("passes prompt, fresh, maxTurns and the conversation key to startRun", async () => {
     const calls: Call[] = []
     const res = await run({ prompt: "do it", fresh: true, maxTurns: 7 }, calls)
     expect(res.status).toBe(202)
     expect(await res.json()).toEqual({ run: 1 })
-    expect(calls).toEqual([{ method: "startRun", args: ["do it", true, 7] }])
+    expect(calls).toEqual([{ method: "startRun", args: ["do it", true, 7, undefined] }])
+
+    const keyed: Call[] = []
+    await run({ prompt: "do it", conversation: "k-1" }, keyed)
+    expect(keyed).toEqual([{ method: "startRun", args: ["do it", false, 20, "k-1"] }])
   })
 
   it("answers 413 for a body over the 1 MiB request cap", async () => {
@@ -337,6 +350,28 @@ describe("Workspace answers", () => {
     expect(await failed.json()).toEqual({ ...none, cloneError: "fatal: not found" })
   })
 
+  it("create: 422 and no workspace when no GitHub token is configured for the repository", async () => {
+    const calls: Call[] = []
+    const env = fakeEnv(calls, {}, { GITHUB_TOKENS: '{"other/repo":"secret-token-value"}' })
+    const res = await worker.fetch(req("PUT", "/workspaces/a", { body: good }), env)
+    expect(res.status).toBe(422)
+    const text = await res.text()
+    expect(text).toBe("No GitHub token is configured for this repository\n")
+    expect(text).not.toContain("secret-token-value")
+    expect(calls).toEqual([])
+
+    const mapped = fakeEnv(calls, { create: { status } }, { GITHUB_TOKENS: '{"owner/repo":"t"}' })
+    expect((await worker.fetch(req("PUT", "/workspaces/a", { body: good }), mapped)).status).toBe(200)
+    expect(calls).toHaveLength(1)
+  })
+
+  it("create: an empty GITHUB_TOKEN is no token to send, not a refusal", async () => {
+    const calls: Call[] = []
+    const res = await worker.fetch(req("PUT", "/workspaces/a", { body: good }), fakeEnv(calls, {}, { GITHUB_TOKEN: "" }))
+    expect(res.status).toBe(200)
+    expect(calls).toHaveLength(1)
+  })
+
   it("run: 202 with the run number, 409 when busy, 404 when the workspace is missing", async () => {
     const run = (result: unknown) => call(req("POST", "/workspaces/a/runs", { body: { prompt: "hi" } }), [], { startRun: result })
     const started = await run({ run: 3 })
@@ -344,6 +379,12 @@ describe("Workspace answers", () => {
     expect(await started.json()).toEqual({ run: 3 })
     expect((await run("busy")).status).toBe(409)
     expect((await run("missing")).status).toBe(404)
+    const diverged = await run("diverged")
+    expect(diverged.status).toBe(412)
+    expect(await diverged.text()).toBe("The clone cannot be fast-forwarded to the branch on GitHub\n")
+    const unfetched = await run({ fetchError: "could not read from remote" })
+    expect(unfetched.status).toBe(502)
+    expect(await unfetched.text()).not.toContain("could not read")
   })
 
   it("status of a workspace never created: 200 with state none", async () => {

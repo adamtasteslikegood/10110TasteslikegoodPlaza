@@ -34,7 +34,7 @@ import {
 	type Task,
 } from "./container"
 import type { OutboundProps } from "./outbound"
-import { clone, gitEnv, push, snapshot, startFromImage, startFromSnapshot, type Pushed, type Saved } from "./persist"
+import { clone, gitEnv, push, snapshot, startFromImage, startFromSnapshot, syncBranch, type Pushed, type Saved, type Synced } from "./persist"
 
 export type { Task } from "./container"
 export type Signal = "TERM" | "KILL"
@@ -61,6 +61,8 @@ export interface Host {
 	setPolicy(props: OutboundProps): Promise<void>
 	setInactivityTimeout(ms: number): Promise<void>
 	clone(repo: string, branch: string): Promise<string | undefined>
+	// Moves the clone to the branch as it is on the remote when that is a fast-forward.
+	sync(branch: string): Promise<Synced>
 	push(branch: string): Promise<Pushed>
 	snapshot(): Promise<Saved>
 	diff(): Promise<{ ok: boolean; text: string }>
@@ -143,6 +145,10 @@ export class ContainerHost implements Host {
 
 	clone(repo: string, branch: string): Promise<string | undefined> {
 		return clone(this.c, repo, branch)
+	}
+
+	sync(branch: string): Promise<Synced> {
+		return syncBranch(this.c, branch)
 	}
 
 	push(branch: string): Promise<Pushed> {

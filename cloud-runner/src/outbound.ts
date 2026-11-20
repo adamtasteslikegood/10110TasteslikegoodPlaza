@@ -1,13 +1,16 @@
 import { WorkerEntrypoint } from "cloudflare:workers"
 import { decide, isContainerCredentialHeader, type Credential, type Policy } from "./egress"
 import { checkPush, MAX_COMMAND_BYTES, MAX_PUSH_BYTES } from "./pushguard"
+import { tokenFor } from "./tokens"
 import type { Env } from "./types"
 
 // Set by the workspace when it registers the intercept. branch is the only ref
 // a push may update ("" for none).
 export type OutboundProps = { repoPath: string; branch: string; allow: string[] }
 
-export function withCredential(request: Request, credential: Credential, env: Env): Request {
+// repoPath is the workspace's "/owner/repo" (Policy.repoPath), which picks the GitHub token.
+// It is required: a call that left it out would quietly send no credential.
+export function withCredential(request: Request, credential: Credential, env: Env, repoPath: string): Request {
 	const headers = new Headers(request.headers)
 
 	// Whatever the host, the container sets no credential of its own: the
@@ -21,10 +24,14 @@ export function withCredential(request: Request, credential: Credential, env: En
 		headers.set("cf-aig-authorization", `Bearer ${env.AI_GATEWAY_TOKEN}`)
 		// The gateway caches responses for 300 s; a run must never get another's.
 		headers.set("cf-aig-skip-cache", "true")
-	} else if (credential === "github" && env.GITHUB_TOKEN !== "") {
-		// With no token (local runs on a public repository) the request goes
-		// out with no credential at all.
-		headers.set("Authorization", `Basic ${btoa(`x-access-token:${env.GITHUB_TOKEN}`)}`)
+	} else if (credential === "github") {
+		const token = tokenFor(env, repoPath)
+
+		// With no token (local runs on a public repository, or none mapped to
+		// this repository) the request goes out with no credential at all.
+		if (token !== undefined && token !== "") {
+			headers.set("Authorization", `Basic ${btoa(`x-access-token:${token}`)}`)
+		}
 	}
 
 	// Never follow a redirect here: the Worker would not re-decide it and would
@@ -175,9 +182,9 @@ export class Outbound extends WorkerEntrypoint<Env, OutboundProps> {
 		if (decision.push) {
 			const inspected = await inspectPush(request, policy.branch)
 			if (inspected instanceof Response) return inspected
-			return fetch(withCredential(inspected, decision.credential, this.env))
+			return fetch(withCredential(inspected, decision.credential, this.env, policy.repoPath))
 		}
 
-		return fetch(withCredential(request, decision.credential, this.env))
+		return fetch(withCredential(request, decision.credential, this.env, policy.repoPath))
 	}
 }

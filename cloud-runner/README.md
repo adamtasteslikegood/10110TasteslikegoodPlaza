@@ -22,14 +22,16 @@ cannot move those directories aside. The agent holds only the two pipes its
 output goes into.
 
 The runner's own commands are root's, with one rule: **git in the clone always
-runs as the agent** (clone, push, diff, the check after a restore). The clone's
+runs as the agent** (clone, the fetch and fast-forward before a run, push, diff,
+the check after a restore). The clone's
 config, hooks and diff drivers are the agent's to write, so root must never run
 them. The image carries a layout mark (`/etc/plaza-runner-layout`, `imageLayout`
 in `src/container.ts`); change both when who owns what changes.
 
 **Nothing of the agent's is left running after a run.** When a run ends, right
 after the KILL of its process group, then before its push, before each snapshot
-try and before the next run starts, the runner ends every process of the `agent`
+try, and before the next run starts both before and after the branch sync (and
+after a sync that refuses the start), the runner ends every process of the `agent`
 user: a process of that user sends KILL to every process it may signal, and root
 then checks that none is left. This reaches a process that left the task's
 process group with `setsid`, which the group KILL does not, and one that a git
@@ -37,7 +39,8 @@ hook or diff driver started. An instance that still has such a process gets no
 further run: it is replaced once the run is pushed and snapshotted, and a
 `runner` event says `agent processes left`. If the check cannot run at all, the
 end of a run treats it the same way, and the start of a run fails and is to be
-tried again, with nothing replaced. The runner never does this while a run is
+tried again, with nothing replaced. A process left after the sync before a run
+fails that start too, and the next start replaces the instance. The runner never does this while a run is
 running, since it would end the run's agent.
 
 `npm run test:container` shows all of this in a container built from the
@@ -356,9 +359,9 @@ All need `Authorization: Bearer <RUNNER_CALLER_SECRET>`.
 
 | Route | Does |
 |---|---|
-| `PUT /workspaces/:name` `{repo, branch, allow?}` | create (clone) or confirm the workspace |
+| `PUT /workspaces/:name` `{repo, branch, allow?}` | create (clone) or confirm the workspace; 422 `No GitHub token is configured for this repository` when `GITHUB_TOKENS` lists none for it |
 | `GET /workspaces/:name` | status |
-| `POST /workspaces/:name/runs` `{prompt, fresh?, maxTurns?}` | start a run, 202 `{run}`; 409 while one is active |
+| `POST /workspaces/:name/runs` `{prompt, fresh?, maxTurns?, conversation?}` | start a run, 202 `{run}`; 409 while one is active. The clone is first fast-forwarded to the branch on GitHub: 412 when it cannot be (a commit on each side, an uncommitted file in the way, or a stale lock), 502 when the branch cannot be fetched. No run starts in either case: the run's state, number, key and session are unchanged, but the instance may have been started or replaced on the way, and a pending snapshot is kept unless it was replaced. The 412 and 502 bodies are fixed texts; the `run refused` event carries git's reason. A 412 repeats on every start until the clone changes, and today the only way out is `DELETE`, which loses what the clone holds (see Known gaps). `conversation` is the caller's key, 1 to 128 letters, digits or hyphens (`[A-Za-z0-9-]{1,128}`): the same key resumes the conversation, another starts a new one; a run that starts a new conversation without a key clears the stored key; the status carries the key a later run would resume |
 | `GET /workspaces/:name/events?after=N` | events after `seq` N, and `next` |
 | `POST /workspaces/:name/stop` | stop the run |
 | `GET /workspaces/:name/diff` | `git diff` of the clone, new files included |
@@ -367,7 +370,10 @@ All need `Authorization: Bearer <RUNNER_CALLER_SECRET>`.
 
 ### Where the secrets live
 
-- Worker secrets `AI_GATEWAY_TOKEN`, `GITHUB_TOKEN` and `RUNNER_CALLER_SECRET`, on Cloudflare only.
+- Worker secrets `AI_GATEWAY_TOKEN`, `GITHUB_TOKEN` and `RUNNER_CALLER_SECRET`, on Cloudflare only. `GITHUB_TOKENS`, a JSON object from
+  `owner/repo` (lower case) to a token, replaces `GITHUB_TOKEN` once set: a repository it does not list is refused with 422,
+  and so is a re-`PUT` of an existing workspace whose repository it no longer lists. It holds tokens, so it must be a
+  secret, put as the others are, and never a `vars` entry in a wrangler config.
 - Locally, in the owner's checkout and git-ignored: `.dev/deploy.env` (the two tokens) and `.dev/caller.env`
   (the caller secret, 32 random bytes in hex). Both are mode 600.
 - `wrangler.dev.jsonc` (git-ignored) is `wrangler.jsonc` plus `AI_GATEWAY_ACCOUNT_ID` and `ALLOW_TEST_ROUTES: "1"`.
@@ -381,6 +387,7 @@ From `cloud-runner/`, logged in with `npx wrangler login`, with Docker running:
 set -a; . .dev/deploy.env; . .dev/caller.env; set +a
 printf %s "$AI_GATEWAY_TOKEN" | npx wrangler secret put AI_GATEWAY_TOKEN -c wrangler.dev.jsonc
 printf %s "$GITHUB_TOKEN" | npx wrangler secret put GITHUB_TOKEN -c wrangler.dev.jsonc
+printf %s "$GITHUB_TOKENS" | npx wrangler secret put GITHUB_TOKENS -c wrangler.dev.jsonc  # when the map is used
 printf %s "$RUNNER_CALLER_SECRET" | npx wrangler secret put RUNNER_CALLER_SECRET -c wrangler.dev.jsonc
 
 npx wrangler deploy -c wrangler.dev.jsonc --dry-run
@@ -510,11 +517,18 @@ best-effort group KILL, the instance with an old layout and the untested shell s
   those two stops and Cloudflare's lifecycle page. With the fix deployed, a workspace that was only cloned and one
   whose run had ended stopped 15.1 to 15.6 and 15.9 to 16.3 minutes after the last request (log 17), once each,
   which fits that cause.
-- **A run that commits nothing reports a push error when the branch has moved.** Every run ends with a push of
-  the clone's HEAD. If something else moved the branch after the clone, git refuses that push (`fetch first`)
-  and the status carries `pushError`, although the run `succeeded` and had nothing to push. Seen on the deploy
-  (spike C, log 17), where an acceptance run pushed to the branch another workspace had cloned. Not changed
-  here; the bridge of stage 2 will see this whenever two writers share a branch.
+- **A branch that moves during a run still ends in a push error** (PLZG-312). Every run ends with a push of the
+  clone's HEAD. A branch that moved before the run is now picked up: a run starts with `git fetch` and a
+  fast-forward (`git merge --ff-only`), and is refused (412 diverged, 502 fetch failed) when that cannot be done.
+  One that moves while the run is going is refused by git (`fetch first`) at the closing push: the status carries
+  `pushError`, although the run `succeeded` and had nothing to push. Seen on the deploy (spike C, log 17). The
+  fast-forward and the container test (`test-container/sync.ctest.ts`) were not tried on the deploy.
+- **A 412 has no way out but `DELETE`.** A clone with a commit on each side, an uncommitted file in the way of the
+  fast-forward or a stale `.git/index.lock` answers 412 on every start, and each new instance restores the same
+  clone from its snapshot. In stage 1 a run still started, so a prompt could tell the agent to rebase; now none
+  does. The only exit today is `DELETE /workspaces/:name`, which destroys the unpushed commits, the uncommitted
+  files and the conversation. `GET .../diff` shows the uncommitted changes but not the unpushed commits. The
+  `run refused` event carries git's reason. A route that resets the clone is a separate follow-up.
 - **A workspace that never ran has no snapshot.** Its files outside a commit are gone after the idle stop (seen in
   log 14: `restored: "branch"`, `uncommittedLost: true`). That is how it is built: a snapshot is taken when a run
   ends. Listed because a caller that writes files through the test exec route, or a later route, would lose them.

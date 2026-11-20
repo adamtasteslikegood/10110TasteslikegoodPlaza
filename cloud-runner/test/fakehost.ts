@@ -1,7 +1,7 @@
 import type { CommandResult } from "../src/container"
 import { TaskFileError, type Host, type Signal, type Task } from "../src/host"
 import type { OutboundProps } from "../src/outbound"
-import type { Pushed, Saved } from "../src/persist"
+import type { Pushed, Saved, Synced } from "../src/persist"
 
 type Group = { alive: boolean; ignoresTerm: boolean }
 type Probe = "push" | "exitCode" | "readTask" | "readOutput" | "outputBytes" | "outputDone" | "taskAlive" | "signal" | "setPolicy" | "sweep"
@@ -113,6 +113,14 @@ export class FakeHost implements Host {
 		return this.cloneError
 	}
 
+	// What syncBranch answers.
+	syncResult: Synced = "current"
+
+	async sync(branch: string): Promise<Synced> {
+		this.calls.push(`sync ${branch}`)
+		return this.syncResult
+	}
+
 	async push(branch: string): Promise<Pushed> {
 		this.calls.push(`push ${branch}`)
 		this.fail("push")
@@ -190,11 +198,13 @@ export class FakeHost implements Host {
 	strays = 0
 	// Whether a sweep ends them all.
 	sweepClean = true
+	// One-shot answers, taken before sweepClean: [false] leaves a process once.
+	sweepCleanNext: boolean[] = []
 
 	async endAgentProcesses(): Promise<boolean> {
 		this.calls.push("sweep")
 		this.fail("sweep")
-		if (!this.sweepClean) return false
+		if (!(this.sweepCleanNext.shift() ?? this.sweepClean)) return false
 		this.strays = 0
 		return true
 	}

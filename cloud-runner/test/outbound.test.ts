@@ -10,7 +10,7 @@ const request = (headers: Record<string, string> = {}) =>
 
 describe("withCredential", () => {
 	it("gateway: removes x-api-key, sets the gateway headers, keeps other headers", async () => {
-		const out = withCredential(request({ "x-api-key": "placeholder", "anthropic-version": "2023-06-01" }), "gateway", env)
+		const out = withCredential(request({ "x-api-key": "placeholder", "anthropic-version": "2023-06-01" }), "gateway", env, "/acme/app")
 
 		expect(out.headers.get("x-api-key")).toBeNull()
 		expect(out.headers.get("cf-aig-authorization")).toBe("Bearer gw-token-value")
@@ -21,7 +21,7 @@ describe("withCredential", () => {
 	})
 
 	it("gateway: replaces a cf-aig-authorization the container supplied", () => {
-		const out = withCredential(request({ "cf-aig-authorization": "Bearer forged", "cf-aig-skip-cache": "false" }), "gateway", env)
+		const out = withCredential(request({ "cf-aig-authorization": "Bearer forged", "cf-aig-skip-cache": "false" }), "gateway", env, "/acme/app")
 
 		expect(out.headers.get("cf-aig-authorization")).toBe("Bearer gw-token-value")
 		expect(out.headers.get("cf-aig-skip-cache")).toBe("true")
@@ -41,6 +41,7 @@ describe("withCredential", () => {
 			}),
 			"gateway",
 			env,
+			"/acme/app",
 		)
 
 		expect(out.headers.get("cf-aig-custom-cost")).toBeNull()
@@ -55,27 +56,49 @@ describe("withCredential", () => {
 	})
 
 	it("github: sets Basic x-access-token and no gateway headers", () => {
-		const out = withCredential(request({ authorization: "Bearer forged" }), "github", env)
+		const out = withCredential(request({ authorization: "Bearer forged" }), "github", env, "/acme/app")
 
 		expect(out.headers.get("authorization")).toBe(`Basic ${btoa("x-access-token:gh-token-value")}`)
 		expect(out.headers.get("cf-aig-authorization")).toBeNull()
 		expect(out.headers.get("cf-aig-skip-cache")).toBeNull()
 	})
 
+	it("github: sends the token mapped to the repository of the workspace", () => {
+		const mapped = { ...env, GITHUB_TOKENS: '{"acme/app":"mapped-token-value"}' } as Env
+		const out = withCredential(request({ authorization: "Bearer forged" }), "github", mapped, "/Acme/App")
+
+		expect(out.headers.get("authorization")).toBe(`Basic ${btoa("x-access-token:mapped-token-value")}`)
+	})
+
+	it("github: no mapped token sends no Authorization, and never GITHUB_TOKEN", () => {
+		const mapped = { ...env, GITHUB_TOKENS: '{"acme/app":"mapped-token-value"}' } as Env
+		const other = withCredential(request({ authorization: "Bearer forged" }), "github", mapped, "/acme/other")
+		const none = withCredential(request({ authorization: "Bearer forged" }), "github", mapped, "")
+
+		expect(other.headers.get("authorization")).toBeNull()
+		expect(none.headers.get("authorization")).toBeNull()
+	})
+
+	it("requires the repository path, so a caller cannot forget it (final review F7)", () => {
+		// @ts-expect-error repoPath is required
+		const forgot = withCredential(request(), "github", { ...env, GITHUB_TOKENS: '{"acme/app":"mapped-token-value"}' } as Env)
+		expect(forgot.headers.get("authorization")).toBeNull()
+	})
+
 	it("github: an empty token adds no Authorization and drops the container's", () => {
-		const out = withCredential(request({ authorization: "Bearer forged" }), "github", { ...env, GITHUB_TOKEN: "" })
+		const out = withCredential(request({ authorization: "Bearer forged" }), "github", { ...env, GITHUB_TOKEN: "" }, "/acme/app")
 
 		expect(out.headers.get("authorization")).toBeNull()
 		expect(out.headers.get("cf-aig-authorization")).toBeNull()
 	})
 
 	it.each(["gateway", "github", "none"] as const)("%s: never follows a redirect", (credential) => {
-		expect(withCredential(request(), credential, env).redirect).toBe("manual")
-		expect(withCredential(new Request("https://example.test/x", { redirect: "follow" }), credential, env).redirect).toBe("manual")
+		expect(withCredential(request(), credential, env, "/acme/app").redirect).toBe("manual")
+		expect(withCredential(new Request("https://example.test/x", { redirect: "follow" }), credential, env, "/acme/app").redirect).toBe("manual")
 	})
 
 	it("none: adds no credential header", () => {
-		const out = withCredential(request({ accept: "kept" }), "none", env)
+		const out = withCredential(request({ accept: "kept" }), "none", env, "/acme/app")
 
 		expect(out.headers.get("authorization")).toBeNull()
 		expect(out.headers.get("cf-aig-authorization")).toBeNull()
@@ -95,7 +118,7 @@ describe("withCredential", () => {
 	const sent = (out: Request) => Object.fromEntries([...out.headers].filter(([name]) => name !== "content-type"))
 
 	it("gateway: strips every container credential header, then adds only its own", () => {
-		expect(sent(withCredential(request(forged), "gateway", env))).toEqual({
+		expect(sent(withCredential(request(forged), "gateway", env, "/acme/app"))).toEqual({
 			"anthropic-version": "2023-06-01",
 			"cf-aig-authorization": "Bearer gw-token-value",
 			"cf-aig-skip-cache": "true",
@@ -103,15 +126,15 @@ describe("withCredential", () => {
 	})
 
 	it("github: strips every container credential header, then adds only its own", () => {
-		expect(sent(withCredential(request(forged), "github", env))).toEqual({
+		expect(sent(withCredential(request(forged), "github", env, "/acme/app"))).toEqual({
 			"anthropic-version": "2023-06-01",
 			authorization: `Basic ${btoa("x-access-token:gh-token-value")}`,
 		})
-		expect(sent(withCredential(request(forged), "github", { ...env, GITHUB_TOKEN: "" }))).toEqual({ "anthropic-version": "2023-06-01" })
+		expect(sent(withCredential(request(forged), "github", { ...env, GITHUB_TOKEN: "" }, "/acme/app"))).toEqual({ "anthropic-version": "2023-06-01" })
 	})
 
 	it("none: strips every container credential header and adds none", () => {
-		expect(sent(withCredential(request(forged), "none", env))).toEqual({ "anthropic-version": "2023-06-01" })
+		expect(sent(withCredential(request(forged), "none", env, "/acme/app"))).toEqual({ "anthropic-version": "2023-06-01" })
 	})
 })
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { imageLayout, layoutPath } from "../src/container"
-import { abandonedPushError, abandonSnapshot, afterAbandon, afterPush, afterSnapshot, MAX_SNAPSHOT_ATTEMPTS, pushErrorText, startFromImage, startFromSnapshot, within } from "../src/persist"
+import { abandonedPushError, abandonSnapshot, afterAbandon, afterPush, afterSnapshot, gitErrorText, MAX_SNAPSHOT_ATTEMPTS, pushErrorText, startFromImage, startFromSnapshot, within } from "../src/persist"
 
 // Fixtures with userinfo are assembled from parts, so no line of this file looks like a
 // credential in a URL to a secret scanner. Nothing here is a real credential.
@@ -29,6 +29,16 @@ describe("pushErrorText", () => {
 	})
 	it("names the exit code when git wrote nothing", () => {
 		expect(pushErrorText("", 128)).toBe("git push exited with 128")
+	})
+})
+
+describe("gitErrorText", () => {
+	it("names the command that exited when git wrote nothing", () => {
+		expect(gitErrorText("", 128, "fetch")).toBe("git fetch exited with 128")
+		expect(gitErrorText("", 1, "merge")).toBe("git merge exited with 1")
+	})
+	it("strips a credential as a push error does", () => {
+		expect(gitErrorText(withUserinfo("x-access-token", FAKE_TOKEN), 128, "fetch")).not.toContain(FAKE_TOKEN)
 	})
 })
 

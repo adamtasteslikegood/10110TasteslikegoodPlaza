@@ -37,6 +37,8 @@ type Stored = {
 	snapshotStale?: boolean
 	replaceInstance?: boolean
 	resumed?: boolean
+	sessionId?: string
+	conversation?: string
 	resultLine?: string
 	taskFileFailures?: number
 	lastTaskFileFailureAt?: number
@@ -122,6 +124,49 @@ describe("Workspace create", () => {
 })
 
 describe("Workspace start (I3)", () => {
+	it("refuses a start whose clone is diverged, and changes nothing", async () => {
+		const fake = new FakeHost()
+		const { stub } = await created(fake)
+		const before = await stored(stub)
+		fake.syncResult = { diverged: true, reason: "The clone and the branch on GitHub each have a commit the other lacks" }
+
+		expect(await stub.startRun("again", false, 5, "k")).toBe("diverged")
+		expect(fake.count("startTask")).toBe(0)
+		expect(await stored(stub)).toEqual(before)
+		expect(await notices(stub)).toContain("run refused")
+	})
+
+	it("carries git's reason for a refused fast-forward into the run refused event, and nothing else", async () => {
+		const fake = new FakeHost()
+		const { stub } = await created(fake)
+		const gitSays = "error: Your local changes to the following files would be overwritten by merge:\n\tclash.txt"
+		fake.syncResult = { diverged: true, reason: `The clone could not be fast-forwarded to the branch on GitHub: ${gitSays}` }
+
+		expect(await stub.startRun("again", false, 5)).toBe("diverged")
+		const read = await direct(stub, (w) => w.events(0))
+		if (read === "missing") throw new Error("the workspace is missing")
+		const refused = read.events.map((e) => e.payload as { notice?: string; reason?: string; run?: number }).find((p) => p.notice === "run refused")
+		expect(refused?.reason).toContain(gitSays)
+		expect(refused).not.toHaveProperty("run")
+	})
+
+	it("refuses a start whose branch cannot be fetched, with the error", async () => {
+		const fake = new FakeHost()
+		const { stub } = await created(fake)
+		const before = await stored(stub)
+		fake.syncResult = { error: "fetch broke" }
+
+		expect(await stub.startRun("again", false, 5)).toEqual({ fetchError: "fetch broke" })
+		expect(fake.count("startTask")).toBe(0)
+		expect(await stored(stub)).toEqual(before)
+	})
+
+	it("syncs the branch after the instance is up and before the task starts", async () => {
+		const { fake } = await started()
+		expect(fake.calls.indexOf("sync work")).toBeGreaterThan(fake.calls.indexOf("image ready"))
+		expect(fake.calls.indexOf("sync work")).toBeLessThan(fake.calls.indexOf("startTask"))
+	})
+
 	it("answers busy to a second start during a run, and starts one task", async () => {
 		const { stub, fake } = await started()
 		expect(await stub.startRun("again", false, 5)).toBe("busy")
@@ -487,6 +532,99 @@ describe("Workspace stale snapshot (Copilot C5)", () => {
 	})
 })
 
+describe("Workspace conversation key", () => {
+	async function keyed(key: string, fake = new FakeHost()) {
+		const { stub } = await created(fake)
+		expect(await stub.startRun("hello", false, 5, key)).toEqual({ run: 1 })
+		fake.finishTask(0, [resultLine])
+		return { stub, fake }
+	}
+
+	it("reports the key once its conversation has answered", async () => {
+		const { stub } = await keyed("a")
+		expect(await stub.status()).toMatchObject({ state: "succeeded", conversation: "a" })
+	})
+
+	it("resumes the conversation for the same key and starts a new one for another", async () => {
+		const { stub, fake } = await keyed("a")
+		const first = (await stored(stub)).sessionId
+		expect(await stub.startRun("again", false, 5, "a")).toEqual({ run: 2 })
+		expect(await stored(stub)).toMatchObject({ resumed: true, sessionId: first, conversation: "a" })
+		fake.finishTask(0, [resultLine])
+
+		expect(await stub.startRun("other", false, 5, "b")).toEqual({ run: 3 })
+		const record = await stored(stub)
+		expect(record).toMatchObject({ resumed: false, conversation: "b" })
+		expect(record.sessionId).not.toBe(first)
+		fake.finishTask(0, [resultLine])
+		expect(await stub.status()).toMatchObject({ conversation: "b" })
+	})
+
+	it("keeps the stored key, and resumes, for a run with no key", async () => {
+		const { stub, fake } = await keyed("a")
+		expect(await stub.startRun("again", false, 5)).toEqual({ run: 2 })
+		expect(await stored(stub)).toMatchObject({ resumed: true, conversation: "a" })
+		fake.finishTask(0, [resultLine])
+		expect(await stub.status()).toMatchObject({ conversation: "a" })
+	})
+
+	it("clears the stored key when a run starts a new conversation without one", async () => {
+		const { stub, fake } = await keyed("a")
+		const first = (await stored(stub)).sessionId
+		expect(await stub.startRun("new", true, 5)).toEqual({ run: 2 })
+		const record = await stored(stub)
+		expect(record).toMatchObject({ resumed: false })
+		expect(record.sessionId).not.toBe(first)
+		expect(record.conversation).toBeUndefined()
+		fake.finishTask(0, [resultLine])
+		expect((await stub.status()).conversation).toBeUndefined()
+	})
+
+	it("does not resume the unkeyed conversation for the old key", async () => {
+		const { stub, fake } = await keyed("a")
+		expect(await stub.startRun("new", true, 5)).toEqual({ run: 2 })
+		const unkeyed = (await stored(stub)).sessionId
+		fake.finishTask(0, [resultLine])
+
+		expect(await stub.startRun("again", false, 5, "a")).toEqual({ run: 3 })
+		const record = await stored(stub)
+		expect(record).toMatchObject({ resumed: false, conversation: "a" })
+		expect(record.sessionId).not.toBe(unkeyed)
+	})
+
+	it("starts a new conversation under the same key for a fresh run with that key", async () => {
+		const { stub, fake } = await keyed("a")
+		const first = (await stored(stub)).sessionId
+		expect(await stub.startRun("new", true, 5, "a")).toEqual({ run: 2 })
+		const record = await stored(stub)
+		expect(record).toMatchObject({ resumed: false, conversation: "a" })
+		expect(record.sessionId).not.toBe(first)
+		fake.finishTask(0, [resultLine])
+		expect(await stub.status()).toMatchObject({ conversation: "a" })
+	})
+
+	it("stores no key for a run refused as busy", async () => {
+		const { stub } = await created()
+		expect(await stub.startRun("hello", false, 5, "a")).toEqual({ run: 1 })
+		expect(await stub.startRun("again", false, 5, "b")).toBe("busy")
+		expect((await stored(stub)).conversation).toBe("a")
+	})
+
+	it("has no conversation in status after a restore from the branch", async () => {
+		const { stub, fake } = await keyed("a")
+		expect(await stub.status()).toMatchObject({ conversation: "a" })
+		fake.running = false
+		await edit(stub, (record) => {
+			record.snapshot = undefined
+		})
+
+		expect(await stub.startRun("next", false, 5, "a")).toEqual({ run: 2 })
+		expect(await stub.status()).toMatchObject({ restored: "branch" })
+		expect((await stub.status()).conversation).toBeUndefined()
+		expect((await stored(stub)).resumed).toBe(false)
+	})
+})
+
 describe("Workspace finish (Copilot C6)", () => {
 	it("kills the task's group before it reads the output, pushes or snapshots", async () => {
 		const { stub, fake } = await started()
@@ -605,7 +743,7 @@ describe("Workspace ends every process of the agent's (PLZG-311)", () => {
 		fake.calls.length = 0
 
 		expect(await stub.startRun("next", false, 5)).toEqual({ run: 2 })
-		expect(fake.calls.filter((c) => ["sweep", "resetTask", "startTask", "destroy"].includes(c))).toEqual(["sweep", "resetTask", "startTask"])
+		expect(fake.calls.filter((c) => ["sweep", "sync work", "resetTask", "startTask", "destroy"].includes(c))).toEqual(["sweep", "sync work", "sweep", "resetTask", "startTask"])
 		expect(fake.strays).toBe(0)
 	})
 
@@ -613,14 +751,66 @@ describe("Workspace ends every process of the agent's (PLZG-311)", () => {
 		const { stub, fake } = await started()
 		fake.finishTask(0, [resultLine])
 		expect(await stub.status()).toMatchObject({ state: "succeeded" })
-		fake.sweepClean = false
+		fake.sweepCleanNext = [false]
 		fake.calls.length = 0
 
 		expect(await stub.startRun("next", false, 5)).toEqual({ run: 2 })
-		const order = fake.calls.filter((c) => ["sweep", "destroy", "startFromSnapshot snap-1", "resetTask", "startTask"].includes(c))
-		expect(order).toEqual(["sweep", "destroy", "startFromSnapshot snap-1", "resetTask", "startTask"])
+		const order = fake.calls.filter((c) => ["sweep", "destroy", "startFromSnapshot snap-1", "sync work", "resetTask", "startTask"].includes(c))
+		expect(order).toEqual(["sweep", "destroy", "startFromSnapshot snap-1", "sync work", "sweep", "resetTask", "startTask"])
 		expect((await stored(stub)).replaceInstance).toBeFalsy()
 		expect(await stub.status()).toMatchObject({ state: "running", restored: "snapshot" })
+	})
+
+	// git fetch and the fast-forward run as the agent, and can start hooks or a
+	// detached `maintenance --auto` (final review F3).
+	it("sweeps once more after the branch sync of the first run", async () => {
+		const { fake } = await started()
+		const order = fake.calls.filter((c) => ["sweep", "sync work", "resetTask", "startTask"].includes(c))
+		expect(order.slice(order.indexOf("sync work"))).toEqual(["sync work", "sweep", "resetTask", "startTask"])
+	})
+
+	for (const [kind, refusal] of [
+		["diverged", { diverged: true, reason: "The clone and the branch on GitHub each have a commit the other lacks" }],
+		["fetch error", { error: "fetch broke" }],
+	] as const) {
+		it(`sweeps after a sync refused as ${kind}, and still answers the refusal`, async () => {
+			const { stub, fake } = await started()
+			fake.finishTask(0, [resultLine])
+			expect(await stub.status()).toMatchObject({ state: "succeeded" })
+			fake.syncResult = refusal
+			fake.calls.length = 0
+
+			await stub.startRun("next", false, 5)
+			expect(fake.calls.filter((c) => ["sweep", "sync work", "startTask"].includes(c))).toEqual(["sweep", "sync work", "sweep"])
+		})
+
+		it(`marks the instance for replacing when the sweep after a sync refused as ${kind} leaves a process`, async () => {
+			const { stub, fake } = await started()
+			fake.finishTask(0, [resultLine])
+			expect(await stub.status()).toMatchObject({ state: "succeeded" })
+			fake.syncResult = refusal
+			fake.sweepCleanNext = [true, false]
+
+			expect(await stub.startRun("next", false, 5)).toEqual("diverged" in refusal ? "diverged" : { fetchError: refusal.error })
+			expect((await stored(stub)).replaceInstance).toBe(true)
+			expect(await notices(stub)).toContain("agent processes left")
+		})
+	}
+
+	it("fails a start, starts no task and replaces the instance next time, when the sweep after the sync leaves a process", async () => {
+		const { stub, fake } = await started()
+		fake.finishTask(0, [resultLine])
+		expect(await stub.status()).toMatchObject({ state: "succeeded" })
+		fake.sweepCleanNext = [true, false]
+		fake.calls.length = 0
+
+		await expect(direct(stub, (w) => w.startRun("next", false, 5))).rejects.toThrow(/left after the branch sync/)
+		expect(fake.calls.filter((c) => ["destroy", "resetTask", "startTask"].includes(c))).toEqual([])
+		expect(await stored(stub)).toMatchObject({ state: "succeeded", run: 1, replaceInstance: true })
+		expect(await notices(stub)).toContain("agent processes left")
+
+		expect(await stub.startRun("next", false, 5)).toEqual({ run: 2 })
+		expect(fake.count("destroy")).toBe(1)
 	})
 })
 
@@ -671,6 +861,54 @@ describe("Workspace snapshot timeout (Copilot C8)", () => {
 		expect(await stub.startRun("third", false, 5)).toEqual({ run: 3 })
 		expect(await stored(stub)).toMatchObject({ snapshot: undefined, snapshotPending: false })
 	})
+
+	it("drops a pending snapshot before it replaces an instance the sweep could not clear, and clones instead of restoring it", async () => {
+		const fake = new FakeHost()
+		const { stub } = await afterOneRun(fake)
+		await stub.startRun("second", false, 5)
+		fake.finishTask(0, [resultLine])
+		fake.snapshotDelayMs = 100
+		await stub.status()
+		expect(await stored(stub)).toMatchObject({ snapshot: "snap-1", snapshotPending: true })
+		fake.sweepCleanNext = [false]
+		fake.calls.length = 0
+
+		expect(await stub.startRun("third", false, 5)).toEqual({ run: 3 })
+		expect(fake.calls).not.toContain("startFromSnapshot snap-1")
+		expect(await stub.status()).toMatchObject({ restored: "branch" })
+	})
+
+	for (const [kind, refusal, answer] of [
+		["diverged", { diverged: true, reason: "The clone and the branch on GitHub each have a commit the other lacks" }, "diverged"],
+		["fetch error", { error: "fetch broke" }, { fetchError: "fetch broke" }],
+	] as const) {
+		it(`keeps a pending snapshot, and the alarm that retries it, through a start refused as ${kind}`, async () => {
+			const fake = new FakeHost()
+			const { stub } = await afterOneRun(fake)
+			await stub.startRun("second", false, 5)
+			fake.finishTask(0, [resultLine])
+			fake.snapshotDelayMs = 100
+			await stub.status()
+			const pending = await stored(stub)
+			expect(pending).toMatchObject({ snapshot: "snap-1", snapshotPending: true, snapshotAttempts: 1 })
+
+			fake.syncResult = refusal
+			expect(await stub.startRun("third", false, 5)).toEqual(answer)
+			const after = await stored(stub)
+			expect({ snapshot: after.snapshot, snapshotPending: after.snapshotPending, snapshotAttempts: after.snapshotAttempts, snapshotStale: after.snapshotStale }).toEqual({
+				snapshot: pending.snapshot,
+				snapshotPending: pending.snapshotPending,
+				snapshotAttempts: pending.snapshotAttempts,
+				snapshotStale: pending.snapshotStale,
+			})
+			expect(await notices(stub)).not.toContain("snapshot failed")
+			expect(await alarmAt(stub)).not.toBeNull()
+
+			fake.snapshotDelayMs = 0
+			expect(await runDurableObjectAlarm(stub)).toBe(true)
+			expect(await stored(stub)).toMatchObject({ snapshot: "snap-3", snapshotPending: false })
+		})
+	}
 })
 
 describe("Workspace new instance readiness (Copilot C9)", () => {
