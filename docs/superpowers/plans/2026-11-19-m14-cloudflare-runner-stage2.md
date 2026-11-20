@@ -285,7 +285,10 @@ report it before going on.
 **Interfaces:**
 - Produces, in `BridgeConfig`: `cloud_domains: frozenset[str]` (from `CLOUD_DOMAINS`, text,
   default `""`), `cloud_domain_limit: int` (`CLOUD_DOMAIN_LIMIT`, default 3, from 1 to 10),
-  `cloud_runner_url: str` (`CLOUD_RUNNER_URL`, default `""`).
+  `cloud_runner_url: str` (`CLOUD_RUNNER_URL`, default `""`). `effective_settings()`
+  (`bridge/config.py:142`) gives `CLOUD_DOMAINS` as a sorted list: its mapping is written
+  as JSON into every run's log manifest (`bridge/log_storage.py:116`), and a `frozenset`
+  would make that fail for local runs too.
 - Produces, in `ProjectService`: `runs_on(domain_id: str) -> str` (`"cloud"` or `"local"`);
   `capacity_snapshot(domain_id=None) -> dict` with the present keys plus `pool`; `limit` is
   1 or `cloud_domain_limit`; `domain_id` and `domain_session_id` name a holder only when
@@ -304,6 +307,8 @@ report it before going on.
 environ = {"PLAZA_CLOUD_DOMAINS": "core, engineering", "PLAZA_CLOUD_RUNNER_URL": "https://runner.example"}
 assert load_config(environ=environ).cloud_domains == {"core", "engineering"}
 assert load_config(environ={}).cloud_domains == frozenset()
+assert load_config(environ=environ).effective_settings()["CLOUD_DOMAINS"] == ["core", "engineering"]
+json.dumps(load_config(environ={}).effective_settings())   # the log manifest's use; must not raise
 # rejected with ConfigError: "core,,design", "Core", "core,core", CLOUD_DOMAIN_LIMIT 0 and 11,
 # and CLOUD_DOMAINS set while CLOUD_RUNNER_URL is ""
 
@@ -518,10 +523,14 @@ class CloudOwner:
 Rules:
 
 - The workspace name is `f"{workspace.project_id}-{workspace.domain_id}"`.
-- `start()`: `github_repo`, then `sync_before_start`, then `runner.create(name, repo, branch)`.
-  `CloudSyncError` becomes `cloud_sync_failed`, `RunnerDown` `cloud_unavailable`,
-  `RunnerRefused` `cloud_refused`. A returned status with `state == "running"` becomes
-  `cloud_run_active`, and no `stop` is sent. Otherwise, when the status has
+- `start()`, in this order: `runner.status(name)`; `github_repo`; `sync_before_start`;
+  `runner.create(name, repo, branch)`. The status comes first so that nothing is pushed
+  or fast-forwarded while an earlier run is still going (changed after review: the first
+  version synced first). A status with `state == "running"`, from either call, becomes
+  `cloud_run_active`; no git runs after it and no `stop` is sent. A 404 from the first
+  `status` means no workspace yet and is not an error. `CloudSyncError` becomes
+  `cloud_sync_failed`, `RunnerDown` `cloud_unavailable`, any other `RunnerRefused`
+  `cloud_refused`. After `create`, when the status has
   `pushed.commit`, `fast_forward_to(workspace, commit)` (a run may have ended between the
   sync and the answer), and then `mark_cloud(workspace, unsynced=...)`: true when the
   state is `lost` or the status has `pushError`, else false.
@@ -539,8 +548,17 @@ Rules:
   is for this run and its state is `succeeded`, `failed`, `stopped` or `lost`; then one
   more `events` call. `provider_session_id` is `payload["session_id"]` of the run's
   `system` event; the failure subtype is `payload["subtype"]` of its `result` event.
+- The runner keeps one event log for all runs of a workspace. The cursor starts at 0 for
+  an owner's first run and carries on from `next` after that, and it moves over every
+  event; but only an event whose `run` equals the number `start_run` returned is read for
+  the session id, the result, the subtype or a truncation mark. An earlier run's events
+  never reach the outcome.
 - `RunnerDown` while polling is retried with the same `after` until `OUTAGE_SECONDS`
   have passed without an answer; then the outcome is `error` / `transport_error`.
+- `RunnerRefused` while polling ends the Run at once, with no retry and no exception
+  leaving `execute()`: a 404 (the workspace is gone) is `error` / `cloud_run_lost`, any
+  other status is `error` / `transport_error`. The cloud note stays unsynced and nothing
+  is fast-forwarded.
 - The end state becomes the outcome:
 
 | Runner | Outcome (`status` / `reason`) |
@@ -586,13 +604,18 @@ PREAMBLE = (
 - [ ] **Step 1: Write the failing tests** with `FakeRunner`, a bare `origin` and `POLL_SECONDS` patched to 0:
 
 ```python
-# test_start_syncs_then_creates_the_workspace_named_for_the_project_and_department
+# test_start_asks_the_status_then_syncs_then_creates_the_workspace_named_for_the_project_and_department
+# test_start_pushes_nothing_while_an_earlier_run_is_active   -> local is one commit ahead; origin's tip is unchanged afterwards
 # test_start_is_refused_while_an_earlier_run_is_active       -> code "cloud_run_active"; FakeRunner.calls has no "stop" (Review Focus 5)
 # test_start_maps_down_refused_and_sync_errors               (parametrised over the three codes)
 # test_a_run_returns_the_decoded_answer_and_memory_delta     -> SDKOutcome.status == "success", memory_delta == {...}
 # test_the_worktree_is_at_the_pushed_commit_after_a_run
 # test_an_outage_mid_run_reads_no_event_twice                -> the `after` values sent are non-decreasing and every seq is consumed once (Review Focus 2)
 # test_an_outage_longer_than_the_limit_ends_as_transport_error
+# test_an_earlier_runs_events_never_reach_the_outcome        -> the log holds run 1's system and result events; run 2's
+#                                                               session id and answer are run 2's
+# test_a_refusal_while_polling_ends_the_run_without_raising  (parametrised: 404 -> "cloud_run_lost", 401 -> "transport_error";
+#                                                               the note stays unsynced)
 # test_a_push_error_is_an_error_with_the_answer_kept         -> ("error", "cloud_push_failed"), output == "done"
 # test_max_turns_lost_and_stopped_map_as_the_table_says      (parametrised)
 # test_a_truncated_result_is_output_limit                    (Review Focus 4)
