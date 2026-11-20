@@ -220,7 +220,9 @@ export class Workspace extends DurableObject<Env> {
 				task: undefined,
 				persistPending: undefined,
 				sessionId,
-				conversation: conversationKey ?? record.conversation,
+				// A run that resumes keeps the stored key when it sends none; one that starts a
+				// new conversation stores the key it sent, or none.
+				conversation: resume ? (conversationKey ?? record.conversation) : conversationKey,
 				resumed: resume,
 				hasConversation: conversationAfter("started", resume, false),
 				eventsOffset: 0,
