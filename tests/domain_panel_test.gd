@@ -162,6 +162,7 @@ func _ready() -> void:
 	check(button("Run").disabled and not button("Stop").disabled, "activating permits Stop only")
 	await deliver(state(start.request_id))
 	check(hud.get_node("Panel/Scroll/Rows/StatusLabel").text.contains("Stop to release workspace"), "idle retains reservation copy")
+	check(not hud.get_node("Panel/Scroll/Rows/StatusLabel").text.contains("cloud"), "a local department's state line names no placement")
 	input.text = "run native once"
 	input.text_changed.emit(input.text)
 	input.grab_focus()
@@ -234,8 +235,11 @@ func _ready() -> void:
 	await frames()
 	check(count("resume") == 0, "unrelated ack cannot release replay")
 	lifecycle = "active"
-	await deliver(state(refocus.request_id))
+	var cloud_ack := state(refocus.request_id)
+	cloud_ack.runs_on = "cloud"
+	await deliver(cloud_ack)
 	check(count("resume") == 1, "matching Refocus ack precedes Resume")
+	check(hud.get_node("Panel/Scroll/Rows/StatusLabel").text.contains(" · cloud"), "a cloud department's state line says cloud")
 	var resume := latest("resume")
 	var complete := state(resume.request_id)
 	complete.merge({"type": "resume_complete", "ended": false, "high_water_mark": "1", "earliest_output_id": "1", "history_gap": false}, true)

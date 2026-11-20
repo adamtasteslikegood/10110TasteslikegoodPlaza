@@ -11,6 +11,7 @@ from copy import deepcopy
 from dataclasses import asdict, dataclass, replace
 from enum import Enum
 import hashlib
+import logging
 import time
 from typing import TYPE_CHECKING
 from uuid import uuid4
@@ -20,7 +21,8 @@ from bridge.agents import load_agent
 from bridge.agent_bindings import require_working_binding, InvalidBinding
 from bridge.config import BridgeConfig
 from bridge.application_state import StateCommand, StateError, StateView
-from bridge.cloud_owner import CloudOwner
+from bridge.cloud_git import CloudSyncError, check_switch_to_local
+from bridge.cloud_owner import CloudOwner, CloudStartRefused
 from datetime import datetime, timezone
 from bridge.domain_protocol import DomainCommandError, error_packet
 from bridge.domain_sdk import DomainSDKOwner, SDKOutcome
@@ -42,6 +44,8 @@ from bridge.workspace_lease import WorkspaceLease
 
 if TYPE_CHECKING:
     from bridge.project_service import ProjectService
+
+log = logging.getLogger(__name__)
 
 DomainSink = Callable[[dict], Awaitable[None]]
 # Existing server diagnostics import the credential-name inventory. This is not
@@ -332,6 +336,14 @@ class DomainSession:
 
         await owned_io(acquire)
         self._service.publish_reservation(self._lease)
+        if self.runs_on != "cloud":
+            # A department whose last run was in the cloud starts here only once
+            # that run's commits are on this machine; with no cloud note, no check.
+            try:
+                await asyncio.to_thread(check_switch_to_local, self._workspace)
+            except CloudSyncError as error:
+                log.warning("cloud switch refused: %s: %s", error.code, error.detail)
+                raise DomainCommandError("cloud_switch_refused") from None
         if self._claim is not None:
             try:
                 await self._claim.claim(
@@ -397,7 +409,10 @@ class DomainSession:
             await self._reserve_task
             await self._start_gate.wait()
             if not self._stopping:
-                await self._owner.start()
+                try:
+                    await self._owner.start()
+                except CloudStartRefused as error:
+                    raise DomainCommandError(error.code) from None
             if not self._stopping:
                 self._transition(SessionState.ACTIVE)
         except Exception:
@@ -636,7 +651,13 @@ class DomainSession:
                 permission_mode=self._config.domain_permission_mode,
                 interaction="explicit_run",
             )
-            if self._coordinator is not None and not self._recap_supplied:
+            # A local session's recap goes with its first Run; a cloud session's
+            # whenever the runner's instance does not hold this conversation.
+            if self._coordinator is not None and (
+                await self._owner.conversation_is_new()
+                if self.runs_on == "cloud"
+                else not self._recap_supplied
+            ):
                 view = self._coordinator.snapshot()
                 if (
                     not isinstance(view, StateView)

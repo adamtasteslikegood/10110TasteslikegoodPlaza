@@ -46,6 +46,7 @@ from bridge.state_coordinator import (
     VolatileStateRepository,
 )
 from bridge.agents import load_agent
+from bridge.cloud_runner import CloudRunner
 from bridge.protocol import (
     validate_agent_id,
     parse_request,
@@ -105,6 +106,7 @@ class BridgeServer:
         bindings=None,
         state_coordinator: StateCoordinator | None = None,
         claims=None,
+        cloud=None,
     ):
         self._config = config if config is not None else default_config()
         self._recorder = recorder
@@ -129,6 +131,7 @@ class BridgeServer:
             state_provider=lambda: self.application_state,
             state_status=self.application_state_status,
             claims=claims,
+            cloud=cloud,
         )
         self._connection_tasks = set()
         self._connections = set()
@@ -908,6 +911,8 @@ async def serve(*, stop_event: asyncio.Event | None = None):
     try:
         config = load_config()
         claims = RelayClaims.from_env()
+        # None unless CLOUD_DOMAINS names a department; a half-made setting stops here.
+        cloud = CloudRunner.from_env(config)
     except (ConfigError, ValueError, OSError) as exc:
         print(f"Bridge configuration error: {exc}", file=sys.stderr)
         raise SystemExit(2) from None
@@ -922,8 +927,11 @@ async def serve(*, stop_event: asyncio.Event | None = None):
     server = None
     clean = False
     try:
-        # Relay claims are opt-in; without them the composition is unchanged.
+        # Relay claims and cloud departments are opt-in; without them the
+        # composition is unchanged.
         extra = {} if claims is None else dict(claims=claims)
+        if cloud is not None:
+            extra["cloud"] = cloud
         server = BridgeServer(config=config, recorder=recorder, **extra)
         await server.serve(stop_event=stop_event)
         clean = True

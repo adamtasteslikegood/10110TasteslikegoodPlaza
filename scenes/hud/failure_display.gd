@@ -56,10 +56,24 @@ static func cause(result: Dictionary) -> String:
 		"transport_error": "The execution connection failed. Stop before starting a fresh session.",
 		"missing_terminal": "Execution ended without a confirmed result. Stop before starting a fresh session.",
 		"deferred_tool_use": "A required tool could not complete in this run. Review the partial answer and task.",
+		"cloud_run_active": "A cloud run from an earlier session is still going. Wait for it to end, then Run again.",
+		"cloud_sync_failed": "The cloud run finished, but its commit could not be brought onto this machine's branch. See the bridge log before another Run.",
+		"cloud_push_failed": "The cloud run could not push its commit to GitHub. Its changes are not on this machine; see the bridge log before another Run.",
+		"cloud_run_lost": "The cloud runner lost this run. Its outcome is unknown; review the branch before another explicit Run.",
 	}.get(result.get("reason", ""), "The task could not complete. Review the partial answer; Stop before starting a fresh session.")
+
+## Next-step sentences for the cloud error codes; the message itself is the bridge's fixed copy.
+const CLOUD_GUIDANCE := {
+	"cloud_switch_refused": "Start it in the cloud once more so its last run comes back, then Stop and Start it here.",
+	"cloud_unavailable": "Try Start again later; nothing was started.",
+	"cloud_refused": "Have the operator check the cloud runner settings, then Start again.",
+	"cloud_sync_failed": "Have the operator bring the branch in step with GitHub, then Start again.",
+	"cloud_run_active": "Wait for the earlier cloud run to end, then Start again.",
+}
 
 static func notice(error: Dictionary, include_related: bool = true) -> String:
 	var text: String = error.get("message", "The command could not complete.")
+	if CLOUD_GUIDANCE.has(error.get("error_type")): text += "\n" + CLOUD_GUIDANCE[error.error_type]
 	if error.has("readiness_category"):
 		text += "\n" + cause({"status": "error", "reason": "readiness_failed", "readiness_category": error.readiness_category})
 	if error.get("unresolved_queries_omitted", 0) > 0:

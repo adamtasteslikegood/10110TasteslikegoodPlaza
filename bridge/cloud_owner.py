@@ -130,6 +130,10 @@ class CloudOwner:
         return True
 
     async def start(self) -> None:
+        if self._stopping:
+            raise RuntimeError("Cloud owner has stopped; create a fresh owner")
+        if self._healthy:
+            return  # started already: the session calls this before every Run
         try:
             try:
                 status = await self._call("status", self._name)

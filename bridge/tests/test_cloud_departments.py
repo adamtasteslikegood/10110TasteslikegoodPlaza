@@ -5,12 +5,36 @@ from dataclasses import replace
 import hashlib
 import json
 
-import pytest
+from types import SimpleNamespace
+from unittest.mock import MagicMock
 
+import pytest
+import pytest_asyncio
+
+from bridge.cloud_git import mark_cloud
+from bridge.cloud_owner import CloudOwner
+from bridge.cloud_runner import RunnerDown
 from bridge.config import ConfigError, default_config, load_config
+from bridge.domain_manager import DomainManager
+from bridge.domain_protocol import ERROR_MESSAGES
 from bridge.project_service import ProjectService
-from bridge.tests.domain_fakes import FakeOwner
-from bridge.tests.test_workspace import repository
+from bridge.relay_claims import RelayClaims
+from bridge.state_coordinator import StateCoordinator, VolatileStateRepository
+from bridge.tests.cloud_fakes import FakeRunner
+from bridge.tests.domain_fakes import (
+    FakeOwner,
+    FakeProjectService,
+    collect_until,
+    context,
+)
+from bridge.tests.test_cloud_git import (  # noqa: F401 (fixtures)
+    commit as cloud_commit,
+    file_protocol,
+    isolated_home,
+    path_origin,
+)
+from bridge.tests.test_relay_claims import FakeWork
+from bridge.tests.test_workspace import git, repository
 from bridge.workspace import WorkspaceError
 
 CLOUD = {
@@ -365,3 +389,286 @@ async def test_the_manager_holds_two_cloud_departments_and_one_local(
         await manager.shutdown()
         await coordinator.close()
         await service.close()
+
+
+# --- Task 8: a cloud department reaches the session, serve() and the protocol ---
+
+
+class GitRunner(FakeRunner):
+    """FakeRunner that holds a conversation and, on each Run, pushes a commit to origin."""
+
+    def __init__(self, tmp_path, origin):
+        super().__init__()
+        self.tmp_path, self.origin = tmp_path, origin
+        self.held = None  # the conversation key the runner's instance holds
+        self.branch = None
+        self.run = 0
+        self.pushed = None
+
+    def create(self, name, repo, branch):
+        self.branch = branch
+        return super().create(name, repo, branch)
+
+    def start_run(self, name, prompt, *, conversation, max_turns):
+        run = super().start_run(
+            name, prompt, conversation=conversation, max_turns=max_turns
+        )
+        self.held = conversation
+        clone = self.tmp_path / f"cloud-{run}"
+        source = str(self.origin)
+        git(self.tmp_path, "clone", "-q", "-b", self.branch, source, str(clone))
+        self.pushed = cloud_commit(clone, f"cloud-{run}.txt")
+        git(clone, "push", "-q", "origin", self.branch)
+        self.run = run
+        return run
+
+    def status(self, name):
+        self.calls.append(("status", name))
+        if not self.run:
+            return dict(state="idle", conversation=self.held)
+        return dict(
+            state="succeeded",
+            run=self.run,
+            generation=1,
+            conversation=self.held,
+            result="Done.",
+            pushed=dict(commit=self.pushed),
+        )
+
+
+class CloudService(FakeProjectService):
+    """FakeProjectService whose ``cloud`` departments run in the cloud."""
+
+    def __init__(self, tmp_path):
+        super().__init__(tmp_path)
+        self.cloud = {"engineering"}
+
+    def runs_on(self, domain_id):
+        return "cloud" if domain_id in self.cloud else "local"
+
+
+@pytest_asyncio.fixture
+async def bridge(tmp_path, monkeypatch, file_protocol):  # noqa: F811
+    monkeypatch.setattr(CloudOwner, "POLL_SECONDS", 0)
+    service = CloudService(tmp_path)
+    origin = tmp_path / "origin.git"
+    git(tmp_path, "init", "-q", "--bare", "-b", "main", str(origin))
+    root = service.workspace.project_root
+    git(root, "remote", "add", "origin", str(origin))
+    git(root, "push", "-q", "origin", "main")
+    contexts, owners = [], []
+
+    class RecordedCloudOwner(CloudOwner):
+        async def execute(self, **kwargs):
+            contexts.append(kwargs.get("context_packet"))
+            return await super().execute(**kwargs)
+
+    def local(*args):
+        owner = FakeOwner(*args)
+        owners.append(owner)
+        return owner
+
+    monkeypatch.setattr("bridge.domain_session.CloudOwner", RecordedCloudOwner)
+    monkeypatch.setattr("bridge.domain_session.DomainSDKOwner", local)
+    monkeypatch.setattr(
+        "bridge.domain_session.load_agent",
+        lambda agent: "definition" if agent == "backend-architect" else None,
+    )
+    coordinator = StateCoordinator(
+        lambda: VolatileStateRepository(service.workspace.project_id)
+    )
+    await coordinator.open()
+    runner, work = GitRunner(tmp_path, origin), FakeWork()
+    manager = DomainManager(
+        default_config(),
+        service,
+        state_coordinator=coordinator,
+        claims=RelayClaims(work, every=0.01),
+        cloud=runner,
+    )
+    yield SimpleNamespace(
+        manager=manager,
+        service=service,
+        runner=runner,
+        work=work,
+        contexts=contexts,
+        owners=owners,
+        origin=origin,
+    )
+    await manager.shutdown()
+    await coordinator.close()
+    service.close()
+
+
+async def send(bridge, kind, request="request", **fields):
+    """One command to engineering, as the game sends it; returns the packets."""
+    packets = []
+    current = bridge.manager.snapshot("engineering")
+    if kind == "activate_domain":
+        fields.setdefault("expected_domain_revision", current["domain_revision"])
+    else:
+        fields.setdefault("execution_id", current["execution_id"])
+        fields.setdefault("domain_session_id", current["domain_session_id"])
+
+    async def emit(packet):
+        packets.append(packet)
+
+    command = dict(
+        type=kind,
+        protocol_version=2,
+        request_id=request,
+        domain_id="engineering",
+        **fields,
+    )
+    if kind == "domain_query":
+        command.update(agent_id="backend-architect", task=f"Build {request}")
+    await bridge.manager.handle(command, context=context(request), emit=emit)
+    if kind == "domain_query":
+        await collect_until(None, packets)
+        session = bridge.manager._current("engineering")
+        async with asyncio.timeout(3):
+            while session._inflight is not None or any(
+                not job.done() for job in session._jobs
+            ):
+                await asyncio.sleep(0.001)
+            await session._claim.flush()
+    return packets
+
+
+def errors(packets):
+    return [p["error_type"] for p in packets if p["type"] == "domain_error"]
+
+
+@pytest.mark.asyncio
+async def test_a_refused_cloud_start_frees_the_lease_the_claim_and_the_place(bridge):
+    bridge.runner.script("create", RunnerDown("no answer"))
+    packets = await send(bridge, "activate_domain", "start")
+    assert errors(packets) == ["cloud_unavailable"]
+    assert packets[-1]["message"] == ERROR_MESSAGES["cloud_unavailable"]
+    assert "release" in bridge.work.ops()
+    assert bridge.service.reservation is None
+    assert bridge.service.capacity is None
+    assert bridge.manager.snapshot("engineering")["state"] == "inactive"
+    bridge.runner.script("create")  # the runner answers again
+    packets = await send(bridge, "activate_domain", "again")
+    assert not errors(packets)
+    assert bridge.manager.snapshot("engineering")["state"] == "active"
+
+
+@pytest.mark.asyncio
+async def test_a_cloud_run_delivers_one_domain_result_and_checkpoints_the_pushed_commit(
+    bridge,
+):
+    await send(bridge, "activate_domain", "start")
+    packets = await send(bridge, "domain_query", "first")
+    results = [p for p in packets if p["type"] == "domain_result"]
+    assert len(results) == 1
+    assert results[0]["status"] == "success"
+    workspace = bridge.service.workspace
+    assert git(workspace.worktree_path, "rev-parse", "HEAD") == bridge.runner.pushed
+    checkpoints = [f for op, _, f in bridge.work.calls if op == "checkpoint"]
+    assert checkpoints[-1]["commit"] == bridge.runner.pushed
+    assert checkpoints[-1]["text"] == "success (completed): Build first"
+    # The Start set the workspace up once; a Run does not redo it.
+    assert [c[0] for c in bridge.runner.calls].count("create") == 1
+
+
+@pytest.mark.asyncio
+async def test_the_recap_goes_only_with_a_new_cloud_conversation(bridge):
+    await send(bridge, "activate_domain", "start")
+    await send(bridge, "domain_query", "first")
+    await send(bridge, "domain_query", "second")
+    bridge.runner.held = None  # a new instance, started from the branch
+    await send(bridge, "domain_query", "third")
+    assert len(bridge.contexts) == 3
+    first, second, third = (packet.continuity for packet in bridge.contexts)
+    assert first is not None
+    assert second is None
+    assert third is not None
+
+
+@pytest.mark.asyncio
+async def test_a_local_session_still_gets_its_recap_on_the_first_run_only(bridge):
+    bridge.service.cloud = set()
+    await send(bridge, "activate_domain", "start")
+    for request in ("first", "second", "third"):
+        await send(bridge, "domain_query", request)
+    (owner,) = bridge.owners
+    assert [c["context_packet"].continuity is not None for c in owner.calls] == [
+        True,
+        False,
+        False,
+    ]
+    assert not bridge.contexts
+    assert not [c for c in bridge.runner.calls if c[0] == "status"]
+
+
+@pytest.mark.asyncio
+async def test_a_half_made_cloud_setting_stops_the_bridge_at_startup(
+    tmp_path, monkeypatch, capsys
+):
+    from bridge import server as server_module
+
+    for name in ("RELAY_WORK_REPO", "PR_GATE_RELAY_URL"):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("CLOUD_RUNNER_SECRET_FILE", str(tmp_path / "missing"))
+    settings = replace(
+        default_config(),
+        cloud_domains=frozenset({"core"}),
+        cloud_runner_url="https://runner.example",
+    )
+    monkeypatch.setattr(server_module, "load_config", MagicMock(return_value=settings))
+    server = MagicMock()
+    monkeypatch.setattr(server_module, "BridgeServer", server)
+    with pytest.raises(SystemExit) as error:
+        await server_module.serve()
+    assert error.value.code == 2
+    server.assert_not_called()
+    err = capsys.readouterr().err
+    assert "Bridge configuration error" in err and "secret file" in err
+
+
+@pytest.mark.asyncio
+async def test_a_local_start_is_refused_until_the_last_cloud_run_is_back(
+    bridge, caplog
+):
+    await send(bridge, "activate_domain", "start")
+    workspace = bridge.service.workspace
+    # The bridge died mid-run: the note says the cloud may be ahead.
+    mark_cloud(workspace, unsynced=True)
+    await send(bridge, "deactivate_domain", "stop")
+    assert bridge.manager.snapshot("engineering")["state"] == "inactive"
+    bridge.service.cloud = set()  # CLOUD_DOMAINS is empty now
+    before = len(bridge.work.calls)
+    packets = await send(bridge, "activate_domain", "local")
+    assert errors(packets) == ["cloud_switch_refused"]
+    assert packets[-1]["message"] == ERROR_MESSAGES["cloud_switch_refused"]
+    assert "cloud switch refused: unsynced" in caplog.text
+    assert "claim" not in [op for op, _, _ in bridge.work.calls[before:]]
+    # The error packet can go out before the failed start's cleanup ends.
+    async with asyncio.timeout(3):
+        while not (bridge.service.reservation is None is bridge.service.capacity):
+            await asyncio.sleep(0.001)
+    assert not bridge.owners
+    note = workspace.common_git_dir / "plaza/cloud" / "engineering.json"
+    assert note.exists()
+    mark_cloud(workspace, unsynced=False)
+    packets = await send(bridge, "activate_domain", "back")
+    assert not errors(packets)
+    assert bridge.manager.snapshot("engineering")["state"] == "active"
+    assert "runs_on" not in bridge.manager.snapshot("engineering")
+    assert not note.exists()
+
+
+@pytest.mark.asyncio
+async def test_a_department_never_in_the_cloud_starts_with_no_switch_check(
+    bridge, monkeypatch
+):
+    def refuse(*args, **kwargs):
+        raise AssertionError("no git for a department with no cloud note")
+
+    monkeypatch.setattr("bridge.cloud_git.git_without_filters", refuse)
+    bridge.service.cloud = set()
+    packets = await send(bridge, "activate_domain", "start")
+    assert not errors(packets)
+    assert bridge.manager.snapshot("engineering")["state"] == "active"
