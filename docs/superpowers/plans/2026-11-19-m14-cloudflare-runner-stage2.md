@@ -32,6 +32,17 @@ the six rulings of 2026-11-19, and §3 (anti-goals). The runner's present contra
 - After a run the worktree is fast-forwarded to exactly the commit the runner reports as
   pushed. Anything that is not a fast-forward is an error, never a merge.
 - Only a repository whose `origin` is on `github.com` can run in the cloud.
+- A department goes from the cloud back to local only when its last cloud run is on this
+  machine and the worktree is clean (call 7). A department with no cloud note is not
+  checked at all.
+- Every git command the bridge runs for a cloud department is as hardened as
+  `bridge/workspace.py`'s helpers: no hooks, no fsmonitor, no repository filters, and for
+  the three network commands only `https` and `ssh`.
+- Setting names in this plan (`CLOUD_DOMAINS`, `CLOUD_DOMAIN_LIMIT`, `CLOUD_RUNNER_URL`)
+  are schema keys of `bridge/config.json`; in the environment each is `PLAZA_<KEY>`
+  (`bridge/config.py`). `CLOUD_RUNNER_SECRET_FILE` is not a schema key: it is a plain
+  environment variable read by `CloudRunner.from_env`, as `RELAY_WORK_SECRET_FILE` is by
+  `bridge/relay_claims.py`.
 - The local limit stays one active department. Cloud departments have their own limit,
   default 3.
 - No credential in `BridgeConfig`, in `bridge/config.json`, in a log, a transcript or a
@@ -67,8 +78,8 @@ Tasks 1 to 9 need none of these. Each gate needs Adam's go-ahead when it is reac
 
 ## My calls (not covered by the six rulings; change any in review)
 
-1. **Where placement lives.** A bridge setting, `CLOUD_DOMAINS`, a comma-separated list
-   of department ids. One bridge serves one project, so this is the "project setting" of
+1. **Where placement lives.** A bridge setting, `CLOUD_DOMAINS` (`PLAZA_CLOUD_DOMAINS` in
+   the environment), a comma-separated list of department ids. One bridge serves one project, so this is the "project setting" of
    §6.7. Changing it needs a bridge restart, which is also what guarantees a stopped
    session.
 2. **Caller auth stays the bearer secret**, read from a file, not from the environment,
@@ -85,11 +96,16 @@ Tasks 1 to 9 need none of these. Each gate needs Adam's go-ahead when it is reac
    and then ends the Run as `transport_error`; the cloud run carries on.
 6. **A push the runner could not make** ends the Run as an error (`cloud_push_failed`)
    with the agent's answer kept, not as a success.
-7. **Switching back to local is not policed.** If the bridge never synced a cloud run
-   (it was killed mid-run) and the department is then set to local, the local agent
-   starts from the old tip, and the next cloud Start reports a diverged branch. Nothing
-   is lost. Preventing it needs a check in the local Start path, which §3 says not to
-   touch.
+7. **Switching back to local is enforced.** Changed on 2026-11-19 after review, to
+   conform to ruling 1 ("a stopped session and a clean worktree"); the first version of
+   this call left the switch unpoliced. The bridge keeps a note per department beside the
+   workspace records (`<git-common-dir>/plaza/cloud/<department>.json`), written when a
+   department starts in the cloud. It says whether a cloud run may hold commits this
+   machine lacks. A local Start of a department that has a note is refused
+   (`cloud_switch_refused`) while that is so, or while the worktree has uncommitted
+   changes; once both are clear the note is removed and the Start goes on. A department
+   that never ran in the cloud has no note and starts exactly as today, with no extra git
+   command, so §3's anti-goal (no change to how a local session behaves) holds.
 8. **`runs_on` is sent only for a cloud department**, so local packets do not change.
 9. **Local readiness still applies to a cloud department** (worktree, memory, the
    existing readiness checks); the tool guard's hook does not, as §6.6 says.
@@ -120,7 +136,7 @@ Tasks 1 to 9 need none of these. Each gate needs Adam's go-ahead when it is reac
 |---|---|
 | `cloud-runner/src/tokens.ts` | Which GitHub token goes with which repository |
 | `bridge/cloud_runner.py` | HTTP client for the runner; reads its two settings |
-| `bridge/cloud_git.py` | The only network git in the bridge: one branch, push at Start, fast-forward after a run |
+| `bridge/cloud_git.py` | The only network git in the bridge: one branch, push at Start, fast-forward after a run; and the per-department cloud note |
 | `bridge/cloud_owner.py` | `CloudOwner`: the cloud counterpart of `DomainSDKOwner` |
 | `bridge/tests/cloud_fakes.py` | `FakeRunner`, an in-process stand-in for `CloudRunner` |
 | `bridge/tests/test_cloud_runner.py`, `test_cloud_git.py`, `test_cloud_owner.py`, `test_cloud_departments.py` | One test file per module, and one for departments end to end |
@@ -134,7 +150,7 @@ Tasks 1 to 9 need none of these. Each gate needs Adam's go-ahead when it is reac
 | `bridge/config.py` (G), `bridge/config.json` | Three settings |
 | `bridge/project_service.py` (G) | Two capacity pools |
 | `bridge/domain_manager.py` (G), `bridge/server.py` (G) | Pass the runner client down |
-| `bridge/domain_session.py` (G) | Pick the owner; `runs_on`; the recap rule; a refused cloud Start |
+| `bridge/domain_session.py` (G) | Pick the owner; `runs_on`; the recap rule; a refused cloud Start; a refused switch to local |
 | `bridge/domain_protocol.py` (G), `bridge/failure_diagnostics.py` (G) | New error codes and reasons |
 | `bridge/tool_guard_acceptance.json` | Fresh evidence (Task 10) |
 | `scenes/bridge/domain_store.gd`, `scenes/hud/domain_panel.gd`, `scenes/hud/failure_display.gd` | Show where a department runs, and the new failures |
@@ -344,7 +360,8 @@ blocking (callers use `asyncio.to_thread`). `from_env` returns `None` when
 `cloud_domains` is empty. Otherwise it raises `ValueError` when a listed id is not in
 `DOMAIN_IDS`, when the URL is not an `https` origin (plain `http` only for `localhost`
 and `127.0.0.1`), or when the secret file is missing, not a regular file, or holds fewer
-than 32 characters. The file is `CLOUD_RUNNER_SECRET_FILE` or
+than 32 characters. The file is named by the plain environment variable
+`CLOUD_RUNNER_SECRET_FILE` (read from `environ`; not a `PLAZA_` setting), or is
 `~/.config/plaza/cloud-runner-secret`; its mode is tightened to 0600 as
 `relay_claims._secret` does. `repr()` of the client and every exception text leave the
 secret out.
@@ -375,24 +392,46 @@ secret out.
 - Create: `bridge/cloud_git.py`, `bridge/tests/test_cloud_git.py`
 
 **Interfaces:**
-- Consumes: `ExecutionWorkspace` (`bridge/workspace.py:41`): `project_root`, `worktree_path`, `branch`.
+- Consumes: `ExecutionWorkspace` (`bridge/workspace.py:41`): `project_root`,
+  `common_git_dir`, `worktree_path`, `branch`, `domain_id`; `git_without_filters`
+  (`bridge/workspace.py:95`). `bridge/workspace.py` is not edited.
 - Produces:
 
 ```python
 class CloudSyncError(Exception):
-    code: str      # "not_github" | "dirty" | "diverged" | "git_failed"
+    code: str      # "not_github" | "dirty" | "diverged" | "unsynced" | "unsafe_config" | "git_failed"
     detail: str    # for the log; at most 300 characters, no credential
 
 def github_repo(project_root: Path) -> str: ...            # "https://github.com/OWNER/REPO"
 def sync_before_start(workspace) -> str: ...               # the branch tip, now the same on both sides
 def fast_forward_to(workspace, commit: str) -> None: ...
+def mark_cloud(workspace, *, unsynced: bool) -> None: ...  # write the department's cloud note
+def check_switch_to_local(workspace) -> None: ...          # raises "unsynced" or "dirty"; else removes the note
 ```
 
-Rules: this module runs git itself, not through `workspace._git` (which forbids every
-transport). Each call has `-c core.hooksPath=/dev/null`, `GIT_TERMINAL_PROMPT=0` and a
-120 s timeout, and uses the login already on the machine. `github_repo` reads `origin`'s
-URL and accepts `https://github.com/O/R`, `git@github.com:O/R` and
-`ssh://git@github.com/O/R`, each with or without `.git`; anything else is `not_github`.
+Rules for git (changed after review: the first version set only `core.hooksPath`):
+
+- **Local commands** (`status`, `merge --ff-only`, `rev-parse`, `merge-base`, `cat-file`,
+  `config`, `remote get-url`) all go through `git_without_filters`, so no hook, fsmonitor
+  or clean/smudge/process filter of the repository runs.
+- **The three network commands** (`ls-remote`, `fetch`, `push`) need a transport, which
+  that helper forbids. The module has one helper of its own for them, with the same
+  command line and environment as `workspace._git` (`--no-lazy-fetch`,
+  `--no-optional-locks`, `-c core.hooksPath=<os.devnull>`, `-c core.fsmonitor=false`,
+  every `GIT_*` variable dropped, `GIT_TERMINAL_PROMPT=0`, `LC_ALL=C`), except
+  `GIT_ALLOW_PROTOCOL=https:ssh` and a 120 s timeout. It uses the login already on the
+  machine.
+- **Before any network command** the repository's own configuration is checked
+  (`git config --show-scope --list`): `unsafe_config` when scope `local` or `worktree`
+  sets `core.sshcommand`, `core.gitproxy`, `ssh.variant`, anything under `credential.`,
+  `http.`, `url.` or `protocol.`, or `remote.origin.pushurl`, `.proxy`, `.uploadpack`,
+  `.receivepack` or `.vcs`. Each of those can run a command or send a push elsewhere. The
+  user's global configuration is trusted and left alone. The detail names the key.
+- `github_repo` reads both `git remote get-url origin` and `git remote get-url --push
+  origin` (these apply `insteadOf` and `pushInsteadOf`). It accepts
+  `https://github.com/O/R`, `git@github.com:O/R` and `ssh://git@github.com/O/R`, each
+  with or without `.git`. Both must normalise to the same repository; anything else is
+  `not_github`.
 
 `sync_before_start`, in this order:
 
@@ -403,10 +442,18 @@ URL and accepts `https://github.com/O/R`, `git@github.com:O/R` and
    `git merge --ff-only <remote tip>` in the worktree. Remote is an ancestor of local:
    `git push origin <branch>`. Neither: `diverged`.
 
-`fast_forward_to`: `dirty` if the worktree is not clean; `git fetch origin <branch>`; the
-commit must exist (`git cat-file -e <commit>^{commit}`) and the local tip must be its
-ancestor, else `diverged`; then `git merge --ff-only <commit>`. No `--force` appears
-anywhere in the module, and the only refspec pushed is the workspace branch.
+`fast_forward_to`: nothing to do, and no network, when the commit is already the local
+tip or an ancestor of it. Otherwise `dirty` if the worktree is not clean; `git fetch
+origin <branch>`; the commit must exist (`git cat-file -e <commit>^{commit}`) and the
+local tip must be its ancestor, else `diverged`; then `git merge --ff-only <commit>`. No
+`--force` appears anywhere in the module, and the only refspec pushed is the workspace
+branch.
+
+The cloud note (call 7) is the file `workspace.common_git_dir / "plaza/cloud" /
+f"{workspace.domain_id}.json"` holding `{"unsynced": <bool>}`, written through a
+temporary file and `os.replace`. `check_switch_to_local`: with no note it returns at
+once and runs no git. A note that cannot be read, or says `unsynced: true`, is
+`unsynced`. A worktree that is not clean is `dirty`. Otherwise the note is removed.
 
 - [ ] **Step 1: Write the failing tests**, each with a bare repository as `origin`:
 
@@ -420,6 +467,16 @@ anywhere in the module, and the only refspec pushed is the workspace branch.
 # test_fast_forward_to_takes_exactly_the_named_commit        (origin is one commit past it; HEAD == the named one)
 # test_fast_forward_to_refuses_a_commit_that_is_not_ahead    -> "diverged"
 # test_only_the_workspace_branch_is_ever_pushed              (a second local branch is not on origin afterwards)
+# test_fast_forward_to_does_nothing_when_the_commit_is_already_here
+# test_a_push_url_that_is_not_the_same_repository_is_refused -> "not_github" (remote.origin.pushurl; url.<x>.pushInsteadOf in the test's own $HOME/.gitconfig)
+# test_repository_level_transport_config_is_refused          -> "unsafe_config" for core.sshCommand, credential.helper and
+#                                                               url.<x>.insteadOf (parametrised); origin is unchanged
+# test_a_repository_filter_and_fsmonitor_are_never_run       (each would touch a marker file; after sync_before_start and
+#                                                               fast_forward_to the marker does not exist)
+# test_the_cloud_note_gates_the_switch_to_local
+#   mark_cloud(unsynced=True) -> check_switch_to_local raises "unsynced"; mark_cloud(unsynced=False) with a dirty
+#   worktree -> "dirty"; clean -> returns and the note is gone
+# test_without_a_note_no_git_runs                            (git_without_filters patched to raise; it still returns)
 ```
 
 - [ ] **Step 2: Run `python -m pytest bridge/tests/test_cloud_git.py -v`; it fails** (no module).
@@ -435,7 +492,7 @@ anywhere in the module, and the only refspec pushed is the workspace branch.
 
 **Interfaces:**
 - Consumes: `CloudRunner`, `RunnerDown`, `RunnerRefused`, `FakeRunner` (Task 5);
-  `github_repo`, `sync_before_start`, `fast_forward_to`, `CloudSyncError` (Task 6);
+  `github_repo`, `sync_before_start`, `fast_forward_to`, `mark_cloud`, `CloudSyncError` (Task 6);
   `SDKOutcome`, `CleanupOutcome`, `MAX_OUTPUT_BYTES` (`bridge/domain_sdk.py`);
   `PROJECT_REPLY_INSTRUCTIONS`, `decode_project_reply` (`bridge/conversation_backend.py`);
   `failure_reason` (`bridge/failure_diagnostics.py`).
@@ -464,7 +521,15 @@ Rules:
 - `start()`: `github_repo`, then `sync_before_start`, then `runner.create(name, repo, branch)`.
   `CloudSyncError` becomes `cloud_sync_failed`, `RunnerDown` `cloud_unavailable`,
   `RunnerRefused` `cloud_refused`. A returned status with `state == "running"` becomes
-  `cloud_run_active`, and no `stop` is sent.
+  `cloud_run_active`, and no `stop` is sent. Otherwise, when the status has
+  `pushed.commit`, `fast_forward_to(workspace, commit)` (a run may have ended between the
+  sync and the answer), and then `mark_cloud(workspace, unsynced=...)`: true when the
+  state is `lost` or the status has `pushError`, else false.
+- The cloud note during a run: `mark_cloud(workspace, unsynced=True)` before `start_run`.
+  A `RunnerRefused` from `start_run` puts the note back as it was (nothing ran). After
+  the end state it becomes false only when the state is not `lost`, there is no
+  `pushError`, and the fast-forward, if there was a commit to take, succeeded. In every
+  other case it stays true, a bridge killed mid-run included.
 - `conversation_is_new()`: the status's `conversation` differs from this owner's key. A
   runner that does not answer counts as new.
 - `execute()`: the prompt is the preamble below, a blank line, then the same JSON the
@@ -538,6 +603,10 @@ PREAMBLE = (
 # test_stop_mid_run_ends_the_run_as_stopped_and_syncs_once   -> one fast-forward, done by execute()
 # test_stop_retries_a_409_then_reports_unclean               -> CleanupOutcome(False, "cloud_unavailable")
 # test_healthy_only_between_start_and_stop
+# test_the_note_says_unsynced_during_a_run_and_synced_after_it
+# test_a_push_error_or_a_lost_run_leaves_the_note_unsynced   (parametrised)
+# test_a_refused_start_run_puts_the_note_back
+# test_start_takes_a_commit_pushed_while_the_bridge_was_away_and_clears_the_note
 ```
 
 - [ ] **Step 2: Run `python -m pytest bridge/tests/test_cloud_owner.py -v`; it fails.**
@@ -556,10 +625,11 @@ PREAMBLE = (
 
 **Interfaces:**
 - Consumes: `CloudOwner`, `CloudStartRefused` (Task 7); `CloudRunner.from_env` (Task 5);
-  `DomainManager(..., cloud=)` (Task 4).
-- Produces: four error codes with this exact copy:
+  `check_switch_to_local`, `CloudSyncError` (Task 6); `DomainManager(..., cloud=)` (Task 4).
+- Produces: five error codes with this exact copy:
 
 ```python
+"cloud_switch_refused": "This department last ran in the cloud and cannot start here yet: its last cloud run is not on this machine, or the worktree has uncommitted changes. Start it in the cloud once more, or see the bridge log.",
 "cloud_unavailable": "The cloud runner did not answer, so the department was not started.",
 "cloud_refused": "The cloud runner refused the request; check its address, its secret and the repository's token.",
 "cloud_sync_failed": "The department's branch is not in step with GitHub (not a GitHub origin, uncommitted changes, or a diverged branch); see the bridge log.",
@@ -574,13 +644,18 @@ Rules:
   `_reserve` does for `ClaimRefused` (`domain_session.py:328-329`). The session's present
   cleanup after a failed start then releases the lease, the claim and the capacity
   (`test_failed_start_releases_capacity_and_owned_workspace` shows that path).
+- A local department's Start calls `check_switch_to_local(workspace)` (through
+  `asyncio.to_thread`) once the workspace is known and before the owner is built. A
+  `CloudSyncError` becomes `DomainCommandError("cloud_switch_refused")`, its code and
+  detail go to the bridge log, and the same cleanup runs. A department with no note
+  takes the path it takes today.
 - The recap: a local session attaches it as today (the first Run after each Start). A
   cloud session attaches it when `await owner.conversation_is_new()` is true, checked
   before each Run.
 - Godot: `domain_store.gd` keeps `runs_on` (default `""`), accepts only `"cloud"` or an
   absent field in `_valid_state`, and adopts it where it adopts `work_claim` (line 712).
   `domain_panel.gd` adds ` · cloud` to that department's state line. `failure_display.gd`
-  has a sentence for each of the four codes and the four reasons of Task 7.
+  has a sentence for each of the five codes and the four reasons of Task 7.
 
 - [ ] **Step 1: Write the failing tests.**
 
@@ -593,6 +668,12 @@ Rules:
 #   after FakeRunner drops the key (instance from the branch), Run 3 carries it again
 # test_a_local_session_still_gets_its_recap_on_the_first_run_only
 # test_a_half_made_cloud_setting_stops_the_bridge_at_startup
+# test_a_local_start_is_refused_until_the_last_cloud_run_is_back
+#   core runs in the cloud and its note is left unsynced (the bridge died mid-run); with CLOUD_DOMAINS empty, Start is
+#   error "cloud_switch_refused" and the lease, the claim and the place are free; after mark_cloud(unsynced=False),
+#   Start succeeds and the note is gone
+# test_a_department_never_in_the_cloud_starts_with_no_switch_check
+#   bridge.cloud_git.git_without_filters patched to raise: a local Start still succeeds
 ```
 
 In `tests/domain_store_test.gd`, `runs_on_regression()`: a `domain_state` with
@@ -610,8 +691,8 @@ rejected.
 - Modify: `bridge/PROTOCOL.md`, `QUICKSTART.md`, `cloud-runner/README.md`, `CHANGELOG.md`,
   `docs/superpowers/specs/2026-11-14-m14-cloudflare-runner-design.md` (status line)
 
-- [ ] **Step 1: `bridge/PROTOCOL.md`.** A section "Cloud departments (opt-in)" after "Relay work claims": the three settings and the secret file, `runs_on`, the four error codes and four reasons, what Start, Run and Stop do, the two capacity pools, what is not carried to the cloud (the last global constraint). Change the two sentences that say the bridge does not push (lines 407-416) to name the one exception.
-- [ ] **Step 2: `QUICKSTART.md`.** A short "Run a department in the cloud" part: owner inputs 5 and 6, `PLAZA_CLOUD_DOMAINS`, `PLAZA_CLOUD_RUNNER_URL`, and how to move a department back.
+- [ ] **Step 1: `bridge/PROTOCOL.md`.** A section "Cloud departments (opt-in)" after "Relay work claims": the three settings and the secret file, `runs_on`, the five error codes and four reasons, the cloud note and the switch back to local, what Start, Run and Stop do, the two capacity pools, what is not carried to the cloud (the last global constraint). Change the two sentences that say the bridge does not push (lines 407-416) to name the one exception.
+- [ ] **Step 2: `QUICKSTART.md`.** A short "Run a department in the cloud" part: owner inputs 5 and 6, `PLAZA_CLOUD_DOMAINS`, `PLAZA_CLOUD_RUNNER_URL`, `CLOUD_RUNNER_SECRET_FILE`, and how to move a department back (stop it, let the last run come back, change the setting; what `cloud_switch_refused` and `unsafe_config` mean and where the note is).
 - [ ] **Step 3: `cloud-runner/README.md` and `CHANGELOG.md`.** The contract changes of Tasks 1 to 3 if not already there; one Unreleased entry for stage 2.
 - [ ] **Step 4: Run `python3 scripts/validate_specs.py`; it passes.**
 - [ ] **Step 5: Commit** `docs: cloud departments in the protocol, the quickstart and the runner's README`.
@@ -642,7 +723,7 @@ claims on. Each check's output goes into `stage-2.md` with secrets counted, not 
 - [ ] **Check 2:** One Run that makes a commit. One `domain_result` with `status: "success"`; the worktree's `HEAD` equals the runner's `pushed.commit`; the relay checkpoint carries that commit.
 - [ ] **Check 3:** `core` and `engineering` each mid-Run at the same moment, with a local `design` active as well. All three end `success`; neither cloud workspace has the other's file.
 - [ ] **Check 4:** Stop work, Start, Run: the agent recalls a word from the earlier Run and the prompt carried no recap. End session, Start, Run: it does not recall it, and the prompt carried the recap.
-- [ ] **Check 5:** Kill the bridge mid-Run. The run ends and pushes on its own. Start during it is refused with `cloud_run_active`; Start after it brings the worktree to the pushed commit.
+- [ ] **Check 5:** Kill the bridge mid-Run. The run ends and pushes on its own. Start during it is refused with `cloud_run_active`, and with `core` set to local it is refused with `cloud_switch_refused`; a cloud Start after the run brings the worktree to the pushed commit.
 - [ ] **Check 6:** Set `core` back to local and restart: Start and a Run work from the cloud's last commit, and the packets carry no `runs_on`.
 - [ ] **Check 7:** Commit by hand in the `core` worktree and on GitHub so the two diverge, set `core` to cloud: Start is refused with `cloud_sync_failed` and both commits are still there.
 - [ ] **Step 8: Clean up and write up.** Delete the acceptance workspaces, confirm no instance is left, record the model cost, and commit `docs: stage 2 acceptance on the development deploy`.
