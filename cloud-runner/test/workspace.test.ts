@@ -568,6 +568,41 @@ describe("Workspace conversation key", () => {
 		expect(await stub.status()).toMatchObject({ conversation: "a" })
 	})
 
+	it("clears the stored key when a run starts a new conversation without one", async () => {
+		const { stub, fake } = await keyed("a")
+		const first = (await stored(stub)).sessionId
+		expect(await stub.startRun("new", true, 5)).toEqual({ run: 2 })
+		const record = await stored(stub)
+		expect(record).toMatchObject({ resumed: false })
+		expect(record.sessionId).not.toBe(first)
+		expect(record.conversation).toBeUndefined()
+		fake.finishTask(0, [resultLine])
+		expect((await stub.status()).conversation).toBeUndefined()
+	})
+
+	it("does not resume the unkeyed conversation for the old key", async () => {
+		const { stub, fake } = await keyed("a")
+		expect(await stub.startRun("new", true, 5)).toEqual({ run: 2 })
+		const unkeyed = (await stored(stub)).sessionId
+		fake.finishTask(0, [resultLine])
+
+		expect(await stub.startRun("again", false, 5, "a")).toEqual({ run: 3 })
+		const record = await stored(stub)
+		expect(record).toMatchObject({ resumed: false, conversation: "a" })
+		expect(record.sessionId).not.toBe(unkeyed)
+	})
+
+	it("starts a new conversation under the same key for a fresh run with that key", async () => {
+		const { stub, fake } = await keyed("a")
+		const first = (await stored(stub)).sessionId
+		expect(await stub.startRun("new", true, 5, "a")).toEqual({ run: 2 })
+		const record = await stored(stub)
+		expect(record).toMatchObject({ resumed: false, conversation: "a" })
+		expect(record.sessionId).not.toBe(first)
+		fake.finishTask(0, [resultLine])
+		expect(await stub.status()).toMatchObject({ conversation: "a" })
+	})
+
 	it("stores no key for a run refused as busy", async () => {
 		const { stub } = await created()
 		expect(await stub.startRun("hello", false, 5, "a")).toEqual({ run: 1 })
