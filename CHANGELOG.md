@@ -32,6 +32,20 @@ spec-set versions, and no application release existed before `v0.1.22`.
   the only way out of a 412 today, and it destroys the clone's unpushed work.
   This narrows the PLZG-312 gap and does not close it.
 
+### Added — cloud departments, the bridge side of stage 2 (PLZG-311)
+
+- Opt-in and off by default: `CLOUD_DOMAINS` (department ids), `CLOUD_RUNNER_URL`
+  (an origin) and `CLOUD_DOMAIN_LIMIT` (default 3) in the bridge settings, and
+  a caller secret in `~/.config/plaza/cloud-runner-secret` (mode 0600). A
+  listed department runs its agent on the cloud runner; the bridge pushes its
+  `plaza/workspace-*` branch when it starts (never forced, never after a
+  run) and fast-forwards the worktree to the commit the runner pushed. Local
+  departments and their packets are unchanged. Documented in
+  `bridge/PROTOCOL.md` and `QUICKSTART.md`.
+- Not deployed or live-checked: the development deploy still runs the earlier
+  runner code, and the tool-guard evidence is stale until the paid probe is
+  rerun, so the pull request carrying this is not to merge before that.
+
 ### Decided — the six stage 2 proposals for the cloud runner (PLZG-311)
 
 - On 2026-11-19 the owner confirmed the six proposals in the M14 runner
@@ -41,7 +55,8 @@ spec-set versions, and no application release existed before `v0.1.22`.
   and a GitHub App later; End session starts a new cloud conversation and the
   workspace goes only with the department; a cloud run finishes and pushes
   when its claim lapses; workspace names stay per checkout. No code changes
-  with this, and stage 2 has no plan yet.
+  with this; the plan is
+  `docs/superpowers/plans/2026-11-19-m14-cloudflare-runner-stage2.md`.
 
 ### Changed — the cloud runner's agent is no longer root (PLZG-311)
 

@@ -6,6 +6,7 @@ better) and use of his Workers Paid plan. Update 2026-11-15: stage 1 is implemen
 (`cloud-runner/`) and deployed for development; the evidence and its gaps are in
 `docs/research/cloudflare-durable-objects/spike-c.md` and `cloud-runner/README.md`. Stage 2 is outlined (§6.7), not built.
 Update 2026-11-19: Adam confirmed the six stage 2 proposals in §6.7; stage 2 has that outline, no plan yet and no code.
+Update 2026-11-19: the stage 2 plan is written and the bridge side and the runner's three contract changes are implemented, but not deployed or live-checked, and the guard probe has not been rerun.
 **Baseline:** dev `eb6b170`. Cloudflare facts were read from developers.cloudflare.com on
 2026-11-14 (pages listed in §11); `@cloudflare/sandbox` latest is 1.0.3.
 
