@@ -16,6 +16,10 @@ FAILURE_REASONS = frozenset(
         "missing_terminal",
         "transport_error",
         "deferred_tool_use",
+        "cloud_push_failed",
+        "cloud_sync_failed",
+        "cloud_run_lost",
+        "cloud_run_active",
     }
 )
 TERMINAL_REASONS = FAILURE_REASONS | {"completed", "stopped", "not_executed"}
