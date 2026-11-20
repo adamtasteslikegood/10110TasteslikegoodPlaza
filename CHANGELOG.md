@@ -42,6 +42,16 @@ spec-set versions, and no application release existed before `v0.1.22`.
   run) and fast-forwards the worktree to the commit the runner pushed. Local
   departments and their packets are unchanged. Documented in
   `bridge/PROTOCOL.md` and `QUICKSTART.md`.
+- The reason behind a cloud refusal is one line on the bridge's stderr from
+  the `bridge.cloud` logger (department, step, what happened; scrubbed, cut
+  to 300 characters), never in the `LOG_DIR` archive. A Stop that arrives
+  during a cloud Start waits for it. A Start never pushes this machine's
+  commits over a runner clone whose last push failed or whose run was lost,
+  and a 2xx answer the client could not read leaves the cloud note unsynced.
+  `CLOUD_RUNNER_URL` is checked whenever it is set, the caller secret must be
+  ASCII and is redacted by the recorder, an unreadable cloud note refuses the
+  switch to local as `git_failed`, and a cloud session with no runner is
+  refused at Start as `cloud_unavailable`.
 - Not deployed or live-checked: the development deploy still runs the earlier
   runner code, and the tool-guard evidence is stale until the paid probe is
   rerun, so the pull request carrying this is not to merge before that.

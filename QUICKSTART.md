@@ -297,7 +297,14 @@ worktree has that run's commit, commit or discard any uncommitted changes, remov
 it from `PLAZA_CLOUD_DOMAINS` and restart the bridge. If its first local Start
 answers `cloud_switch_refused`, the last cloud run's commit is not on this
 machine yet or the worktree is dirty: Start it in the cloud once more, or read
-the bridge log. A `cloud_sync_failed` on a cloud Start with `unsafe_config` in
+the bridge log (the bridge's own terminal output, lines with `bridge.cloud`
+and the department's name; they are not in `LOG_DIR`). If that last cloud run
+was lost or its push failed, a cloud Start alone is not enough: run one task
+in the cloud that succeeds, then Stop and move it back. If the cloud Start
+itself answers `cloud_sync_failed` because the runner's last push did not
+arrive (the log says so), set this machine's own commits aside on another
+branch, reset the workspace branch to what GitHub has, Start and run once in
+the cloud, then bring your commits back onto the branch. A `cloud_sync_failed` on a cloud Start with `unsafe_config` in
 the log means the repository's git configuration could run a program or
 redirect a push (the log names the key); remove that key. The note behind the
 switch is `<git-common-dir>/plaza/cloud/<department>.json`.

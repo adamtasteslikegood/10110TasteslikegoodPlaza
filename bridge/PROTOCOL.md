@@ -405,15 +405,18 @@ A half-made setting stops the bridge at startup with a configuration error.
   each working character's `agent_status`, which embeds `domain_state`; a
   refused Run makes it ask for `domain_status`.
 - On a takeover the relay's `resume` (branch, commit, steps) is kept and not
-  acted on: the bridge pushes nothing for this (its one push is a cloud department's, below), and the local worktree and SQLite stay the
-  record of its own work. The workspace branch is
+  acted on: the bridge pushes nothing for this, and the local worktree and
+  SQLite stay the record of its own work. (The bridge's one push is a cloud
+  department's Start, below: its `plaza/workspace-*` branch, never with force,
+  never after a Run.) The workspace branch is
   `plaza/workspace-<project_id>-<domain>`, where `project_id` is a digest of the
   checkout's git directory path, so two machines share a branch name only when
   their checkouts sit at the same path.
 - After each Run's terminal is delivered, the claim gets a checkpoint step:
   `<status> (<reason>): <task>`, with the workspace branch and its `HEAD`.
   Another runtime can resume from that commit only once the branch is pushed;
-  the bridge does not push it for a local department.
+  the bridge does not push it. For a cloud department the runner has pushed
+  it already; the bridge's own push comes only at Start.
 - At most 20 checkpoints wait to be sent; beyond that a Run's step is dropped
   and logged. Stop waits up to 15 s for them; if one may still be in flight
   then, it doesn't release, and the claim lapses after the lease instead.
@@ -440,13 +443,15 @@ Settings (`bridge/config.json`, or `PLAZA_<KEY>` in the environment):
   which also guarantees no session of the department is running.
 - `CLOUD_RUNNER_URL`: the runner's origin (scheme and host, optional port; no
   userinfo, path, query or fragment). https, or http for localhost only.
-  Required when `CLOUD_DOMAINS` is set.
+  Required when `CLOUD_DOMAINS` is set; a set one is checked at startup even
+  with `CLOUD_DOMAINS` empty, since every run's log manifest carries it.
 - `CLOUD_DOMAIN_LIMIT`: cloud departments active at once, 1 to 10, default 3.
 - The caller secret is a file, not a setting: `CLOUD_RUNNER_SECRET_FILE`
   (plain environment variable), default `~/.config/plaza/cloud-runner-secret`.
-  The bridge never creates it. It must hold at least 32 characters; a mode
-  looser than 0600 is reset to 0600. No credential is in `BridgeConfig`, a
-  log, a transcript or a packet.
+  The bridge never creates it. It must hold at least 32 ASCII characters; a
+  mode looser than 0600 is reset to 0600. No credential is in `BridgeConfig`,
+  a log, a transcript or a packet, and the recorder redacts the secret as it
+  does the relay credentials.
 
 Wire changes, all absent for a local department:
 
@@ -455,25 +460,42 @@ Wire changes, all absent for a local department:
 - `execution_capacity` carries `pool` (`cloud` or `local`) only when
   `CLOUD_DOMAINS` is non-empty. The pools are separate: local stays one active
   department, cloud departments share `CLOUD_DOMAIN_LIMIT`.
-- Start error codes: `cloud_unavailable` (the runner did not answer),
-  `cloud_refused` (it refused: check the address, the secret and the
-  repository's token), `cloud_sync_failed` (git sync refused, below),
-  `cloud_run_active` (an earlier run, for instance from before a bridge
-  restart, is still going on the runner; it finishes and pushes on its own)
-  and `cloud_switch_refused` (a local Start, below).
+- Start error codes: `cloud_unavailable` (the runner did not answer, or the
+  bridge was given no runner), `cloud_refused` (it refused: check the
+  address, the secret and the repository's token; a workspace that exists
+  with another repository or branch is a 409 that shows as this),
+  `cloud_sync_failed` (git sync refused, below; also a cloud note that could
+  not be written, and a Start that would have pushed over a clone whose last
+  push did not arrive), `cloud_run_active` (an earlier run, for instance from before a
+  bridge restart, is still going on the runner; it finishes and pushes on its
+  own) and `cloud_switch_refused` (a local Start, below).
 - Run terminal reasons: `cloud_push_failed` (the runner could not push; the
   answer is kept and the Run ends as an error), `cloud_sync_failed` (the
-  commit it pushed could not be taken here), `cloud_run_lost` and
-  `cloud_run_active`.
+  commit it pushed could not be taken here, a cloud note that could not be
+  written, or a 412 from the runner at run start), `cloud_run_lost` and
+  `cloud_run_active` (also a 409 at run start). A 412 has one exit today,
+  `DELETE /workspaces/:name` on the runner by hand, which destroys the
+  clone's unpushed commits (see "Known gaps" in `cloud-runner/README.md`).
+- The reason behind a code is in the bridge log: the bridge process's stderr,
+  one line per event from the `bridge.cloud` logger, `<time> bridge.cloud
+  <department>: <step>: <what happened>`. These lines can carry git's and the
+  runner's own words (scrubbed of the secret and of URL userinfo, cut to 300
+  characters), so they never go to the `LOG_DIR` archive.
 
 Where each command goes:
 
 - Start asks the runner's status first, so nothing is pushed while an earlier
   run goes on. Then, for a `github.com` origin only, it pushes the workspace
   branch `plaza/workspace-<project_id>-<domain>` (never `--force`, only that
-  branch), creates or updates the runner's workspace `<project_id>-<domain>`
-  and fast-forwards the worktree to what the runner holds. The bridge never
-  pushes after a Run, and a department's local readiness checks still apply.
+  branch), creates the runner's workspace `<project_id>-<domain>` if it is
+  missing (it never changes one; another repository or branch is a 409) and
+  fast-forwards the worktree to what the runner holds. If the runner's last
+  run ended `lost` or with `pushError`, GitHub may lack the clone's commits:
+  a Start that would have to push this machine's commits is then refused
+  (`cloud_sync_failed`) instead of pushing over them. The bridge never pushes
+  after a Run. Of the local readiness checks, the session's turn preparation
+  still runs before every Run, and the sync checks a clean worktree and the
+  workspace branch.
 - Run sends the task; a recap goes with it whenever the runner does not hold
   this session's conversation. The runner's conversation key comes from the
   session id, so End starts a new conversation and keeps the workspace. The
@@ -482,12 +504,14 @@ Where each command goes:
   fast-forward is an error, never a merge. No status naming the run for
   5 minutes ends it: `transport_error` after an outage, `cloud_run_lost` after
   answers that name another run. A status naming a later run, or a 404, ends
-  it at once as `cloud_run_lost`. A stopped cloud run writes no project
+  it at once as `cloud_run_lost`; any other refusal while polling ends it at
+  once as `transport_error`. A stopped cloud run writes no project
   memory, as a local one does not.
 - Stop asks the runner to stop. If the runner cannot be reached or keeps
-  answering 409, the Run ends here as stopped, the stop is reported unclean
-  (`cloud_unavailable`), and the next Start answers
-  `cloud_run_active` until the run ends on the runner.
+  answering 409, the Run ends here as stopped and the stop is unclean: the
+  client sees `cleanup_failed` (the session reads only whether the stop was
+  clean; the owner's reason, `cloud_unavailable`, goes to the log line), and
+  the next Start answers `cloud_run_active` until the run ends on the runner.
 
 Git sync refuses with `cloud_sync_failed`, and the bridge log carries the
 reason: `not_github` (origin is not on github.com, or has more than one fetch
@@ -505,10 +529,15 @@ may hold commits this machine lacks (`unsynced`, from the start of a Run until
 its commit is here). A local Start of a department with a note is refused with
 `cloud_switch_refused` while the note says `unsynced` or the worktree has
 uncommitted changes; once both are clear the note is removed and the Start
-goes on. A department with no note is not checked at all.
+goes on. A department with no note is not checked at all. A note that cannot
+be read is refused too, with `git_failed` in the log. After a run that ended
+`lost` or with `pushError`, a Start alone does not clear the note; one
+successful Run in the cloud does.
 
-Not carried to the cloud: `DOMAIN_TIER` (the runner's `MODEL` decides) and
-`DOMAIN_MAX_BUDGET_USD` (the AI Gateway's spend limits decide). The runner gets
+Not carried to the cloud: `DOMAIN_TIER` (the runner's `MODEL` decides),
+`DOMAIN_MAX_BUDGET_USD` (the AI Gateway's spend limits decide), the permission
+mode and the tool guard (the runner's agent has every tool, inside its
+container). `DOMAIN_MAX_TURNS` is carried, capped at 100. The runner gets
 no relay credential; the bridge keeps the relay claim.
 
 ## Current configuration and local observability (M10)
