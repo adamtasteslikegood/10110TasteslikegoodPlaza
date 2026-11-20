@@ -40,6 +40,9 @@ DEFAULTS = {
     "WORKSPACE_ROOT_DIR": None,
     "INSTALL_CONTEXT_DIR": "../.local/plaza-context",
     "PROJECT_GUIDANCE_FILE": "PLAZA_AGENTS.md",
+    "CLOUD_DOMAINS": "",
+    "CLOUD_DOMAIN_LIMIT": 3,
+    "CLOUD_RUNNER_URL": "",
 }
 DEFAULT_PATH = Path(__file__).resolve().parents[1] / "config.json"
 INTEGER_KEYS = [
@@ -82,11 +85,14 @@ def test_complete_defaults_and_committed_file_agree():
         INSTALL_CONTEXT_DIR=str(
             (DEFAULT_PATH.parent / DEFAULTS["INSTALL_CONTEXT_DIR"]).resolve()
         ),
+        CLOUD_DOMAINS=[],
     )
     assert settings.effective_settings() == expected
     assert load_config(environ={}) == settings
     assert settings.source_path == DEFAULT_PATH
     for key, value in expected.items():
+        if key == "CLOUD_DOMAINS":
+            value = frozenset(value)
         assert getattr(settings, key.lower()) == (
             Path(value) if key in ("LOG_DIR", "INSTALL_CONTEXT_DIR") else value
         )

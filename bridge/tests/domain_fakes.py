@@ -24,6 +24,9 @@ class FakeProjectService:
         self.reservation = None
         self.memory_result = None
 
+    def runs_on(self, domain_id):
+        return "local"
+
     def capacity_snapshot(self, domain_id=None):
         return dict(
             limit=1,
@@ -131,8 +134,13 @@ class FakeProjectService:
 
 
 class FakeOwner:
-    def __init__(self, config, workspace, lease, readiness):
+    """Stands in for DomainSDKOwner and, with runner and conversation, CloudOwner."""
+
+    def __init__(
+        self, config, workspace, lease, readiness, *, runner=None, conversation=None
+    ):
         self.config, self.workspace, self.lease = config, workspace, lease
+        self.runner, self.conversation = runner, conversation
         self.started = asyncio.Event()
         self.executing = asyncio.Event()
         self.stopped = asyncio.Event()

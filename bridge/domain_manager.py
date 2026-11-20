@@ -36,6 +36,7 @@ class DomainManager:
         state_status=None,
         boot_id=None,
         claims=None,
+        cloud=None,
     ):
         self._config, self._service, self._recorder = config, project_service, recorder
         self._sessions: dict[str, list[DomainSession]] = {}
@@ -51,6 +52,8 @@ class DomainManager:
         self._shutdown_task = None
         self._unowned_starts = set()
         self._claims = claims
+        # The cloud runner client for cloud departments; None when none is set.
+        self._cloud = cloud
 
     @property
     def boot_id(self):
@@ -279,6 +282,7 @@ class DomainManager:
                 coordinator=coordinator,
                 authority_check=self._check_authority,
                 claims=self._claims,
+                cloud=self._cloud,
             )
             self._sessions[domain] = [
                 owner
