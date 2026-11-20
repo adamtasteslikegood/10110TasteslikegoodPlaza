@@ -9,7 +9,8 @@ import type { Env } from "./types"
 export type OutboundProps = { repoPath: string; branch: string; allow: string[] }
 
 // repoPath is the workspace's "/owner/repo" (Policy.repoPath), which picks the GitHub token.
-export function withCredential(request: Request, credential: Credential, env: Env, repoPath = ""): Request {
+// It is required: a call that left it out would quietly send no credential.
+export function withCredential(request: Request, credential: Credential, env: Env, repoPath: string): Request {
 	const headers = new Headers(request.headers)
 
 	// Whatever the host, the container sets no credential of its own: the
