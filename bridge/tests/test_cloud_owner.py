@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import threading
 import time
 from types import SimpleNamespace
 
@@ -703,6 +704,140 @@ async def test_healthy_only_between_start_and_stop(cloud):
     await cloud.owner.start()
     assert cloud.owner.healthy
     await cloud.owner.stop()
+    assert not cloud.owner.healthy
+
+
+def hold(runner, method):
+    """Make ``method`` block in its thread until released; returns (entered, release)."""
+    entered, release = threading.Event(), threading.Event()
+    real = getattr(runner, method)
+
+    def held(*args, **kwargs):
+        entered.set()
+        release.wait(5)
+        return real(*args, **kwargs)
+
+    setattr(runner, method, held)
+    return entered, release
+
+
+async def stop_during(cloud, method):
+    """Stop while start() is inside ``method``; returns (stop task, start task, release)."""
+    entered, release = hold(cloud.runner, method)
+    starting = asyncio.create_task(cloud.owner.start())
+    try:
+        async with asyncio.timeout(3):
+            while not entered.is_set():
+                await asyncio.sleep(0.001)
+        stopping = asyncio.create_task(cloud.owner.stop())
+        await asyncio.sleep(0.05)
+    except BaseException:
+        release.set()
+        raise
+    return stopping, starting, release
+
+
+@pytest.mark.asyncio
+async def test_a_stop_during_the_first_status_waits_and_nothing_is_pushed_or_created(
+    cloud, fast_forwards
+):
+    commit(cloud.workspace.worktree_path, "ahead.txt")  # a push would carry it
+    stopping, starting, release = await stop_during(cloud, "status")
+    try:
+        assert not stopping.done()  # stop() waits for the start in flight
+    finally:
+        release.set()
+    assert await asyncio.wait_for(stopping, 3) == CleanupOutcome(True, None)
+    assert starting.done()
+    with pytest.raises(RuntimeError, match="stopped before readiness"):
+        starting.result()
+    assert methods(cloud.runner) == ["status"]
+    assert remote_tip(cloud.origin, cloud.workspace.branch) is None
+    assert not cloud.owner.healthy
+    note = cloud.workspace.common_git_dir / "plaza/cloud"
+    assert not (note / f"{cloud.workspace.domain_id}.json").exists()
+    assert fast_forwards == []
+
+
+@pytest.mark.parametrize(
+    "answer, unsynced",
+    [
+        (dict(state="idle"), False),
+        (ended(result="done", pushError="fatal: denied"), True),
+        (ended(state="lost"), True),
+    ],
+)
+@pytest.mark.asyncio
+async def test_a_stop_during_create_takes_nothing_and_leaves_a_true_note(
+    cloud, fast_forwards, answer, unsynced
+):
+    from bridge.cloud_git import sync_before_start
+
+    sync_before_start(cloud.workspace)  # the branch is on origin
+    sha = cloud.push_from_cloud("cloud.txt")
+    cloud.runner.script("create", dict(answer, pushed={"commit": sha}))
+    stopping, starting, release = await stop_during(cloud, "create")
+    try:
+        assert not stopping.done()
+    finally:
+        release.set()
+    assert await asyncio.wait_for(stopping, 3) == CleanupOutcome(True, None)
+    with pytest.raises(RuntimeError, match="stopped before readiness"):
+        starting.result()
+    assert fast_forwards == []  # nothing further starts once the stop is seen
+    assert cloud.note() is unsynced
+    assert not cloud.owner.healthy
+
+
+@pytest.mark.asyncio
+async def test_a_stop_during_the_sync_creates_nothing(cloud, monkeypatch):
+    from bridge.cloud_git import sync_before_start as real_sync
+
+    entered, release = threading.Event(), threading.Event()
+
+    def sync(workspace, **kwargs):
+        entered.set()
+        release.wait(5)
+        return real_sync(workspace, **kwargs)
+
+    monkeypatch.setattr(cloud_owner, "sync_before_start", sync)
+    starting = asyncio.create_task(cloud.owner.start())
+    try:
+        async with asyncio.timeout(3):
+            while not entered.is_set():
+                await asyncio.sleep(0.001)
+        stopping = asyncio.create_task(cloud.owner.stop())
+        await asyncio.sleep(0.05)
+        assert not stopping.done()
+    finally:
+        release.set()
+    assert await asyncio.wait_for(stopping, 3) == CleanupOutcome(True, None)
+    with pytest.raises(RuntimeError, match="stopped before readiness"):
+        starting.result()
+    # The push already running may finish; the workspace is not created after it.
+    assert methods(cloud.runner) == ["status"]
+    assert cloud.note() is False  # the first status said nothing is unsynced
+    assert not cloud.owner.healthy
+
+
+@pytest.mark.asyncio
+async def test_a_start_that_outlives_the_stop_budget_is_an_unclean_stop(
+    cloud, monkeypatch
+):
+    monkeypatch.setattr(CloudOwner, "STOP_WAIT_SECONDS", 0.05)
+    entered, release = hold(cloud.runner, "status")
+    starting = asyncio.create_task(cloud.owner.start())
+    try:
+        async with asyncio.timeout(3):
+            while not entered.is_set():
+                await asyncio.sleep(0.001)
+        outcome = await cloud.owner.stop()
+    finally:
+        release.set()
+    assert outcome == CleanupOutcome(False, "cloud_unavailable")
+    with pytest.raises(RuntimeError, match="stopped before readiness"):
+        await asyncio.wait_for(starting, 3)
+    assert methods(cloud.runner) == ["status"]
     assert not cloud.owner.healthy
 
 

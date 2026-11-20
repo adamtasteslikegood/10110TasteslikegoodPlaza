@@ -110,6 +110,8 @@ class CloudOwner:
         # Set by an unclean stop(): the execute() in flight ends as a stop at once.
         self._abort: asyncio.Event | None = None
         self._run: int | None = None
+        # Set once the start() in flight has settled; stop() waits for it.
+        self._started: asyncio.Event | None = None
 
     @property
     def healthy(self) -> bool:
@@ -134,6 +136,18 @@ class CloudOwner:
             raise RuntimeError("Cloud owner has stopped; create a fresh owner")
         if self._healthy:
             return  # started already: the session calls this before every Run
+        started = self._started = asyncio.Event()
+        try:
+            await self._start()
+        finally:
+            started.set()
+
+    def _abandon(self) -> None:
+        """A stop has been seen: nothing further starts, as the local owner does."""
+        if self._stopping:
+            raise RuntimeError("Cloud owner stopped before readiness")
+
+    async def _start(self) -> None:
         try:
             try:
                 status = await self._call("status", self._name)
@@ -141,16 +155,21 @@ class CloudOwner:
                 if error.status != 404:
                     raise
                 status = {}  # no workspace yet
+            self._abandon()
             if status.get("state") == "running":
                 raise CloudStartRefused("cloud_run_active")
             workspace = self._workspace
             repo = await asyncio.to_thread(github_repo, Path(workspace.project_root))
+            self._abandon()
             await asyncio.to_thread(sync_before_start, workspace)
-            status = await self._call("create", self._name, repo, workspace.branch)
-            if status.get("state") == "running":
-                raise CloudStartRefused("cloud_run_active")
+            # Once the sync has run, the note is written even if a stop comes:
+            # nothing ran, so it is unsynced only if the status says so.
+            if not self._stopping:
+                status = await self._call("create", self._name, repo, workspace.branch)
+                if status.get("state") == "running":
+                    raise CloudStartRefused("cloud_run_active")
             commit = _commit(status)
-            if commit is not None:
+            if commit is not None and not self._stopping:
                 try:
                     await asyncio.to_thread(fast_forward_to, workspace, commit)
                 except CloudSyncError:
@@ -167,6 +186,7 @@ class CloudOwner:
             raise CloudStartRefused("cloud_unavailable") from None
         except RunnerRefused:
             raise CloudStartRefused("cloud_refused") from None
+        self._abandon()
         self._healthy = True
 
     async def conversation_is_new(self) -> bool:
@@ -380,12 +400,20 @@ class CloudOwner:
     async def stop(self) -> CleanupOutcome:
         self._healthy = False
         self._stopping = True
+        loop = asyncio.get_running_loop()
+        # One budget for every wait: a start() in flight, start_run's answer,
+        # then execute()'s return.
+        deadline = loop.time() + self.STOP_WAIT_SECONDS
+        started = self._started
+        if started is not None and not started.is_set():
+            # A blocking call of start() may finish; nothing starts after it.
+            try:
+                await asyncio.wait_for(started.wait(), self.STOP_WAIT_SECONDS)
+            except TimeoutError:
+                return CleanupOutcome(False, "cloud_unavailable")
         finished, launched, abort = self._finished, self._launched, self._abort
         if finished is None:
             return CleanupOutcome(True, None)
-        loop = asyncio.get_running_loop()
-        # One budget for both waits: start_run's answer, then execute()'s return.
-        deadline = loop.time() + self.STOP_WAIT_SECONDS
 
         def unclean() -> CleanupOutcome:
             abort.set()  # the execute() in flight ends as a stop, now

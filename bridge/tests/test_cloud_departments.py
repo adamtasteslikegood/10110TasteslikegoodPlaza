@@ -4,6 +4,7 @@ import asyncio
 from dataclasses import replace
 import hashlib
 import json
+import threading
 
 from types import SimpleNamespace
 from unittest.mock import MagicMock
@@ -553,6 +554,79 @@ async def test_a_refused_cloud_start_frees_the_lease_the_claim_and_the_place(bri
     packets = await send(bridge, "activate_domain", "again")
     assert not errors(packets)
     assert bridge.manager.snapshot("engineering")["state"] == "active"
+
+
+@pytest.mark.asyncio
+async def test_a_stop_during_a_cloud_start_holds_the_lease_until_the_start_settles(
+    bridge,
+):
+    runner, service = bridge.runner, bridge.service
+    entered, release = threading.Event(), threading.Event()
+    real_status = runner.status
+
+    def status(name):
+        entered.set()
+        release.wait(5)
+        return real_status(name)
+
+    runner.status = status
+    seen = []
+    real_cleanup = service.publish_cleanup
+
+    def publish_cleanup(lease, *, clean):
+        seen.append(("cleanup", clean, release.is_set()))
+        return real_cleanup(lease, clean=clean)
+
+    service.publish_cleanup = publish_cleanup
+    workspace = service.workspace
+    cloud_commit(workspace.worktree_path, "ahead.txt")  # a push would carry it
+    packets = []
+
+    async def emit(packet):
+        packets.append(packet)
+
+    current = bridge.manager.snapshot("engineering")
+    start = asyncio.create_task(
+        bridge.manager.handle(
+            dict(
+                type="activate_domain",
+                protocol_version=2,
+                request_id="start",
+                domain_id="engineering",
+                expected_domain_revision=current["domain_revision"],
+            ),
+            context=context("start"),
+            emit=emit,
+        )
+    )
+    try:
+        async with asyncio.timeout(3):
+            while not entered.is_set():
+                await asyncio.sleep(0.001)
+        stop = asyncio.create_task(send(bridge, "deactivate_domain", "stop"))
+        await asyncio.sleep(0.05)
+        assert not stop.done() and seen == []  # nothing is released yet
+    finally:
+        release.set()
+    stopped = await asyncio.wait_for(stop, 3)
+    await asyncio.wait_for(start, 3)
+    assert seen == [("cleanup", True, True)]
+    assert [(p["type"], p.get("state")) for p in stopped] == [
+        ("domain_state", "inactive")
+    ]
+    # The start's answer is the local owner's when a stop comes first: one
+    # terminal state in all, the Stop's.
+    assert errors(packets) == ["sdk_error"]
+    assert [p.get("state") for p in packets if p["type"] == "domain_state"] == [
+        "activating"
+    ]
+    assert [c[0] for c in runner.calls] == ["status"]
+    assert git(bridge.origin, "branch", "--list", workspace.branch) == ""
+    session = bridge.manager._current("engineering")
+    assert not session._owner.healthy
+    assert session._failure_outcome == "startup_failed"
+    assert bridge.manager.snapshot("engineering")["state"] == "inactive"
+    assert not session._lease.held
 
 
 @pytest.mark.asyncio
