@@ -61,6 +61,10 @@ class _Ended(Exception):
         self.reason = reason
 
 
+class _Aborted(Exception):
+    """An unclean stop() told the execute() in flight to end as a stop."""
+
+
 def _sync_failed(error: CloudSyncError) -> None:
     # The detail is scrubbed by cloud_git; the player sees only the fixed code.
     log.warning("cloud sync failed: %s: %s", error.code, error.detail)
@@ -103,6 +107,8 @@ class CloudOwner:
         # Set while an execute() is in flight; ``_launched`` once start_run has answered.
         self._finished: asyncio.Event | None = None
         self._launched: asyncio.Event | None = None
+        # Set by an unclean stop(): the execute() in flight ends as a stop at once.
+        self._abort: asyncio.Event | None = None
         self._run: int | None = None
 
     @property
@@ -190,13 +196,14 @@ class CloudOwner:
         )
         prompt = PREAMBLE + "\n\n" + json.dumps(command, ensure_ascii=False)
         self._finished, self._launched = asyncio.Event(), asyncio.Event()
+        self._abort = asyncio.Event()
         self._run = None
         try:
             return await self._execute(prompt)
         finally:
             self._launched.set()
             self._finished.set()
-            self._finished = self._launched = None
+            self._finished = self._launched = self._abort = None
             self._run = None
 
     async def _execute(self, prompt: str) -> SDKOutcome:
@@ -226,10 +233,26 @@ class CloudOwner:
         self._run = run
         seen = dict(session=None, subtype=None, truncated=False)
         try:
+            self._check_abort()
             status = await self._poll(run, seen)
+        except _Aborted:
+            # The runner may still be running: the note stays unsynced.
+            return SDKOutcome("", "cancelled", "stopped", seen["session"], None)
         except _Ended as ended:
             return SDKOutcome("", "error", ended.reason, seen["session"], None)
         return await self._settle(status, seen)
+
+    def _check_abort(self) -> None:
+        if self._abort is not None and self._abort.is_set():
+            raise _Aborted
+
+    async def _pause(self) -> None:
+        """Wait POLL_SECONDS, or less if an unclean stop() asks to end."""
+        try:
+            await asyncio.wait_for(self._abort.wait(), self.POLL_SECONDS)
+        except TimeoutError:
+            pass
+        self._check_abort()
 
     def _read(self, events: list, run: int, seen: dict) -> None:
         for row in events:
@@ -249,27 +272,36 @@ class CloudOwner:
             elif kind == "runner" and payload.get("notice") == "result truncated":
                 seen["truncated"] = True
 
-    async def _answer(self, method: str, *args, since: list):
+    async def _answer(self, method: str, *args, since: list, retry: bool = True):
         """One runner call; RunnerDown is retried with the same arguments until
         OUTAGE_SECONDS pass since ``since[0]``: the last status that named this
-        run, or when start_run returned. Only ``_poll`` moves that clock."""
+        run, or when start_run returned. Only ``_poll`` moves that clock.
+        With ``retry`` false, one attempt only."""
         loop = asyncio.get_running_loop()
         while True:
             try:
-                return await self._call(method, self._name, *args)
+                answer = await self._call(method, self._name, *args)
+                self._check_abort()
+                return answer
             except RunnerDown:
-                if loop.time() - since[0] >= self.OUTAGE_SECONDS:
+                self._check_abort()
+                if not retry or loop.time() - since[0] >= self.OUTAGE_SECONDS:
                     raise _Ended("transport_error") from None
-                await asyncio.sleep(self.POLL_SECONDS)
+                await self._pause()
             except RunnerRefused as error:
+                self._check_abort()
                 raise _Ended(
                     "cloud_run_lost" if error.status == 404 else "transport_error"
                 ) from None
 
-    async def _events(self, run: int, seen: dict, since: list) -> bool:
+    async def _events(
+        self, run: int, seen: dict, since: list, retry: bool = True
+    ) -> bool:
         """Read one page; True when it held events and moved the cursor."""
         after = self._cursor
-        events, following = await self._answer("events", after, since=since)
+        events, following = await self._answer(
+            "events", after, since=since, retry=retry
+        )
         # The cursor moves over every event, whatever its run.
         self._cursor = max(after, following)
         self._read(events, run, seen)
@@ -281,7 +313,7 @@ class CloudOwner:
         # runner was down or answered about another run.
         since = [loop.time()]
         while True:
-            await asyncio.sleep(self.POLL_SECONDS)
+            await self._pause()
             await self._events(run, seen, since)
             status = await self._answer("status", since=since)
             named = status.get("run")
@@ -297,7 +329,11 @@ class CloudOwner:
             elif loop.time() - since[0] >= self.OUTAGE_SECONDS:
                 raise _Ended("cloud_run_lost")
         # The events written before the end state; more than one page if need be.
-        while await self._events(run, seen, since):
+        # The end state is known: a failed call settles with the events read so far.
+        try:
+            while await self._events(run, seen, since, retry=False):
+                pass
+        except _Ended:
             pass
         return status
 
@@ -307,7 +343,11 @@ class CloudOwner:
         output, cut = _cut(result if isinstance(result, str) else "")
         if seen["truncated"]:
             output = ""
-        output, delta = decode_project_reply(output)
+        if state == "stopped":
+            # As the local owner reports a stop: the raw text, and no memory.
+            delta = None
+        else:
+            output, delta = decode_project_reply(output)
         if state == "stopped":
             outcome, reason = "cancelled", "stopped"
         elif state == "lost":
@@ -336,29 +376,36 @@ class CloudOwner:
     async def stop(self) -> CleanupOutcome:
         self._healthy = False
         self._stopping = True
-        finished, launched = self._finished, self._launched
+        finished, launched, abort = self._finished, self._launched, self._abort
         if finished is None:
             return CleanupOutcome(True, None)
-        unclean = CleanupOutcome(False, "cloud_unavailable")
+        loop = asyncio.get_running_loop()
+        # One budget for both waits: start_run's answer, then execute()'s return.
+        deadline = loop.time() + self.STOP_WAIT_SECONDS
+
+        def unclean() -> CleanupOutcome:
+            abort.set()  # the execute() in flight ends as a stop, now
+            return CleanupOutcome(False, "cloud_unavailable")
+
         try:
-            await asyncio.wait_for(launched.wait(), self.STOP_WAIT_SECONDS)
+            await asyncio.wait_for(launched.wait(), deadline - loop.time())
         except TimeoutError:
-            return unclean
+            return unclean()
         if self._run is not None and not finished.is_set():
             for attempt in range(self.STOP_RETRIES + 1):
                 try:
                     await self._call("stop", self._name)
                     break
                 except RunnerDown:
-                    return unclean
+                    return unclean()
                 except RunnerRefused as error:
                     if error.status != 409:
                         break  # execute() sees what the runner holds
                     if attempt == self.STOP_RETRIES:
-                        return unclean
+                        return unclean()
                     await asyncio.sleep(self.POLL_SECONDS)
         try:
-            await asyncio.wait_for(finished.wait(), self.STOP_WAIT_SECONDS)
+            await asyncio.wait_for(finished.wait(), max(0.0, deadline - loop.time()))
         except TimeoutError:
-            return unclean
+            return unclean()
         return CleanupOutcome(True, None)

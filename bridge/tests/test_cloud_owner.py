@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import time
 from types import SimpleNamespace
 
 import pytest
@@ -25,6 +26,7 @@ from bridge.tests.test_cloud_git import (  # noqa: F401 (fixtures)
 from bridge.tests.test_workspace import git
 
 KEY = "key-1"
+DELTA_REPLY = json.dumps({"answer": "Partly.", "memory_delta": {"summary": "Half"}})
 
 
 class LogRunner(FakeRunner):
@@ -167,7 +169,9 @@ async def test_start_pushes_nothing_while_an_earlier_run_is_active(cloud):
 
 @pytest.mark.parametrize("which", ["status", "create"])
 @pytest.mark.asyncio
-async def test_start_is_refused_while_an_earlier_run_is_active(cloud, which):
+async def test_start_is_refused_while_an_earlier_run_is_active(
+    cloud, fast_forwards, which
+):
     cloud.runner.script(which, ended(state="running"))
     with pytest.raises(CloudStartRefused) as refused:
         await cloud.owner.start()
@@ -177,6 +181,13 @@ async def test_start_is_refused_while_an_earlier_run_is_active(cloud, which):
     if which == "status":
         assert methods(cloud.runner) == ["status"]
         assert remote_tip(cloud.origin, cloud.workspace.branch) is None
+    note = (
+        cloud.workspace.common_git_dir
+        / "plaza/cloud"
+        / (f"{cloud.workspace.domain_id}.json")
+    )
+    assert not note.exists()
+    assert fast_forwards == []
 
 
 @pytest.mark.parametrize(
@@ -277,7 +288,7 @@ async def test_an_outage_mid_run_reads_no_event_twice(cloud):
         event(5, 1, "result", {"subtype": "success"}),
     ]
     # Rows arrive, then the status call fails: the next events call must carry on.
-    cloud.runner.event_faults = [None, RunnerDown("x"), None, RunnerDown("y")]
+    cloud.runner.event_faults = [None, RunnerDown("x"), None]
     cloud.runner.script(
         "status",
         RunnerDown("after rows"),
@@ -423,6 +434,24 @@ async def test_a_refusal_while_polling_ends_the_run_without_raising(
     assert methods(cloud.runner).count("status") == 2  # start's, and one poll
 
 
+@pytest.mark.parametrize("fault", [RunnerDown("down"), RunnerRefused(404, "gone")])
+@pytest.mark.asyncio
+async def test_a_failed_last_events_call_keeps_the_known_end_state(cloud, fault):
+    await cloud.owner.start()
+    cloud.runner.log = [event(1, 1, "system", {"session_id": "session-1"})]
+    # The poll's events call answers; the last one, after the end state, fails.
+    cloud.runner.event_faults = [None, fault]
+    cloud.runner.script("status", ended(result="done"))
+    outcome = await bounded(cloud)
+    assert (outcome.status, outcome.reason, outcome.output) == (
+        "success",
+        "completed",
+        "done",
+    )
+    assert outcome.provider_session_id == "session-1"
+    assert methods(cloud.runner).count("events") == 2  # one attempt at the last
+
+
 @pytest.mark.asyncio
 async def test_a_push_error_is_an_error_with_the_answer_kept(cloud):
     await cloud.owner.start()
@@ -437,7 +466,7 @@ async def test_a_push_error_is_an_error_with_the_answer_kept(cloud):
     [
         (ended(state="failed", error="max turns"), ("error", "max_turns")),
         (ended(state="lost", error="gone"), ("error", "cloud_run_lost")),
-        (ended(state="stopped"), ("cancelled", "stopped")),
+        (ended(state="stopped", result=DELTA_REPLY), ("cancelled", "stopped")),
     ],
 )
 @pytest.mark.asyncio
@@ -449,6 +478,10 @@ async def test_max_turns_lost_and_stopped_map_as_the_table_says(
     cloud.runner.script("status", status)
     outcome = await run(cloud)
     assert (outcome.status, outcome.reason) == expected
+    if status["state"] == "stopped":
+        # As the local owner reports a stop: no delta, the raw text kept.
+        assert outcome.memory_delta is None
+        assert outcome.output == DELTA_REPLY
 
 
 @pytest.mark.parametrize(
@@ -584,14 +617,11 @@ async def test_stop_retries_a_409_then_reports_unclean(cloud):
     cloud.runner.script("status", ended(state="running"))
     cloud.runner.script("stop", RunnerRefused(409, "busy"))
     execution = asyncio.create_task(run(cloud))
-    try:
-        await until(lambda: "start_run" in methods(cloud.runner))
-        assert await cloud.owner.stop() == CleanupOutcome(False, "cloud_unavailable")
-        assert methods(cloud.runner).count("stop") == 4
-    finally:
-        execution.cancel()
-        with pytest.raises(asyncio.CancelledError):
-            await execution
+    await until(lambda: "start_run" in methods(cloud.runner))
+    assert await cloud.owner.stop() == CleanupOutcome(False, "cloud_unavailable")
+    assert methods(cloud.runner).count("stop") == 4
+    outcome = await asyncio.wait_for(execution, 5)
+    assert (outcome.status, outcome.reason) == ("cancelled", "stopped")
 
 
 @pytest.mark.asyncio
@@ -600,13 +630,58 @@ async def test_stop_is_unclean_when_the_run_does_not_return(cloud, monkeypatch):
     await cloud.owner.start()
     cloud.runner.script("status", ended(state="running"))
     execution = asyncio.create_task(run(cloud))
-    try:
-        await until(lambda: "start_run" in methods(cloud.runner))
-        assert await cloud.owner.stop() == CleanupOutcome(False, "cloud_unavailable")
-    finally:
-        execution.cancel()
-        with pytest.raises(asyncio.CancelledError):
-            await execution
+    await until(lambda: "start_run" in methods(cloud.runner))
+    assert await cloud.owner.stop() == CleanupOutcome(False, "cloud_unavailable")
+    outcome = await asyncio.wait_for(execution, 5)
+    assert (outcome.status, outcome.reason) == ("cancelled", "stopped")
+
+
+@pytest.mark.parametrize("fault", [RunnerRefused(409, "busy"), RunnerDown("down")])
+@pytest.mark.asyncio
+async def test_an_unclean_stop_ends_the_execute_in_flight_as_stopped(
+    cloud, monkeypatch, fast_forwards, fault
+):
+    await cloud.owner.start()
+    cloud.runner.log = [event(1, 1, "system", {"session_id": "session-1"})]
+    cloud.runner.script("status", ended(state="running"))
+    cloud.runner.script("stop", fault)
+    execution = asyncio.create_task(run(cloud))
+    await until(lambda: 1 in cloud.runner.served)
+    # A long poll interval from here: the end must not wait it out.
+    monkeypatch.setattr(CloudOwner, "POLL_SECONDS", 1.0)
+    assert await cloud.owner.stop() == CleanupOutcome(False, "cloud_unavailable")
+    loop = asyncio.get_running_loop()
+    began = loop.time()
+    outcome = await asyncio.wait_for(execution, 5)
+    assert loop.time() - began < 0.5
+    assert (outcome.status, outcome.reason) == ("cancelled", "stopped")
+    assert outcome.memory_delta is None
+    assert outcome.provider_session_id == "session-1"
+    assert cloud.note() is True
+    assert fast_forwards == []
+
+
+@pytest.mark.asyncio
+async def test_stop_waits_one_budget_in_all(cloud, monkeypatch):
+    monkeypatch.setattr(CloudOwner, "STOP_WAIT_SECONDS", 0.6)
+    await cloud.owner.start()
+    cloud.runner.script("status", ended(state="running"))
+    real_start_run = cloud.runner.start_run
+
+    def slow_start_run(*args, **kwargs):
+        time.sleep(0.4)
+        return real_start_run(*args, **kwargs)
+
+    cloud.runner.start_run = slow_start_run
+    execution = asyncio.create_task(run(cloud))
+    await asyncio.sleep(0.01)
+    loop = asyncio.get_running_loop()
+    began = loop.time()
+    assert await cloud.owner.stop() == CleanupOutcome(False, "cloud_unavailable")
+    # Two separate waits would take about 0.4 + 0.6 s.
+    assert loop.time() - began < 0.85
+    outcome = await asyncio.wait_for(execution, 5)
+    assert (outcome.status, outcome.reason) == ("cancelled", "stopped")
 
 
 @pytest.mark.asyncio
