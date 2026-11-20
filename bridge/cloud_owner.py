@@ -173,7 +173,10 @@ class CloudOwner:
             workspace = self._workspace
             repo = await asyncio.to_thread(github_repo, Path(workspace.project_root))
             self._abandon()
-            await asyncio.to_thread(sync_before_start, workspace)
+            # After a failed push or a lost run, GitHub may lack the clone's
+            # commits: this machine's commits wait rather than go over them.
+            held = status.get("state") == "lost" or bool(status.get("pushError"))
+            await asyncio.to_thread(sync_before_start, workspace, may_push=not held)
             # Once the sync has run, the note is written even if a stop comes:
             # nothing ran, so it is unsynced only if the status says so.
             if not self._stopping:
@@ -261,7 +264,10 @@ class CloudOwner:
             )
         except RunnerRefused as error:
             self._refused("run start", error)
-            await self._mark(before)  # nothing ran
+            if error.status >= 400:
+                await self._mark(before)  # refused: nothing ran
+            # A 2xx the client could not read: the run may be going, so the
+            # note stays unsynced.
             reason = START_RUN_REFUSALS.get(error.status, "sdk_error")
             return SDKOutcome("", "error", reason, None, None)
         except RunnerDown:

@@ -283,8 +283,12 @@ def _fast_forward(root: Path, commit: str) -> None:
         raise CloudSyncError("git_failed", "fast-forward did not reach the commit")
 
 
-def sync_before_start(workspace) -> str:
-    """Make the branch tip the same here and on origin; return that tip."""
+def sync_before_start(workspace, *, may_push: bool = True) -> str:
+    """Make the branch tip the same here and on origin; return that tip.
+
+    With ``may_push`` false (the runner's last push failed or its run was
+    lost), a branch this machine would have to push is refused instead.
+    """
     root, branch = Path(workspace.worktree_path), _branch(workspace)
     _require_clean(root)
     local = _local_tip(root, branch)
@@ -299,7 +303,7 @@ def sync_before_start(workspace) -> str:
         if name == ref:
             remote = sha
     if remote is None:
-        _push(root, branch, expected)
+        _push_unless_held(root, branch, expected, may_push)
         return local
     if remote == local:
         return local
@@ -311,9 +315,18 @@ def sync_before_start(workspace) -> str:
         _fast_forward(root, remote)
         return remote
     if _is_ancestor(root, remote, local):
-        _push(root, branch, expected)
+        _push_unless_held(root, branch, expected, may_push)
         return local
     raise CloudSyncError("diverged", f"local {local[:12]} and origin {remote[:12]}")
+
+
+def _push_unless_held(root: Path, branch: str, expected: str, may_push: bool) -> None:
+    if not may_push:
+        raise CloudSyncError(
+            "unsynced",
+            "the runner's last push did not arrive; this machine's commits must wait",
+        )
+    _push(root, branch, expected)
 
 
 def fast_forward_to(workspace, commit: str) -> None:

@@ -1040,3 +1040,98 @@ async def test_a_remote_text_is_one_line_cut_and_scrubbed(cloud, capsys):
     line = one_line(capsys, cloud, "first second https://github.com/x *** y")
     assert "s3cr3t-value" not in line and "user:pw" not in line
     assert line.endswith("y" * 10) and "y" * 301 not in line
+
+
+# A Start after the runner's last push failed or its run was lost
+
+
+def fresh_owner(cloud):
+    return CloudOwner(
+        SimpleNamespace(domain_max_turns=40),
+        cloud.workspace,
+        None,
+        None,
+        runner=cloud.runner,
+        conversation="key-2",
+    )
+
+
+HELD = [dict(pushError="fatal: unable to access"), dict(state="lost")]
+
+
+@pytest.mark.parametrize("last", HELD)
+@pytest.mark.asyncio
+async def test_a_start_does_not_push_over_a_clone_whose_last_push_failed(
+    cloud, capsys, last
+):
+    await cloud.owner.start()
+    before = remote_tip(cloud.origin, cloud.workspace.branch)
+    cloud.runner.script("status", ended(**dict(dict(result="done"), **last)))
+    mark_cloud(cloud.workspace, unsynced=True)
+    commit(cloud.workspace.worktree_path, "by-hand.txt")  # made on this machine
+    capsys.readouterr()
+    cloud.runner.calls.clear()
+    owner = fresh_owner(cloud)
+    with pytest.raises(CloudStartRefused) as refused:
+        await owner.start()
+    assert refused.value.code == "cloud_sync_failed"
+    assert remote_tip(cloud.origin, cloud.workspace.branch) == before
+    assert cloud.note() is True
+    assert methods(cloud.runner) == ["status"]
+    assert not owner.healthy
+    one_line(capsys, cloud, "start: sync failed: unsynced: ", "did not arrive")
+
+
+@pytest.mark.parametrize("last", HELD)
+@pytest.mark.asyncio
+async def test_a_branch_missing_on_origin_counts_as_ahead_after_a_failed_push(
+    cloud, last
+):
+    assert remote_tip(cloud.origin, cloud.workspace.branch) is None
+    cloud.runner.script("status", ended(**dict(dict(result="done"), **last)))
+    with pytest.raises(CloudStartRefused) as refused:
+        await cloud.owner.start()
+    assert refused.value.code == "cloud_sync_failed"
+    assert remote_tip(cloud.origin, cloud.workspace.branch) is None
+    assert methods(cloud.runner) == ["status"]
+
+
+@pytest.mark.parametrize("last", HELD)
+@pytest.mark.parametrize("behind", [False, True])
+@pytest.mark.asyncio
+async def test_with_nothing_to_push_the_start_goes_on_after_a_failed_push(
+    cloud, last, behind
+):
+    await cloud.owner.start()
+    tip = remote_tip(cloud.origin, cloud.workspace.branch)
+    if behind:
+        tip = cloud.push_from_cloud("from-an-earlier-push.txt")
+    cloud.runner.script("status", ended(**dict(dict(result="done"), **last)))
+    cloud.runner.script("create", ended(**dict(dict(result="done"), **last)))
+    owner = fresh_owner(cloud)
+    await owner.start()
+    assert owner.healthy
+    assert head(cloud.workspace) == tip  # fast-forwarded when behind
+    assert remote_tip(cloud.origin, cloud.workspace.branch) == tip
+    assert cloud.note() is True  # a Start alone does not clear it
+
+
+@pytest.mark.parametrize(
+    "answer",
+    [
+        RunnerRefused(202, "the runner did not name the run"),
+        RunnerRefused(200, "malformed"),
+    ],
+)
+@pytest.mark.parametrize("before", [False, True])
+@pytest.mark.asyncio
+async def test_a_2xx_refusal_from_start_run_leaves_the_note_unsynced(
+    cloud, answer, before
+):
+    if before:
+        cloud.runner.script("create", ended(state="lost"))
+    await cloud.owner.start()
+    cloud.runner.script("start_run", answer)
+    outcome = await run(cloud)
+    assert (outcome.status, outcome.reason) == ("error", "sdk_error")
+    assert cloud.note() is True  # the run may have started
