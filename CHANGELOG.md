@@ -52,9 +52,13 @@ spec-set versions, and no application release existed before `v0.1.22`.
   ASCII and is redacted by the recorder, an unreadable cloud note refuses the
   switch to local as `git_failed`, and a cloud session with no runner is
   refused at Start as `cloud_unavailable`.
+- These changes touch eight guarded sources, so the guard probe was run again
+  on this source in both permission modes on 2026-11-20 (33 cases each, all
+  accepted) and `bridge/tool_guard_acceptance.json` is replaced from the two
+  unchanged reports. That run used the claude.ai account login, not an API
+  key.
 - Not deployed or live-checked: the development deploy still runs the earlier
-  runner code, and the tool-guard evidence is stale until the paid probe is
-  rerun, so the pull request carrying this is not to merge before that.
+  runner code.
 
 ### Decided — the six stage 2 proposals for the cloud runner (PLZG-311)
 
