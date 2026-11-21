@@ -541,9 +541,11 @@ be read is refused too, with `git_failed` in the log. After a run that ended
 it when it settles on a status that is not `lost` and has no `pushError`, and
 any commit the runner reports as pushed was fast-forwarded here; the Run's own
 outcome does not matter. A Run that ends `lost` or with `pushError` leaves the
-note unsynced even when its commit was taken, and so does a Run that ends
-without a settled status (a transport error, a lost run, a stop that gave up);
-a Run the runner refuses to start puts back the value the note had before.
+note unsynced even when its commit was taken, and so does a Run that was sent
+to the runner and did not come back with a settled status (a transport error, a
+lost run, a stop that gave up, a start answer the client could not read). The
+earlier value is put back when the runner refuses the start with a 4xx or a
+502, or when a Stop arrives before the run is sent.
 
 Not carried to the cloud: `DOMAIN_TIER` (the runner's `MODEL` decides),
 `DOMAIN_MAX_BUDGET_USD` (the AI Gateway's spend limits decide), the permission

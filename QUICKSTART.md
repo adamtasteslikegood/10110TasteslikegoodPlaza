@@ -302,15 +302,14 @@ and the department's name; they are not in `LOG_DIR`). If that last cloud run
 was lost or its push failed, a cloud Start alone is not enough: run one task
 in the cloud that ends with the runner reporting neither a lost run nor a push
 error, and whose pushed commit arrived here (the agent's own work may have
-failed), then Stop and move it back. If the cloud Start
-itself answers `cloud_sync_failed` because the runner's last push did not
-arrive (the log says so), set this machine's own commits aside on another
-branch, reset the workspace branch to what GitHub has, Start and run once in
-the cloud, then bring your commits back onto the branch. A `cloud_sync_failed`
-on a cloud Start with `unsafe_config` in the log means the repository's git
-configuration could run a program or redirect a push (the log names the key);
-remove that key. The note behind the switch is
-`<git-common-dir>/plaza/cloud/<department>.json`.
+failed), then Stop and move it back. If the cloud Start itself answers
+`cloud_sync_failed` because the runner's last push did not arrive (the log says
+so), set this machine's own commits aside on another branch, reset the
+workspace branch to what GitHub has, Start and run once in the cloud, then bring
+your commits back onto the branch. A `cloud_sync_failed` on a cloud Start with
+`unsafe_config` in the log means the repository's git configuration could run a
+program or redirect a push (the log names the key); remove that key. The note
+behind the switch is `<git-common-dir>/plaza/cloud/<department>.json`.
 
 ## Copying NPC dialogue and domain results
 
