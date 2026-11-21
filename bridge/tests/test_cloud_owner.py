@@ -1015,6 +1015,37 @@ async def test_an_unclean_stop_is_one_line_with_why(cloud, capsys):
 
 
 @pytest.mark.asyncio
+async def test_a_start_that_does_not_settle_in_time_is_one_line(
+    cloud, capsys, monkeypatch
+):
+    monkeypatch.setattr(CloudOwner, "STOP_WAIT_SECONDS", 0.05)
+    entered, release = hold(cloud.runner, "status")
+    starting = asyncio.create_task(cloud.owner.start())
+    try:
+        async with asyncio.timeout(3):
+            while not entered.is_set():
+                await asyncio.sleep(0.001)
+        assert (await cloud.owner.stop()).clean is False
+    finally:
+        release.set()
+    with pytest.raises(RuntimeError):
+        await asyncio.wait_for(starting, 3)
+    one_line(capsys, cloud, "stop: unclean: the start did not settle in time")
+
+
+@pytest.mark.asyncio
+async def test_a_run_that_does_not_end_in_time_is_one_line(cloud, capsys, monkeypatch):
+    monkeypatch.setattr(CloudOwner, "STOP_WAIT_SECONDS", 0.05)
+    await cloud.owner.start()
+    cloud.runner.script("status", ended(state="running"))
+    execution = asyncio.create_task(run(cloud))
+    await until(lambda: "start_run" in methods(cloud.runner))
+    assert (await cloud.owner.stop()).clean is False
+    await asyncio.wait_for(execution, 5)
+    one_line(capsys, cloud, "stop: unclean: the run did not end in time")
+
+
+@pytest.mark.asyncio
 async def test_a_clean_run_logs_nothing_and_never_the_result_or_the_prompt(
     cloud, capsys
 ):
