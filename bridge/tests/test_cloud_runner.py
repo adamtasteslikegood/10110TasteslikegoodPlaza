@@ -168,6 +168,17 @@ def test_a_2xx_that_is_not_json_is_refused():
     assert caught.value.status == 200
 
 
+def test_a_2xx_that_is_not_json_is_refused_in_fixed_words():
+    body = "<html>MARKER-9f3 login</html>"
+    with pytest.raises(RunnerRefused) as caught:
+        client((200, body)).status("w")
+    words = f"the runner's answer was not JSON ({len(body)} characters)"
+    assert caught.value.text == words
+    assert str(caught.value) == f"200: {words}"
+    assert "MARKER-9f3" not in str(caught.value)
+    assert "MARKER-9f3" not in repr(caught.value)
+
+
 def test_start_run_returns_the_run_number():
     runner = client((202, '{"run": 4}'))
     assert runner.start_run("w", "do it", conversation="abc-1", max_turns=7) == 4

@@ -185,7 +185,9 @@ class CloudRunner:
         try:
             answer = json.loads(text)
         except ValueError:
-            raise RunnerRefused(status, text[:TEXT_MAX]) from None
+            raise RunnerRefused(
+                status, f"the runner's answer was not JSON ({len(text)} characters)"
+            ) from None
         if not isinstance(answer, dict):
             raise RunnerRefused(status, "the runner's answer was not an object")
         return answer
