@@ -10,6 +10,7 @@ from collections.abc import Awaitable, Callable
 from copy import deepcopy
 from dataclasses import asdict, dataclass, replace
 from enum import Enum
+import hashlib
 import time
 from typing import TYPE_CHECKING
 from uuid import uuid4
@@ -19,6 +20,9 @@ from bridge.agents import load_agent
 from bridge.agent_bindings import require_working_binding, InvalidBinding
 from bridge.config import BridgeConfig
 from bridge.application_state import StateCommand, StateError, StateView
+from bridge import cloud_log
+from bridge.cloud_git import CloudSyncError, check_switch_to_local
+from bridge.cloud_owner import CloudOwner, CloudStartRefused
 from datetime import datetime, timezone
 from bridge.domain_protocol import DomainCommandError, error_packet
 from bridge.domain_sdk import DomainSDKOwner, SDKOutcome
@@ -163,8 +167,12 @@ class DomainSession:
         coordinator=None,
         authority_check=None,
         claims=None,
+        cloud=None,
     ):
         self.domain_id, self.domain_session_id = domain_id, domain_session_id
+        # Placement is fixed for a generation: "cloud" or "local".
+        self.runs_on = project_service.runs_on(domain_id)
+        self._cloud = cloud
         self.execution_id = execution_id or str(uuid4())
         self._coordinator = coordinator
         self._authority_check = authority_check
@@ -276,6 +284,13 @@ class DomainSession:
             # Only with relay claims on, for a live generation: held, lost or
             # unclaimed (no answer).
             packet["work_claim"] = self._claim.state
+        if self.runs_on == "cloud" and self._state in (
+            SessionState.ACTIVATING,
+            SessionState.ACTIVE,
+            SessionState.BACKGROUND,
+        ):
+            # Only a cloud department says where it runs; local packets do not change.
+            packet["runs_on"] = "cloud"
         return packet
 
     def _transition(self, state):
@@ -301,6 +316,8 @@ class DomainSession:
         return task
 
     async def _reserve(self):
+        if self.runs_on == "cloud" and self._cloud is None:
+            raise DomainCommandError("cloud_unavailable")
         self._service.reserve_capacity(self)
         self._workspace = await self._service.prepare_domain(self.domain_id)
         self._memory = self._service.require_memory()
@@ -319,6 +336,20 @@ class DomainSession:
 
         await owned_io(acquire)
         self._service.publish_reservation(self._lease)
+        if self.runs_on != "cloud":
+            # A department whose last run was in the cloud starts here only once
+            # that run's commits are on this machine; with no cloud note, no check.
+            try:
+                await owned_io(check_switch_to_local, self._workspace)
+            except CloudSyncError as error:
+                cloud_log.warn(
+                    self.domain_id,
+                    "switch to local",
+                    "sync failed: %s: %s",
+                    error.code,
+                    cloud_log.remote(error.detail),
+                )
+                raise DomainCommandError("cloud_switch_refused") from None
         if self._claim is not None:
             try:
                 await self._claim.claim(
@@ -347,9 +378,21 @@ class DomainSession:
                             **result,
                         )
                     )
-        self._owner = DomainSDKOwner(
-            self._config, self._workspace, self._lease, self._readiness
-        )
+        if self.runs_on == "cloud":
+            self._owner = CloudOwner(
+                self._config,
+                self._workspace,
+                self._lease,
+                self._readiness,
+                runner=self._cloud,
+                conversation=hashlib.sha256(
+                    self.domain_session_id.encode("utf-8")
+                ).hexdigest()[:32],
+            )
+        else:
+            self._owner = DomainSDKOwner(
+                self._config, self._workspace, self._lease, self._readiness
+            )
         if not self._stopping:
             self._transition(SessionState.ACTIVATING)
 
@@ -372,7 +415,10 @@ class DomainSession:
             await self._reserve_task
             await self._start_gate.wait()
             if not self._stopping:
-                await self._owner.start()
+                try:
+                    await self._owner.start()
+                except CloudStartRefused as error:
+                    raise DomainCommandError(error.code) from None
             if not self._stopping:
                 self._transition(SessionState.ACTIVE)
         except Exception:
@@ -611,7 +657,13 @@ class DomainSession:
                 permission_mode=self._config.domain_permission_mode,
                 interaction="explicit_run",
             )
-            if self._coordinator is not None and not self._recap_supplied:
+            # A local session's recap goes with its first Run; a cloud session's
+            # whenever the runner's instance does not hold this conversation.
+            if self._coordinator is not None and (
+                await self._owner.conversation_is_new()
+                if self.runs_on == "cloud"
+                else not self._recap_supplied
+            ):
                 view = self._coordinator.snapshot()
                 if (
                     not isinstance(view, StateView)

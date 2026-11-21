@@ -11,6 +11,7 @@ import json
 import math
 import os
 from pathlib import Path
+import re
 
 
 class ConfigError(ValueError):
@@ -44,6 +45,9 @@ _DEFAULTS: dict[str, object] = {
     "WORKSPACE_ROOT_DIR": None,
     "INSTALL_CONTEXT_DIR": "../.local/plaza-context",
     "PROJECT_GUIDANCE_FILE": "PLAZA_AGENTS.md",
+    "CLOUD_DOMAINS": "",
+    "CLOUD_DOMAIN_LIMIT": 3,
+    "CLOUD_RUNNER_URL": "",
 }
 _TEXT_KEYS = frozenset(
     {
@@ -74,6 +78,9 @@ _INTEGER_KEYS = frozenset(
     }
 )
 _NUMBER_KEYS = frozenset({"CONVERSATION_TIMEOUT_SECONDS", "DOMAIN_MAX_BUDGET_USD"})
+# Text that may be empty: an empty CLOUD_DOMAINS keeps every department local.
+_OPTIONAL_TEXT_KEYS = frozenset({"CLOUD_DOMAINS", "CLOUD_RUNNER_URL"})
+_DOMAIN_ID = re.compile(r"[a-z0-9][a-z0-9-]*\Z")
 _TIERS = ("haiku", "sonnet", "opus", "fable")
 _MODEL_REFERENCES = tuple(f"{tier.upper()}_MODEL" for tier in _TIERS)
 
@@ -110,6 +117,9 @@ class BridgeConfig:
 
     domain_dangerously_skip_permissions: bool = False
     domain_state_backend: str = "sqlite"
+    cloud_domains: frozenset[str] = frozenset()
+    cloud_domain_limit: int = 3
+    cloud_runner_url: str = ""
 
     @property
     def domain_permission_mode(self) -> str:
@@ -142,14 +152,19 @@ class BridgeConfig:
     def effective_settings(self) -> dict[str, object]:
         """Return only schema values, safe for an effective-settings manifest."""
         return {
-            field.name.upper(): (
-                str(getattr(self, field.name))
-                if isinstance(getattr(self, field.name), Path)
-                else getattr(self, field.name)
-            )
+            field.name.upper(): _manifest_value(getattr(self, field.name))
             for field in fields(self)
             if field.name != "source_path"
         }
+
+
+def _manifest_value(value: object) -> object:
+    # The log manifest is JSON: a path becomes text and a set a sorted list.
+    if isinstance(value, Path):
+        return str(value)
+    if isinstance(value, frozenset):
+        return sorted(value)
+    return value
 
 
 def _default_path() -> Path:
@@ -202,7 +217,17 @@ def _build(values: Mapping[str, object], source_path: Path) -> BridgeConfig:
         raise ConfigError(
             "TRANSCRIPT_MAX_FILE_BYTES must not exceed LOG_MAX_TOTAL_BYTES"
         )
+    for key in _OPTIONAL_TEXT_KEYS:
+        if not isinstance(values[key], str):
+            raise ConfigError(f"{key} must be a string")
+    limit = values["CLOUD_DOMAIN_LIMIT"]
+    if type(limit) is not int or not 1 <= limit <= 10:
+        raise ConfigError("CLOUD_DOMAIN_LIMIT must be an integer from 1 to 10")
+    cloud_domains = _cloud_domains(values["CLOUD_DOMAINS"])
+    if cloud_domains and not values["CLOUD_RUNNER_URL"].strip():
+        raise ConfigError("CLOUD_RUNNER_URL must be set when CLOUD_DOMAINS is")
     attributes = {key.lower(): value for key, value in values.items()}
+    attributes["cloud_domains"] = cloud_domains
     workspace = values["WORKSPACE_ROOT_DIR"]
     if workspace is not None:
         if not isinstance(workspace, str) or not workspace.strip():
@@ -231,6 +256,21 @@ def _build(values: Mapping[str, object], source_path: Path) -> BridgeConfig:
     except (OSError, ValueError, RuntimeError):
         raise ConfigError("LOG_DIR must identify a valid filesystem path") from None
     return BridgeConfig(**attributes, source_path=source_path)
+
+
+def _cloud_domains(text: str) -> frozenset[str]:
+    """Parse a comma-separated list of department ids; empty means none."""
+    if not text.strip():
+        return frozenset()
+    items = [item.strip() for item in text.split(",")]
+    for item in items:
+        if not _DOMAIN_ID.match(item):
+            raise ConfigError(
+                "CLOUD_DOMAINS must be comma-separated lowercase department ids"
+            )
+    if len(set(items)) != len(items):
+        raise ConfigError("CLOUD_DOMAINS must not name a department twice")
+    return frozenset(items)
 
 
 def default_config() -> BridgeConfig:
@@ -306,7 +346,7 @@ def load_config(
         key = name.removeprefix("PLAZA_")
         if key not in _DEFAULTS:
             raise ConfigError(f"unknown config override {name}")
-        if key in _TEXT_KEYS or key == "WORKSPACE_ROOT_DIR":
+        if key in _TEXT_KEYS | _OPTIONAL_TEXT_KEYS or key == "WORKSPACE_ROOT_DIR":
             values[key] = raw
         else:
             try:
