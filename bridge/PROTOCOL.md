@@ -466,9 +466,9 @@ Wire changes, all absent for a local department:
   with another repository or branch is a 409 that shows as this),
   `cloud_sync_failed` (git sync refused, below; also a cloud note that could
   not be written, and a Start that would have pushed over a clone whose last
-  push did not arrive), `cloud_run_active` (an earlier run, for instance from before a
-  bridge restart, is still going on the runner; it finishes and pushes on its
-  own) and `cloud_switch_refused` (a local Start, below).
+  push did not arrive), `cloud_run_active` (an earlier run, for instance from
+  before a bridge restart, is still going on the runner; it finishes and pushes
+  on its own) and `cloud_switch_refused` (a local Start, below).
 - Run terminal reasons: `cloud_push_failed` (the runner could not push; the
   answer is kept and the Run ends as an error), `cloud_sync_failed` (the
   commit it pushed could not be taken here, a cloud note that could not be
@@ -510,18 +510,24 @@ Where each command goes:
 - Stop asks the runner to stop. If the runner cannot be reached or keeps
   answering 409, the Run ends here as stopped and the stop is unclean: the
   client sees `cleanup_failed` (the session reads only whether the stop was
-  clean; the owner's reason, `cloud_unavailable`, goes to the log line), and
-  the next Start answers `cloud_run_active` until the run ends on the runner.
+  clean). The owner logs one line on stderr, `<department>: stop: unclean:
+  <why>`, where the why is in words (for example "the runner kept answering
+  409"), and the owner's own reason, `cloud_unavailable`, is not in it. The
+  next Start answers `cloud_run_active` until the run ends on the runner.
 
 Git sync refuses with `cloud_sync_failed`, and the bridge log carries the
 reason: `not_github` (origin is not on github.com, or has more than one fetch
 or push URL, or differs from the project's), `dirty` (uncommitted changes),
-`diverged`, `unsynced` (only in the switch check below, where it shows as
-`cloud_switch_refused`), `unsafe_config` (repository configuration that could
-run a program or redirect a network command; the log names the key, and
-`_UNSAFE_SECTIONS`, `_UNSAFE_KEYS` and `_UNSAFE_ORIGIN` in `bridge/cloud_git.py`
-list them) and `git_failed`. Every git command runs without hooks, fsmonitor or
-repository filters, and the network ones allow only `https` and `ssh`.
+`diverged`, `unsynced` (the cloud may hold commits this machine lacks, or this
+machine's commits must not be pushed: in the switch check below it shows as
+`cloud_switch_refused`; in a cloud Start whose first runner status has a
+`pushError` or the state `lost`, `sync_before_start` raises it when this machine
+would have to push, and the client sees `cloud_sync_failed`), `unsafe_config`
+(repository configuration that could run a program or redirect a network
+command; the log names the key, and `_UNSAFE_SECTIONS`, `_UNSAFE_KEYS` and
+`_UNSAFE_ORIGIN` in `bridge/cloud_git.py` list them) and `git_failed`. Every
+git command runs without hooks, fsmonitor or repository filters, and the
+network ones allow only `https` and `ssh`.
 
 Back to local: a note per department, `<git-common-dir>/plaza/cloud/<domain>.json`,
 is written when a department starts on the cloud and says whether the cloud
@@ -531,8 +537,13 @@ its commit is here). A local Start of a department with a note is refused with
 uncommitted changes; once both are clear the note is removed and the Start
 goes on. A department with no note is not checked at all. A note that cannot
 be read is refused too, with `git_failed` in the log. After a run that ended
-`lost` or with `pushError`, a Start alone does not clear the note; one
-successful Run in the cloud does.
+`lost` or with `pushError`, a Start alone does not clear the note. A Run clears
+it when it settles on a status that is not `lost` and has no `pushError`, and
+any commit the runner reports as pushed was fast-forwarded here; the Run's own
+outcome does not matter. A Run that ends `lost` or with `pushError` leaves the
+note unsynced even when its commit was taken, and so does a Run that ends
+without a settled status (a transport error, a lost run, a stop that gave up);
+a Run the runner refuses to start puts back the value the note had before.
 
 Not carried to the cloud: `DOMAIN_TIER` (the runner's `MODEL` decides),
 `DOMAIN_MAX_BUDGET_USD` (the AI Gateway's spend limits decide), the permission

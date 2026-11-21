@@ -304,10 +304,11 @@ in the cloud that succeeds, then Stop and move it back. If the cloud Start
 itself answers `cloud_sync_failed` because the runner's last push did not
 arrive (the log says so), set this machine's own commits aside on another
 branch, reset the workspace branch to what GitHub has, Start and run once in
-the cloud, then bring your commits back onto the branch. A `cloud_sync_failed` on a cloud Start with `unsafe_config` in
-the log means the repository's git configuration could run a program or
-redirect a push (the log names the key); remove that key. The note behind the
-switch is `<git-common-dir>/plaza/cloud/<department>.json`.
+the cloud, then bring your commits back onto the branch. A `cloud_sync_failed`
+on a cloud Start with `unsafe_config` in the log means the repository's git
+configuration could run a program or redirect a push (the log names the key);
+remove that key. The note behind the switch is
+`<git-common-dir>/plaza/cloud/<department>.json`.
 
 ## Copying NPC dialogue and domain results
 
