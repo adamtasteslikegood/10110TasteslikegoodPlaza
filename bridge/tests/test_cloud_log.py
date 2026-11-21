@@ -45,3 +45,21 @@ def test_remote_text_is_one_line_scrubbed_and_cut():
     assert out.startswith("a b https://github.com/o/r.git *** z")
     assert len(out) == cloud_log.LIMIT
     assert cloud_log.remote(RuntimeError("plain")) == "plain"
+
+
+def test_userinfo_holding_a_slash_is_scrubbed_to_the_last_at_sign():
+    out = cloud_log.remote("fatal: https://user:pa/ss@github.com/o/r.git failed")
+    assert "pa/ss" not in out and "user" not in out
+    assert out == "fatal: https://github.com/o/r.git failed"
+
+
+def test_two_urls_on_one_line_are_each_scrubbed():
+    out = cloud_log.remote("https://a:b@one.example/x then https://c:d/e@two.example/y")
+    assert out == "https://one.example/x then https://two.example/y"
+
+
+def test_a_plain_url_and_a_scheme_less_address_are_unchanged():
+    assert (
+        cloud_log.remote("https://github.com/o/r.git") == "https://github.com/o/r.git"
+    )
+    assert cloud_log.remote("mail someone@example.com") == "mail someone@example.com"

@@ -14,7 +14,9 @@ from typing import Callable
 NAME = "bridge.cloud"
 LIMIT = 300
 
-_USERINFO = re.compile(r"([A-Za-z][A-Za-z0-9+.-]*://)[^/\s@]*@")
+# From the scheme to the last "@" before whitespace: userinfo may hold a "/".
+# A path with an "@" loses its host too; over-scrubbing a log is the safe side.
+_USERINFO = re.compile(r"([A-Za-z][A-Za-z0-9+.-]*://)\S*@")
 
 
 class _Stderr(logging.StreamHandler):
