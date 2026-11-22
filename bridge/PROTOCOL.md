@@ -507,23 +507,28 @@ Where each command goes:
   it at once as `cloud_run_lost`; any other refusal while polling ends it at
   once as `transport_error`. A stopped cloud run writes no project
   memory, as a local one does not.
-- Stop asks the runner to stop whenever a run of this department's owner may
-  be going on it: a Run in flight, and also after a run start whose outcome was
-  unknown (no answer, or a 2xx the client could not read), a 409 to the run
-  start, polling that gave up without a settled status, or an earlier unclean
-  stop. It asks nothing after a settled status, a 404, or a status naming a
-  later run. If the runner cannot be reached, keeps answering 409, refuses the
-  stop of a run with no known number, or does not answer within the Stop's
-  single 60 s budget, the Run ends here as stopped and the stop is unclean:
-  the client sees `cleanup_failed` (the session reads only whether the stop was
-  clean). The owner logs one line on stderr, `<department>: stop: unclean:
-  <why>`, where the why is in words (for example "the runner kept answering
-  409" or "the runner did not answer in time"), and the owner's own reason,
-  `cloud_unavailable`, is not in it. Each later Stop asks the runner again and
-  stays `cleanup_failed`, with the workspace and its place kept, until the
-  runner answers one (200, or 404 for a workspace it does not know); while that
-  is so the bridge's shutdown reports `cleanup_failed` too. The next Start
-  answers `cloud_run_active` until the run ends on the runner.
+- Stop asks the runner to stop while a run of this department's owner may be
+  going on it: a Run in flight, and a run sent earlier that has no end state
+  here. A run start may have started a run when it got no answer or a 2xx the
+  client could not read; one refused with 300 or more started nothing (a
+  redirect comes from what stands in front of the runner, and a 409's active
+  run is not this owner's, since the runner's stop takes no run number). That
+  doubt ends when the runner answers a stop (200, or 404 for a workspace it
+  does not know), when a status settles the run or names a later one, or when
+  a poll gets a 404; polling that gave up without such an answer leaves it. A
+  refused run start adds no doubt and takes none away: an earlier run still in
+  doubt stays so. If the runner cannot be reached, keeps
+  answering 409, refuses the stop of a run with no known number, or does not
+  answer within the Stop's single 60 s budget, the stop is unclean, and a Run
+  in flight ends here as stopped: the client sees `cleanup_failed` (the session
+  reads only whether the stop was clean). The owner logs one line on stderr,
+  `<department>: stop: unclean: <why>`, where the why is in words (for example
+  "the runner kept answering 409" or "the runner did not answer in time"), and
+  the owner's own reason, `cloud_unavailable`, is not in it. While the doubt
+  lasts, each later Stop asks again and stays `cleanup_failed`, with the
+  workspace and its place kept, and the bridge's shutdown reports
+  `cleanup_failed` too. The next Start answers `cloud_run_active` until the run
+  ends on the runner.
 
 Git sync refuses with `cloud_sync_failed`, and the bridge log carries the
 reason: `not_github` (origin is not on github.com, or has more than one fetch
@@ -544,7 +549,8 @@ is written when a department starts on the cloud and says whether the cloud
 may hold commits this machine lacks (`unsynced`, from the start of a Run until
 its commit is here). When the runner's first status at Start is `lost` or has
 a `pushError`, the note is written as unsynced before anything is pushed or
-created; if that write fails the Start is refused with `cloud_sync_failed`. A local Start of a department with a note is refused with
+created; if that write fails the Start is refused with `cloud_sync_failed`. A
+local Start of a department with a note is refused with
 `cloud_switch_refused` while the note says `unsynced` or the worktree has
 uncommitted changes; once both are clear the note is removed and the Start
 goes on. A department with no note is not checked at all. A note that cannot
@@ -556,8 +562,9 @@ outcome does not matter. A Run that ends `lost` or with `pushError` leaves the
 note unsynced even when its commit was taken, and so does a Run that was sent
 to the runner and did not come back with a settled status (a transport error, a
 lost run, a stop that gave up, a start answer the client could not read). The
-earlier value is put back when the runner refuses the start with a 4xx or a
-502, or when a Stop arrives before the run is sent.
+earlier value is put back when the start is refused with 300 or more (a 4xx,
+a 502, or a redirect, which never reached the runner), or when a Stop arrives
+before the run is sent.
 
 Not carried to the cloud: `DOMAIN_TIER` (the runner's `MODEL` decides),
 `DOMAIN_MAX_BUDGET_USD` (the AI Gateway's spend limits decide), the permission
