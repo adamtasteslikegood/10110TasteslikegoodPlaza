@@ -845,19 +845,21 @@ async def test_a_stop_with_no_run_in_flight_settles_on_200_or_404_only(
     assert stops(cloud.runner) == expected + (0 if clean else expected)
 
 
-@pytest.mark.parametrize("status, asked", [(400, False), (409, True)])
+@pytest.mark.parametrize("status", [302, 400, 409])
 @pytest.mark.asyncio
-async def test_a_refused_run_start_asks_for_a_stop_only_after_a_409(
-    cloud, status, asked
-):
+async def test_a_refused_run_start_of_a_fresh_owner_sends_no_stop(cloud, status):
+    # 3xx: the request never reached the runner. 409: the active run is not
+    # this owner's, and the runner's stop takes no run number.
     await cloud.owner.start()
+    assert cloud.note() is False
     cloud.runner.script("start_run", RunnerRefused(status, "refused"))
-    await run(cloud)
+    outcome = await run(cloud)
+    assert outcome.status == "error"
+    assert cloud.note() is False  # nothing ran: the earlier value is back
     calls = len(cloud.runner.calls)
     assert await cloud.owner.stop() == CleanupOutcome(True, None)
-    assert stops(cloud.runner) == (1 if asked else 0)
-    if not asked:
-        assert len(cloud.runner.calls) == calls
+    assert stops(cloud.runner) == 0
+    assert len(cloud.runner.calls) == calls
 
 
 @pytest.mark.asyncio

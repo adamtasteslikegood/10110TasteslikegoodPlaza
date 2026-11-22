@@ -109,8 +109,11 @@ class CloudOwner:
         self._abort: asyncio.Event | None = None
         self._run: int | None = None
         # True while a run this owner sent may be going on the runner, across
-        # execute() calls, until a settled status, a stop the runner answered
-        # or proof that the run is over clears it. stop() asks while it holds.
+        # execute() calls: from start_run until it is refused (300 or more:
+        # the earlier value is put back), a status settles the run or proves
+        # it over, or the runner answers a stop. A start_run with no answer or
+        # a 2xx the client could not read leaves it set. stop() asks while it
+        # holds.
         self._live = False
         # Set once the start() in flight has settled; stop() waits for it.
         self._started: asyncio.Event | None = None
@@ -279,12 +282,15 @@ class CloudOwner:
             )
         except RunnerRefused as error:
             self._refused("run start", error)
-            if error.status >= 400:
-                # Refused: nothing ran. A 409 says a run is active here.
-                self._live = was_live or error.status == 409
+            if error.status >= 300:
+                # Refused, or a redirect from what stands in front of the
+                # runner: nothing ran. A 409's active run is not this owner's
+                # (the runner's stop takes no run number), so the flag keeps
+                # the value it had before this start.
+                self._live = was_live
                 await self._mark(before)
             # A 2xx the client could not read: the run may be going, so the
-            # note stays unsynced.
+            # flag and the unsynced note stay.
             reason = START_RUN_REFUSALS.get(error.status, "sdk_error")
             return SDKOutcome("", "error", reason, None, None)
         except RunnerDown:
