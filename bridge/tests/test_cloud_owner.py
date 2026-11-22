@@ -1,7 +1,9 @@
 """CloudOwner against FakeRunner, with a bare repository in tmp_path as origin."""
 
 import asyncio
+import errno
 import json
+import os
 import threading
 import time
 from types import SimpleNamespace
@@ -9,7 +11,7 @@ from types import SimpleNamespace
 import pytest
 
 from bridge import cloud_owner
-from bridge.cloud_git import mark_cloud
+from bridge.cloud_git import CloudSyncError, mark_cloud
 from bridge.cloud_owner import PREAMBLE, CloudOwner, CloudStartRefused
 from bridge.cloud_runner import RunnerDown, RunnerRefused
 from bridge.domain_sdk import CleanupOutcome
@@ -1145,6 +1147,130 @@ async def test_with_nothing_to_push_the_start_goes_on_after_a_failed_push(
     assert head(cloud.workspace) == tip  # fast-forwarded when behind
     assert remote_tip(cloud.origin, cloud.workspace.branch) == tip
     assert cloud.note() is True  # a Start alone does not clear it
+
+
+def note_file(cloud):
+    workspace = cloud.workspace
+    return workspace.common_git_dir / "plaza/cloud" / f"{workspace.domain_id}.json"
+
+
+@pytest.fixture
+def note_writes(monkeypatch, cloud):
+    """Fail chosen writes of the cloud note (``fail``: 1 for the first after setup).
+
+    The rename of the atomic replace fails, as a full or read-only disk would:
+    the temporary is written and the old note, if any, stays in place.
+    """
+    state = SimpleNamespace(count=0, fail=set())
+    real = os.replace
+    target = note_file(cloud).name
+
+    def replace(source, destination, *args, **kwargs):
+        if destination == target and kwargs.get("dst_dir_fd") is not None:
+            state.count += 1
+            if state.count in state.fail:
+                raise OSError(errno.ENOSPC, "No space left on device")
+        return real(source, destination, *args, **kwargs)
+
+    monkeypatch.setattr(os, "replace", replace)
+    return state
+
+
+@pytest.fixture
+def syncs(monkeypatch):
+    seen = []
+    real = cloud_owner.sync_before_start
+
+    def counting(workspace, **kwargs):
+        seen.append(kwargs)
+        return real(workspace, **kwargs)
+
+    monkeypatch.setattr(cloud_owner, "sync_before_start", counting)
+    return seen
+
+
+@pytest.mark.parametrize("last", HELD)
+@pytest.mark.asyncio
+async def test_a_held_start_whose_note_cannot_be_written_pushes_and_creates_nothing(
+    cloud, capsys, note_writes, syncs, last
+):
+    from bridge.cloud_git import sync_before_start
+
+    sync_before_start(cloud.workspace)  # the branch is on origin, nothing to push
+    assert not note_file(cloud).exists()
+    tip = remote_tip(cloud.origin, cloud.workspace.branch)
+    cloud.runner.script("status", ended(**dict(dict(result="done"), **last)))
+    note_writes.fail = {1}
+    with pytest.raises(CloudStartRefused) as refused:
+        await cloud.owner.start()
+    assert refused.value.code == "cloud_sync_failed"
+    assert methods(cloud.runner) == ["status"]
+    assert syncs == []
+    assert remote_tip(cloud.origin, cloud.workspace.branch) == tip
+    assert not note_file(cloud).exists()
+    assert not cloud.owner.healthy
+    one_line(capsys, cloud, "start: sync failed: git_failed: cloud note not written")
+
+
+@pytest.mark.parametrize("last", HELD)
+@pytest.mark.asyncio
+async def test_a_held_start_writes_the_note_before_the_create_that_fails(cloud, last):
+    from bridge.cloud_git import sync_before_start
+
+    sync_before_start(cloud.workspace)
+    cloud.runner.script("status", ended(**dict(dict(result="done"), **last)))
+    cloud.runner.script("create", RunnerDown("no answer"))
+    with pytest.raises(CloudStartRefused) as refused:
+        await cloud.owner.start()
+    assert refused.value.code == "cloud_unavailable"
+    assert cloud.note() is True
+
+
+@pytest.mark.asyncio
+async def test_a_first_cloud_start_that_fails_leaves_no_note(cloud):
+    cloud.runner.script("status", RunnerRefused(404, "No such workspace"))
+    cloud.runner.script("create", RunnerDown("no answer"))
+    with pytest.raises(CloudStartRefused) as refused:
+        await cloud.owner.start()
+    assert refused.value.code == "cloud_unavailable"
+    assert not note_file(cloud).exists()  # still free to start locally
+
+
+@pytest.mark.parametrize("write_fails", [False, True])
+@pytest.mark.asyncio
+async def test_a_failed_fast_forward_at_start_never_lowers_the_note(
+    cloud, monkeypatch, note_writes, write_fails
+):
+    mark_cloud(cloud.workspace, unsynced=True)
+    sha = "a" * 40
+
+    def diverged(workspace, commit):
+        raise CloudSyncError("diverged", "not a fast-forward")
+
+    monkeypatch.setattr(cloud_owner, "fast_forward_to", diverged)
+    cloud.runner.script("create", ended(state="idle", pushed={"commit": sha}))
+    if write_fails:
+        note_writes.fail = {1}
+    with pytest.raises(CloudStartRefused) as refused:
+        await cloud.owner.start()
+    assert refused.value.code == "cloud_sync_failed"
+    assert cloud.note() is True
+
+
+@pytest.mark.parametrize("last", HELD)
+@pytest.mark.asyncio
+async def test_a_create_answer_held_with_its_note_unwritten_is_refused(
+    cloud, note_writes, last
+):
+    # The first status was clean; the create's answer is not (a run ended in
+    # between). The last note write fails: the Start is refused, and the note
+    # keeps what it said before, here nothing. Accepted: see the fix report.
+    cloud.runner.script("create", ended(**dict(dict(result="done"), **last)))
+    note_writes.fail = {1}
+    with pytest.raises(CloudStartRefused) as refused:
+        await cloud.owner.start()
+    assert refused.value.code == "cloud_sync_failed"
+    assert not note_file(cloud).exists()
 
 
 @pytest.mark.parametrize(

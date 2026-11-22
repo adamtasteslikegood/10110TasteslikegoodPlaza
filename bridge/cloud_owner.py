@@ -176,6 +176,11 @@ class CloudOwner:
             # After a failed push or a lost run, GitHub may lack the clone's
             # commits: this machine's commits wait rather than go over them.
             held = status.get("state") == "lost" or bool(status.get("pushError"))
+            if held:
+                # The clone holds commits GitHub lacks: say so before anything
+                # is pushed or created, so a failed Start still leaves a note.
+                await asyncio.to_thread(mark_cloud, workspace, unsynced=True)
+                self._unsynced = True
             await asyncio.to_thread(sync_before_start, workspace, may_push=not held)
             # Once the sync has run, the note is written even if a stop comes:
             # nothing ran, so it is unsynced only if the status says so.
@@ -188,7 +193,8 @@ class CloudOwner:
                 try:
                     await asyncio.to_thread(fast_forward_to, workspace, commit)
                 except CloudSyncError:
-                    # The cloud holds a commit this machine could not take.
+                    # The cloud holds a commit this machine could not take. A
+                    # failed write keeps the old note: true if held (above).
                     await self._mark(True)
                     raise
             unsynced = status.get("state") == "lost" or bool(status.get("pushError"))
