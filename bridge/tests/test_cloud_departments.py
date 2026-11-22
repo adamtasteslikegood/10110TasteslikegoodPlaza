@@ -940,6 +940,29 @@ async def test_a_refused_stop_during_a_cloud_run_is_cleanup_failed(bridge, capsy
     assert json.loads(note.read_text()) == {"unsynced": True}
     assert "engineering: stop: unclean: " in capsys.readouterr().err
 
+    def stops():
+        return [c for c in bridge.runner.calls if c[0] == "stop"]
+
+    # A run may still be going: a later Stop asks again, and stays unclean
+    # while the runner does not answer.
+    asked = len(stops())
+    await send(bridge, "deactivate_domain", "stop")
+    assert bridge.manager.snapshot("engineering")["state"] == "cleanup_failed"
+    assert len(stops()) == asked + 1
+    assert bridge.service.capacity is not None
+    assert "engineering: stop: unclean: " in capsys.readouterr().err
+
+    # The runner answers: the next Stop is clean and the place is given back.
+    def stop(name):
+        bridge.runner.calls.append(("stop", name))
+        return dict(state="stopped")
+
+    bridge.runner.stop = stop
+    await send(bridge, "deactivate_domain", "stop")
+    assert bridge.manager.snapshot("engineering")["state"] == "inactive"
+    assert len(stops()) == asked + 2
+    assert bridge.service.capacity is None and bridge.service.reservation is None
+
 
 class _RefusingOwner(FakeOwner):
     async def start(self):

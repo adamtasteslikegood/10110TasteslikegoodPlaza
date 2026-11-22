@@ -53,11 +53,15 @@ class CloudStartRefused(Exception):
 
 
 class _Ended(Exception):
-    """Polling ended without an end state; ``reason`` is the outcome's."""
+    """Polling ended without an end state; ``reason`` is the outcome's.
 
-    def __init__(self, reason: str):
+    ``over``: the run is known to be no longer going (its workspace is gone, or
+    a later run has started), so there is nothing of this owner's to stop."""
+
+    def __init__(self, reason: str, *, over: bool = False):
         super().__init__(reason)
         self.reason = reason
+        self.over = over
 
 
 class _Aborted(Exception):
@@ -104,6 +108,10 @@ class CloudOwner:
         # Set by an unclean stop(): the execute() in flight ends as a stop at once.
         self._abort: asyncio.Event | None = None
         self._run: int | None = None
+        # True while a run this owner sent may be going on the runner, across
+        # execute() calls, until a settled status, a stop the runner answered
+        # or proof that the run is over clears it. stop() asks while it holds.
+        self._live = False
         # Set once the start() in flight has settled; stop() waits for it.
         self._started: asyncio.Event | None = None
 
@@ -260,6 +268,7 @@ class CloudOwner:
         if self._stopping:
             await self._mark(before)
             return SDKOutcome("", "cancelled", "stopped", None, None)
+        was_live, self._live = self._live, True
         try:
             run = await self._call(
                 "start_run",
@@ -271,7 +280,9 @@ class CloudOwner:
         except RunnerRefused as error:
             self._refused("run start", error)
             if error.status >= 400:
-                await self._mark(before)  # refused: nothing ran
+                # Refused: nothing ran. A 409 says a run is active here.
+                self._live = was_live or error.status == 409
+                await self._mark(before)
             # A 2xx the client could not read: the run may be going, so the
             # note stays unsynced.
             reason = START_RUN_REFUSALS.get(error.status, "sdk_error")
@@ -290,6 +301,8 @@ class CloudOwner:
             # The runner may still be running: the note stays unsynced.
             return SDKOutcome("", "cancelled", "stopped", seen["session"], None)
         except _Ended as ended:
+            if ended.over:
+                self._live = False
             return SDKOutcome("", "error", ended.reason, seen["session"], None)
         return await self._settle(status, seen)
 
@@ -342,9 +355,9 @@ class CloudOwner:
             except RunnerRefused as error:
                 self._refused("run", error)
                 self._check_abort()
-                raise _Ended(
-                    "cloud_run_lost" if error.status == 404 else "transport_error"
-                ) from None
+                if error.status == 404:  # the workspace is gone, and its run
+                    raise _Ended("cloud_run_lost", over=True) from None
+                raise _Ended("transport_error") from None
 
     async def _events(
         self, run: int, seen: dict, since: list, retry: bool = True
@@ -377,7 +390,7 @@ class CloudOwner:
                     break
             elif named is not None and named > run:
                 # A later run: ours is over and its end state can't be read.
-                raise _Ended("cloud_run_lost")
+                raise _Ended("cloud_run_lost", over=True)
             elif loop.time() - since[0] >= self.OUTAGE_SECONDS:
                 raise _Ended("cloud_run_lost")
         # The events written before the end state; more than one page if need be.
@@ -390,6 +403,7 @@ class CloudOwner:
         return status
 
     async def _settle(self, status: dict, seen: dict) -> SDKOutcome:
+        self._live = False  # the run has an end state
         state, push_error = status.get("state"), bool(status.get("pushError"))
         if push_error:
             self._warn("run", "push failed: %s", self._remote(status["pushError"]))
@@ -445,33 +459,72 @@ class CloudOwner:
                 self._warn("stop", "unclean: the start did not settle in time")
                 return CleanupOutcome(False, "cloud_unavailable")
         finished, launched, abort = self._finished, self._launched, self._abort
-        if finished is None:
-            return CleanupOutcome(True, None)
 
         def unclean(why: str) -> CleanupOutcome:
             self._warn("stop", "unclean: %s", why)
-            abort.set()  # the execute() in flight ends as a stop, now
+            if abort is not None:
+                abort.set()  # the execute() in flight ends as a stop, now
             return CleanupOutcome(False, "cloud_unavailable")
 
+        if finished is None:
+            # No execute() in flight: ask only if a run of ours may be going.
+            why = await self._ask_stop(deadline) if self._live else None
+            return unclean(why) if why else CleanupOutcome(True, None)
         try:
             await asyncio.wait_for(launched.wait(), deadline - loop.time())
         except TimeoutError:
             return unclean("the run start did not answer in time")
         if self._run is not None and not finished.is_set():
-            for attempt in range(self.STOP_RETRIES + 1):
-                try:
-                    await self._call("stop", self._name)
-                    break
-                except RunnerDown:
-                    return unclean("the runner did not answer")
-                except RunnerRefused as error:
-                    if error.status != 409:
-                        break  # execute() sees what the runner holds
-                    if attempt == self.STOP_RETRIES:
-                        return unclean("the runner kept answering 409")
-                    await asyncio.sleep(self.POLL_SECONDS)
+            why = await self._ask_stop(deadline, known=True)
+            if why:
+                return unclean(why)
+        elif self._live:
+            # The run start's outcome is unknown: the runner may hold a run.
+            why = await self._ask_stop(deadline)
+            if why:
+                return unclean(why)
         try:
             await asyncio.wait_for(finished.wait(), max(0.0, deadline - loop.time()))
         except TimeoutError:
             return unclean("the run did not end in time")
+        if self._live:
+            # execute() ended with no end state (say, a refused stop and then
+            # an outage): the run may still be going, so ask once more.
+            why = await self._ask_stop(deadline)
+            if why:
+                return unclean(why)
         return CleanupOutcome(True, None)
+
+    async def _ask_stop(self, deadline: float, *, known: bool = False) -> str | None:
+        """Ask the runner to stop, within what is left of stop()'s budget.
+
+        None when the stop settled; otherwise why it is unclean, and ``_live``
+        stays set for the next stop(). A 200 clears ``_live``, and so does a
+        404 (no such workspace). ``known``: an execute() in flight polls a
+        known run, so another refusal is left for it to see."""
+        loop = asyncio.get_running_loop()
+        for attempt in range(self.STOP_RETRIES + 1):
+            left = deadline - loop.time()
+            try:
+                if left <= 0:
+                    raise TimeoutError
+                # The thread may finish on its own later; stop() does not wait.
+                await asyncio.wait_for(self._call("stop", self._name), left)
+            except TimeoutError:
+                return "the runner did not answer in time"
+            except RunnerDown:
+                return "the runner did not answer"
+            except RunnerRefused as error:
+                if error.status == 409:
+                    if attempt == self.STOP_RETRIES:
+                        return "the runner kept answering 409"
+                    left = deadline - loop.time()
+                    await asyncio.sleep(max(0.0, min(self.POLL_SECONDS, left)))
+                    continue
+                if known:
+                    return None  # execute() sees what the runner holds
+                if error.status != 404:
+                    return f"the runner refused the stop: {error.status}"
+            self._live = False
+            return None
+        return "the runner kept answering 409"  # not reached

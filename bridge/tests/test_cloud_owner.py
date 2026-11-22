@@ -698,6 +698,264 @@ async def test_stop_waits_one_budget_in_all(cloud, monkeypatch):
     assert (outcome.status, outcome.reason) == ("cancelled", "stopped")
 
 
+def stops(runner):
+    return methods(runner).count("stop")
+
+
+UNKNOWN_STARTS = [RunnerDown("no answer"), RunnerRefused(200, "malformed")]
+
+
+@pytest.mark.parametrize("fault", UNKNOWN_STARTS)
+@pytest.mark.asyncio
+async def test_a_stop_after_a_run_start_with_no_known_outcome_asks_the_runner(
+    cloud, fault
+):
+    await cloud.owner.start()
+    cloud.runner.script("start_run", fault)
+    outcome = await run(cloud)
+    assert outcome.status == "error"
+    assert stops(cloud.runner) == 0
+    assert await cloud.owner.stop() == CleanupOutcome(True, None)
+    assert [call for call in cloud.runner.calls if call[0] == "stop"] == [
+        ("stop", cloud.name)
+    ]
+
+
+@pytest.mark.asyncio
+async def test_an_unanswered_stop_after_an_unknown_start_asks_again_on_the_next_stop(
+    cloud, capsys
+):
+    await cloud.owner.start()
+    cloud.runner.script("start_run", RunnerDown("no answer"))
+    outcome = await run(cloud)
+    assert outcome.reason == "transport_error"
+    cloud.runner.script("stop", RunnerDown("still down"))
+    capsys.readouterr()
+    assert await cloud.owner.stop() == CleanupOutcome(False, "cloud_unavailable")
+    one_line(capsys, cloud, "stop: unclean: the runner did not answer")
+    assert stops(cloud.runner) == 1
+    cloud.runner.script("stop", {"state": "stopped"})  # the runner is back
+    assert await cloud.owner.stop() == CleanupOutcome(True, None)
+    assert stops(cloud.runner) == 2
+    assert await cloud.owner.stop() == CleanupOutcome(True, None)
+    assert stops(cloud.runner) == 2  # settled: nothing more is asked
+
+
+def hang_stops(runner):
+    """The runner's stop never answers until the returned event is set."""
+    release = threading.Event()
+
+    def stop(name):
+        runner.calls.append(("stop", name))
+        release.wait(5)
+        return {"state": "stopped"}
+
+    runner.stop = stop
+    return release
+
+
+@pytest.mark.parametrize("in_flight", [False, True])
+@pytest.mark.asyncio
+async def test_a_stop_the_runner_never_answers_is_unclean_within_the_budget(
+    cloud, monkeypatch, capsys, in_flight
+):
+    monkeypatch.setattr(CloudOwner, "STOP_WAIT_SECONDS", 0.2)
+    await cloud.owner.start()
+    if in_flight:
+        cloud.runner.script("status", ended(state="running"))
+        execution = asyncio.create_task(run(cloud))
+        await until(lambda: cloud.owner._run is not None)
+    else:
+        cloud.runner.script("start_run", RunnerDown("no answer"))
+        await run(cloud)
+    release = hang_stops(cloud.runner)
+    capsys.readouterr()
+    loop = asyncio.get_running_loop()
+    began = loop.time()
+    try:
+        assert await cloud.owner.stop() == CleanupOutcome(False, "cloud_unavailable")
+        assert loop.time() - began < 0.4
+        one_line(capsys, cloud, "stop: unclean: the runner did not answer in time")
+        assert stops(cloud.runner) == 1
+    finally:
+        release.set()
+    if in_flight:
+        outcome = await asyncio.wait_for(execution, 5)
+        assert (outcome.status, outcome.reason) == ("cancelled", "stopped")
+    # The flag stays set: the next stop asks again.
+    assert await cloud.owner.stop() == CleanupOutcome(True, None)
+    assert stops(cloud.runner) == 2
+
+
+@pytest.mark.parametrize("in_flight", [False, True])
+@pytest.mark.asyncio
+async def test_409_pauses_end_within_the_stop_budget(
+    cloud, monkeypatch, capsys, in_flight
+):
+    monkeypatch.setattr(CloudOwner, "STOP_WAIT_SECONDS", 0.2)
+    await cloud.owner.start()
+    if in_flight:
+        cloud.runner.script("status", ended(state="running"))
+        execution = asyncio.create_task(run(cloud))
+        await until(lambda: cloud.owner._run is not None)
+    else:
+        cloud.runner.script("start_run", RunnerDown("no answer"))
+        await run(cloud)
+    monkeypatch.setattr(CloudOwner, "POLL_SECONDS", 1.0)
+    cloud.runner.script("stop", RunnerRefused(409, "busy"))
+    capsys.readouterr()
+    loop = asyncio.get_running_loop()
+    began = loop.time()
+    assert await cloud.owner.stop() == CleanupOutcome(False, "cloud_unavailable")
+    assert loop.time() - began < 0.4
+    one_line(capsys, cloud, "stop: unclean: the runner did not answer in time")
+    assert stops(cloud.runner) == 1
+    if in_flight:
+        outcome = await asyncio.wait_for(execution, 5)
+        assert (outcome.status, outcome.reason) == ("cancelled", "stopped")
+
+
+@pytest.mark.parametrize(
+    "answer, clean, why",
+    [
+        (RunnerRefused(404, "No such workspace"), True, None),
+        (RunnerRefused(409, "busy"), False, "the runner kept answering 409"),
+        (RunnerRefused(401, "who"), False, "the runner refused the stop: 401"),
+    ],
+)
+@pytest.mark.asyncio
+async def test_a_stop_with_no_run_in_flight_settles_on_200_or_404_only(
+    cloud, capsys, answer, clean, why
+):
+    await cloud.owner.start()
+    cloud.runner.script("start_run", RunnerDown("no answer"))
+    await run(cloud)
+    cloud.runner.script("stop", answer)
+    capsys.readouterr()
+    outcome = await cloud.owner.stop()
+    assert outcome.clean is clean
+    expected = 4 if answer.status == 409 else 1  # 409 has the same retries
+    assert stops(cloud.runner) == expected
+    if clean:
+        assert cloud_lines(capsys) == []
+    else:
+        line = one_line(capsys, cloud, f"stop: unclean: {why}")
+        assert "who" not in line and "busy" not in line
+    await cloud.owner.stop()
+    assert stops(cloud.runner) == expected + (0 if clean else expected)
+
+
+@pytest.mark.parametrize("status, asked", [(400, False), (409, True)])
+@pytest.mark.asyncio
+async def test_a_refused_run_start_asks_for_a_stop_only_after_a_409(
+    cloud, status, asked
+):
+    await cloud.owner.start()
+    cloud.runner.script("start_run", RunnerRefused(status, "refused"))
+    await run(cloud)
+    calls = len(cloud.runner.calls)
+    assert await cloud.owner.stop() == CleanupOutcome(True, None)
+    assert stops(cloud.runner) == (1 if asked else 0)
+    if not asked:
+        assert len(cloud.runner.calls) == calls
+
+
+@pytest.mark.asyncio
+async def test_a_stop_after_a_later_run_ended_ours_sends_nothing(cloud):
+    await cloud.owner.start()
+    cloud.runner.script("status", ended(run=2, state="running"))
+    outcome = await bounded(cloud)
+    assert outcome.reason == "cloud_run_lost"
+    assert await cloud.owner.stop() == CleanupOutcome(True, None)
+    assert stops(cloud.runner) == 0  # the later run is not this owner's
+
+
+@pytest.mark.asyncio
+async def test_a_stop_after_the_workspace_went_away_sends_nothing(cloud):
+    await cloud.owner.start()
+    cloud.runner.script("status", RunnerRefused(404, "gone"))
+    outcome = await bounded(cloud)
+    assert outcome.reason == "cloud_run_lost"
+    assert await cloud.owner.stop() == CleanupOutcome(True, None)
+    assert stops(cloud.runner) == 0
+
+
+@pytest.mark.asyncio
+async def test_a_stop_after_polling_gave_up_on_an_outage_asks_the_runner(
+    cloud, monkeypatch
+):
+    monkeypatch.setattr(CloudOwner, "OUTAGE_SECONDS", 0.05)
+    await cloud.owner.start()
+    cloud.runner.event_faults = [RunnerDown("down")] * 10_000
+    outcome = await bounded(cloud)
+    assert outcome.reason == "transport_error"
+    assert await cloud.owner.stop() == CleanupOutcome(True, None)
+    assert stops(cloud.runner) == 1
+
+
+@pytest.mark.asyncio
+async def test_a_stop_after_a_run_that_settled_sends_nothing(cloud):
+    await cloud.owner.start()
+    cloud.runner.script("status", ended(result="done"))
+    outcome = await run(cloud)
+    assert outcome.status == "success"
+    calls = len(cloud.runner.calls)
+    assert await cloud.owner.stop() == CleanupOutcome(True, None)
+    assert len(cloud.runner.calls) == calls
+
+
+@pytest.mark.asyncio
+async def test_a_stop_during_a_run_start_that_then_fails_asks_the_runner(cloud):
+    await cloud.owner.start()
+    entered, release = threading.Event(), threading.Event()
+
+    def start_run(name, prompt, **kwargs):
+        cloud.runner.calls.append(("start_run", name))
+        entered.set()
+        release.wait(5)
+        raise RunnerDown("timed out")
+
+    cloud.runner.start_run = start_run
+    execution = asyncio.create_task(run(cloud))
+    try:
+        async with asyncio.timeout(3):
+            while not entered.is_set():
+                await asyncio.sleep(0.001)
+        stopping = asyncio.create_task(cloud.owner.stop())
+        await asyncio.sleep(0.05)
+        assert not stopping.done()  # it waits for start_run's answer
+    finally:
+        release.set()
+    assert await asyncio.wait_for(stopping, 3) == CleanupOutcome(True, None)
+    assert (await execution).reason == "transport_error"
+    assert stops(cloud.runner) == 1
+
+
+@pytest.mark.asyncio
+async def test_a_refused_stop_mid_run_asks_again_when_the_run_ends_unsettled(
+    cloud, capsys
+):
+    await cloud.owner.start()
+    cloud.runner.script("status", ended(state="running"))
+    real_stop = cloud.runner.stop
+
+    def stop(name):
+        # The runner refuses the stop, and then its status too.
+        cloud.runner.script("status", RunnerRefused(401, "who"))
+        cloud.runner.script("stop", RunnerRefused(401, "who"))
+        return real_stop(name)
+
+    cloud.runner.stop = stop
+    execution = asyncio.create_task(run(cloud))
+    await until(lambda: "start_run" in methods(cloud.runner))
+    capsys.readouterr()
+    assert await cloud.owner.stop() == CleanupOutcome(False, "cloud_unavailable")
+    assert (await asyncio.wait_for(execution, 5)).reason == "transport_error"
+    assert stops(cloud.runner) == 2  # the one mid-run, then one after it ended
+    lines = [line for line in cloud_lines(capsys) if "stop: unclean" in line]
+    assert len(lines) == 1 and "the runner refused the stop: 401" in lines[0]
+
+
 @pytest.mark.asyncio
 async def test_healthy_only_between_start_and_stop(cloud):
     assert not cloud.owner.healthy
