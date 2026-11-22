@@ -440,6 +440,7 @@ class CloudOwner:
                 synced = False
                 if outcome == "success":
                     outcome, reason = "error", "cloud_sync_failed"
+        # Unchecked: a failed write leaves _execute's "unsynced" note in place.
         await self._mark(not synced)
         return SDKOutcome(output, outcome, reason, seen["session"], delta)
 

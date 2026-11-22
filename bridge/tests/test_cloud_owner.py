@@ -1434,6 +1434,30 @@ def note_writes(monkeypatch, cloud):
     return state
 
 
+@pytest.mark.asyncio
+async def test_a_failed_last_note_write_of_a_run_leaves_the_note_unsynced(
+    cloud, note_writes, capsys
+):
+    await cloud.owner.start()
+    assert cloud.note() is False
+    before = note_writes.count
+    note_writes.fail = {before + 2}  # the Run's first write works, its last fails
+    cloud.runner.log = [
+        event(1, 1, "system", {"subtype": "init", "session_id": "session-1"}),
+        event(2, 1, "result", {"subtype": "success"}),
+    ]
+    reply = json.dumps({"answer": "Ready.", "memory_delta": {"summary": "Checked"}})
+    cloud.runner.script("status", ended(state="running"), ended(result=reply))
+    capsys.readouterr()
+    outcome = await run(cloud)
+    # The outcome is what it would have been, project memory included.
+    assert (outcome.status, outcome.reason) == ("success", "completed")
+    assert outcome.memory_delta == {"summary": "Checked"}
+    assert note_writes.count == before + 2
+    assert cloud.note() is True  # the first write's value stayed in place
+    one_line(capsys, cloud, "cloud note: sync failed: git_failed")
+
+
 @pytest.fixture
 def syncs(monkeypatch):
     seen = []
