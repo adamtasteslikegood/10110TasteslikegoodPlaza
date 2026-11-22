@@ -52,14 +52,15 @@ spec-set versions, and no application release existed before `v0.1.22`.
   ASCII and is redacted by the recorder, an unreadable cloud note refuses the
   switch to local as `git_failed`, and a cloud session with no runner is
   refused at Start as `cloud_unavailable`.
-- After the review: a Stop asks the runner while a run of the department may
-  be going on it, also after a run start with no answer or a 2xx the client
-  could not read, within one 60 s budget for every request. A run start refused
-  with 300 or more (a redirect included) started nothing: the flag and the
-  cloud note keep their earlier values. While that doubt lasts an unclean Stop
-  stays `cleanup_failed` on later Stops, and so does the bridge's shutdown; it
-  ends when the runner answers a stop or a status settles the run or proves it
-  over. A cloud Start whose first runner status is `lost` or has a
+- After the review: a Stop of a cloud department asks the runner to stop
+  whenever a run it sent may still be going, which now includes a run start
+  that got no answer or a 2xx the client could not read, all within one 60 s
+  budget. A run start refused with a redirect, a 4xx or a 502 started nothing:
+  it adds no such doubt, leaves any earlier one, and puts the cloud note back
+  to its earlier value. When a Stop cannot get the runner to answer while a run
+  may be going, that Stop and each later one answer `cleanup_failed`, and so
+  does the bridge's shutdown, until the runner answers a stop or a status
+  settles the run or shows it is over. A cloud Start whose first runner status is `lost` or has a
   `pushError` writes the cloud note as unsynced before anything is pushed or
   created.
 - These changes touch eight guarded sources, so the guard probe was run again

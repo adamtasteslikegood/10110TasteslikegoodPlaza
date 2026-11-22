@@ -283,10 +283,12 @@ class CloudOwner:
         except RunnerRefused as error:
             self._refused("run start", error)
             if error.status >= 300:
-                # Refused, or a redirect from what stands in front of the
-                # runner: nothing ran. A 409's active run is not this owner's
-                # (the runner's stop takes no run number), so the flag keeps
-                # the value it had before this start.
+                # A 4xx, a 502, or a redirect from what stands in front of
+                # the runner: this start started nothing, a 409 included, so
+                # it adds no doubt and the flag keeps the value it had before
+                # (an earlier doubt stays). A 409 alone sends no stop: the
+                # runner's stop takes no run number, so it can't be aimed at
+                # one run.
                 self._live = was_live
                 await self._mark(before)
             # A 2xx the client could not read: the run may be going, so the

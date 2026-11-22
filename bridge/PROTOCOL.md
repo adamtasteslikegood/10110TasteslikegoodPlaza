@@ -510,10 +510,10 @@ Where each command goes:
 - Stop asks the runner to stop while a run of this department's owner may be
   going on it: a Run in flight, and a run sent earlier that has no end state
   here. A run start may have started a run when it got no answer or a 2xx the
-  client could not read; one refused with 300 or more started nothing (a
-  redirect comes from what stands in front of the runner, and a 409's active
-  run is not this owner's, since the runner's stop takes no run number). That
-  doubt ends when the runner answers a stop (200, or 404 for a workspace it
+  client could not read; one refused with a redirect, a 4xx or a 502 started
+  nothing (a redirect comes from what stands in front of the runner, and a 409
+  says a run is already active, not that this start began one). That doubt
+  ends when the runner answers a stop (200, or 404 for a workspace it
   does not know), when a status settles the run or names a later one, or when
   a poll gets a 404; polling that gave up without such an answer leaves it. A
   refused run start adds no doubt and takes none away: an earlier run still in
@@ -562,9 +562,9 @@ outcome does not matter. A Run that ends `lost` or with `pushError` leaves the
 note unsynced even when its commit was taken, and so does a Run that was sent
 to the runner and did not come back with a settled status (a transport error, a
 lost run, a stop that gave up, a start answer the client could not read). The
-earlier value is put back when the start is refused with 300 or more (a 4xx,
-a 502, or a redirect, which never reached the runner), or when a Stop arrives
-before the run is sent.
+earlier value is put back when the start is refused with a redirect (which
+never reached the runner), a 4xx or a 502, or when a Stop arrives before the
+run is sent.
 
 Not carried to the cloud: `DOMAIN_TIER` (the runner's `MODEL` decides),
 `DOMAIN_MAX_BUDGET_USD` (the AI Gateway's spend limits decide), the permission
