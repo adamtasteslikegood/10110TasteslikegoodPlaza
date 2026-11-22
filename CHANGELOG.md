@@ -60,9 +60,9 @@ spec-set versions, and no application release existed before `v0.1.22`.
   to its earlier value. When a Stop cannot get the runner to answer while a run
   may be going, that Stop and each later one answer `cleanup_failed`, and so
   does the bridge's shutdown, until the runner answers a stop or a status
-  settles the run or shows it is over. A cloud Start whose first runner status is `lost` or has a
-  `pushError` writes the cloud note as unsynced before anything is pushed or
-  created.
+  settles the run or shows it is over. A cloud Start whose first runner
+  status is `lost` or has a `pushError` writes the cloud note as unsynced
+  before anything is pushed or created.
 - These changes touch eight guarded sources, so the guard probe was run again
   on this source in both permission modes on 2026-11-20 (33 cases each, all
   accepted) and `bridge/tool_guard_acceptance.json` is replaced from the two
