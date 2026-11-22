@@ -52,6 +52,12 @@ spec-set versions, and no application release existed before `v0.1.22`.
   ASCII and is redacted by the recorder, an unreadable cloud note refuses the
   switch to local as `git_failed`, and a cloud session with no runner is
   refused at Start as `cloud_unavailable`.
+- After the review: a Stop asks the runner whenever a run of the department
+  may be going on it, also after a run start whose outcome was unknown, within
+  one 60 s budget for every request; an unclean Stop stays `cleanup_failed`,
+  and so does the bridge's shutdown, until the runner answers a later Stop. A
+  cloud Start whose first runner status is `lost` or has a `pushError` writes
+  the cloud note as unsynced before anything is pushed or created.
 - These changes touch eight guarded sources, so the guard probe was run again
   on this source in both permission modes on 2026-11-20 (33 cases each, all
   accepted) and `bridge/tool_guard_acceptance.json` is replaced from the two
