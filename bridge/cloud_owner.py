@@ -512,6 +512,9 @@ class CloudOwner:
         loop = asyncio.get_running_loop()
         for attempt in range(self.STOP_RETRIES + 1):
             left = deadline - loop.time()
+            if left <= 0 and attempt:
+                # The budget ran out in the pause after a 409: it did answer.
+                return "the runner kept answering 409"
             try:
                 if left <= 0:
                     raise TimeoutError

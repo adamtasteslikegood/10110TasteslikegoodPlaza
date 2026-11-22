@@ -808,7 +808,8 @@ async def test_409_pauses_end_within_the_stop_budget(
     began = loop.time()
     assert await cloud.owner.stop() == CleanupOutcome(False, "cloud_unavailable")
     assert loop.time() - began < 0.4
-    one_line(capsys, cloud, "stop: unclean: the runner did not answer in time")
+    # The budget ran out in a pause after a 409: the runner did answer.
+    one_line(capsys, cloud, "stop: unclean: the runner kept answering 409")
     assert stops(cloud.runner) == 1
     if in_flight:
         outcome = await asyncio.wait_for(execution, 5)
@@ -862,6 +863,34 @@ async def test_a_refused_run_start_of_a_fresh_owner_sends_no_stop(cloud, status)
     assert len(cloud.runner.calls) == calls
 
 
+@pytest.mark.parametrize("status", [302, 400, 409])
+@pytest.mark.asyncio
+async def test_a_refused_run_start_after_one_in_doubt_still_asks_for_a_stop(
+    cloud, status
+):
+    await cloud.owner.start()
+    cloud.runner.script("start_run", RunnerDown("no answer"))
+    assert (await run(cloud)).reason == "transport_error"
+    cloud.runner.script("start_run", RunnerRefused(status, "refused"))
+    assert (await run(cloud)).status == "error"
+    assert cloud.note() is True  # the first run may still be going
+    assert await cloud.owner.stop() == CleanupOutcome(True, None)
+    assert stops(cloud.runner) == 1
+
+
+@pytest.mark.asyncio
+async def test_a_run_that_settles_after_one_in_doubt_ends_the_doubt(cloud):
+    await cloud.owner.start()
+    cloud.runner.script("start_run", RunnerDown("no answer"))
+    assert (await run(cloud)).reason == "transport_error"
+    cloud.runner.script("start_run", 2)
+    cloud.runner.script("status", ended(run=2, result="done"))
+    assert (await run(cloud)).status == "success"
+    calls = len(cloud.runner.calls)
+    assert await cloud.owner.stop() == CleanupOutcome(True, None)
+    assert len(cloud.runner.calls) == calls
+
+
 @pytest.mark.asyncio
 async def test_a_stop_after_a_later_run_ended_ours_sends_nothing(cloud):
     await cloud.owner.start()
@@ -891,6 +920,21 @@ async def test_a_stop_after_polling_gave_up_on_an_outage_asks_the_runner(
     cloud.runner.event_faults = [RunnerDown("down")] * 10_000
     outcome = await bounded(cloud)
     assert outcome.reason == "transport_error"
+    assert await cloud.owner.stop() == CleanupOutcome(True, None)
+    assert stops(cloud.runner) == 1
+
+
+@pytest.mark.parametrize("answer", [ended(run=0, state="running"), {"state": "idle"}])
+@pytest.mark.asyncio
+async def test_a_stop_after_no_status_named_the_run_asks_the_runner(
+    cloud, monkeypatch, answer
+):
+    # The runner answers, but never about this run: it may still be going.
+    monkeypatch.setattr(CloudOwner, "OUTAGE_SECONDS", 0.05)
+    await cloud.owner.start()
+    cloud.runner.script("status", answer)
+    outcome = await bounded(cloud)
+    assert outcome.reason == "cloud_run_lost"
     assert await cloud.owner.stop() == CleanupOutcome(True, None)
     assert stops(cloud.runner) == 1
 
@@ -1520,12 +1564,14 @@ async def test_a_first_cloud_start_that_fails_leaves_no_note(cloud):
     assert not note_file(cloud).exists()  # still free to start locally
 
 
+@pytest.mark.parametrize("earlier", [True, False, None])
 @pytest.mark.parametrize("write_fails", [False, True])
 @pytest.mark.asyncio
 async def test_a_failed_fast_forward_at_start_never_lowers_the_note(
-    cloud, monkeypatch, note_writes, write_fails
+    cloud, monkeypatch, capsys, note_writes, write_fails, earlier
 ):
-    mark_cloud(cloud.workspace, unsynced=True)
+    if earlier is not None:
+        mark_cloud(cloud.workspace, unsynced=earlier)
     sha = "a" * 40
 
     def diverged(workspace, commit):
@@ -1534,11 +1580,25 @@ async def test_a_failed_fast_forward_at_start_never_lowers_the_note(
     monkeypatch.setattr(cloud_owner, "fast_forward_to", diverged)
     cloud.runner.script("create", ended(state="idle", pushed={"commit": sha}))
     if write_fails:
-        note_writes.fail = {1}
+        # The next note write is the one in the failed fast-forward branch.
+        note_writes.fail = {note_writes.count + 1}
+    capsys.readouterr()
     with pytest.raises(CloudStartRefused) as refused:
         await cloud.owner.start()
     assert refused.value.code == "cloud_sync_failed"
-    assert cloud.note() is True
+    lines = cloud_lines(capsys)
+    noted = [line for line in lines if "cloud note: sync failed" in line]
+    if write_fails:
+        assert note_writes.fail <= set(range(1, note_writes.count + 1))
+        assert len(noted) == 1
+        # A failed write keeps what was on disk: never lowered, never raised.
+        if earlier is None:
+            assert not note_file(cloud).exists()
+        else:
+            assert cloud.note() is earlier
+    else:
+        assert noted == []
+        assert cloud.note() is True
 
 
 @pytest.mark.parametrize("last", HELD)
