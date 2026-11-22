@@ -623,6 +623,43 @@ def test_a_git_fault_is_git_failed_with_a_short_scrubbed_detail(tmp_path, monkey
     assert raised.value.__suppress_context__
 
 
+def test_a_sync_error_scrubs_userinfo_that_holds_a_slash():
+    error = CloudSyncError(
+        "git_failed", "fatal: https://user:pa/ss@github.com/o/r.git failed"
+    )
+    for text in (error.detail, str(error)):
+        assert "pa/ss" not in text
+        assert "user" not in text
+    assert "https://github.com/o/r.git" in error.detail
+
+
+def test_a_git_fault_scrubs_userinfo_with_a_slash_that_straddles_the_cut(
+    tmp_path, monkeypatch
+):
+    origin, workspace = setup(tmp_path)
+    stderr = b""
+
+    def failing(*args, **kwargs):
+        raise subprocess.CalledProcessError(128, ["git"], stderr=stderr)
+
+    monkeypatch.setattr(cloud_git, "git_without_filters", failing)
+    with pytest.raises(CloudSyncError) as probe:
+        sync_before_start(workspace)
+    prefix = probe.value.detail
+    assert prefix.startswith("git ") and prefix.endswith(" exit 128: ")
+
+    url = "https://user:pa/" + "SECRET" * 60 + "@github.com/O/R"
+    unscrubbed = prefix + url
+    assert unscrubbed.index("://") < 300 < unscrubbed.index("@")
+    stderr = url.encode()
+    with pytest.raises(CloudSyncError) as raised:
+        sync_before_start(workspace)
+    detail = raised.value.detail
+    for leaked in ("SECRET", "pa/", "user:"):
+        assert leaked not in detail
+    assert len(detail) <= 300
+
+
 def test_a_note_that_cannot_be_read_is_git_failed_not_unsynced(tmp_path, monkeypatch):
     origin, workspace = setup(tmp_path)
     mark_cloud(workspace, unsynced=False)

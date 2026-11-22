@@ -16,7 +16,7 @@ LIMIT = 300
 
 # From the scheme to the last "@" before whitespace: userinfo may hold a "/".
 # A path with an "@" loses its host too; over-scrubbing a log is the safe side.
-_USERINFO = re.compile(r"([A-Za-z][A-Za-z0-9+.-]*://)\S*@")
+USERINFO = re.compile(r"([A-Za-z][A-Za-z0-9+.-]*://)\S*@")
 
 
 class _Stderr(logging.StreamHandler):
@@ -47,7 +47,7 @@ def remote(text, clean: Callable[[str], str] | None = None) -> str:
     if clean is not None:
         text = clean(text)
     text = " ".join(text.split())
-    return _USERINFO.sub(r"\1", text)[:LIMIT]
+    return USERINFO.sub(r"\1", text)[:LIMIT]
 
 
 def warn(department: str, step: str, what: str, *args) -> None:

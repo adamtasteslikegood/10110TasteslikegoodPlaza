@@ -20,6 +20,7 @@ from pathlib import Path
 import re
 import subprocess
 
+from bridge import cloud_log
 from bridge import project_files as files
 from bridge.workspace import WorkspaceError, git_without_filters
 
@@ -31,7 +32,6 @@ DETAIL_LIMIT = 300
 
 _COMMIT = re.compile(r"[0-9a-f]{40}|[0-9a-f]{64}")
 _BRANCH = re.compile(r"plaza/workspace-[A-Za-z0-9_-]+")
-_USERINFO = re.compile(r"([A-Za-z][A-Za-z0-9+.-]*://)[^/\s@]*@")
 _NAME = r"([A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)"
 _REPO = r"([A-Za-z0-9_.-]+?)"
 _GITHUB_FORMS = (
@@ -66,7 +66,7 @@ class CloudSyncError(Exception):
 
 
 def _scrub(text: str) -> str:
-    return _USERINFO.sub(r"\1", text)[:DETAIL_LIMIT]
+    return cloud_log.USERINFO.sub(r"\1", text)[:DETAIL_LIMIT]
 
 
 def _fault(args, error: BaseException) -> CloudSyncError:
@@ -84,7 +84,7 @@ def _fault(args, error: BaseException) -> CloudSyncError:
     else:
         what = type(error).__name__
     # Scrub before cutting, so a cut cannot leave half a userinfo behind.
-    text = _USERINFO.sub(r"\1", " ".join(str(output).split()))
+    text = cloud_log.USERINFO.sub(r"\1", " ".join(str(output).split()))
     return CloudSyncError("git_failed", f"git {command} {what}: {text}")
 
 
