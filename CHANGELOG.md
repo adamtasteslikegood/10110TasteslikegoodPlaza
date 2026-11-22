@@ -62,7 +62,8 @@ spec-set versions, and no application release existed before `v0.1.22`.
   does the bridge's shutdown, until the runner answers a stop or a status
   settles the run or shows it is over. A cloud Start whose first runner
   status is `lost` or has a `pushError` writes the cloud note as unsynced
-  before anything is pushed or created.
+  before anything is pushed or created. A Stop during a cloud Start leaves the
+  note unsynced when the runner's pushed commit is not on the branch here.
 - These changes touch eight guarded sources, so the guard probe was run again
   on this source in both permission modes on 2026-11-20 (33 cases each, all
   accepted) and `bridge/tool_guard_acceptance.json` is replaced from the two

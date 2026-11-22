@@ -564,7 +564,9 @@ to the runner and did not come back with a settled status (a transport error, a
 lost run, a stop that gave up, a start answer the client could not read). The
 earlier value is put back when the start is refused with a redirect (which
 never reached the runner), a 4xx or a 502, or when a Stop arrives before the
-run is sent.
+run is sent. A Stop during a Start leaves the note unsynced when the runner
+named a commit that the branch here does not hold, or that could not be
+checked.
 
 Not carried to the cloud: `DOMAIN_TIER` (the runner's `MODEL` decides),
 `DOMAIN_MAX_BUDGET_USD` (the AI Gateway's spend limits decide), the permission
