@@ -244,6 +244,74 @@ def test_fast_forward_to_refuses_a_commit_that_is_not_ahead(tmp_path, file_proto
     assert head(workspace) == ours
 
 
+def test_holds_commit_is_true_for_the_tip_and_for_an_ancestor(tmp_path, file_protocol):
+    _, workspace = setup(tmp_path)
+    sync_before_start(workspace)
+    first = commit(workspace.worktree_path, "first.txt")
+    tip = commit(workspace.worktree_path, "second.txt")
+    assert cloud_git.holds_commit(workspace, tip) is True
+    assert cloud_git.holds_commit(workspace, first) is True
+
+
+def test_holds_commit_is_false_for_a_commit_fetched_but_not_merged(
+    tmp_path, file_protocol
+):
+    origin, workspace = setup(tmp_path)
+    sync_before_start(workspace)
+    other = other_clone(tmp_path, origin, workspace.branch)
+    theirs = commit(other, "cloud.txt")
+    git(other, "push", "-q", "origin", workspace.branch)
+    root = workspace.worktree_path
+    git(root, "fetch", "-q", "origin", workspace.branch)
+    assert git(root, "cat-file", "-t", theirs) == "commit"  # in the store
+    assert head(workspace) != theirs  # but the branch does not hold it
+    assert cloud_git.holds_commit(workspace, theirs) is False
+
+
+def test_holds_commit_is_false_for_a_commit_the_store_lacks(tmp_path, file_protocol):
+    _, workspace = setup(tmp_path)
+    sync_before_start(workspace)
+    assert cloud_git.holds_commit(workspace, "0" * 40) is False
+
+
+@pytest.mark.parametrize("value", ["HEAD", "--help", None, "abc1234", "A" * 40])
+def test_holds_commit_is_false_for_a_value_that_is_not_a_commit_id(
+    tmp_path, file_protocol, monkeypatch, value
+):
+    _, workspace = setup(tmp_path)
+    sync_before_start(workspace)
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("git ran for a value that is not a commit id")
+
+    monkeypatch.setattr(cloud_git, "_local", forbidden)
+    assert cloud_git.holds_commit(workspace, value) is False
+
+
+def test_holds_commit_makes_no_network_call(tmp_path, file_protocol, monkeypatch):
+    origin, workspace = setup(tmp_path)
+    sync_before_start(workspace)
+    other = other_clone(tmp_path, origin, workspace.branch)
+    theirs = commit(other, "cloud.txt")
+    git(other, "push", "-q", "origin", workspace.branch)
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("the check went to the network")
+
+    monkeypatch.setattr(cloud_git, "_network_git", forbidden)
+    assert cloud_git.holds_commit(workspace, theirs) is False
+
+
+def test_holds_commit_off_the_branch_is_a_fault_not_an_answer(tmp_path, file_protocol):
+    _, workspace = setup(tmp_path)
+    sync_before_start(workspace)
+    tip = head(workspace)
+    git(workspace.worktree_path, "checkout", "-q", "--detach")
+    with pytest.raises(CloudSyncError) as raised:
+        cloud_git.holds_commit(workspace, tip)
+    assert raised.value.code == "git_failed"
+
+
 def test_only_the_workspace_branch_is_ever_pushed(tmp_path, file_protocol):
     origin, workspace = setup(tmp_path)
     git(workspace.worktree_path, "branch", "side")

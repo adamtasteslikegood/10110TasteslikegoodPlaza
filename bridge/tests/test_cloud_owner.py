@@ -1093,6 +1093,82 @@ async def test_a_stop_during_create_takes_nothing_and_leaves_a_true_note(
     assert not cloud.owner.healthy
 
 
+async def stop_during_create_with_a_late_commit(cloud):
+    """Stop while create is in flight; the runner then names a commit pushed after."""
+    from bridge.cloud_git import sync_before_start
+    from bridge.tests.test_cloud_git import head
+
+    sync_before_start(cloud.workspace)  # the branch is on origin
+    before = head(cloud.workspace)
+    stopping, starting, release = await stop_during(cloud, "create")
+    try:
+        sha = cloud.push_from_cloud("cloud.txt")
+        cloud.runner.script("create", dict(state="idle", pushed={"commit": sha}))
+        assert before != sha and head(cloud.workspace) == before  # not held
+    finally:
+        release.set()
+    assert await asyncio.wait_for(stopping, 3) == CleanupOutcome(True, None)
+    with pytest.raises(RuntimeError, match="stopped before readiness"):
+        starting.result()
+    assert head(cloud.workspace) == before
+    assert not cloud.owner.healthy
+
+
+@pytest.mark.asyncio
+async def test_a_stop_during_create_keeps_the_note_unsynced_for_a_commit_not_held(
+    cloud, fast_forwards
+):
+    await stop_during_create_with_a_late_commit(cloud)
+    assert fast_forwards == []
+    assert cloud.note() is True
+
+
+@pytest.mark.asyncio
+async def test_a_stop_during_create_with_a_failed_check_leaves_the_note_unsynced(
+    cloud, fast_forwards, monkeypatch
+):
+    def broken(workspace, commit):
+        raise CloudSyncError("git_failed", "boom")
+
+    monkeypatch.setattr(cloud_owner, "holds_commit", broken)
+    await stop_during_create_with_a_late_commit(cloud)
+    assert fast_forwards == []
+    assert cloud.note() is True
+
+
+@pytest.mark.asyncio
+async def test_a_stop_during_create_for_a_held_commit_makes_no_network_call(
+    cloud, fast_forwards, monkeypatch
+):
+    from bridge import cloud_git
+    from bridge.cloud_git import sync_before_start
+
+    sync_before_start(cloud.workspace)
+    sha = cloud.push_from_cloud("cloud.txt")
+    cloud.runner.script("create", dict(state="idle", pushed={"commit": sha}))
+    sync_before_start(cloud.workspace)  # the branch now holds the commit
+    calls = []
+    real = cloud_git._network_git
+
+    def recording(*args, **kwargs):
+        calls.append(args[1:])
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(cloud_git, "_network_git", recording)
+    stopping, starting, release = await stop_during(cloud, "create")
+    del calls[:]  # what ran before create was entered is the owner's own sync
+    try:
+        assert not stopping.done()
+    finally:
+        release.set()
+    assert await asyncio.wait_for(stopping, 3) == CleanupOutcome(True, None)
+    with pytest.raises(RuntimeError, match="stopped before readiness"):
+        starting.result()
+    assert calls == []
+    assert fast_forwards == []
+    assert cloud.note() is False
+
+
 @pytest.mark.asyncio
 async def test_a_stop_during_the_sync_creates_nothing(cloud, monkeypatch):
     from bridge.cloud_git import sync_before_start as real_sync

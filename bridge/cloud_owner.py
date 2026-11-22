@@ -20,6 +20,7 @@ from bridge.cloud_git import (
     CloudSyncError,
     fast_forward_to,
     github_repo,
+    holds_commit,
     mark_cloud,
     sync_before_start,
 )
@@ -170,6 +171,14 @@ class CloudOwner:
         if self._stopping:
             raise RuntimeError("Cloud owner stopped before readiness")
 
+    async def _not_held(self, workspace, commit: str) -> bool:
+        """Stopping: is the runner's commit missing here? A failed check says yes."""
+        try:
+            return not await asyncio.to_thread(holds_commit, workspace, commit)
+        except CloudSyncError as error:
+            self._sync_failed("start", error)
+            return True  # an unanswered question is read as "may be ahead"
+
     async def _start(self) -> None:
         try:
             try:
@@ -193,14 +202,20 @@ class CloudOwner:
                 await asyncio.to_thread(mark_cloud, workspace, unsynced=True)
                 self._unsynced = True
             await asyncio.to_thread(sync_before_start, workspace, may_push=not held)
-            # Once the sync has run, the note is written even if a stop comes:
-            # nothing ran, so it is unsynced only if the status says so.
+            # Once the sync has run, the note is written even if a stop comes.
+            # A stop skips the create, or the fast-forward to what it answers;
+            # the note then says unsynced unless this branch already holds the
+            # commit the runner named.
             if not self._stopping:
                 status = await self._call("create", self._name, repo, workspace.branch)
                 if status.get("state") == "running":
                     raise CloudStartRefused("cloud_run_active")
             commit = _commit(status)
-            if commit is not None and not self._stopping:
+            stopping = self._stopping
+            behind = False
+            if commit is not None and stopping:
+                behind = await self._not_held(workspace, commit)
+            if commit is not None and not stopping:
                 try:
                     await asyncio.to_thread(fast_forward_to, workspace, commit)
                 except CloudSyncError:
@@ -208,7 +223,9 @@ class CloudOwner:
                     # failed write keeps the old note: true if held (above).
                     await self._mark(True)
                     raise
-            unsynced = status.get("state") == "lost" or bool(status.get("pushError"))
+            unsynced = (
+                behind or status.get("state") == "lost" or bool(status.get("pushError"))
+            )
             await asyncio.to_thread(mark_cloud, workspace, unsynced=unsynced)
             self._unsynced = unsynced
         except CloudSyncError as error:

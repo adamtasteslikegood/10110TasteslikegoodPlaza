@@ -329,15 +329,31 @@ def _push_unless_held(root: Path, branch: str, expected: str, may_push: bool) ->
     _push(root, branch, expected)
 
 
+def _holds(root: Path, commit: str, local: str) -> bool:
+    """Whether the branch tip ``local`` is ``commit`` or has it as an ancestor."""
+    return commit == local or (
+        _has_commit(root, commit) and _is_ancestor(root, commit, local)
+    )
+
+
+def holds_commit(workspace, commit) -> bool:
+    """Whether the worktree's branch holds ``commit``; local git only, no fetch.
+
+    A commit that is only in the object store, fetched but not merged, is not held.
+    """
+    root, branch = Path(workspace.worktree_path), _branch(workspace)
+    if not isinstance(commit, str) or not _COMMIT.fullmatch(commit):
+        return False
+    return _holds(root, commit, _local_tip(root, branch))
+
+
 def fast_forward_to(workspace, commit: str) -> None:
     """Move the worktree to exactly ``commit``, which the runner pushed."""
     root, branch = Path(workspace.worktree_path), _branch(workspace)
     if not isinstance(commit, str) or not _COMMIT.fullmatch(commit):
         raise CloudSyncError("diverged", "the runner's commit is not a commit id")
     local = _local_tip(root, branch)
-    if commit == local or (
-        _has_commit(root, commit) and _is_ancestor(root, commit, local)
-    ):
+    if _holds(root, commit, local):
         return
     _require_clean(root)
     expected = github_repo(Path(workspace.project_root))
