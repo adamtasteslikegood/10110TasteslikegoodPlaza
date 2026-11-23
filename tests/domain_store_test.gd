@@ -172,6 +172,7 @@ func _ready() -> void:
 	diagnostic_command_regressions()
 	persistence_v2_regressions()
 	work_claim_regression()
+	runs_on_regression()
 	duplicate_execution_regression()
 	stop_status_order_regression()
 	historical_envelope_regression()
@@ -458,6 +459,52 @@ func work_claim_regression() -> void:
 	bad.work_claim = "stolen"
 	s.apply_packet(bad)
 	check(s.snapshot("core").work_claim == "held", "unknown relay claim value is rejected, prior fact kept")
+
+func runs_on_regression() -> void:
+	var s = fresh()
+	check(s.snapshot("core").runs_on == "", "no placement fact before any domain_state")
+	check(s.admit_command(command("domain_status", "cloud")), "cloud status admitted")
+	var cloud := state("cloud")
+	cloud.runs_on = "cloud"
+	s.apply_packet(cloud)
+	check(s.snapshot("core").runs_on == "cloud", "a cloud department's placement is adopted from domain_state")
+	check(s.admit_command(command("domain_status", "local")), "local status admitted")
+	s.apply_packet(state("local"))
+	check(s.snapshot("core").runs_on == "", "a domain_state without runs_on leaves the placement empty")
+	check(s.admit_command(command("domain_status", "moon")), "malformed placement status admitted")
+	var moon := state("moon")
+	moon.runs_on = "moon"
+	moon.domain_revision = "2"
+	s.apply_packet(moon)
+	check(s.snapshot("core").runs_on == "" and s.snapshot("core").domain_revision == "1", "runs_on other than cloud is rejected, prior state kept")
+	var typed = fresh()
+	check(typed.admit_command(command("domain_status", "number")), "non-string placement status admitted")
+	var number := state("number")
+	number.runs_on = 5
+	number.domain_revision = "2"
+	check(typed.apply_packet(number).is_empty(), "a non-string runs_on is refused")
+	check(typed.snapshot("core").runs_on == "" and typed.snapshot("core").domain_revision == "1", "a non-string runs_on leaves the prior state")
+	var run = fresh()
+	check(run.admit_command(command("domain_query", "cloud-error")), "cloud Run admitted")
+	var lost := state("cloud-error")
+	lost.merge({"type": "domain_error", "status": "error", "error_type": "sdk_error", "message": "The run failed.", "terminal_reason": "cloud_run_lost"}, true)
+	check(not run.apply_packet(lost).is_empty(), "a cloud Run's error settles it")
+	check(run.snapshot("core").error.get("terminal_reason") == "cloud_run_lost", "a domain_error keeps the cloud terminal_reason")
+	check(run.admit_command(command("domain_query", "cloud-result")), "second cloud Run admitted")
+	var ended := result("1", "A", "cloud-result")
+	ended.merge({"status": "error", "reason": "cloud_run_lost"}, true)
+	check(not run.apply_packet(ended).is_empty(), "a cloud Run's result is accepted")
+	var stored: Array = run.snapshot("core").results
+	check(not stored.is_empty() and stored[-1].get("reason") == "cloud_run_lost", "a domain_result keeps the cloud reason")
+	var display: Script = load("res://scenes/hud/failure_display.gd")
+	for reason in ["cloud_run_active", "cloud_sync_failed", "cloud_push_failed", "cloud_run_lost"]:
+		check(reason in Store.TERMINAL_REASONS, "the store knows the cloud reason " + reason)
+		var sentence: String = display.cause({"status": "error", "reason": reason})
+		check(sentence.contains("cloud") and not sentence.begins_with("The task could not complete"), "a fixed sentence for " + reason)
+	for code in ["cloud_switch_refused", "cloud_unavailable", "cloud_refused", "cloud_sync_failed", "cloud_run_active"]:
+		var text: String = display.notice({"error_type": code, "message": "copy"})
+		check(text.begins_with("copy\n") and text.length() > 6, "a next step after the message for " + code)
+	check(display.notice({"error_type": "workspace_invalid", "message": "copy"}) == "copy", "other codes keep only their message")
 
 func persistence_v2_regressions() -> void:
 	# Old execution A has a retained terminal; B owns the same application now.

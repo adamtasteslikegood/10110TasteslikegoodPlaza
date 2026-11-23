@@ -268,6 +268,49 @@ state before deciding on a specific repair. A `creating` record is not permissio
 to delete an ownership record or discard the execution tree.
 
 
+## Run a department in the cloud (opt-in)
+
+Some departments can run their agent on the cloud runner instead of on this
+machine. It is off by default and not deployed or live-checked yet, so nothing
+here works against a real runner until the owner redeploys it. The reference is
+[Cloud departments](bridge/PROTOCOL.md#cloud-departments-opt-in).
+
+Before a real project's token goes onto the runner's deploy, turn its test
+routes off (`ALLOW_TEST_ROUTES`; they include `exec` as root), create a
+fine-grained GitHub token for that repository (contents read and write) and
+store it in `GITHUB_TOKENS`. Then put the runner's caller secret, written by
+the owner, in `~/.config/plaza/cloud-runner-secret` with mode 0600 (at least
+32 characters; the bridge reads it and never creates it), or name another file
+in `CLOUD_RUNNER_SECRET_FILE`. Then start the bridge with the departments and
+the runner's origin:
+
+```bash
+PLAZA_CLOUD_DOMAINS=core,ai-automation PLAZA_CLOUD_RUNNER_URL=https://runner.example python3 bridge/bridge.py
+```
+
+Only a repository whose `origin` is on `github.com` can run in the cloud.
+Cloud departments have their own limit, `PLAZA_CLOUD_DOMAIN_LIMIT` (default 3);
+the local limit stays one.
+
+To move a department back to local: Stop it, let its last cloud run end so the
+worktree has that run's commit, commit or discard any uncommitted changes, remove
+it from `PLAZA_CLOUD_DOMAINS` and restart the bridge. If its first local Start
+answers `cloud_switch_refused`, the last cloud run's commit is not on this
+machine yet or the worktree is dirty: Start it in the cloud once more, or read
+the bridge log (the bridge's own terminal output, lines with `bridge.cloud`
+and the department's name; they are not in `LOG_DIR`). If that last cloud run
+was lost or its push failed, a cloud Start alone is not enough: run one task
+in the cloud that ends with the runner reporting neither a lost run nor a push
+error, and whose pushed commit arrived here (the agent's own work may have
+failed), then Stop and move it back. If the cloud Start itself answers
+`cloud_sync_failed` because the runner's last push did not arrive (the log says
+so), set this machine's own commits aside on another branch, reset the
+workspace branch to what GitHub has, Start and run once in the cloud, then bring
+your commits back onto the branch. A `cloud_sync_failed` on a cloud Start with
+`unsafe_config` in the log means the repository's git configuration could run a
+program or redirect a push (the log names the key); remove that key. The note
+behind the switch is `<git-common-dir>/plaza/cloud/<department>.json`.
+
 ## Copying NPC dialogue and domain results
 
 Use **Copy** or **Select All** in the NPC header or the domain pane's actions.

@@ -32,6 +32,46 @@ spec-set versions, and no application release existed before `v0.1.22`.
   the only way out of a 412 today, and it destroys the clone's unpushed work.
   This narrows the PLZG-312 gap and does not close it.
 
+### Added — cloud departments, the bridge side of stage 2 (PLZG-311)
+
+- Opt-in and off by default: `CLOUD_DOMAINS` (department ids), `CLOUD_RUNNER_URL`
+  (an origin) and `CLOUD_DOMAIN_LIMIT` (default 3) in the bridge settings, and
+  a caller secret in `~/.config/plaza/cloud-runner-secret` (mode 0600). A
+  listed department runs its agent on the cloud runner; the bridge pushes its
+  `plaza/workspace-*` branch when it starts (never forced, never after a
+  run) and fast-forwards the worktree to the commit the runner pushed. Local
+  departments and their packets are unchanged. Documented in
+  `bridge/PROTOCOL.md` and `QUICKSTART.md`.
+- The reason behind a cloud refusal is one line on the bridge's stderr from
+  the `bridge.cloud` logger (department, step, what happened; scrubbed, cut
+  to 300 characters), never in the `LOG_DIR` archive. A Stop that arrives
+  during a cloud Start waits for it. A Start never pushes this machine's
+  commits over a runner clone whose last push failed or whose run was lost,
+  and a 2xx answer the client could not read leaves the cloud note unsynced.
+  `CLOUD_RUNNER_URL` is checked whenever it is set, the caller secret must be
+  ASCII and is redacted by the recorder, an unreadable cloud note refuses the
+  switch to local as `git_failed`, and a cloud session with no runner is
+  refused at Start as `cloud_unavailable`.
+- After the review: a Stop of a cloud department asks the runner to stop
+  whenever a run it sent may still be going, which now includes a run start
+  that got no answer or a 2xx the client could not read, all within one 60 s
+  budget. A run start refused with a redirect, a 4xx or a 502 started nothing:
+  it adds no such doubt, leaves any earlier one, and puts the cloud note back
+  to its earlier value. When a Stop cannot get the runner to answer while a run
+  may be going, that Stop and each later one answer `cleanup_failed`, and so
+  does the bridge's shutdown, until the runner answers a stop or a status
+  settles the run or shows it is over. A cloud Start whose first runner
+  status is `lost` or has a `pushError` writes the cloud note as unsynced
+  before anything is pushed or created. A Stop during a cloud Start leaves the
+  note unsynced when the runner's pushed commit is not on the branch here.
+- These changes touch eight guarded sources, so the guard probe was run again
+  on this source in both permission modes on 2026-11-20 (33 cases each, all
+  accepted) and `bridge/tool_guard_acceptance.json` is replaced from the two
+  unchanged reports. That run used the claude.ai account login, not an API
+  key.
+- Not deployed or live-checked: the development deploy still runs the earlier
+  runner code.
+
 ### Decided — the six stage 2 proposals for the cloud runner (PLZG-311)
 
 - On 2026-11-19 the owner confirmed the six proposals in the M14 runner
@@ -41,7 +81,8 @@ spec-set versions, and no application release existed before `v0.1.22`.
   and a GitHub App later; End session starts a new cloud conversation and the
   workspace goes only with the department; a cloud run finishes and pushes
   when its claim lapses; workspace names stay per checkout. No code changes
-  with this, and stage 2 has no plan yet.
+  with this; the plan is
+  `docs/superpowers/plans/2026-11-19-m14-cloudflare-runner-stage2.md`.
 
 ### Changed — the cloud runner's agent is no longer root (PLZG-311)
 

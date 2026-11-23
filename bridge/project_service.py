@@ -136,6 +136,8 @@ class ProjectService:
         self._reservation_revisions = {}
         self._domain_tasks = {}
         self._capacity_owner = None
+        # Cloud departments have their own pool, in reservation order.
+        self._cloud_capacity = []
         self._memory = None
         self._bootstrap_task = self._setup_task = None
         self._attached = self._closing = False
@@ -317,16 +319,39 @@ class ProjectService:
     def initialized(self):
         return self._initialized
 
+    def runs_on(self, domain_id):
+        return "cloud" if domain_id in self._config.cloud_domains else "local"
+
     def capacity_snapshot(self, domain_id=None):
-        owner = self._capacity_owner
-        return dict(
-            limit=1,
-            available=owner is None,
+        cloud = domain_id is not None and self.runs_on(domain_id) == "cloud"
+        if cloud:
+            limit = self._config.cloud_domain_limit
+            available = len(self._cloud_capacity) < limit
+            owner = None if available else self._cloud_capacity[0]
+        else:
+            owner = self._capacity_owner
+            limit, available = 1, owner is None
+        snapshot = dict(
+            limit=limit,
+            available=available,
             domain_id=owner.domain_id if owner else None,
             domain_session_id=owner.domain_session_id if owner else None,
         )
+        if self._config.cloud_domains:
+            # Without cloud departments the snapshot is exactly as before.
+            snapshot["pool"] = "cloud" if cloud else "local"
+        return snapshot
 
     def reserve_capacity(self, owner):
+        if owner.runs_on == "cloud":
+            if owner in self._cloud_capacity:
+                return
+            if len(self._cloud_capacity) >= self._config.cloud_domain_limit:
+                raise WorkspaceError(
+                    "capacity_limit", "Cloud execution capacity is in use"
+                )
+            self._cloud_capacity.append(owner)
+            return
         if self._capacity_owner is not None and self._capacity_owner is not owner:
             raise WorkspaceError(
                 "capacity_limit", "Execution capacity is reserved by another session"
@@ -334,7 +359,10 @@ class ProjectService:
         self._capacity_owner = owner
 
     def release_capacity(self, owner):
-        if self._capacity_owner is owner:
+        if owner.runs_on == "cloud":
+            if owner in self._cloud_capacity:
+                self._cloud_capacity.remove(owner)
+        elif self._capacity_owner is owner:
             self._capacity_owner = None
 
     async def prepare_domain(self, domain_id):

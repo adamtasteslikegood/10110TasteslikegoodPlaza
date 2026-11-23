@@ -241,7 +241,7 @@ func _refresh() -> void:
 	_task_input.focus_mode = Control.FOCUS_ALL if _task_input.editable else Control.FOCUS_NONE
 	var draft: String = snapshot.get("draft", "")
 	if _task_input.text != draft: _task_input.text = draft
-	_status.text = "%s · %s · %s%s\n%s unread · %s" % [selected_domain_id, state, execution, " · uncertain — Refresh status / Refocus to recover" if uncertain else "", _difference(snapshot.get("received_cursor", "0"), snapshot.get("consumed_cursor", "0")), _omitted(snapshot.get("omitted_count", 0))]
+	_status.text = "%s · %s · %s%s%s\n%s unread · %s" % [selected_domain_id, state, execution, " · cloud" if snapshot.get("runs_on", "") == "cloud" else "", " · uncertain — Refresh status / Refocus to recover" if uncertain else "", _difference(snapshot.get("received_cursor", "0"), snapshot.get("consumed_cursor", "0")), _omitted(snapshot.get("omitted_count", 0))]
 	if not generation.is_empty() and state != "inactive": _status.text += "\nStop to release workspace"
 	if not connected: _status.text += "\nDisconnected — work outcome may be unknown"
 	var lines: Array[String] = []

@@ -46,6 +46,11 @@ ERROR_MESSAGES = {
     "cleanup_failed": "Cleanup could not be confirmed; workspace ownership remains.",
     "work_claimed": "Another runtime holds this domain's relay work claim.",
     "relay_refused": "The relay refused this domain's work claim; check its settings.",
+    "cloud_switch_refused": "This department last ran in the cloud and cannot start here yet: its last cloud run is not on this machine, or the worktree has uncommitted changes. Start it in the cloud once more, or see the bridge log.",
+    "cloud_unavailable": "The cloud runner did not answer, so the department was not started.",
+    "cloud_refused": "The cloud runner refused the request; check its address, its secret and the repository's token.",
+    "cloud_sync_failed": "The department's branch is not in step with GitHub (not a GitHub origin, uncommitted changes, or a diverged branch); see the bridge log.",
+    "cloud_run_active": "A cloud run from an earlier session is still going; try again when it ends.",
 }
 
 

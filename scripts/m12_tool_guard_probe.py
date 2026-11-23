@@ -142,7 +142,7 @@ class ApplicationGate:
         )
         self.manager = DomainManager(
             config,
-            SimpleNamespace(owner_run_id="probe-run"),
+            SimpleNamespace(owner_run_id="probe-run", runs_on=lambda _: "local"),
             state_coordinator=self.coordinator,
         )
         self.session = None

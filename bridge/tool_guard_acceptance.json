@@ -42,18 +42,18 @@
           "attempts": [
             {
               "name": "Read",
-              "id": "toolu_01AZQm7MFnLzU7vCNUkBw3ik",
+              "id": "toolu_01TGJhsWCCKEPgy2pUw7AwAg",
               "parent": null
             }
           ],
           "hook_decisions": {
-            "toolu_01AZQm7MFnLzU7vCNUkBw3ik": "unchanged"
+            "toolu_01TGJhsWCCKEPgy2pUw7AwAg": "unchanged"
           },
           "successful_tool_ids": [
-            "toolu_01AZQm7MFnLzU7vCNUkBw3ik"
+            "toolu_01TGJhsWCCKEPgy2pUw7AwAg"
           ],
           "post_tool_ids": [
-            "toolu_01AZQm7MFnLzU7vCNUkBw3ik"
+            "toolu_01TGJhsWCCKEPgy2pUw7AwAg"
           ],
           "lifecycle": [
             "connect",
@@ -65,7 +65,7 @@
             "subtype": "success",
             "is_error": false,
             "reason": "completed",
-            "cost_usd": 0.0322405,
+            "cost_usd": 0.0006619800000000001,
             "permission_denials": 0
           },
           "hook_tasks_remaining": 0,
@@ -77,7 +77,7 @@
             "status": "success",
             "reason": "completed"
           },
-          "seconds": 4.249,
+          "seconds": 3.282,
           "errors": []
         },
         {
@@ -100,12 +100,12 @@
           "attempts": [
             {
               "name": "Read",
-              "id": "toolu_01FdF5HJ11QZACW1PDATGk9c",
+              "id": "toolu_014mDUFUzzqbATKRYgQ9DU1J",
               "parent": null
             }
           ],
           "hook_decisions": {
-            "toolu_01FdF5HJ11QZACW1PDATGk9c": "deny"
+            "toolu_014mDUFUzzqbATKRYgQ9DU1J": "deny"
           },
           "successful_tool_ids": [],
           "post_tool_ids": [],
@@ -119,7 +119,7 @@
             "subtype": "success",
             "is_error": false,
             "reason": "completed",
-            "cost_usd": 0.02522,
+            "cost_usd": 0.0005506,
             "permission_denials": 1
           },
           "hook_tasks_remaining": 0,
@@ -131,7 +131,7 @@
             "status": "error",
             "reason": "readiness_failed"
           },
-          "seconds": 4.953,
+          "seconds": 5.234,
           "errors": []
         },
         {
@@ -154,12 +154,12 @@
           "attempts": [
             {
               "name": "Read",
-              "id": "toolu_01Vhnq71x3fgkakBv962ZDTA",
+              "id": "toolu_01Ez7RiBqSkrt8nxrV9UNYTr",
               "parent": null
             }
           ],
           "hook_decisions": {
-            "toolu_01Vhnq71x3fgkakBv962ZDTA": "deny"
+            "toolu_01Ez7RiBqSkrt8nxrV9UNYTr": "deny"
           },
           "successful_tool_ids": [],
           "post_tool_ids": [],
@@ -173,7 +173,7 @@
             "subtype": "success",
             "is_error": false,
             "reason": "completed",
-            "cost_usd": 0.0251155,
+            "cost_usd": 0.00049983,
             "permission_denials": 1
           },
           "hook_tasks_remaining": 0,
@@ -185,7 +185,7 @@
             "status": "error",
             "reason": "readiness_failed"
           },
-          "seconds": 5.396,
+          "seconds": 4.614,
           "errors": []
         },
         {
@@ -208,12 +208,12 @@
           "attempts": [
             {
               "name": "Read",
-              "id": "toolu_01R3sxAq9uH4gYZ6w4RkVXs7",
+              "id": "toolu_01PtXPtM3Fsza2gTAABkjBye",
               "parent": null
             }
           ],
           "hook_decisions": {
-            "toolu_01R3sxAq9uH4gYZ6w4RkVXs7": "deny"
+            "toolu_01PtXPtM3Fsza2gTAABkjBye": "deny"
           },
           "successful_tool_ids": [],
           "post_tool_ids": [],
@@ -227,7 +227,7 @@
             "subtype": "success",
             "is_error": false,
             "reason": "completed",
-            "cost_usd": 0.0226745,
+            "cost_usd": 0.00043102000000000006,
             "permission_denials": 1
           },
           "hook_tasks_remaining": 0,
@@ -239,7 +239,7 @@
             "status": "error",
             "reason": "readiness_failed"
           },
-          "seconds": 9.055,
+          "seconds": 9.374,
           "errors": []
         },
         {
@@ -263,23 +263,23 @@
           "attempts": [
             {
               "name": "Read",
-              "id": "toolu_01RHA3MM5pvc2UNyCCvQ5JDA",
+              "id": "toolu_01YAeomS9tkc7gvW9S8q7FiM",
               "parent": null
             },
             {
               "name": "Edit",
-              "id": "toolu_019boi1rkMyWJ3qcX241r13L",
+              "id": "toolu_01WEK1fEE1SzutNyDPdh5Mme",
               "parent": null
             }
           ],
           "hook_decisions": {
-            "toolu_019boi1rkMyWJ3qcX241r13L": "unchanged"
+            "toolu_01WEK1fEE1SzutNyDPdh5Mme": "unchanged"
           },
           "successful_tool_ids": [
-            "toolu_019boi1rkMyWJ3qcX241r13L"
+            "toolu_01WEK1fEE1SzutNyDPdh5Mme"
           ],
           "post_tool_ids": [
-            "toolu_019boi1rkMyWJ3qcX241r13L"
+            "toolu_01WEK1fEE1SzutNyDPdh5Mme"
           ],
           "lifecycle": [
             "connect",
@@ -291,7 +291,7 @@
             "subtype": "success",
             "is_error": false,
             "reason": "completed",
-            "cost_usd": 0.0463745,
+            "cost_usd": 0.0009056900000000001,
             "permission_denials": 0
           },
           "hook_tasks_remaining": 0,
@@ -303,7 +303,7 @@
             "status": "success",
             "reason": "completed"
           },
-          "seconds": 4.037,
+          "seconds": 4.849,
           "errors": []
         },
         {
@@ -327,17 +327,17 @@
           "attempts": [
             {
               "name": "Read",
-              "id": "toolu_01KAp5rhvVGBBFAF9u1nLVwx",
+              "id": "toolu_01UAXXTmLXkkHcN2V33rQEXz",
               "parent": null
             },
             {
               "name": "Edit",
-              "id": "toolu_01H66DXsX1f889k6Mqk1LzPn",
+              "id": "toolu_014KcuobtkYEq2AQzTB3HBU1",
               "parent": null
             }
           ],
           "hook_decisions": {
-            "toolu_01H66DXsX1f889k6Mqk1LzPn": "deny"
+            "toolu_014KcuobtkYEq2AQzTB3HBU1": "deny"
           },
           "successful_tool_ids": [],
           "post_tool_ids": [],
@@ -351,7 +351,7 @@
             "subtype": "success",
             "is_error": false,
             "reason": "completed",
-            "cost_usd": 0.028758,
+            "cost_usd": 0.00057017,
             "permission_denials": 1
           },
           "hook_tasks_remaining": 0,
@@ -363,7 +363,7 @@
             "status": "error",
             "reason": "readiness_failed"
           },
-          "seconds": 4.813,
+          "seconds": 5.545,
           "errors": []
         },
         {
@@ -387,17 +387,22 @@
           "attempts": [
             {
               "name": "Read",
-              "id": "toolu_012GGGRge7vwSr3YkPqz2xa1",
+              "id": "toolu_018rvZJjsAUkysVfQbvh98rY",
               "parent": null
             },
             {
               "name": "Edit",
-              "id": "toolu_015u8LDBKoh5jxmAxwswsQ7v",
+              "id": "toolu_01YFUxAAG2EgikUukfQK4xsj",
+              "parent": null
+            },
+            {
+              "name": "Read",
+              "id": "toolu_016ELWX3kfi5LMw19eVhd6Kv",
               "parent": null
             }
           ],
           "hook_decisions": {
-            "toolu_015u8LDBKoh5jxmAxwswsQ7v": "deny"
+            "toolu_01YFUxAAG2EgikUukfQK4xsj": "deny"
           },
           "successful_tool_ids": [],
           "post_tool_ids": [],
@@ -411,7 +416,7 @@
             "subtype": "success",
             "is_error": false,
             "reason": "completed",
-            "cost_usd": 0.030622999999999997,
+            "cost_usd": 0.0007240199999999999,
             "permission_denials": 1
           },
           "hook_tasks_remaining": 0,
@@ -423,7 +428,7 @@
             "status": "error",
             "reason": "readiness_failed"
           },
-          "seconds": 5.464,
+          "seconds": 6.224,
           "errors": []
         },
         {
@@ -447,17 +452,17 @@
           "attempts": [
             {
               "name": "Read",
-              "id": "toolu_01Hg7V7c8iz6VkkkHySSerDE",
+              "id": "toolu_01UhaZujW6H5Xqsv4Mddk4H9",
               "parent": null
             },
             {
               "name": "Edit",
-              "id": "toolu_01U5ZqQN6BkJkENvB8sJZ1Ee",
+              "id": "toolu_01WEhPc9pLsFBWxtoeNnGJfe",
               "parent": null
             }
           ],
           "hook_decisions": {
-            "toolu_01U5ZqQN6BkJkENvB8sJZ1Ee": "deny"
+            "toolu_01WEhPc9pLsFBWxtoeNnGJfe": "deny"
           },
           "successful_tool_ids": [],
           "post_tool_ids": [],
@@ -471,7 +476,7 @@
             "subtype": "success",
             "is_error": false,
             "reason": "completed",
-            "cost_usd": 0.030764000000000003,
+            "cost_usd": 0.00069067,
             "permission_denials": 1
           },
           "hook_tasks_remaining": 0,
@@ -483,7 +488,7 @@
             "status": "error",
             "reason": "readiness_failed"
           },
-          "seconds": 10.799,
+          "seconds": 10.795,
           "errors": []
         },
         {
@@ -506,18 +511,18 @@
           "attempts": [
             {
               "name": "Bash",
-              "id": "toolu_01KEY3UsmzmrUowQBoQHABAN",
+              "id": "toolu_018oQvm6isT9Y8pT3hF3AWCr",
               "parent": null
             }
           ],
           "hook_decisions": {
-            "toolu_01KEY3UsmzmrUowQBoQHABAN": "unchanged"
+            "toolu_018oQvm6isT9Y8pT3hF3AWCr": "unchanged"
           },
           "successful_tool_ids": [
-            "toolu_01KEY3UsmzmrUowQBoQHABAN"
+            "toolu_018oQvm6isT9Y8pT3hF3AWCr"
           ],
           "post_tool_ids": [
-            "toolu_01KEY3UsmzmrUowQBoQHABAN"
+            "toolu_018oQvm6isT9Y8pT3hF3AWCr"
           ],
           "lifecycle": [
             "connect",
@@ -529,7 +534,7 @@
             "subtype": "success",
             "is_error": false,
             "reason": "completed",
-            "cost_usd": 0.0643435,
+            "cost_usd": 0.0013563,
             "permission_denials": 0
           },
           "hook_tasks_remaining": 0,
@@ -541,7 +546,7 @@
             "status": "success",
             "reason": "completed"
           },
-          "seconds": 3.752,
+          "seconds": 4.459,
           "errors": []
         },
         {
@@ -564,12 +569,18 @@
           "attempts": [
             {
               "name": "Bash",
-              "id": "toolu_011K5shVBSsfevKqhkMYFUAe",
+              "id": "toolu_01DWjjYPxDLLiGNZDzAC1FjH",
+              "parent": null
+            },
+            {
+              "name": "Bash",
+              "id": "toolu_01WVW7ahdV8g2nT7NbShpK4g",
               "parent": null
             }
           ],
           "hook_decisions": {
-            "toolu_011K5shVBSsfevKqhkMYFUAe": "deny"
+            "toolu_01DWjjYPxDLLiGNZDzAC1FjH": "deny",
+            "toolu_01WVW7ahdV8g2nT7NbShpK4g": "deny"
           },
           "successful_tool_ids": [],
           "post_tool_ids": [],
@@ -583,8 +594,8 @@
             "subtype": "success",
             "is_error": false,
             "reason": "completed",
-            "cost_usd": 0.028118999999999998,
-            "permission_denials": 1
+            "cost_usd": 0.00081076,
+            "permission_denials": 2
           },
           "hook_tasks_remaining": 0,
           "normalized_denials": 0,
@@ -595,7 +606,7 @@
             "status": "error",
             "reason": "readiness_failed"
           },
-          "seconds": 4.476,
+          "seconds": 6.629,
           "errors": []
         },
         {
@@ -618,12 +629,12 @@
           "attempts": [
             {
               "name": "Bash",
-              "id": "toolu_01JjhYUfZyb8HtCRZacAnytD",
+              "id": "toolu_016wsxWuQF7nLeFmY1MQFT61",
               "parent": null
             }
           ],
           "hook_decisions": {
-            "toolu_01JjhYUfZyb8HtCRZacAnytD": "deny"
+            "toolu_016wsxWuQF7nLeFmY1MQFT61": "deny"
           },
           "successful_tool_ids": [],
           "post_tool_ids": [],
@@ -637,7 +648,7 @@
             "subtype": "success",
             "is_error": false,
             "reason": "completed",
-            "cost_usd": 0.023135500000000003,
+            "cost_usd": 0.00054982,
             "permission_denials": 1
           },
           "hook_tasks_remaining": 0,
@@ -649,7 +660,7 @@
             "status": "error",
             "reason": "readiness_failed"
           },
-          "seconds": 3.813,
+          "seconds": 4.53,
           "errors": []
         },
         {
@@ -672,12 +683,18 @@
           "attempts": [
             {
               "name": "Bash",
-              "id": "toolu_017BsUHUuk1jjtDUM4i1dNgo",
+              "id": "toolu_01HC4cKZG4pHiFX9nDtPX4uA",
+              "parent": null
+            },
+            {
+              "name": "Bash",
+              "id": "toolu_01JvdNi3mLZzkrMbYW2biw4J",
               "parent": null
             }
           ],
           "hook_decisions": {
-            "toolu_017BsUHUuk1jjtDUM4i1dNgo": "deny"
+            "toolu_01HC4cKZG4pHiFX9nDtPX4uA": "deny",
+            "toolu_01JvdNi3mLZzkrMbYW2biw4J": "deny"
           },
           "successful_tool_ids": [],
           "post_tool_ids": [],
@@ -691,8 +708,8 @@
             "subtype": "success",
             "is_error": false,
             "reason": "completed",
-            "cost_usd": 0.0262205,
-            "permission_denials": 1
+            "cost_usd": 0.00081686,
+            "permission_denials": 2
           },
           "hook_tasks_remaining": 0,
           "normalized_denials": 0,
@@ -703,7 +720,7 @@
             "status": "error",
             "reason": "readiness_failed"
           },
-          "seconds": 10.515,
+          "seconds": 16.717,
           "errors": []
         },
         {
@@ -726,18 +743,18 @@
           "attempts": [
             {
               "name": "mcp__m12_fixture__sentinel",
-              "id": "toolu_01MkHjN9x2Rw1gGXfMsSkkmG",
+              "id": "toolu_01QkGjK2uLiw4amRd4NCdek6",
               "parent": null
             }
           ],
           "hook_decisions": {
-            "toolu_01MkHjN9x2Rw1gGXfMsSkkmG": "unchanged"
+            "toolu_01QkGjK2uLiw4amRd4NCdek6": "unchanged"
           },
           "successful_tool_ids": [
-            "toolu_01MkHjN9x2Rw1gGXfMsSkkmG"
+            "toolu_01QkGjK2uLiw4amRd4NCdek6"
           ],
           "post_tool_ids": [
-            "toolu_01MkHjN9x2Rw1gGXfMsSkkmG"
+            "toolu_01QkGjK2uLiw4amRd4NCdek6"
           ],
           "lifecycle": [
             "connect",
@@ -749,7 +766,7 @@
             "subtype": "success",
             "is_error": false,
             "reason": "completed",
-            "cost_usd": 0.019659,
+            "cost_usd": 0.00032468,
             "permission_denials": 0
           },
           "hook_tasks_remaining": 0,
@@ -761,7 +778,7 @@
             "status": "success",
             "reason": "completed"
           },
-          "seconds": 2.982,
+          "seconds": 2.597,
           "errors": []
         },
         {
@@ -784,12 +801,12 @@
           "attempts": [
             {
               "name": "mcp__m12_fixture__sentinel",
-              "id": "toolu_01PDNm7weiPnkdzZsUKGrbgC",
+              "id": "toolu_014hJ899hvBW9H8y9BYeeSfQ",
               "parent": null
             }
           ],
           "hook_decisions": {
-            "toolu_01PDNm7weiPnkdzZsUKGrbgC": "deny"
+            "toolu_014hJ899hvBW9H8y9BYeeSfQ": "deny"
           },
           "successful_tool_ids": [],
           "post_tool_ids": [],
@@ -803,7 +820,7 @@
             "subtype": "success",
             "is_error": false,
             "reason": "completed",
-            "cost_usd": 0.012827999999999997,
+            "cost_usd": 0.00027546,
             "permission_denials": 1
           },
           "hook_tasks_remaining": 0,
@@ -815,7 +832,7 @@
             "status": "error",
             "reason": "readiness_failed"
           },
-          "seconds": 3.741,
+          "seconds": 4.83,
           "errors": []
         },
         {
@@ -838,12 +855,12 @@
           "attempts": [
             {
               "name": "mcp__m12_fixture__sentinel",
-              "id": "toolu_01EktgFoVpCAWfx7q4d6L7zb",
+              "id": "toolu_01AdEBkJWjxL7CiHbeDfwxxH",
               "parent": null
             }
           ],
           "hook_decisions": {
-            "toolu_01EktgFoVpCAWfx7q4d6L7zb": "deny"
+            "toolu_01AdEBkJWjxL7CiHbeDfwxxH": "deny"
           },
           "successful_tool_ids": [],
           "post_tool_ids": [],
@@ -857,7 +874,7 @@
             "subtype": "success",
             "is_error": false,
             "reason": "completed",
-            "cost_usd": 0.009133,
+            "cost_usd": 0.00016396,
             "permission_denials": 1
           },
           "hook_tasks_remaining": 0,
@@ -869,7 +886,7 @@
             "status": "error",
             "reason": "readiness_failed"
           },
-          "seconds": 2.845,
+          "seconds": 4.36,
           "errors": []
         },
         {
@@ -892,12 +909,12 @@
           "attempts": [
             {
               "name": "mcp__m12_fixture__sentinel",
-              "id": "toolu_01SZd6wq6m9gKt6mYZLmJpWD",
+              "id": "toolu_019VN9iyvGJ7m3WcXJ2vR5L7",
               "parent": null
             }
           ],
           "hook_decisions": {
-            "toolu_01SZd6wq6m9gKt6mYZLmJpWD": "deny"
+            "toolu_019VN9iyvGJ7m3WcXJ2vR5L7": "deny"
           },
           "successful_tool_ids": [],
           "post_tool_ids": [],
@@ -911,7 +928,7 @@
             "subtype": "success",
             "is_error": false,
             "reason": "completed",
-            "cost_usd": 0.014847999999999998,
+            "cost_usd": 0.00020486,
             "permission_denials": 1
           },
           "hook_tasks_remaining": 0,
@@ -923,7 +940,7 @@
             "status": "error",
             "reason": "readiness_failed"
           },
-          "seconds": 9.325,
+          "seconds": 10.893,
           "errors": []
         },
         {
@@ -947,23 +964,23 @@
           "attempts": [
             {
               "name": "Agent",
-              "id": "toolu_01QMqopCh8deo6KzBsxYSyAY",
+              "id": "toolu_01QoVs96ce1v7x7X7TwTRzhZ",
               "parent": null
             },
             {
               "name": "Bash",
-              "id": "toolu_01SzpBMKJNryozTnx5RzMN23",
-              "parent": "toolu_01QMqopCh8deo6KzBsxYSyAY"
+              "id": "toolu_013tKecHr6tbwHGUuK1rp8Hb",
+              "parent": "toolu_01QoVs96ce1v7x7X7TwTRzhZ"
             }
           ],
           "hook_decisions": {
-            "toolu_01SzpBMKJNryozTnx5RzMN23": "unchanged"
+            "toolu_013tKecHr6tbwHGUuK1rp8Hb": "unchanged"
           },
           "successful_tool_ids": [
-            "toolu_01SzpBMKJNryozTnx5RzMN23"
+            "toolu_013tKecHr6tbwHGUuK1rp8Hb"
           ],
           "post_tool_ids": [
-            "toolu_01SzpBMKJNryozTnx5RzMN23"
+            "toolu_013tKecHr6tbwHGUuK1rp8Hb"
           ],
           "lifecycle": [
             "connect",
@@ -975,7 +992,7 @@
             "subtype": "success",
             "is_error": false,
             "reason": "completed",
-            "cost_usd": 0.13501825,
+            "cost_usd": 0.00263693,
             "permission_denials": 0
           },
           "hook_tasks_remaining": 0,
@@ -987,7 +1004,7 @@
             "status": "success",
             "reason": "completed"
           },
-          "seconds": 7.544,
+          "seconds": 7.476,
           "errors": []
         },
         {
@@ -1011,17 +1028,17 @@
           "attempts": [
             {
               "name": "Agent",
-              "id": "toolu_014o8BDvNVjUukotaj6ftk8y",
+              "id": "toolu_01C2oWACiPD5CyqNEWbgv6Up",
               "parent": null
             },
             {
               "name": "Bash",
-              "id": "toolu_01RXHXHpvcC6JpXUtwgavSJ9",
-              "parent": "toolu_014o8BDvNVjUukotaj6ftk8y"
+              "id": "toolu_015k1LU4dxEV8whKH33X7y6M",
+              "parent": "toolu_01C2oWACiPD5CyqNEWbgv6Up"
             }
           ],
           "hook_decisions": {
-            "toolu_01RXHXHpvcC6JpXUtwgavSJ9": "deny"
+            "toolu_015k1LU4dxEV8whKH33X7y6M": "deny"
           },
           "successful_tool_ids": [],
           "post_tool_ids": [],
@@ -1035,7 +1052,7 @@
             "subtype": "success",
             "is_error": false,
             "reason": "completed",
-            "cost_usd": 0.07268925000000001,
+            "cost_usd": 0.0014733950000000002,
             "permission_denials": 1
           },
           "hook_tasks_remaining": 0,
@@ -1047,7 +1064,7 @@
             "status": "error",
             "reason": "readiness_failed"
           },
-          "seconds": 8.231,
+          "seconds": 10.028,
           "errors": []
         },
         {
@@ -1071,17 +1088,17 @@
           "attempts": [
             {
               "name": "Agent",
-              "id": "toolu_01R5BhpMU9hNcQCEXTJ3TPJo",
+              "id": "toolu_01TEnsEvQ2kE8PXFLJsDEJGC",
               "parent": null
             },
             {
               "name": "Bash",
-              "id": "toolu_01Hi6ZwwEmoairc8HQ8RA84v",
-              "parent": "toolu_01R5BhpMU9hNcQCEXTJ3TPJo"
+              "id": "toolu_01JwfJjc1fybF7G8mNFsA8zk",
+              "parent": "toolu_01TEnsEvQ2kE8PXFLJsDEJGC"
             }
           ],
           "hook_decisions": {
-            "toolu_01Hi6ZwwEmoairc8HQ8RA84v": "deny"
+            "toolu_01JwfJjc1fybF7G8mNFsA8zk": "deny"
           },
           "successful_tool_ids": [],
           "post_tool_ids": [],
@@ -1095,7 +1112,7 @@
             "subtype": "success",
             "is_error": false,
             "reason": "completed",
-            "cost_usd": 0.071741,
+            "cost_usd": 0.0012986550000000001,
             "permission_denials": 1
           },
           "hook_tasks_remaining": 0,
@@ -1107,7 +1124,7 @@
             "status": "error",
             "reason": "readiness_failed"
           },
-          "seconds": 8.513,
+          "seconds": 7.521,
           "errors": []
         },
         {
@@ -1131,17 +1148,17 @@
           "attempts": [
             {
               "name": "Agent",
-              "id": "toolu_01Uo6bwyYyDHKq23NyF88hW9",
+              "id": "toolu_01Hwxcds5ebzkU8wjjvtVTJC",
               "parent": null
             },
             {
               "name": "Bash",
-              "id": "toolu_01NtBjvoepR9FH3B4KUADf2N",
-              "parent": "toolu_01Uo6bwyYyDHKq23NyF88hW9"
+              "id": "toolu_01MgiF3UhZwWJDxsFewm1yTy",
+              "parent": "toolu_01Hwxcds5ebzkU8wjjvtVTJC"
             }
           ],
           "hook_decisions": {
-            "toolu_01NtBjvoepR9FH3B4KUADf2N": "deny"
+            "toolu_01MgiF3UhZwWJDxsFewm1yTy": "deny"
           },
           "successful_tool_ids": [],
           "post_tool_ids": [],
@@ -1155,7 +1172,7 @@
             "subtype": "success",
             "is_error": false,
             "reason": "completed",
-            "cost_usd": 0.06330575,
+            "cost_usd": 0.0013794649999999999,
             "permission_denials": 1
           },
           "hook_tasks_remaining": 0,
@@ -1167,7 +1184,7 @@
             "status": "error",
             "reason": "readiness_failed"
           },
-          "seconds": 12.062,
+          "seconds": 14.454,
           "errors": []
         },
         {
@@ -1190,7 +1207,7 @@
           "attempts": [
             {
               "name": "Bash",
-              "id": "toolu_01KsyRmw2ya3EQtuQZN3dmHJ",
+              "id": "toolu_012FYhKvJLMnYCYYY7rjSiyf",
               "parent": null
             }
           ],
@@ -1207,7 +1224,7 @@
             "subtype": "success",
             "is_error": false,
             "reason": "completed",
-            "cost_usd": 0.023384,
+            "cost_usd": 0.00041966000000000003,
             "permission_denials": 1
           },
           "hook_tasks_remaining": 0,
@@ -1219,7 +1236,7 @@
             "status": "error",
             "reason": "permission_denied"
           },
-          "seconds": 4.148,
+          "seconds": 5.031,
           "errors": []
         },
         {
@@ -1242,7 +1259,7 @@
           "attempts": [
             {
               "name": "Bash",
-              "id": "toolu_014LuzVmx4BKK2PbdVteZYe1",
+              "id": "toolu_01DwbaLfsJVAq8Dsdr4qkh8s",
               "parent": null
             }
           ],
@@ -1259,7 +1276,7 @@
             "subtype": "success",
             "is_error": false,
             "reason": "completed",
-            "cost_usd": 0.028423999999999998,
+            "cost_usd": 0.0005152100000000001,
             "permission_denials": 1
           },
           "hook_tasks_remaining": 0,
@@ -1271,7 +1288,7 @@
             "status": "error",
             "reason": "permission_denied"
           },
-          "seconds": 4.471,
+          "seconds": 6.573,
           "errors": []
         },
         {
@@ -1294,7 +1311,7 @@
           "attempts": [
             {
               "name": "Bash",
-              "id": "toolu_01PRu3i2VkoN8AFBSt7o7v56",
+              "id": "toolu_01TwRvaKJwgmqfEHQ4bzP2iD",
               "parent": null
             }
           ],
@@ -1311,7 +1328,7 @@
             "subtype": "success",
             "is_error": false,
             "reason": "completed",
-            "cost_usd": 0.0238455,
+            "cost_usd": 0.00042825999999999997,
             "permission_denials": 1
           },
           "hook_tasks_remaining": 0,
@@ -1323,7 +1340,7 @@
             "status": "error",
             "reason": "permission_denied"
           },
-          "seconds": 5.053,
+          "seconds": 4.854,
           "errors": []
         },
         {
@@ -1346,7 +1363,7 @@
           "attempts": [
             {
               "name": "Bash",
-              "id": "toolu_01PCLRb3gU62C5owP2s5bdzy",
+              "id": "toolu_015DPp1eg65FiC3NcZVT5xPY",
               "parent": null
             }
           ],
@@ -1363,7 +1380,7 @@
             "subtype": "success",
             "is_error": false,
             "reason": "completed",
-            "cost_usd": 0.0250255,
+            "cost_usd": 0.00059326,
             "permission_denials": 1
           },
           "hook_tasks_remaining": 0,
@@ -1375,7 +1392,7 @@
             "status": "error",
             "reason": "permission_denied"
           },
-          "seconds": 11.444,
+          "seconds": 12.301,
           "errors": []
         },
         {
@@ -1398,7 +1415,7 @@
           "attempts": [
             {
               "name": "Bash",
-              "id": "toolu_018W7mKVPB9pU2Lo7yC4iQvu",
+              "id": "toolu_01AD1bzN7gHDvnFnj9CVaznE",
               "parent": null
             }
           ],
@@ -1421,7 +1438,7 @@
             "status": "error",
             "reason": "transport_error"
           },
-          "seconds": 4.013,
+          "seconds": 4.542,
           "errors": []
         },
         {
@@ -1452,7 +1469,7 @@
           "timeout_denials": 0,
           "returncode": 0,
           "owner_task_count": 1,
-          "seconds": 0.701,
+          "seconds": 0.985,
           "errors": []
         },
         {
@@ -1483,7 +1500,7 @@
           "timeout_denials": 0,
           "returncode": 0,
           "owner_task_count": 1,
-          "seconds": 0.701,
+          "seconds": 0.988,
           "errors": []
         },
         {
@@ -1506,12 +1523,12 @@
           "attempts": [
             {
               "name": "Bash",
-              "id": "toolu_01B6USZkhCgUoUh4n1n38At9",
+              "id": "toolu_01GWRT7rdr94kCMtkyZQrGCu",
               "parent": null
             }
           ],
           "hook_decisions": {
-            "toolu_01B6USZkhCgUoUh4n1n38At9": "deny"
+            "toolu_01GWRT7rdr94kCMtkyZQrGCu": "deny"
           },
           "successful_tool_ids": [],
           "post_tool_ids": [],
@@ -1533,7 +1550,7 @@
             "status": "cancelled",
             "reason": "stopped"
           },
-          "seconds": 3.627,
+          "seconds": 4.83,
           "errors": []
         },
         {
@@ -1556,12 +1573,12 @@
           "attempts": [
             {
               "name": "Bash",
-              "id": "toolu_01ATag9994HDgy6fjyjuR74v",
+              "id": "toolu_01NBwfojwN2ZGbDhyWxu9TWE",
               "parent": null
             }
           ],
           "hook_decisions": {
-            "toolu_01ATag9994HDgy6fjyjuR74v": "deny"
+            "toolu_01NBwfojwN2ZGbDhyWxu9TWE": "deny"
           },
           "successful_tool_ids": [],
           "post_tool_ids": [],
@@ -1579,7 +1596,7 @@
           "timeout_denials": 0,
           "returncode": 0,
           "owner_task_count": 1,
-          "seconds": 4.12,
+          "seconds": 4.714,
           "errors": []
         },
         {
@@ -1602,12 +1619,18 @@
           "attempts": [
             {
               "name": "Bash",
-              "id": "toolu_019N3XouKouJhxKBVKqeTkJb",
+              "id": "toolu_01Jd4WXor7J7FkFnsyeKYpm6",
+              "parent": null
+            },
+            {
+              "name": "Bash",
+              "id": "toolu_0194T1wntpgEJdNkz3hEcWvv",
               "parent": null
             }
           ],
           "hook_decisions": {
-            "toolu_019N3XouKouJhxKBVKqeTkJb": "deny"
+            "toolu_01Jd4WXor7J7FkFnsyeKYpm6": "deny",
+            "toolu_0194T1wntpgEJdNkz3hEcWvv": "deny"
           },
           "successful_tool_ids": [],
           "post_tool_ids": [],
@@ -1629,8 +1652,8 @@
             "subtype": "success",
             "is_error": false,
             "reason": "completed",
-            "cost_usd": 0.029134999999999998,
-            "permission_denials": 1
+            "cost_usd": 0.00078324,
+            "permission_denials": 2
           },
           "hook_tasks_remaining": 0,
           "normalized_denials": 0,
@@ -1641,7 +1664,7 @@
             "status": "error",
             "reason": "readiness_failed"
           },
-          "seconds": 6.602,
+          "seconds": 6.647,
           "errors": []
         },
         {
@@ -1664,12 +1687,12 @@
           "attempts": [
             {
               "name": "Bash",
-              "id": "toolu_01QL7hfZFGekWh92zR1qHVyM",
+              "id": "toolu_016urHmpXAoeyfkDS2zSWoCq",
               "parent": null
             }
           ],
           "hook_decisions": {
-            "toolu_01QL7hfZFGekWh92zR1qHVyM": "deny"
+            "toolu_016urHmpXAoeyfkDS2zSWoCq": "deny"
           },
           "successful_tool_ids": [],
           "post_tool_ids": [],
@@ -1691,7 +1714,7 @@
             "subtype": "success",
             "is_error": false,
             "reason": "completed",
-            "cost_usd": 0.028592999999999997,
+            "cost_usd": 0.0006298900000000001,
             "permission_denials": 1
           },
           "hook_tasks_remaining": 0,
@@ -1703,7 +1726,7 @@
             "status": "error",
             "reason": "readiness_failed"
           },
-          "seconds": 4.54,
+          "seconds": 6.07,
           "errors": []
         },
         {
@@ -1726,12 +1749,12 @@
           "attempts": [
             {
               "name": "Bash",
-              "id": "toolu_01RQud9w2y1iiTMNyFWJpQxG",
+              "id": "toolu_01FH2UaNE524upDgCD6GjySr",
               "parent": null
             }
           ],
           "hook_decisions": {
-            "toolu_01RQud9w2y1iiTMNyFWJpQxG": "deny"
+            "toolu_01FH2UaNE524upDgCD6GjySr": "deny"
           },
           "successful_tool_ids": [],
           "post_tool_ids": [],
@@ -1753,7 +1776,7 @@
             "subtype": "success",
             "is_error": false,
             "reason": "completed",
-            "cost_usd": 0.0248455,
+            "cost_usd": 0.0005431800000000001,
             "permission_denials": 1
           },
           "hook_tasks_remaining": 0,
@@ -1765,7 +1788,7 @@
             "status": "error",
             "reason": "readiness_failed"
           },
-          "seconds": 4.212,
+          "seconds": 5.228,
           "errors": []
         },
         {
@@ -1788,12 +1811,12 @@
           "attempts": [
             {
               "name": "Bash",
-              "id": "toolu_016UBpGdb6TqoVn9EtvzWouU",
+              "id": "toolu_01JSWbK9HhHT6dLShHQhovnr",
               "parent": null
             }
           ],
           "hook_decisions": {
-            "toolu_016UBpGdb6TqoVn9EtvzWouU": "deny"
+            "toolu_01JSWbK9HhHT6dLShHQhovnr": "deny"
           },
           "successful_tool_ids": [],
           "post_tool_ids": [],
@@ -1815,7 +1838,7 @@
             "subtype": "success",
             "is_error": false,
             "reason": "completed",
-            "cost_usd": 0.029649000000000002,
+            "cost_usd": 0.00053608,
             "permission_denials": 1
           },
           "hook_tasks_remaining": 0,
@@ -1827,36 +1850,36 @@
             "status": "error",
             "reason": "readiness_failed"
           },
-          "seconds": 5.283,
+          "seconds": 4.972,
           "errors": []
         }
       ],
       "source_sha256": {
-        "bridge/config.py": "4a7cf5507a788f44fe7dcf3b484844e4db77ed05cbecba706564f72eeff6e130",
+        "bridge/config.py": "dae8172960960c3516d1244aec7352c3ef8bdef017fb3efc2d14e01f887482fb",
         "bridge/application_state.py": "c337a5c25b2bafe1b0f48c1709979d5dbe878b69b91b85600c6c63c543afec01",
         "bridge/state_image.py": "7dc49464bdb3a6f01076990625fec17056f73718264f6e0024f484f4d5a5bf53",
         "bridge/sqlite_state.py": "7834b374a4324be4f35629e573fc019f1b5bb4a051f8f54a82b76f050e890eeb",
         "bridge/state_coordinator.py": "93d135868eab21c3c2bd6eb3a9118873c12920e942543f9f931280b7efc063cb",
-        "bridge/project_service.py": "0242325f0b6aea5234b62deccc2d3e9a1c964250703ae5501ae8f50c07dacad3",
-        "bridge/server.py": "e54a3d5f846e3fef7208d9600beb76caf3ecadcac947cc428803c6044df5e10c",
+        "bridge/project_service.py": "9f3ac12ad3659b644dbacba85d2cd76fe8ad8acdc85ccbc8a7001732dc56f9c8",
+        "bridge/server.py": "0aa314fef2273250cd54e7c5cb34dbcd7ac273c3c118543c8ce50d370d185424",
         "bridge/project_files.py": "2ecedc0308230381de3b01bd4ce2b578c756d5f58b1a1989a318494f1a28c96f",
         "bridge/workspace.py": "7281f1f39be3853cae287b4ac160c6503775cd2e47963d3a1845aa45d6d2b693",
         "bridge/workspace_lease.py": "b2cb53ee97d4e94f79e8f74517f409897343a4869c8687c6fcb2b4dceadc65cc",
         "bridge/project_memory.py": "5e000f9e5c35ddc1ec57975c43d1e5ea3b440c60405db94f61e4f87c90549b1e",
         "bridge/readiness.py": "601d3f09e808d1e511fc6a050e825856bc71f6c01fb1623fdc7d7fd8b32f9191",
-        "bridge/failure_diagnostics.py": "4598c2a7d28a38cb1c58f563e185ff6812ee11b5d8b304597997c644bdf3c4dc",
+        "bridge/failure_diagnostics.py": "c38ee2f6156d2c34a203aecaf90e32f0328a6960b6f4df2c7da34ad35fd2e483",
         "bridge/guarded_transport.py": "e5d6b4a1af15be7ce031b08d30a9bf232fd963bb143339cb201035d355211c68",
         "bridge/domain_sdk.py": "f400c14ef9679e224a579514cc35e5f6747065637d42c1f4ec5033be7ae70314",
-        "bridge/domain_manager.py": "38abfe6cf3d4b7451da290ff090f6d98df0cca8eedb397045c6b397da83d84b8",
-        "bridge/domain_session.py": "ac83a3b8ef567cdb85a989cd9d733792cfb3533ed81d3207e20e61299459ee3b",
+        "bridge/domain_manager.py": "badfddd91c9ac2a7a6c5f3d4b8fd1e80d7783ecdec41b2bf989dea402ef97e53",
+        "bridge/domain_session.py": "7aa227437f9ee2d4a73c45373043d8ca0887cb9c047975823761a524d1bc5153",
         "bridge/domain_run_state.py": "4505bdf0cb293ca4eb384a1b8b0bc5609730924117ff5b743247b6b3412dced4",
         "bridge/session_recovery.py": "3f68d298436e318582a41ce9fba18107713f704c4602446cbfd5548309a59e7c",
         "bridge/session_recap.py": "f0557b06a4a0f6b303539a55355b0d9c1d72742c08ff62d55166a9a4762ecf8e",
         "bridge/context.py": "eec5377a1dbe6d83a86447356f54a30dff5dc3e5c37a86e54e7e9a570092220c",
-        "bridge/domain_protocol.py": "1a2f7ee04e4934dc5488c8e23c702d263261ed70967e337dc803ba5bb8b48e75",
+        "bridge/domain_protocol.py": "0896ded767f7461b28e37d6e31e87971c17cc00abd59e681a05cb543253fa30c",
         "bridge/conversation_backend.py": "677a9dbf9ef59a1d27e5cc4b4eac823e06a8778b6971694545801fed09255e0e",
         "bridge/tool_guard_evidence.py": "a2798b89029828c85ca3e526001448a42ecacbb3c6f7bb2e4e6f3192593c55c8",
-        "scripts/m12_tool_guard_probe.py": "63f54dd2b7a83a2815871717a0ef354111cca6a594883626bdb6c6f5fc633e58"
+        "scripts/m12_tool_guard_probe.py": "e84df169008518523b1e216b4b953cbf0a8e5d452860bb5346551c91c8b3383e"
       },
       "errors": [],
       "accepted": true
@@ -1902,18 +1925,18 @@
           "attempts": [
             {
               "name": "Read",
-              "id": "toolu_01JGhimJjiJY16c5R6VU3V54",
+              "id": "toolu_014PHMpPgBXZps793wWPL2pb",
               "parent": null
             }
           ],
           "hook_decisions": {
-            "toolu_01JGhimJjiJY16c5R6VU3V54": "unchanged"
+            "toolu_014PHMpPgBXZps793wWPL2pb": "unchanged"
           },
           "successful_tool_ids": [
-            "toolu_01JGhimJjiJY16c5R6VU3V54"
+            "toolu_014PHMpPgBXZps793wWPL2pb"
           ],
           "post_tool_ids": [
-            "toolu_01JGhimJjiJY16c5R6VU3V54"
+            "toolu_014PHMpPgBXZps793wWPL2pb"
           ],
           "lifecycle": [
             "connect",
@@ -1925,7 +1948,7 @@
             "subtype": "success",
             "is_error": false,
             "reason": "completed",
-            "cost_usd": 0.0184005,
+            "cost_usd": 0.00041850000000000004,
             "permission_denials": 0
           },
           "hook_tasks_remaining": 0,
@@ -1937,7 +1960,7 @@
             "status": "success",
             "reason": "completed"
           },
-          "seconds": 3.382,
+          "seconds": 4.005,
           "errors": []
         },
         {
@@ -1960,17 +1983,12 @@
           "attempts": [
             {
               "name": "Read",
-              "id": "toolu_01GUgEiEQW1Y6QL9QmeSGjHv",
-              "parent": null
-            },
-            {
-              "name": "Read",
-              "id": "toolu_01Uf7VFdpbRs3bFYT6GT8EwV",
+              "id": "toolu_01PT9iTFZ1s3VgcGDX7LWEQa",
               "parent": null
             }
           ],
           "hook_decisions": {
-            "toolu_01GUgEiEQW1Y6QL9QmeSGjHv": "deny"
+            "toolu_01PT9iTFZ1s3VgcGDX7LWEQa": "deny"
           },
           "successful_tool_ids": [],
           "post_tool_ids": [],
@@ -1984,7 +2002,7 @@
             "subtype": "success",
             "is_error": false,
             "reason": "completed",
-            "cost_usd": 0.0294985,
+            "cost_usd": 0.00038043000000000007,
             "permission_denials": 1
           },
           "hook_tasks_remaining": 0,
@@ -1996,7 +2014,7 @@
             "status": "error",
             "reason": "readiness_failed"
           },
-          "seconds": 5.52,
+          "seconds": 3.403,
           "errors": []
         },
         {
@@ -2019,12 +2037,12 @@
           "attempts": [
             {
               "name": "Read",
-              "id": "toolu_01UtaPdydHFo94814yrNu1P8",
+              "id": "toolu_01G8QZzFdjAtKXgrzzPEr6Wn",
               "parent": null
             }
           ],
           "hook_decisions": {
-            "toolu_01UtaPdydHFo94814yrNu1P8": "deny"
+            "toolu_01G8QZzFdjAtKXgrzzPEr6Wn": "deny"
           },
           "successful_tool_ids": [],
           "post_tool_ids": [],
@@ -2038,7 +2056,7 @@
             "subtype": "success",
             "is_error": false,
             "reason": "completed",
-            "cost_usd": 0.023330999999999998,
+            "cost_usd": 0.00038808,
             "permission_denials": 1
           },
           "hook_tasks_remaining": 0,
@@ -2050,7 +2068,7 @@
             "status": "error",
             "reason": "readiness_failed"
           },
-          "seconds": 4.604,
+          "seconds": 3.719,
           "errors": []
         },
         {
@@ -2073,12 +2091,12 @@
           "attempts": [
             {
               "name": "Read",
-              "id": "toolu_01XVEgyCq1B7U2w8jhVQaLTU",
+              "id": "toolu_01MtisiAtBzKKgb21LoBVhFd",
               "parent": null
             }
           ],
           "hook_decisions": {
-            "toolu_01XVEgyCq1B7U2w8jhVQaLTU": "deny"
+            "toolu_01MtisiAtBzKKgb21LoBVhFd": "deny"
           },
           "successful_tool_ids": [],
           "post_tool_ids": [],
@@ -2092,7 +2110,7 @@
             "subtype": "success",
             "is_error": false,
             "reason": "completed",
-            "cost_usd": 0.028695499999999995,
+            "cost_usd": 0.00045413000000000007,
             "permission_denials": 1
           },
           "hook_tasks_remaining": 0,
@@ -2104,7 +2122,7 @@
             "status": "error",
             "reason": "readiness_failed"
           },
-          "seconds": 10.208,
+          "seconds": 9.351,
           "errors": []
         },
         {
@@ -2128,23 +2146,23 @@
           "attempts": [
             {
               "name": "Read",
-              "id": "toolu_01QQuVf5iX5vTEFtnsMyDd17",
+              "id": "toolu_01UoknHQDFbcKsiDG8WYGrPB",
               "parent": null
             },
             {
               "name": "Edit",
-              "id": "toolu_019LQc7dBtAJ3QLsB5kDwZs3",
+              "id": "toolu_01YFu2zxTsHXcgkZfAKm3wn2",
               "parent": null
             }
           ],
           "hook_decisions": {
-            "toolu_019LQc7dBtAJ3QLsB5kDwZs3": "unchanged"
+            "toolu_01YFu2zxTsHXcgkZfAKm3wn2": "unchanged"
           },
           "successful_tool_ids": [
-            "toolu_019LQc7dBtAJ3QLsB5kDwZs3"
+            "toolu_01YFu2zxTsHXcgkZfAKm3wn2"
           ],
           "post_tool_ids": [
-            "toolu_019LQc7dBtAJ3QLsB5kDwZs3"
+            "toolu_01YFu2zxTsHXcgkZfAKm3wn2"
           ],
           "lifecycle": [
             "connect",
@@ -2156,7 +2174,7 @@
             "subtype": "success",
             "is_error": false,
             "reason": "completed",
-            "cost_usd": 0.026207,
+            "cost_usd": 0.00050854,
             "permission_denials": 0
           },
           "hook_tasks_remaining": 0,
@@ -2168,7 +2186,7 @@
             "status": "success",
             "reason": "completed"
           },
-          "seconds": 4.83,
+          "seconds": 4.605,
           "errors": []
         },
         {
@@ -2192,17 +2210,17 @@
           "attempts": [
             {
               "name": "Read",
-              "id": "toolu_01Hx8pm8WYHxEX2we9VRUnyo",
+              "id": "toolu_01TUTHEVZF4hTUPnQazjBN5Z",
               "parent": null
             },
             {
               "name": "Edit",
-              "id": "toolu_01XA53WDjw6Ed6jqHTVh8vay",
+              "id": "toolu_01N5wW2X3yB7jydkfYTWaiai",
               "parent": null
             }
           ],
           "hook_decisions": {
-            "toolu_01XA53WDjw6Ed6jqHTVh8vay": "deny"
+            "toolu_01N5wW2X3yB7jydkfYTWaiai": "deny"
           },
           "successful_tool_ids": [],
           "post_tool_ids": [],
@@ -2216,7 +2234,7 @@
             "subtype": "success",
             "is_error": false,
             "reason": "completed",
-            "cost_usd": 0.027666999999999997,
+            "cost_usd": 0.0005644700000000001,
             "permission_denials": 1
           },
           "hook_tasks_remaining": 0,
@@ -2228,7 +2246,7 @@
             "status": "error",
             "reason": "readiness_failed"
           },
-          "seconds": 6.407,
+          "seconds": 5.27,
           "errors": []
         },
         {
@@ -2252,17 +2270,17 @@
           "attempts": [
             {
               "name": "Read",
-              "id": "toolu_01Dh8RK4tmniFyg7K6h9Zddu",
+              "id": "toolu_01TYT6o7Y6qnT4MyZHQRqbAo",
               "parent": null
             },
             {
               "name": "Edit",
-              "id": "toolu_01SUMoPMFnSmN5haWPBYfH8V",
+              "id": "toolu_01LC2L5Zqe59nuoWvoekD7ed",
               "parent": null
             }
           ],
           "hook_decisions": {
-            "toolu_01SUMoPMFnSmN5haWPBYfH8V": "deny"
+            "toolu_01LC2L5Zqe59nuoWvoekD7ed": "deny"
           },
           "successful_tool_ids": [],
           "post_tool_ids": [],
@@ -2276,7 +2294,7 @@
             "subtype": "success",
             "is_error": false,
             "reason": "completed",
-            "cost_usd": 0.0295075,
+            "cost_usd": 0.0006118499999999999,
             "permission_denials": 1
           },
           "hook_tasks_remaining": 0,
@@ -2288,7 +2306,7 @@
             "status": "error",
             "reason": "readiness_failed"
           },
-          "seconds": 6.382,
+          "seconds": 5.576,
           "errors": []
         },
         {
@@ -2312,17 +2330,17 @@
           "attempts": [
             {
               "name": "Read",
-              "id": "toolu_01JqnbVPKWYubHMbmvHvCtzF",
+              "id": "toolu_01Gr39Ck4mZwfuGg23SgS4DA",
               "parent": null
             },
             {
               "name": "Edit",
-              "id": "toolu_016PXSpmqz7pM21z59Xy1SQS",
+              "id": "toolu_01CKNnFiJJZtWQ7ZPxSV9bZb",
               "parent": null
             }
           ],
           "hook_decisions": {
-            "toolu_016PXSpmqz7pM21z59Xy1SQS": "deny"
+            "toolu_01CKNnFiJJZtWQ7ZPxSV9bZb": "deny"
           },
           "successful_tool_ids": [],
           "post_tool_ids": [],
@@ -2336,7 +2354,7 @@
             "subtype": "success",
             "is_error": false,
             "reason": "completed",
-            "cost_usd": 0.0325885,
+            "cost_usd": 0.0006510300000000001,
             "permission_denials": 1
           },
           "hook_tasks_remaining": 0,
@@ -2348,7 +2366,7 @@
             "status": "error",
             "reason": "readiness_failed"
           },
-          "seconds": 10.406,
+          "seconds": 10.683,
           "errors": []
         },
         {
@@ -2371,18 +2389,18 @@
           "attempts": [
             {
               "name": "Bash",
-              "id": "toolu_012UHoVQHunHNN9Af8QifoaU",
+              "id": "toolu_01HiZpTE2VxnS5pzv1MAvapW",
               "parent": null
             }
           ],
           "hook_decisions": {
-            "toolu_012UHoVQHunHNN9Af8QifoaU": "unchanged"
+            "toolu_01HiZpTE2VxnS5pzv1MAvapW": "unchanged"
           },
           "successful_tool_ids": [
-            "toolu_012UHoVQHunHNN9Af8QifoaU"
+            "toolu_01HiZpTE2VxnS5pzv1MAvapW"
           ],
           "post_tool_ids": [
-            "toolu_012UHoVQHunHNN9Af8QifoaU"
+            "toolu_01HiZpTE2VxnS5pzv1MAvapW"
           ],
           "lifecycle": [
             "connect",
@@ -2394,7 +2412,7 @@
             "subtype": "success",
             "is_error": false,
             "reason": "completed",
-            "cost_usd": 0.020922999999999997,
+            "cost_usd": 0.00045087,
             "permission_denials": 0
           },
           "hook_tasks_remaining": 0,
@@ -2406,7 +2424,7 @@
             "status": "success",
             "reason": "completed"
           },
-          "seconds": 3.574,
+          "seconds": 3.817,
           "errors": []
         },
         {
@@ -2429,12 +2447,12 @@
           "attempts": [
             {
               "name": "Bash",
-              "id": "toolu_01QAvcJAr3HPMfyBJZtiegs5",
+              "id": "toolu_019eZtXYjPRvGCreNKSDTDTk",
               "parent": null
             }
           ],
           "hook_decisions": {
-            "toolu_01QAvcJAr3HPMfyBJZtiegs5": "deny"
+            "toolu_019eZtXYjPRvGCreNKSDTDTk": "deny"
           },
           "successful_tool_ids": [],
           "post_tool_ids": [],
@@ -2448,7 +2466,7 @@
             "subtype": "success",
             "is_error": false,
             "reason": "completed",
-            "cost_usd": 0.026598499999999997,
+            "cost_usd": 0.00061299,
             "permission_denials": 1
           },
           "hook_tasks_remaining": 0,
@@ -2460,7 +2478,7 @@
             "status": "error",
             "reason": "readiness_failed"
           },
-          "seconds": 4.418,
+          "seconds": 5.045,
           "errors": []
         },
         {
@@ -2483,12 +2501,12 @@
           "attempts": [
             {
               "name": "Bash",
-              "id": "toolu_01G3SA8jjwxpinGzn2pJjXi8",
+              "id": "toolu_013jLyjPAjSNjX1GA5fZn4j2",
               "parent": null
             }
           ],
           "hook_decisions": {
-            "toolu_01G3SA8jjwxpinGzn2pJjXi8": "deny"
+            "toolu_013jLyjPAjSNjX1GA5fZn4j2": "deny"
           },
           "successful_tool_ids": [],
           "post_tool_ids": [],
@@ -2502,7 +2520,7 @@
             "subtype": "success",
             "is_error": false,
             "reason": "completed",
-            "cost_usd": 0.0257495,
+            "cost_usd": 0.0005426700000000001,
             "permission_denials": 1
           },
           "hook_tasks_remaining": 0,
@@ -2514,7 +2532,7 @@
             "status": "error",
             "reason": "readiness_failed"
           },
-          "seconds": 4.353,
+          "seconds": 4.721,
           "errors": []
         },
         {
@@ -2537,12 +2555,12 @@
           "attempts": [
             {
               "name": "Bash",
-              "id": "toolu_014KPdnMrgLaU4EHxVzxkLb2",
+              "id": "toolu_01XQPSGwRjyqG1kvBofwGcsA",
               "parent": null
             }
           ],
           "hook_decisions": {
-            "toolu_014KPdnMrgLaU4EHxVzxkLb2": "deny"
+            "toolu_01XQPSGwRjyqG1kvBofwGcsA": "deny"
           },
           "successful_tool_ids": [],
           "post_tool_ids": [],
@@ -2556,7 +2574,7 @@
             "subtype": "success",
             "is_error": false,
             "reason": "completed",
-            "cost_usd": 0.026105499999999997,
+            "cost_usd": 0.00054247,
             "permission_denials": 1
           },
           "hook_tasks_remaining": 0,
@@ -2568,7 +2586,7 @@
             "status": "error",
             "reason": "readiness_failed"
           },
-          "seconds": 9.524,
+          "seconds": 9.974,
           "errors": []
         },
         {
@@ -2591,18 +2609,18 @@
           "attempts": [
             {
               "name": "mcp__m12_fixture__sentinel",
-              "id": "toolu_01CdwfQR3RAhhSqF3GVqN516",
+              "id": "toolu_011CfshXsbYt2cFAeqfp4m3E",
               "parent": null
             }
           ],
           "hook_decisions": {
-            "toolu_01CdwfQR3RAhhSqF3GVqN516": "unchanged"
+            "toolu_011CfshXsbYt2cFAeqfp4m3E": "unchanged"
           },
           "successful_tool_ids": [
-            "toolu_01CdwfQR3RAhhSqF3GVqN516"
+            "toolu_011CfshXsbYt2cFAeqfp4m3E"
           ],
           "post_tool_ids": [
-            "toolu_01CdwfQR3RAhhSqF3GVqN516"
+            "toolu_011CfshXsbYt2cFAeqfp4m3E"
           ],
           "lifecycle": [
             "connect",
@@ -2614,7 +2632,7 @@
             "subtype": "success",
             "is_error": false,
             "reason": "completed",
-            "cost_usd": 0.005048,
+            "cost_usd": 0.00013816000000000002,
             "permission_denials": 0
           },
           "hook_tasks_remaining": 0,
@@ -2626,7 +2644,7 @@
             "status": "success",
             "reason": "completed"
           },
-          "seconds": 3.937,
+          "seconds": 3.636,
           "errors": []
         },
         {
@@ -2649,12 +2667,12 @@
           "attempts": [
             {
               "name": "mcp__m12_fixture__sentinel",
-              "id": "toolu_013tYc2fYqp29jULSfLUjxxQ",
+              "id": "toolu_015nYuUrV3x62gKz8PEFHj3S",
               "parent": null
             }
           ],
           "hook_decisions": {
-            "toolu_013tYc2fYqp29jULSfLUjxxQ": "deny"
+            "toolu_015nYuUrV3x62gKz8PEFHj3S": "deny"
           },
           "successful_tool_ids": [],
           "post_tool_ids": [],
@@ -2668,7 +2686,7 @@
             "subtype": "success",
             "is_error": false,
             "reason": "completed",
-            "cost_usd": 0.011367,
+            "cost_usd": 0.00031331,
             "permission_denials": 1
           },
           "hook_tasks_remaining": 0,
@@ -2680,7 +2698,7 @@
             "status": "error",
             "reason": "readiness_failed"
           },
-          "seconds": 3.921,
+          "seconds": 5.739,
           "errors": []
         },
         {
@@ -2703,12 +2721,12 @@
           "attempts": [
             {
               "name": "mcp__m12_fixture__sentinel",
-              "id": "toolu_01VckGGx5ixNqpW2harQ5BfD",
+              "id": "toolu_01Qzt4PpMHMogFwxHy9ver5M",
               "parent": null
             }
           ],
           "hook_decisions": {
-            "toolu_01VckGGx5ixNqpW2harQ5BfD": "deny"
+            "toolu_01Qzt4PpMHMogFwxHy9ver5M": "deny"
           },
           "successful_tool_ids": [],
           "post_tool_ids": [],
@@ -2722,7 +2740,7 @@
             "subtype": "success",
             "is_error": false,
             "reason": "completed",
-            "cost_usd": 0.012208,
+            "cost_usd": 0.00032286,
             "permission_denials": 1
           },
           "hook_tasks_remaining": 0,
@@ -2734,7 +2752,7 @@
             "status": "error",
             "reason": "readiness_failed"
           },
-          "seconds": 3.995,
+          "seconds": 4.875,
           "errors": []
         },
         {
@@ -2757,12 +2775,12 @@
           "attempts": [
             {
               "name": "mcp__m12_fixture__sentinel",
-              "id": "toolu_01Qg86Uou5Sqw6BKAM32JS8N",
+              "id": "toolu_018YDbpe1AWchuVH2AxawrsW",
               "parent": null
             }
           ],
           "hook_decisions": {
-            "toolu_01Qg86Uou5Sqw6BKAM32JS8N": "deny"
+            "toolu_018YDbpe1AWchuVH2AxawrsW": "deny"
           },
           "successful_tool_ids": [],
           "post_tool_ids": [],
@@ -2776,7 +2794,7 @@
             "subtype": "success",
             "is_error": false,
             "reason": "completed",
-            "cost_usd": 0.014002999999999998,
+            "cost_usd": 0.00022583,
             "permission_denials": 1
           },
           "hook_tasks_remaining": 0,
@@ -2788,7 +2806,7 @@
             "status": "error",
             "reason": "readiness_failed"
           },
-          "seconds": 8.948,
+          "seconds": 9.604,
           "errors": []
         },
         {
@@ -2812,23 +2830,23 @@
           "attempts": [
             {
               "name": "Agent",
-              "id": "toolu_01MLV7CSwH2mkoQe5jmZjcbv",
+              "id": "toolu_012PK4KJmoC4BgAwmpKiepaj",
               "parent": null
             },
             {
               "name": "Bash",
-              "id": "toolu_01DZ2g2CEakNKUFyDUu85ofF",
-              "parent": "toolu_01MLV7CSwH2mkoQe5jmZjcbv"
+              "id": "toolu_01Azmr9sye46TWvZXGa5K4wP",
+              "parent": "toolu_012PK4KJmoC4BgAwmpKiepaj"
             }
           ],
           "hook_decisions": {
-            "toolu_01DZ2g2CEakNKUFyDUu85ofF": "unchanged"
+            "toolu_01Azmr9sye46TWvZXGa5K4wP": "unchanged"
           },
           "successful_tool_ids": [
-            "toolu_01DZ2g2CEakNKUFyDUu85ofF"
+            "toolu_01Azmr9sye46TWvZXGa5K4wP"
           ],
           "post_tool_ids": [
-            "toolu_01DZ2g2CEakNKUFyDUu85ofF"
+            "toolu_01Azmr9sye46TWvZXGa5K4wP"
           ],
           "lifecycle": [
             "connect",
@@ -2840,7 +2858,7 @@
             "subtype": "success",
             "is_error": false,
             "reason": "completed",
-            "cost_usd": 0.057313,
+            "cost_usd": 0.00132795,
             "permission_denials": 0
           },
           "hook_tasks_remaining": 0,
@@ -2852,7 +2870,7 @@
             "status": "success",
             "reason": "completed"
           },
-          "seconds": 6.696,
+          "seconds": 8.47,
           "errors": []
         },
         {
@@ -2876,17 +2894,23 @@
           "attempts": [
             {
               "name": "Agent",
-              "id": "toolu_01CEVXQfXeNfRDdstqhZm8tQ",
+              "id": "toolu_016mNUM82FNgYf55JyNBtwkt",
               "parent": null
             },
             {
               "name": "Bash",
-              "id": "toolu_01171fvmKc8cGX2kcqxmwH82",
-              "parent": "toolu_01CEVXQfXeNfRDdstqhZm8tQ"
+              "id": "toolu_01KahQveYvwmZ6SYP7QKMcVQ",
+              "parent": "toolu_016mNUM82FNgYf55JyNBtwkt"
+            },
+            {
+              "name": "Bash",
+              "id": "toolu_017o6Lub5bFUhj63niPCNSxg",
+              "parent": null
             }
           ],
           "hook_decisions": {
-            "toolu_01171fvmKc8cGX2kcqxmwH82": "deny"
+            "toolu_01KahQveYvwmZ6SYP7QKMcVQ": "deny",
+            "toolu_017o6Lub5bFUhj63niPCNSxg": "deny"
           },
           "successful_tool_ids": [],
           "post_tool_ids": [],
@@ -2900,8 +2924,8 @@
             "subtype": "success",
             "is_error": false,
             "reason": "completed",
-            "cost_usd": 0.06606424999999999,
-            "permission_denials": 1
+            "cost_usd": 0.001783775,
+            "permission_denials": 2
           },
           "hook_tasks_remaining": 0,
           "normalized_denials": 0,
@@ -2912,7 +2936,7 @@
             "status": "error",
             "reason": "readiness_failed"
           },
-          "seconds": 8.601,
+          "seconds": 12.454,
           "errors": []
         },
         {
@@ -2936,17 +2960,17 @@
           "attempts": [
             {
               "name": "Agent",
-              "id": "toolu_01CczZgGXWLfmgHdVmULUXCE",
+              "id": "toolu_01H4FEwKmWQ2tY4YJ6LVM9KG",
               "parent": null
             },
             {
               "name": "Bash",
-              "id": "toolu_01PKBCLV3CnJcy6p373f5ASx",
-              "parent": "toolu_01CczZgGXWLfmgHdVmULUXCE"
+              "id": "toolu_01PZNQ232WgTwj6iKvzUosKn",
+              "parent": "toolu_01H4FEwKmWQ2tY4YJ6LVM9KG"
             }
           ],
           "hook_decisions": {
-            "toolu_01PKBCLV3CnJcy6p373f5ASx": "deny"
+            "toolu_01PZNQ232WgTwj6iKvzUosKn": "deny"
           },
           "successful_tool_ids": [],
           "post_tool_ids": [],
@@ -2960,7 +2984,7 @@
             "subtype": "success",
             "is_error": false,
             "reason": "completed",
-            "cost_usd": 0.0714825,
+            "cost_usd": 0.0014002650000000001,
             "permission_denials": 1
           },
           "hook_tasks_remaining": 0,
@@ -2972,7 +2996,7 @@
             "status": "error",
             "reason": "readiness_failed"
           },
-          "seconds": 8.839,
+          "seconds": 9.432,
           "errors": []
         },
         {
@@ -2996,17 +3020,17 @@
           "attempts": [
             {
               "name": "Agent",
-              "id": "toolu_01Pr4uEp9EHNyYKBi1XkZ7dt",
+              "id": "toolu_01FcUWWcWarjHhabyubFj1xn",
               "parent": null
             },
             {
               "name": "Bash",
-              "id": "toolu_01Wr9eMLEPWRuPVhAMjSG1wJ",
-              "parent": "toolu_01Pr4uEp9EHNyYKBi1XkZ7dt"
+              "id": "toolu_01EjMVVPaoAFRttTChKVMwjr",
+              "parent": "toolu_01FcUWWcWarjHhabyubFj1xn"
             }
           ],
           "hook_decisions": {
-            "toolu_01Wr9eMLEPWRuPVhAMjSG1wJ": "deny"
+            "toolu_01EjMVVPaoAFRttTChKVMwjr": "deny"
           },
           "successful_tool_ids": [],
           "post_tool_ids": [],
@@ -3020,7 +3044,7 @@
             "subtype": "success",
             "is_error": false,
             "reason": "completed",
-            "cost_usd": 0.06983575,
+            "cost_usd": 0.0013352799999999999,
             "permission_denials": 1
           },
           "hook_tasks_remaining": 0,
@@ -3032,7 +3056,7 @@
             "status": "error",
             "reason": "readiness_failed"
           },
-          "seconds": 14.473,
+          "seconds": 13.139,
           "errors": []
         },
         {
@@ -3055,7 +3079,7 @@
           "attempts": [
             {
               "name": "Bash",
-              "id": "toolu_01TTGS1GKu6vx41yKYXYQuJD",
+              "id": "toolu_01G28Nv1MFyHjNqCzjPg6gaQ",
               "parent": null
             }
           ],
@@ -3072,7 +3096,7 @@
             "subtype": "success",
             "is_error": false,
             "reason": "completed",
-            "cost_usd": 0.023808999999999997,
+            "cost_usd": 0.0005496800000000001,
             "permission_denials": 1
           },
           "hook_tasks_remaining": 0,
@@ -3084,7 +3108,7 @@
             "status": "error",
             "reason": "permission_denied"
           },
-          "seconds": 4.381,
+          "seconds": 5.416,
           "errors": []
         },
         {
@@ -3107,7 +3131,7 @@
           "attempts": [
             {
               "name": "Bash",
-              "id": "toolu_01PVZiWcBmAyjQyXs6BjBQWD",
+              "id": "toolu_012LMzpSHxLinooARfMR5XsG",
               "parent": null
             }
           ],
@@ -3124,7 +3148,7 @@
             "subtype": "success",
             "is_error": false,
             "reason": "completed",
-            "cost_usd": 0.0205295,
+            "cost_usd": 0.00050838,
             "permission_denials": 1
           },
           "hook_tasks_remaining": 0,
@@ -3136,7 +3160,7 @@
             "status": "error",
             "reason": "permission_denied"
           },
-          "seconds": 3.294,
+          "seconds": 4.304,
           "errors": []
         },
         {
@@ -3159,7 +3183,7 @@
           "attempts": [
             {
               "name": "Bash",
-              "id": "toolu_016iRG2pc93MxCUGTUryyif6",
+              "id": "toolu_01SihEH4xKHSSjemRgruA1eH",
               "parent": null
             }
           ],
@@ -3176,7 +3200,7 @@
             "subtype": "success",
             "is_error": false,
             "reason": "completed",
-            "cost_usd": 0.022343999999999996,
+            "cost_usd": 0.00048448999999999996,
             "permission_denials": 1
           },
           "hook_tasks_remaining": 0,
@@ -3188,7 +3212,7 @@
             "status": "error",
             "reason": "permission_denied"
           },
-          "seconds": 3.497,
+          "seconds": 4.373,
           "errors": []
         },
         {
@@ -3211,7 +3235,7 @@
           "attempts": [
             {
               "name": "Bash",
-              "id": "toolu_016eBrX8xnXkK7yBuFKPUfGF",
+              "id": "toolu_01YYPYcDhLdiCNWENCcXw6Bw",
               "parent": null
             }
           ],
@@ -3228,7 +3252,7 @@
             "subtype": "success",
             "is_error": false,
             "reason": "completed",
-            "cost_usd": 0.023745999999999996,
+            "cost_usd": 0.0004642,
             "permission_denials": 1
           },
           "hook_tasks_remaining": 0,
@@ -3240,7 +3264,7 @@
             "status": "error",
             "reason": "permission_denied"
           },
-          "seconds": 12.03,
+          "seconds": 11.017,
           "errors": []
         },
         {
@@ -3263,7 +3287,7 @@
           "attempts": [
             {
               "name": "Bash",
-              "id": "toolu_01KC471ii3LSJNVPb8PkTmaD",
+              "id": "toolu_01LyrjfjyECvjAs6vaqQ7koN",
               "parent": null
             }
           ],
@@ -3286,7 +3310,7 @@
             "status": "error",
             "reason": "transport_error"
           },
-          "seconds": 4.117,
+          "seconds": 4.509,
           "errors": []
         },
         {
@@ -3317,7 +3341,7 @@
           "timeout_denials": 0,
           "returncode": 0,
           "owner_task_count": 1,
-          "seconds": 0.757,
+          "seconds": 0.947,
           "errors": []
         },
         {
@@ -3348,7 +3372,7 @@
           "timeout_denials": 0,
           "returncode": 0,
           "owner_task_count": 1,
-          "seconds": 0.797,
+          "seconds": 0.944,
           "errors": []
         },
         {
@@ -3371,12 +3395,12 @@
           "attempts": [
             {
               "name": "Bash",
-              "id": "toolu_01VwxX2po7CQRc3MWDxp8Rcn",
+              "id": "toolu_015NQxBDZiRGp5cyiEfeJCz9",
               "parent": null
             }
           ],
           "hook_decisions": {
-            "toolu_01VwxX2po7CQRc3MWDxp8Rcn": "deny"
+            "toolu_015NQxBDZiRGp5cyiEfeJCz9": "deny"
           },
           "successful_tool_ids": [],
           "post_tool_ids": [],
@@ -3398,7 +3422,7 @@
             "status": "cancelled",
             "reason": "stopped"
           },
-          "seconds": 39.989,
+          "seconds": 3.829,
           "errors": []
         },
         {
@@ -3421,12 +3445,12 @@
           "attempts": [
             {
               "name": "Bash",
-              "id": "toolu_01HUxw8Z7c1pj5PAaWjiaipg",
+              "id": "toolu_01MS71bGFUzvNZckXRBDVRoc",
               "parent": null
             }
           ],
           "hook_decisions": {
-            "toolu_01HUxw8Z7c1pj5PAaWjiaipg": "deny"
+            "toolu_01MS71bGFUzvNZckXRBDVRoc": "deny"
           },
           "successful_tool_ids": [],
           "post_tool_ids": [],
@@ -3444,7 +3468,7 @@
           "timeout_denials": 0,
           "returncode": 0,
           "owner_task_count": 1,
-          "seconds": 3.632,
+          "seconds": 4.222,
           "errors": []
         },
         {
@@ -3467,12 +3491,12 @@
           "attempts": [
             {
               "name": "Bash",
-              "id": "toolu_01AgNAUncPk4ciKcaGFy9oTq",
+              "id": "toolu_011fzArSd8h5Y6fjouPWCBmK",
               "parent": null
             }
           ],
           "hook_decisions": {
-            "toolu_01AgNAUncPk4ciKcaGFy9oTq": "deny"
+            "toolu_011fzArSd8h5Y6fjouPWCBmK": "deny"
           },
           "successful_tool_ids": [],
           "post_tool_ids": [],
@@ -3494,7 +3518,7 @@
             "subtype": "success",
             "is_error": false,
             "reason": "completed",
-            "cost_usd": 0.0347465,
+            "cost_usd": 0.00046758,
             "permission_denials": 1
           },
           "hook_tasks_remaining": 0,
@@ -3506,7 +3530,7 @@
             "status": "error",
             "reason": "readiness_failed"
           },
-          "seconds": 5.614,
+          "seconds": 3.91,
           "errors": []
         },
         {
@@ -3529,12 +3553,12 @@
           "attempts": [
             {
               "name": "Bash",
-              "id": "toolu_01Lvx93xHCUrnTtk8kwX3X5N",
+              "id": "toolu_014FhM6rsWwLSU4BBPWqjiry",
               "parent": null
             }
           ],
           "hook_decisions": {
-            "toolu_01Lvx93xHCUrnTtk8kwX3X5N": "deny"
+            "toolu_014FhM6rsWwLSU4BBPWqjiry": "deny"
           },
           "successful_tool_ids": [],
           "post_tool_ids": [],
@@ -3556,7 +3580,7 @@
             "subtype": "success",
             "is_error": false,
             "reason": "completed",
-            "cost_usd": 0.027778999999999998,
+            "cost_usd": 0.0004788,
             "permission_denials": 1
           },
           "hook_tasks_remaining": 0,
@@ -3568,7 +3592,7 @@
             "status": "error",
             "reason": "readiness_failed"
           },
-          "seconds": 5.042,
+          "seconds": 4.253,
           "errors": []
         },
         {
@@ -3591,12 +3615,12 @@
           "attempts": [
             {
               "name": "Bash",
-              "id": "toolu_01EjB6FkcFt3CKcKvJFBxqdV",
+              "id": "toolu_014s4hzmMAPWMjy31Vfv4RyW",
               "parent": null
             }
           ],
           "hook_decisions": {
-            "toolu_01EjB6FkcFt3CKcKvJFBxqdV": "deny"
+            "toolu_014s4hzmMAPWMjy31Vfv4RyW": "deny"
           },
           "successful_tool_ids": [],
           "post_tool_ids": [],
@@ -3618,7 +3642,7 @@
             "subtype": "success",
             "is_error": false,
             "reason": "completed",
-            "cost_usd": 0.02923,
+            "cost_usd": 0.00054328,
             "permission_denials": 1
           },
           "hook_tasks_remaining": 0,
@@ -3630,7 +3654,7 @@
             "status": "error",
             "reason": "readiness_failed"
           },
-          "seconds": 4.696,
+          "seconds": 4.847,
           "errors": []
         },
         {
@@ -3653,18 +3677,18 @@
           "attempts": [
             {
               "name": "Bash",
-              "id": "toolu_0162BcUNjJRMLj5JhWtRA1JM",
+              "id": "toolu_01PHZVLggoQL7hw57hvaiuFv",
               "parent": null
             },
             {
               "name": "Bash",
-              "id": "toolu_018ARhLPGedcA9KxyjgKXMhU",
+              "id": "toolu_01CC9YCVgExq6saiL8xxWcU8",
               "parent": null
             }
           ],
           "hook_decisions": {
-            "toolu_0162BcUNjJRMLj5JhWtRA1JM": "deny",
-            "toolu_018ARhLPGedcA9KxyjgKXMhU": "deny"
+            "toolu_01PHZVLggoQL7hw57hvaiuFv": "deny",
+            "toolu_01CC9YCVgExq6saiL8xxWcU8": "deny"
           },
           "successful_tool_ids": [],
           "post_tool_ids": [],
@@ -3686,7 +3710,7 @@
             "subtype": "success",
             "is_error": false,
             "reason": "completed",
-            "cost_usd": 0.0392605,
+            "cost_usd": 0.00077405,
             "permission_denials": 2
           },
           "hook_tasks_remaining": 0,
@@ -3698,36 +3722,36 @@
             "status": "error",
             "reason": "readiness_failed"
           },
-          "seconds": 7.115,
+          "seconds": 6.806,
           "errors": []
         }
       ],
       "source_sha256": {
-        "bridge/config.py": "4a7cf5507a788f44fe7dcf3b484844e4db77ed05cbecba706564f72eeff6e130",
+        "bridge/config.py": "dae8172960960c3516d1244aec7352c3ef8bdef017fb3efc2d14e01f887482fb",
         "bridge/application_state.py": "c337a5c25b2bafe1b0f48c1709979d5dbe878b69b91b85600c6c63c543afec01",
         "bridge/state_image.py": "7dc49464bdb3a6f01076990625fec17056f73718264f6e0024f484f4d5a5bf53",
         "bridge/sqlite_state.py": "7834b374a4324be4f35629e573fc019f1b5bb4a051f8f54a82b76f050e890eeb",
         "bridge/state_coordinator.py": "93d135868eab21c3c2bd6eb3a9118873c12920e942543f9f931280b7efc063cb",
-        "bridge/project_service.py": "0242325f0b6aea5234b62deccc2d3e9a1c964250703ae5501ae8f50c07dacad3",
-        "bridge/server.py": "e54a3d5f846e3fef7208d9600beb76caf3ecadcac947cc428803c6044df5e10c",
+        "bridge/project_service.py": "9f3ac12ad3659b644dbacba85d2cd76fe8ad8acdc85ccbc8a7001732dc56f9c8",
+        "bridge/server.py": "0aa314fef2273250cd54e7c5cb34dbcd7ac273c3c118543c8ce50d370d185424",
         "bridge/project_files.py": "2ecedc0308230381de3b01bd4ce2b578c756d5f58b1a1989a318494f1a28c96f",
         "bridge/workspace.py": "7281f1f39be3853cae287b4ac160c6503775cd2e47963d3a1845aa45d6d2b693",
         "bridge/workspace_lease.py": "b2cb53ee97d4e94f79e8f74517f409897343a4869c8687c6fcb2b4dceadc65cc",
         "bridge/project_memory.py": "5e000f9e5c35ddc1ec57975c43d1e5ea3b440c60405db94f61e4f87c90549b1e",
         "bridge/readiness.py": "601d3f09e808d1e511fc6a050e825856bc71f6c01fb1623fdc7d7fd8b32f9191",
-        "bridge/failure_diagnostics.py": "4598c2a7d28a38cb1c58f563e185ff6812ee11b5d8b304597997c644bdf3c4dc",
+        "bridge/failure_diagnostics.py": "c38ee2f6156d2c34a203aecaf90e32f0328a6960b6f4df2c7da34ad35fd2e483",
         "bridge/guarded_transport.py": "e5d6b4a1af15be7ce031b08d30a9bf232fd963bb143339cb201035d355211c68",
         "bridge/domain_sdk.py": "f400c14ef9679e224a579514cc35e5f6747065637d42c1f4ec5033be7ae70314",
-        "bridge/domain_manager.py": "38abfe6cf3d4b7451da290ff090f6d98df0cca8eedb397045c6b397da83d84b8",
-        "bridge/domain_session.py": "ac83a3b8ef567cdb85a989cd9d733792cfb3533ed81d3207e20e61299459ee3b",
+        "bridge/domain_manager.py": "badfddd91c9ac2a7a6c5f3d4b8fd1e80d7783ecdec41b2bf989dea402ef97e53",
+        "bridge/domain_session.py": "7aa227437f9ee2d4a73c45373043d8ca0887cb9c047975823761a524d1bc5153",
         "bridge/domain_run_state.py": "4505bdf0cb293ca4eb384a1b8b0bc5609730924117ff5b743247b6b3412dced4",
         "bridge/session_recovery.py": "3f68d298436e318582a41ce9fba18107713f704c4602446cbfd5548309a59e7c",
         "bridge/session_recap.py": "f0557b06a4a0f6b303539a55355b0d9c1d72742c08ff62d55166a9a4762ecf8e",
         "bridge/context.py": "eec5377a1dbe6d83a86447356f54a30dff5dc3e5c37a86e54e7e9a570092220c",
-        "bridge/domain_protocol.py": "1a2f7ee04e4934dc5488c8e23c702d263261ed70967e337dc803ba5bb8b48e75",
+        "bridge/domain_protocol.py": "0896ded767f7461b28e37d6e31e87971c17cc00abd59e681a05cb543253fa30c",
         "bridge/conversation_backend.py": "677a9dbf9ef59a1d27e5cc4b4eac823e06a8778b6971694545801fed09255e0e",
         "bridge/tool_guard_evidence.py": "a2798b89029828c85ca3e526001448a42ecacbb3c6f7bb2e4e6f3192593c55c8",
-        "scripts/m12_tool_guard_probe.py": "63f54dd2b7a83a2815871717a0ef354111cca6a594883626bdb6c6f5fc633e58"
+        "scripts/m12_tool_guard_probe.py": "e84df169008518523b1e216b4b953cbf0a8e5d452860bb5346551c91c8b3383e"
       },
       "errors": [],
       "accepted": true

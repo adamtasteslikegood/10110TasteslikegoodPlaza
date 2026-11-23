@@ -528,7 +528,9 @@ best-effort group KILL, the instance with an old layout and the untested shell s
   clone from its snapshot. In stage 1 a run still started, so a prompt could tell the agent to rebase; now none
   does. The only exit today is `DELETE /workspaces/:name`, which destroys the unpushed commits, the uncommitted
   files and the conversation. `GET .../diff` shows the uncommitted changes but not the unpushed commits. The
-  `run refused` event carries git's reason. A route that resets the clone is a separate follow-up.
+  `run refused` event carries git's reason. A route that resets the clone is a separate follow-up. At run start
+  the bridge (`bridge/cloud_owner.py`) shows a 412 as `cloud_sync_failed` and a 409 as `cloud_run_active`, and has
+  no way out of a 412 either.
 - **A workspace that never ran has no snapshot.** Its files outside a commit are gone after the idle stop (seen in
   log 14: `restored: "branch"`, `uncommittedLost: true`). That is how it is built: a snapshot is taken when a run
   ends. Listed because a caller that writes files through the test exec route, or a later route, would lose them.
