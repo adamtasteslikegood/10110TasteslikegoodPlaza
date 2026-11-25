@@ -1717,7 +1717,7 @@ async def test_a_2xx_refusal_from_start_run_leaves_the_note_unsynced(
 # OFFICE-236 item 5: the runner's workspace must be this department's.
 
 
-@pytest.mark.parametrize("held", [{}, *HELD])
+@pytest.mark.parametrize("held", [{}, *HELD, dict(state="running")])
 @pytest.mark.parametrize("which", ["repo", "branch"])
 @pytest.mark.asyncio
 async def test_a_workspace_for_another_repo_or_branch_is_refused_before_any_git(
@@ -1834,3 +1834,27 @@ async def test_a_failed_origin_check_after_a_run_keeps_the_note_unsynced(
     assert (outcome.status, outcome.reason) == ("success", "completed")
     assert cloud.note() is True
     one_line(capsys, cloud, "run: sync failed: git_failed: ")
+
+
+@pytest.mark.asyncio
+async def test_origin_past_a_held_commit_at_start_keeps_the_note_unsynced(
+    cloud, monkeypatch, capsys
+):
+    # GitHub moves between the sync and create's answer, whose commit is held.
+    asked = []
+
+    def past(workspace):
+        asked.append(head(workspace))
+        return True
+
+    monkeypatch.setattr(cloud_owner, "origin_past", past)
+    capsys.readouterr()
+    await cloud.owner.start()
+    tip = head(cloud.workspace)
+    assert asked == []  # no pushed commit named: nothing to compare
+    cloud.runner.script("create", ended(state="idle", pushed={"commit": tip}))
+    owner = fresh_owner(cloud)
+    await owner.start()
+    assert asked == [tip]
+    assert owner.healthy
+    assert cloud.note() is True

@@ -197,7 +197,7 @@ class CloudOwner:
     ) -> bool:
         """Fast-forward to the runner's commit; True when origin is past it.
 
-        ``check_origin`` (after a Run): when the commit was already held here,
+        ``check_origin``: when the commit was already held here,
         so ``fast_forward_to`` asked origin nothing, ask it once. A failed
         question is read as "past" and logged; the Run's outcome is not changed.
         """
@@ -224,9 +224,9 @@ class CloudOwner:
                     raise
                 status = {}  # no workspace yet
             self._abandon()
-            if status.get("state") == "running":
-                raise CloudStartRefused("cloud_run_active")
             workspace = self._workspace
+            # Local git only (the origin URL), so it may run before the
+            # running check: whose workspace this is decides what it means.
             repo = await asyncio.to_thread(github_repo, Path(workspace.project_root))
             self._abandon()
             if _other_workspace(status, repo, workspace.branch):
@@ -240,6 +240,8 @@ class CloudOwner:
                     self._remote(status.get("branch")),
                 )
                 raise CloudStartRefused("cloud_refused")
+            if status.get("state") == "running":
+                raise CloudStartRefused("cloud_run_active")
             # After a failed push or a lost run, GitHub may lack the clone's
             # commits: this machine's commits wait rather than go over them.
             held = status.get("state") == "lost" or bool(status.get("pushError"))
@@ -264,7 +266,10 @@ class CloudOwner:
                 behind = await self._not_held(workspace, commit)
             if commit is not None and not stopping:
                 try:
-                    behind = await self._origin_past(workspace, commit, "start")
+                    # GitHub may have moved since the sync: ask it too.
+                    behind = await self._origin_past(
+                        workspace, commit, "start", check_origin=True
+                    )
                 except CloudSyncError:
                     # The cloud holds a commit this machine could not take. A
                     # failed write keeps the old note: true if held (above).

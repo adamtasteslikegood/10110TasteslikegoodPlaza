@@ -540,10 +540,12 @@ Rules:
   `cloud_refused`. After `create`, when the status has
   `pushed.commit`, `fast_forward_to(workspace, commit)` (a run may have ended between the
   sync and the answer), and then `mark_cloud(workspace, unsynced=...)`: true when the
-  state is `lost`, the status has `pushError`, or `fast_forward_to` returned True (origin
-  past the commit, OFFICE-236 item 4), else false. Before any of this, right after the
-  first `status`, a status whose `repo` (case-insensitive) or `branch` is not this
-  department's is `cloud_refused`, with no note, sync or `create` (OFFICE-236 item 5).
+  state is `lost`, the status has `pushError`, or origin is past the commit
+  (`fast_forward_to` returned True, or it asked origin nothing and `origin_past` is True;
+  OFFICE-236 item 4), else false. Before any of this, right after the first `status` and
+  `github_repo`, and before the `running` check, a status whose `repo`
+  (case-insensitive) or `branch` is not this department's is `cloud_refused`, with no
+  note, sync or `create` (OFFICE-236 item 5).
 - The cloud note during a run: `mark_cloud(workspace, unsynced=True)` before `start_run`.
   A `RunnerRefused` from `start_run` puts the note back as it was (nothing ran). After
   the end state it becomes false only when the state is not `lost`, there is no
