@@ -79,11 +79,13 @@ def _commit(status: dict) -> str | None:
 def _other_workspace(status: dict, repo: str, branch: str) -> bool:
     """Whether the runner's workspace of this name is for another repo or branch.
 
-    A status that names neither (no workspace yet, or a runner that does not
-    report them) is not proof of another: ``create`` still refuses with 409.
+    Compared exactly, as the runner admits a ``create`` (a repository that
+    differs only in case is a 409 there too). A status that names neither (no
+    workspace yet, or a runner that does not report them) is not proof of
+    another: ``create`` still refuses with 409.
     """
     named_repo, named_branch = status.get("repo"), status.get("branch")
-    if isinstance(named_repo, str) and named_repo.lower() != repo.lower():
+    if isinstance(named_repo, str) and named_repo != repo:
         return True
     return isinstance(named_branch, str) and named_branch != branch
 

@@ -543,8 +543,8 @@ Rules:
   state is `lost`, the status has `pushError`, or origin is past the commit
   (`fast_forward_to` returned True, or it asked origin nothing and `origin_past` is True;
   OFFICE-236 item 4), else false. Before any of this, right after the first `status` and
-  `github_repo`, and before the `running` check, a status whose `repo`
-  (case-insensitive) or `branch` is not this department's is `cloud_refused`, with no
+  `github_repo`, and before the `running` check, a status whose `repo` or
+  `branch` is not exactly this department's (as the runner compares them) is `cloud_refused`, with no
   note, sync or `create` (OFFICE-236 item 5).
 - The cloud note during a run: `mark_cloud(workspace, unsynced=True)` before `start_run`.
   A `RunnerRefused` from `start_run` puts the note back as it was (nothing ran). After

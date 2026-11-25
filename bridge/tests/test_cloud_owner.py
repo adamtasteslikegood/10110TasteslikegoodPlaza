@@ -1718,17 +1718,21 @@ async def test_a_2xx_refusal_from_start_run_leaves_the_note_unsynced(
 
 
 @pytest.mark.parametrize("held", [{}, *HELD, dict(state="running")])
-@pytest.mark.parametrize("which", ["repo", "branch"])
+@pytest.mark.parametrize("which", ["repo", "repo case", "branch"])
 @pytest.mark.asyncio
 async def test_a_workspace_for_another_repo_or_branch_is_refused_before_any_git(
     cloud, fast_forwards, capsys, which, held
 ):
     commit(cloud.workspace.worktree_path, "local.txt")
     identity = dict(repo=str(cloud.origin), branch=cloud.workspace.branch)
-    identity[which] = {
-        "repo": "https://github.com/someone/else",
-        "branch": "plaza/workspace-other-engineering",
+    # The runner compares exactly, so a repository that differs only in case
+    # would be pushed to and then refused with 409: it is refused here first.
+    key, value = {
+        "repo": ("repo", "https://github.com/someone/else"),
+        "repo case": ("repo", str(cloud.origin).upper()),
+        "branch": ("branch", "plaza/workspace-other-engineering"),
     }[which]
+    identity[key] = value
     cloud.runner.script(
         "status",
         ended(**dict(identity, pushed={"commit": "a" * 40}, **held)),
@@ -1751,7 +1755,7 @@ async def test_a_workspace_naming_this_repo_and_branch_starts(cloud):
         "status",
         ended(
             state="idle",
-            repo=str(cloud.origin).upper(),  # the repository's case is not compared
+            repo=str(cloud.origin),
             branch=cloud.workspace.branch,
         ),
     )
