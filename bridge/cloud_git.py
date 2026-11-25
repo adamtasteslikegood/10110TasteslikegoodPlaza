@@ -347,14 +347,22 @@ def holds_commit(workspace, commit) -> bool:
     return _holds(root, commit, _local_tip(root, branch))
 
 
-def fast_forward_to(workspace, commit: str) -> None:
-    """Move the worktree to exactly ``commit``, which the runner pushed."""
+def fast_forward_to(workspace, commit: str) -> bool:
+    """Move the worktree to exactly ``commit``, which the runner pushed.
+
+    Return True when origin's branch was already past ``commit`` (a second
+    writer pushed after the runner): the worktree is then behind GitHub, and
+    the caller keeps the cloud note unsynced. A branch that already holds
+    ``commit`` (as its tip or an ancestor) is left as it is, with no network
+    call, and False is returned: at Start the bridge may just have pushed
+    commits newer than the runner's last push.
+    """
     root, branch = Path(workspace.worktree_path), _branch(workspace)
     if not isinstance(commit, str) or not _COMMIT.fullmatch(commit):
         raise CloudSyncError("diverged", "the runner's commit is not a commit id")
     local = _local_tip(root, branch)
     if _holds(root, commit, local):
-        return
+        return False
     _require_clean(root)
     expected = github_repo(Path(workspace.project_root))
     _fetch(root, branch, expected)
@@ -369,6 +377,7 @@ def fast_forward_to(workspace, commit: str) -> None:
             "diverged", f"local {local[:12]} is not behind {commit[:12]}"
         )
     _fast_forward(root, commit)
+    return fetched != commit
 
 
 def _note(workspace) -> Path:

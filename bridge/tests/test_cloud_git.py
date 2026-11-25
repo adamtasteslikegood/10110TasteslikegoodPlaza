@@ -219,7 +219,8 @@ def test_fast_forward_to_takes_exactly_the_named_commit(tmp_path, file_protocol)
     past = commit(other, "second.txt")
     git(other, "push", "-q", "origin", workspace.branch)
     assert remote_tip(origin, workspace.branch) == past
-    fast_forward_to(workspace, named)
+    # Origin is past the named commit: it is taken, and the caller is told.
+    assert fast_forward_to(workspace, named) is True
     assert head(workspace) == named
     assert (workspace.worktree_path / "first.txt").exists()
     assert not (workspace.worktree_path / "second.txt").exists()
@@ -338,9 +339,21 @@ def test_fast_forward_to_does_nothing_when_the_commit_is_already_here(
 
     monkeypatch.setattr(cloud_git, "_network_git", no_network)
     (workspace.worktree_path / "untracked.txt").write_text("draft\n")
-    fast_forward_to(workspace, second)
-    fast_forward_to(workspace, first)
+    # Already held, as the tip or an ancestor (OFFICE-236 item 3, by ruling):
+    # nothing moves, and origin is not asked, so it is not reported as past.
+    assert fast_forward_to(workspace, second) is False
+    assert fast_forward_to(workspace, first) is False
     assert head(workspace) == second
+
+
+def test_fast_forward_to_origins_tip_reports_origin_not_past(tmp_path, file_protocol):
+    origin, workspace = setup(tmp_path)
+    sync_before_start(workspace)
+    other = other_clone(tmp_path, origin, workspace.branch)
+    tip = commit(other, "cloud.txt")
+    git(other, "push", "-q", "origin", workspace.branch)
+    assert fast_forward_to(workspace, tip) is False
+    assert head(workspace) == tip
 
 
 @pytest.mark.parametrize(

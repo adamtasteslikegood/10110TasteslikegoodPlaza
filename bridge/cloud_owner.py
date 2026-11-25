@@ -75,6 +75,18 @@ def _commit(status: dict) -> str | None:
     return commit if isinstance(commit, str) and commit else None
 
 
+def _other_workspace(status: dict, repo: str, branch: str) -> bool:
+    """Whether the runner's workspace of this name is for another repo or branch.
+
+    A status that names neither (no workspace yet, or a runner that does not
+    report them) is not proof of another: ``create`` still refuses with 409.
+    """
+    named_repo, named_branch = status.get("repo"), status.get("branch")
+    if isinstance(named_repo, str) and named_repo.lower() != repo.lower():
+        return True
+    return isinstance(named_branch, str) and named_branch != branch
+
+
 def _cut(text: str) -> tuple[str, bool]:
     """Cut to MAX_OUTPUT_BYTES as DomainSDKOwner does; True when it was cut."""
     encoded = text.encode("utf-8")
@@ -179,6 +191,16 @@ class CloudOwner:
             self._sync_failed("start", error)
             return True  # an unanswered question is read as "may be ahead"
 
+    async def _origin_past(self, workspace, commit: str, step: str) -> bool:
+        """Fast-forward to the runner's commit; True when origin is past it."""
+        past = await asyncio.to_thread(fast_forward_to, workspace, commit)
+        if past is True:
+            self._warn(
+                step, "origin's branch is past the runner's commit; note unsynced"
+            )
+            return True
+        return False
+
     async def _start(self) -> None:
         try:
             try:
@@ -193,6 +215,17 @@ class CloudOwner:
             workspace = self._workspace
             repo = await asyncio.to_thread(github_repo, Path(workspace.project_root))
             self._abandon()
+            if _other_workspace(status, repo, workspace.branch):
+                # A workspace left under this name for another repository or
+                # branch: its state is not this department's, so no note is
+                # written and nothing is pushed on its account.
+                self._warn(
+                    "start",
+                    "the runner's workspace is for %s %s, not this department",
+                    self._remote(status.get("repo")),
+                    self._remote(status.get("branch")),
+                )
+                raise CloudStartRefused("cloud_refused")
             # After a failed push or a lost run, GitHub may lack the clone's
             # commits: this machine's commits wait rather than go over them.
             held = status.get("state") == "lost" or bool(status.get("pushError"))
@@ -217,7 +250,7 @@ class CloudOwner:
                 behind = await self._not_held(workspace, commit)
             if commit is not None and not stopping:
                 try:
-                    await asyncio.to_thread(fast_forward_to, workspace, commit)
+                    behind = await self._origin_past(workspace, commit, "start")
                 except CloudSyncError:
                     # The cloud holds a commit this machine could not take. A
                     # failed write keeps the old note: true if held (above).
@@ -459,7 +492,10 @@ class CloudOwner:
         commit = _commit(status)
         if commit is not None:
             try:
-                await asyncio.to_thread(fast_forward_to, self._workspace, commit)
+                if await self._origin_past(self._workspace, commit, "run"):
+                    # The commit is here, but GitHub holds more: the Run's
+                    # outcome stands and the note stays unsynced.
+                    synced = False
             except CloudSyncError as error:
                 self._sync_failed("run", error)
                 synced = False
