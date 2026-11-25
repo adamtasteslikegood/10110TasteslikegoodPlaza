@@ -1712,3 +1712,153 @@ async def test_a_2xx_refusal_from_start_run_leaves_the_note_unsynced(
     outcome = await run(cloud)
     assert (outcome.status, outcome.reason) == ("error", "sdk_error")
     assert cloud.note() is True  # the run may have started
+
+
+# OFFICE-236 item 5: the runner's workspace must be this department's.
+
+
+@pytest.mark.parametrize("held", [{}, *HELD, dict(state="running")])
+@pytest.mark.parametrize("which", ["repo", "repo case", "branch"])
+@pytest.mark.asyncio
+async def test_a_workspace_for_another_repo_or_branch_is_refused_before_any_git(
+    cloud, fast_forwards, capsys, which, held
+):
+    commit(cloud.workspace.worktree_path, "local.txt")
+    identity = dict(repo=str(cloud.origin), branch=cloud.workspace.branch)
+    # The runner compares exactly, so a repository that differs only in case
+    # would be pushed to and then refused with 409: it is refused here first.
+    key, value = {
+        "repo": ("repo", "https://github.com/someone/else"),
+        "repo case": ("repo", str(cloud.origin).upper()),
+        "branch": ("branch", "plaza/workspace-other-engineering"),
+    }[which]
+    identity[key] = value
+    cloud.runner.script(
+        "status",
+        ended(**dict(identity, pushed={"commit": "a" * 40}, **held)),
+    )
+    capsys.readouterr()
+    with pytest.raises(CloudStartRefused) as refused:
+        await cloud.owner.start()
+    assert refused.value.code == "cloud_refused"
+    assert methods(cloud.runner) == ["status"]
+    assert remote_tip(cloud.origin, cloud.workspace.branch) is None  # no push
+    assert not note_file(cloud).exists()  # a local Start stays free
+    assert fast_forwards == []
+    assert not cloud.owner.healthy
+    one_line(capsys, cloud, "start: the runner's workspace is for ")
+
+
+@pytest.mark.asyncio
+async def test_a_workspace_naming_this_repo_and_branch_starts(cloud):
+    cloud.runner.script(
+        "status",
+        ended(
+            state="idle",
+            repo=str(cloud.origin),
+            branch=cloud.workspace.branch,
+        ),
+    )
+    await cloud.owner.start()
+    assert methods(cloud.runner) == ["status", "create"]
+    assert cloud.owner.healthy
+    assert cloud.note() is False
+
+
+# OFFICE-236 item 4: origin past the runner's commit keeps the note unsynced.
+
+
+@pytest.mark.asyncio
+async def test_origin_past_the_runners_commit_after_a_run_keeps_the_note_unsynced(
+    cloud, capsys
+):
+    await cloud.owner.start()
+    pushed = cloud.push_from_cloud("work.txt")
+    later = cloud.push_from_cloud("second-writer.txt")  # pushed after the runner
+    cloud.runner.script("status", ended(result="done", pushed={"commit": pushed}))
+    capsys.readouterr()
+    outcome = await run(cloud)
+    assert outcome.status == "success"  # the Run's own outcome stands
+    assert head(cloud.workspace) == pushed  # exactly the runner's commit
+    assert remote_tip(cloud.origin, cloud.workspace.branch) == later
+    assert cloud.note() is True
+    one_line(capsys, cloud, "run: origin's branch is past the runner's commit")
+    # One cloud Start takes the branch to origin's tip and clears the note.
+    cloud.runner.script("status", ended(result="done", pushed={"commit": pushed}))
+    cloud.runner.script("create", ended(result="done", pushed={"commit": pushed}))
+    owner = fresh_owner(cloud)
+    await owner.start()
+    assert head(cloud.workspace) == later
+    assert cloud.note() is False
+
+
+@pytest.mark.asyncio
+async def test_origin_past_the_runners_commit_at_start_keeps_the_note_unsynced(
+    cloud, monkeypatch
+):
+    sha = "a" * 40
+    monkeypatch.setattr(cloud_owner, "fast_forward_to", lambda workspace, c: True)
+    cloud.runner.script("create", ended(state="idle", pushed={"commit": sha}))
+    await cloud.owner.start()
+    assert cloud.owner.healthy
+    assert cloud.note() is True
+
+
+@pytest.mark.asyncio
+async def test_origin_past_a_commit_already_held_after_a_run_keeps_the_note_unsynced(
+    cloud, capsys
+):
+    await cloud.owner.start()
+    held = head(cloud.workspace)  # the run committed nothing: its push is this tip
+    later = cloud.push_from_cloud("second-writer.txt")
+    cloud.runner.script("status", ended(result="done", pushed={"commit": held}))
+    capsys.readouterr()
+    outcome = await run(cloud)
+    assert outcome.status == "success"
+    assert head(cloud.workspace) == held
+    assert remote_tip(cloud.origin, cloud.workspace.branch) == later
+    assert cloud.note() is True
+    one_line(capsys, cloud, "run: origin's branch is past the runner's commit")
+
+
+@pytest.mark.asyncio
+async def test_a_failed_origin_check_after_a_run_keeps_the_note_unsynced(
+    cloud, monkeypatch, capsys
+):
+    await cloud.owner.start()
+    held = head(cloud.workspace)
+
+    def unanswered(workspace):
+        raise CloudSyncError("git_failed", "git ls-remote exit 128: no route")
+
+    monkeypatch.setattr(cloud_owner, "origin_past", unanswered)
+    cloud.runner.script("status", ended(result="done", pushed={"commit": held}))
+    capsys.readouterr()
+    outcome = await run(cloud)
+    assert (outcome.status, outcome.reason) == ("success", "completed")
+    assert cloud.note() is True
+    one_line(capsys, cloud, "run: sync failed: git_failed: ")
+
+
+@pytest.mark.asyncio
+async def test_origin_past_a_held_commit_at_start_keeps_the_note_unsynced(
+    cloud, monkeypatch, capsys
+):
+    # GitHub moves between the sync and create's answer, whose commit is held.
+    asked = []
+
+    def past(workspace):
+        asked.append(head(workspace))
+        return True
+
+    monkeypatch.setattr(cloud_owner, "origin_past", past)
+    capsys.readouterr()
+    await cloud.owner.start()
+    tip = head(cloud.workspace)
+    assert asked == []  # no pushed commit named: nothing to compare
+    cloud.runner.script("create", ended(state="idle", pushed={"commit": tip}))
+    owner = fresh_owner(cloud)
+    await owner.start()
+    assert asked == [tip]
+    assert owner.healthy
+    assert cloud.note() is True

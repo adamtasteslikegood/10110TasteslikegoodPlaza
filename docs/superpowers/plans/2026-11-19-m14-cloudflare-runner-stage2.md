@@ -30,7 +30,9 @@ the six rulings of 2026-11-19, and §3 (anti-goals). The runner's present contra
 - The bridge pushes only `plaza/workspace-*` branches, never with `--force`, and only
   when a department starts on the cloud. It never pushes after a run.
 - After a run the worktree is fast-forwarded to exactly the commit the runner reports as
-  pushed. Anything that is not a fast-forward is an error, never a merge.
+  pushed, unless the branch here already holds that commit (its tip or an ancestor), in
+  which case nothing moves. Anything that is not a fast-forward is an error, never a
+  merge. (Amended for OFFICE-236 item 3, see "OFFICE-236 rulings" below.)
 - Only a repository whose `origin` is on `github.com` can run in the cloud.
 - A department goes from the cloud back to local only when its last cloud run is on this
   machine and the worktree is clean (call 7). A department with no cloud note is not
@@ -409,7 +411,8 @@ class CloudSyncError(Exception):
 
 def github_repo(project_root: Path) -> str: ...            # "https://github.com/OWNER/REPO"
 def sync_before_start(workspace) -> str: ...               # the branch tip, now the same on both sides
-def fast_forward_to(workspace, commit: str) -> None: ...
+def fast_forward_to(workspace, commit: str) -> bool: ...   # True: origin was past commit (OFFICE-236)
+def origin_past(workspace) -> bool: ...                    # ls-remote: origin's tip not held here
 def mark_cloud(workspace, *, unsynced: bool) -> None: ...  # write the department's cloud note
 def check_switch_to_local(workspace) -> None: ...          # raises "unsynced" or "dirty"; else removes the note
 ```
@@ -450,7 +453,11 @@ Rules for git (changed after review: the first version set only `core.hooksPath`
 `fast_forward_to`: nothing to do, and no network, when the commit is already the local
 tip or an ancestor of it. Otherwise `dirty` if the worktree is not clean; `git fetch
 origin <branch>`; the commit must exist (`git cat-file -e <commit>^{commit}`) and the
-local tip must be its ancestor, else `diverged`; then `git merge --ff-only <commit>`. No
+local tip must be its ancestor, else `diverged`; then `git merge --ff-only <commit>`. It
+returns True when the fetched tip is not the commit (origin is past it, OFFICE-236 item 4),
+and False otherwise, the no-network case included. `origin_past`: one `ls-remote`;
+True when origin's tip is not held by the branch here (a branch missing on origin is not
+past). No
 `--force` appears anywhere in the module, and the only refspec pushed is the workspace
 branch.
 
@@ -533,11 +540,18 @@ Rules:
   `cloud_refused`. After `create`, when the status has
   `pushed.commit`, `fast_forward_to(workspace, commit)` (a run may have ended between the
   sync and the answer), and then `mark_cloud(workspace, unsynced=...)`: true when the
-  state is `lost` or the status has `pushError`, else false.
+  state is `lost`, the status has `pushError`, or origin is past the commit
+  (`fast_forward_to` returned True, or it asked origin nothing and `origin_past` is True;
+  OFFICE-236 item 4), else false. Before any of this, right after the first `status` and
+  `github_repo`, and before the `running` check, a status whose `repo` or
+  `branch` is not exactly this department's (as the runner compares them) is `cloud_refused`, with no
+  note, sync or `create` (OFFICE-236 item 5).
 - The cloud note during a run: `mark_cloud(workspace, unsynced=True)` before `start_run`.
   A `RunnerRefused` from `start_run` puts the note back as it was (nothing ran). After
   the end state it becomes false only when the state is not `lost`, there is no
-  `pushError`, and the fast-forward, if there was a commit to take, succeeded. In every
+  `pushError`, the fast-forward, if there was a commit to take, succeeded, and origin was
+  not past the commit (`fast_forward_to` returned False and, when it asked origin
+  nothing, `origin_past` is False; a failed `origin_past` counts as past). In every
   other case it stays true, a bridge killed mid-run included.
 - `conversation_is_new()`: the status's `conversation` differs from this owner's key. A
   runner that does not answer counts as new.
@@ -759,5 +773,34 @@ claims on. Each check's output goes into `stage-2.md` with secrets counted, not 
   not run said plainly.
 - With `CLOUD_DOMAINS` empty the bridge makes no request to the runner and behaves as it
   does on `dev` today.
+
+
+## OFFICE-236 rulings (2026-11-25)
+
+Copilot's five findings on PR #427 (OFFICE-236, PLZG-315), settled by the owner after
+the stage 2 bridge code merged in PR #435:
+
+1. **Active cloud runs are invisible across bridge instances.** Accepted as a limit, not
+   built. The workspace branch and the runner's workspace name come from a digest of the
+   checkout's git directory path, so two machines share them only when their checkouts sit
+   at the same path; that case ends in a `diverged` refusal at the next cloud Start, not
+   in lost commits. The runner-side fix (an atomic reservation) is PLZG-318.
+2. **Empty optional cloud settings.** Fixed in PR #435: `CLOUD_DOMAINS` and
+   `CLOUD_RUNNER_URL` are optional text (`bridge/config.py`, `_OPTIONAL_TEXT_KEYS`).
+3. **`fast_forward_to` leaves local HEAD ahead of the reported commit.** Accepted: the
+   Start path needs it, because after the bridge pushes newer local commits the runner
+   still reports its older push. The note's meaning (the cloud may hold commits this
+   machine lacks) stays true. Pinned by
+   `test_fast_forward_to_does_nothing_when_the_commit_is_already_here`.
+4. **The fetched tip is not compared to the reported commit.** Fixed: `fast_forward_to`
+   still stops at the runner's commit, and reports when origin's branch is past it; the
+   cloud owner then keeps the note unsynced, at Start and after a Run. After a Run whose
+   commit is already held here, `origin_past` asks origin once (an `ls-remote`). Tests:
+   `test_origin_past_the_runners_commit_*` and the `fast_forward_to` tests in
+   `bridge/tests/test_cloud_git.py`.
+5. **Workspace identity before sync.** Fixed: a first status that names another
+   repository or branch is refused as `cloud_refused` before any note, push or `create`.
+   Tests: `test_a_workspace_for_another_repo_or_branch_is_refused_before_any_git` and
+   `test_a_workspace_naming_this_repo_and_branch_starts`.
 
 *Last updated: November 2026*
