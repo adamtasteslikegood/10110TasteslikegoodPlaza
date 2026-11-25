@@ -283,6 +283,20 @@ def _fast_forward(root: Path, commit: str) -> None:
         raise CloudSyncError("git_failed", "fast-forward did not reach the commit")
 
 
+def _remote_tip(root: Path, branch: str, expected: str) -> str | None:
+    """Origin's tip of ``branch`` by ls-remote (no objects fetched); None if absent."""
+    ref = f"refs/heads/{branch}"
+    listing = _network_git(
+        root, "ls-remote", "--heads", "origin", ref, expected=expected
+    )
+    remote = None
+    for line in listing.splitlines():
+        sha, _, name = line.partition("\t")
+        if name == ref:
+            remote = sha
+    return remote
+
+
 def sync_before_start(workspace, *, may_push: bool = True) -> str:
     """Make the branch tip the same here and on origin; return that tip.
 
@@ -293,15 +307,7 @@ def sync_before_start(workspace, *, may_push: bool = True) -> str:
     _require_clean(root)
     local = _local_tip(root, branch)
     expected = github_repo(Path(workspace.project_root))
-    ref = f"refs/heads/{branch}"
-    listing = _network_git(
-        root, "ls-remote", "--heads", "origin", ref, expected=expected
-    )
-    remote = None
-    for line in listing.splitlines():
-        sha, _, name = line.partition("\t")
-        if name == ref:
-            remote = sha
+    remote = _remote_tip(root, branch, expected)
     if remote is None:
         _push_unless_held(root, branch, expected, may_push)
         return local
@@ -378,6 +384,20 @@ def fast_forward_to(workspace, commit: str) -> bool:
         )
     _fast_forward(root, commit)
     return fetched != commit
+
+
+def origin_past(workspace) -> bool:
+    """Whether origin's branch has a tip the branch here does not hold.
+
+    One ``ls-remote``, nothing fetched. A branch missing on origin holds
+    nothing this machine lacks, so it is not past. For the check after a Run,
+    where ``fast_forward_to`` asks origin nothing when the commit is already
+    held here.
+    """
+    root, branch = Path(workspace.worktree_path), _branch(workspace)
+    local = _local_tip(root, branch)
+    remote = _remote_tip(root, branch, github_repo(Path(workspace.project_root)))
+    return remote is not None and not _holds(root, remote, local)
 
 
 def _note(workspace) -> Path:

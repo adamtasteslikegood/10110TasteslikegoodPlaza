@@ -753,3 +753,19 @@ def test_a_note_that_cannot_be_read_is_git_failed_not_unsynced(tmp_path, monkeyp
         check_switch_to_local(workspace)
     assert raised.value.code == "git_failed"
     assert raised.value.detail == "the cloud note could not be read"
+
+
+def test_origin_past_compares_origins_tip_with_the_branch_here(tmp_path, file_protocol):
+    from bridge.cloud_git import origin_past
+
+    origin, workspace = setup(tmp_path)
+    assert origin_past(workspace) is False  # missing on origin: nothing lacked
+    sync_before_start(workspace)
+    assert origin_past(workspace) is False  # the same tip
+    commit(workspace.worktree_path, "local.txt")
+    assert origin_past(workspace) is False  # origin behind: held here
+    sync_before_start(workspace)
+    other = other_clone(tmp_path, origin, workspace.branch)
+    commit(other, "second-writer.txt")
+    git(other, "push", "-q", "origin", workspace.branch)
+    assert origin_past(workspace) is True  # a tip this branch does not hold

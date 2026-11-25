@@ -1798,3 +1798,39 @@ async def test_origin_past_the_runners_commit_at_start_keeps_the_note_unsynced(
     await cloud.owner.start()
     assert cloud.owner.healthy
     assert cloud.note() is True
+
+
+@pytest.mark.asyncio
+async def test_origin_past_a_commit_already_held_after_a_run_keeps_the_note_unsynced(
+    cloud, capsys
+):
+    await cloud.owner.start()
+    held = head(cloud.workspace)  # the run committed nothing: its push is this tip
+    later = cloud.push_from_cloud("second-writer.txt")
+    cloud.runner.script("status", ended(result="done", pushed={"commit": held}))
+    capsys.readouterr()
+    outcome = await run(cloud)
+    assert outcome.status == "success"
+    assert head(cloud.workspace) == held
+    assert remote_tip(cloud.origin, cloud.workspace.branch) == later
+    assert cloud.note() is True
+    one_line(capsys, cloud, "run: origin's branch is past the runner's commit")
+
+
+@pytest.mark.asyncio
+async def test_a_failed_origin_check_after_a_run_keeps_the_note_unsynced(
+    cloud, monkeypatch, capsys
+):
+    await cloud.owner.start()
+    held = head(cloud.workspace)
+
+    def unanswered(workspace):
+        raise CloudSyncError("git_failed", "git ls-remote exit 128: no route")
+
+    monkeypatch.setattr(cloud_owner, "origin_past", unanswered)
+    cloud.runner.script("status", ended(result="done", pushed={"commit": held}))
+    capsys.readouterr()
+    outcome = await run(cloud)
+    assert (outcome.status, outcome.reason) == ("success", "completed")
+    assert cloud.note() is True
+    one_line(capsys, cloud, "run: sync failed: git_failed: ")

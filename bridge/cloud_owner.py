@@ -22,6 +22,7 @@ from bridge.cloud_git import (
     github_repo,
     holds_commit,
     mark_cloud,
+    origin_past,
     sync_before_start,
 )
 from bridge.cloud_runner import RunnerDown, RunnerRefused
@@ -191,9 +192,22 @@ class CloudOwner:
             self._sync_failed("start", error)
             return True  # an unanswered question is read as "may be ahead"
 
-    async def _origin_past(self, workspace, commit: str, step: str) -> bool:
-        """Fast-forward to the runner's commit; True when origin is past it."""
+    async def _origin_past(
+        self, workspace, commit: str, step: str, *, check_origin: bool = False
+    ) -> bool:
+        """Fast-forward to the runner's commit; True when origin is past it.
+
+        ``check_origin`` (after a Run): when the commit was already held here,
+        so ``fast_forward_to`` asked origin nothing, ask it once. A failed
+        question is read as "past" and logged; the Run's outcome is not changed.
+        """
         past = await asyncio.to_thread(fast_forward_to, workspace, commit)
+        if past is not True and check_origin:
+            try:
+                past = await asyncio.to_thread(origin_past, workspace)
+            except CloudSyncError as error:
+                self._sync_failed(step, error)
+                return True
         if past is True:
             self._warn(
                 step, "origin's branch is past the runner's commit; note unsynced"
@@ -492,7 +506,9 @@ class CloudOwner:
         commit = _commit(status)
         if commit is not None:
             try:
-                if await self._origin_past(self._workspace, commit, "run"):
+                if await self._origin_past(
+                    self._workspace, commit, "run", check_origin=True
+                ):
                     # The commit is here, but GitHub holds more: the Run's
                     # outcome stands and the note stays unsynced.
                     synced = False
