@@ -485,7 +485,10 @@ Wire changes, all absent for a local department:
 Where each command goes:
 
 - Start asks the runner's status first, so nothing is pushed while an earlier
-  run goes on. Then, for a `github.com` origin only, it pushes the workspace
+  run goes on. A status that names another repository or branch (a workspace
+  left under this name, for instance by an earlier checkout at the same path)
+  is refused as `cloud_refused` before any note is written or anything is
+  pushed. Then, for a `github.com` origin only, it pushes the workspace
   branch `plaza/workspace-<project_id>-<domain>` (never `--force`, only that
   branch), creates the runner's workspace `<project_id>-<domain>` if it is
   missing (it never changes one; another repository or branch is a 409) and
@@ -501,7 +504,12 @@ Where each command goes:
   session id, so End starts a new conversation and keeps the workspace. The
   bridge polls every 3 s. After the run it fast-forwards the worktree to
   exactly the commit the runner reports as pushed; anything that is not a
-  fast-forward is an error, never a merge. No status naming the run for
+  fast-forward is an error, never a merge. A branch here that already holds
+  that commit, as its tip or an ancestor, is left as it is: at Start the
+  bridge may just have pushed commits newer than the runner's last push. If
+  GitHub's branch is already past the commit (a second writer), the worktree
+  still stops at the commit, the Run's outcome stands, and the cloud note stays
+  unsynced; the next cloud Start fast-forwards to GitHub's tip and clears it. No status naming the run for
   5 minutes ends it: `transport_error` after an outage, `cloud_run_lost` after
   answers that name another run. A status naming a later run, or a 404, ends
   it at once as `cloud_run_lost`; any other refusal while polling ends it at

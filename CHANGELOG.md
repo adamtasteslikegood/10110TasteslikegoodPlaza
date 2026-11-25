@@ -17,6 +17,19 @@ spec-set versions, and no application release existed before `v0.1.22`.
 
 ## [Unreleased]
 
+### Fixed — two cloud sync checks from the stage 2 plan review (OFFICE-236)
+
+- A cloud Start whose first runner status names another repository or branch
+  (a workspace left under the same name) is refused as `cloud_refused` before
+  the cloud note is written or anything is pushed. Before, the Start could push
+  and, after a failed push of that other workspace, leave the note unsynced
+  while every later cloud Start got a 409.
+- When GitHub's branch is already past the commit the runner reports as pushed
+  (a second writer), the worktree still stops at that commit, but the cloud
+  note now stays unsynced instead of clearing with the worktree behind GitHub.
+  The next cloud Start fast-forwards to GitHub's tip and clears it.
+- The other three findings are recorded as rulings in the stage 2 plan.
+
 ### Changed — the cloud runner's contract, ahead of stage 2 (PLZG-311)
 
 - Not deployed: the development deploy still runs the earlier code.

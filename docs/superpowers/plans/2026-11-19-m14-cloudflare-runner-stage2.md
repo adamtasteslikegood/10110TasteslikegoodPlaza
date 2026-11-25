@@ -30,7 +30,9 @@ the six rulings of 2026-11-19, and §3 (anti-goals). The runner's present contra
 - The bridge pushes only `plaza/workspace-*` branches, never with `--force`, and only
   when a department starts on the cloud. It never pushes after a run.
 - After a run the worktree is fast-forwarded to exactly the commit the runner reports as
-  pushed. Anything that is not a fast-forward is an error, never a merge.
+  pushed, unless the branch here already holds that commit (its tip or an ancestor), in
+  which case nothing moves. Anything that is not a fast-forward is an error, never a
+  merge. (Amended for OFFICE-236 item 3, see "OFFICE-236 rulings" below.)
 - Only a repository whose `origin` is on `github.com` can run in the cloud.
 - A department goes from the cloud back to local only when its last cloud run is on this
   machine and the worktree is clean (call 7). A department with no cloud note is not
@@ -761,3 +763,30 @@ claims on. Each check's output goes into `stage-2.md` with secrets counted, not 
   does on `dev` today.
 
 *Last updated: November 2026*
+
+## OFFICE-236 rulings (2026-11-25)
+
+Copilot's five findings on PR #427 (OFFICE-236, PLZG-315), settled by the owner after
+the stage 2 bridge code merged in PR #435:
+
+1. **Active cloud runs are invisible across bridge instances.** Accepted as a limit, not
+   built. The workspace branch and the runner's workspace name come from a digest of the
+   checkout's git directory path, so two machines share them only when their checkouts sit
+   at the same path; that case ends in a `diverged` refusal at the next cloud Start, not
+   in lost commits. The runner-side fix (an atomic reservation) is PLZG-318.
+2. **Empty optional cloud settings.** Fixed in PR #435: `CLOUD_DOMAINS` and
+   `CLOUD_RUNNER_URL` are optional text (`bridge/config.py`, `_OPTIONAL_TEXT_KEYS`).
+3. **`fast_forward_to` leaves local HEAD ahead of the reported commit.** Accepted: the
+   Start path needs it, because after the bridge pushes newer local commits the runner
+   still reports its older push. The note's meaning (the cloud may hold commits this
+   machine lacks) stays true. Pinned by
+   `test_fast_forward_to_does_nothing_when_the_commit_is_already_here`.
+4. **The fetched tip is not compared to the reported commit.** Fixed: `fast_forward_to`
+   still stops at the runner's commit, and reports when origin's branch is past it; the
+   cloud owner then keeps the note unsynced, at Start and after a Run. Tests:
+   `test_origin_past_the_runners_commit_*` and the `fast_forward_to` tests in
+   `bridge/tests/test_cloud_git.py`.
+5. **Workspace identity before sync.** Fixed: a first status that names another
+   repository or branch is refused as `cloud_refused` before any note, push or `create`.
+   Tests: `test_a_workspace_for_another_repo_or_branch_is_refused_before_any_git` and
+   `test_a_workspace_naming_this_repo_and_branch_starts`.
